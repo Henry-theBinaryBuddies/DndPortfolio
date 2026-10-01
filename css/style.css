@@ -1,3 +1,7 @@
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
 *,
 *::before,
 *::after {
@@ -15,11 +19,18 @@ body {
 }
 
 
-/* Main scene */
+/* =========================================================
+   TABLE SCENE
+
+   Only responsible for the viewport/scene right now.
+   Other desk objects can be added later.
+   ========================================================= */
 
 .table-scene {
+  position: relative;
   width: 100%;
   height: 100vh;
+  background-color: black;
 
   padding: 2rem 4rem 0;
 
@@ -27,100 +38,183 @@ body {
 }
 
 
-/* DM screen */
+/* =========================================================
+   DM SCREEN
+
+   This is the complete physical object.
+   Scaling this element scales everything nested inside it.
+   ========================================================= */
 
 .dm-screen {
   display: flex;
+
   position: fixed;
   top: 2rem;
   left: 50%;
-  transform: translateX(-50%);
+
+  width: min(1400px, 96vw);
+  height: 72vh;
 
   align-items: center;
   justify-content: center;
 
-  width: min(1200px, 90%);
-  height: 72vh;
+  transform: translateX(-50%);
+  transform-origin: top center;
 
   perspective: 1400px;
 
+  /*
+    Allows descendants to use container-relative
+    typography if needed.
+  */
+  container-type: inline-size;
 }
 
-/* Individual panels */
+
+/* =========================================================
+   PANEL FRAME
+
+   The panel is now responsible only for:
+   - physical frame
+   - perspective
+   - shadows
+   - hinge treatment
+
+   Content lives inside .dm-screen__surface.
+   ========================================================= */
 
 .dm-screen__panel {
   position: relative;
+
   height: 100%;
+  min-width: 0;
 
   border: 14px solid transparent;
-  border-radius: 4px;
 
-  background:
-    linear-gradient(#b99a63, #b99a63) padding-box,
+  border-image-source:
+    url("../assets/textures/wood-frame.png");
 
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.04) 0px,
-      rgba(255, 255, 255, 0.00) 8px,
-      rgba(0, 0, 0, 0.08) 16px,
-      rgba(255, 255, 255, 0.03) 22px,
-      rgba(0, 0, 0, 0.10) 30px
-    ) border-box,
+  border-image-slice: 30;
+  border-image-repeat: stretch;
 
-    linear-gradient(
-      180deg,
-      #5a3820 0%,
-      #442918 40%,
-      #3a2416 100%
-    ) border-box;
   box-shadow:
-    inset 0 0 0 3px #6f4b2a,
-    inset 0 0 24px rgb(60 35 18),
     0 8px 18px rgba(0, 0, 0, 0.35);
 }
 
 
-/* Side-panel folds */
+/* =========================================================
+   PANEL PROPORTIONS / PERSPECTIVE
+   ========================================================= */
 
 .dm-screen__panel--left {
   flex: 1;
-  border-radius: 4px 0 0 4px;
+
   transform-origin: right center;
   transform: rotateY(20deg);
+
   z-index: 1;
 }
+
 
 .dm-screen__panel--center {
   flex: 1.2;
-  border-radius: 0;
-  position: relative;
+
   z-index: 2;
 }
 
+
 .dm-screen__panel--right {
   flex: 1;
-  border-radius: 0 4px 4px 0;
+
   transform-origin: left center;
   transform: rotateY(-20deg);
+
   z-index: 1;
 }
 
-.dm-screen__panel--left,
-.dm-screen__panel--right {
-  position: relative;
+
+/* =========================================================
+   INNER PAPER SURFACE
+
+   This is the actual usable area inside each wooden frame.
+
+   Modules are sized relative to THIS element rather than
+   independently against the viewport.
+   ========================================================= */
+
+.dm-screen__surface {
+  width: 100%;
+  height: 100%;
+
+  display: grid;
+
+  grid-template-rows:
+    repeat(2, minmax(0, 1fr));
+
+  place-items: center;
+
+  gap: 3%;
+  padding: 4% 5%;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      rgba(185, 154, 99, 0.20),
+      rgba(185, 154, 99, 0.20)
+    ),
+    url("../assets/textures/aged-paper.png");
+
+  background-size: cover;
+  background-position: center;
+
+  box-shadow:
+    inset 0 0 24px rgba(60, 35, 18, 0.35);
 }
 
-.dm-screen__panel--left::after {
+
+/* =========================================================
+   CENTER PANEL SURFACE
+
+   The center panel needs a dedicated row for the portfolio
+   title in addition to its two modules.
+   ========================================================= */
+
+.dm-screen__panel--center .dm-screen__surface {
+  grid-template-rows:
+    auto
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+
+  gap: 3%;
+
+  padding-top: 5%;
+  padding-bottom: 6%;
+}
+
+
+/* =========================================================
+   HINGE / JOINT SHADING
+   ========================================================= */
+
+.dm-screen__panel--left::after,
+.dm-screen__panel--right::after {
   content: "";
 
   position: absolute;
   top: 0;
-  right: -12px;
 
   width: 25px;
   height: 100%;
 
   pointer-events: none;
+
+  z-index: 5;
+}
+
+
+.dm-screen__panel--left::after {
+  right: -12px;
 
   background: linear-gradient(
     to left,
@@ -130,17 +224,9 @@ body {
   );
 }
 
+
 .dm-screen__panel--right::after {
-  content: "";
-
-  position: absolute;
-  top: 0;
   left: -12px;
-
-  width: 25px;
-  height: 100%;
-
-  pointer-events: none;
 
   background: linear-gradient(
     to right,
@@ -148,4 +234,603 @@ body {
     rgba(25, 12, 6, 0.18),
     transparent
   );
+}
+
+/* =========================================================
+ Logbook.
+ ========================================================= */
+.logbook {
+  position: absolute;
+
+  left: 25%;
+  bottom: .5%;
+
+  width: 11%;
+
+  padding: 0;
+  border: 0;
+
+  background: transparent;
+  cursor: pointer;
+
+  transform:
+    perspective(1000px)
+    rotateZ(4.5deg)
+    rotateX(8deg);
+
+  transition:
+    transform 180ms ease,
+    filter 180ms ease;
+
+  z-index: 10;
+}
+
+.logbook__image {
+  display: block;
+
+  width: 100%;
+  height: auto;
+
+  pointer-events: none;
+}
+
+.logbook:hover {
+  transform:
+    perspective(1000px)
+    translateY(-8px)
+    rotateZ(7deg)
+    rotateX(5deg);
+
+  filter:
+    drop-shadow(0 10px 8px rgba(0, 0, 0, 0.4));
+}
+
+.logbook-entries {
+  display: flex;
+  flex-direction: column;
+
+  gap: 0.75rem;
+
+  margin-top: 2rem;
+}
+
+.logbook-entry {
+  width: 100%;
+
+  padding: 0.75rem 1rem;
+
+  border: 0;
+  border-bottom: 1px solid rgba(66, 39, 21, 0.4);
+
+  background: transparent;
+
+  color: #2c1d13;
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.logbook-entry:hover,
+.logbook-entry:focus-visible {
+  background: rgba(91, 53, 27, 0.08);
+}
+
+.logbook-entry-content time {
+  font-style: italic;
+}
+
+.logbook-entry-content h3 {
+  margin-top: 0.5rem;
+}
+
+.logbook-entry-content p {
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   PORTFOLIO TITLE
+   ========================================================= */
+
+.portfolio-title {
+  width: 85%;
+
+  margin: 0;
+
+  text-align: center;
+
+  align-self: center;
+  justify-self: center;
+}
+
+
+.portfolio-title__eyebrow {
+  margin: 0;
+
+  font-size: clamp(0.55rem, 0.8cqw, 0.75rem);
+
+  line-height: 1;
+
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+
+.portfolio-title__main {
+  margin: 0.2em 0;
+
+  font-size: clamp(0.8rem, 1.5cqw, 1.8rem);
+
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+
+.portfolio-title__subtitle {
+  margin: 0;
+
+  font-size: clamp(0.5rem, 0.75cqw, 0.8rem);
+
+  line-height: 1.1;
+
+  font-style: italic;
+}
+
+
+/* =========================================================
+   MODULE CARD
+
+   The module's size now derives directly from its
+   panel surface.
+
+   No fixed max-width.
+   ========================================================= */
+
+.module-card {
+  position: relative;
+
+  width: 82%;
+  height: 90%;
+
+  max-width: 100%;
+  max-height: 100%;
+
+  min-width: 0;
+  min-height: 0;
+
+  filter:
+    drop-shadow(
+      0 6px 5px rgba(0, 0, 0, 0.35)
+    );
+
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
+}
+
+.module-card:hover,
+.module-card:focus-within {
+  transform: translateY(-4%);
+  filter:
+    drop-shadow(
+      0 10px 8px rgba(0, 0, 0, 0.45)
+    );
+}
+
+/* =========================================================
+   MODULE COVER
+
+   The actual clickable booklet/module.
+   ========================================================= */
+
+.module-card__cover {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  height: 100%;
+
+  padding: 5%;
+
+  overflow: hidden;
+
+  color: #24170f;
+  text-decoration: none;
+
+  background: #d6c18e;
+
+  border: 2px solid #26170f;
+
+  box-shadow:
+    inset 0 0 0 2px rgba(92, 49, 24, 0.35);
+}
+
+
+/* =========================================================
+   MODULE ART AREA
+   ========================================================= */
+
+.module-card__art {
+  flex: 1;
+
+  width: 100%;
+  min-height: 0;
+
+  margin: 2% 0 5%;
+
+  overflow: hidden;
+
+  background: #6e3527;
+
+  border: 1px solid #2d1b12;
+}
+
+.module-card__art img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* =========================================================
+   MODULE TEXT
+   ========================================================= */
+
+.module-card__text {
+  width: 100%;
+
+  text-align: center;
+}
+
+.module-card__title {
+  margin: 0;
+
+  font-size: clamp(0.65rem, 1.2cqw, 1.1rem);
+
+  line-height: 1;
+
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.module-card__subtitle {
+  margin: 0.4em 0 0;
+
+  font-size: clamp(0.5rem, 0.75cqw, 0.8rem);
+
+  line-height: 1.05;
+
+  text-align: center;
+  font-style: italic;
+}
+
+.portfolio-title,
+.module-card__text {
+  width: 100%;
+  max-width: 100%;
+
+  overflow: hidden;
+}
+
+.portfolio-title__main,
+.module-card__title,
+.module-card__subtitle {
+  max-width: 100%;
+
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+
+/* =========================================================
+   PUSH PIN
+   ========================================================= */
+
+.module-card__pin {
+  position: absolute;
+
+  top: -2%;
+  left: 50%;
+
+  width: clamp(8px, 1cqw, 14px);
+  aspect-ratio: 1;
+
+  transform: translateX(-50%);
+
+  border-radius: 50%;
+
+  background: #8b2f27;
+
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.5),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.25);
+
+  z-index: 3;
+}
+
+/* =========================================================
+   MODULE OVERLAY
+   ========================================================= */
+
+.module-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 100;
+
+  display: grid;
+  place-items: center;
+
+  padding: 3vh 3vw;
+
+  background: rgba(20, 12, 8, 0.72);
+}
+
+
+/*
+  The hidden attribute should always win over
+  .module-overlay { display: grid; }
+*/
+.module-overlay[hidden] {
+  display: none;
+}
+
+
+/* =========================================================
+   OPEN MODULE
+   ========================================================= */
+
+.module-detail {
+  position: relative;
+
+  width: min(1000px, 92vw);
+  height: min(680px, 88vh);
+
+  color: #2c1d13;
+
+  filter:
+    drop-shadow(
+      0 20px 20px rgba(0, 0, 0, 0.5)
+    );
+}
+
+
+/* =========================================================
+   TWO-PAGE SPREAD
+   ========================================================= */
+
+.module-detail__spread {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+
+  width: 100%;
+  height: 100%;
+}
+
+
+/* =========================================================
+   MODULE PAGES
+   ========================================================= */
+
+.module-detail__page {
+  min-width: 0;
+
+  padding: 7%;
+
+  overflow-y: auto;
+
+  background:
+    linear-gradient(
+      rgba(205, 184, 137, 0.15),
+      rgba(205, 184, 137, 0.15)
+    ),
+    url("../assets/textures/aged-paper.png");
+
+  background-size: cover;
+  background-position: center;
+
+  box-shadow:
+    inset 0 0 30px rgba(65, 39, 20, 0.22);
+}
+
+
+.module-detail__page--left {
+  border-right: 1px solid rgba(63, 39, 22, 0.4);
+}
+
+
+.module-detail__page--right {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+
+/* =========================================================
+   CLOSE BUTTON
+   ========================================================= */
+
+.module-detail__close {
+  position: absolute;
+
+  top: -1rem;
+  right: -1rem;
+
+  z-index: 5;
+
+  width: 2.5rem;
+  height: 2.5rem;
+
+  display: grid;
+  place-items: center;
+
+  padding: 0;
+
+  border: 2px solid #2b170e;
+  border-radius: 50%;
+
+  background: #6f2d23;
+  color: #ead8ad;
+
+  font-size: 1.5rem;
+  line-height: 1;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+
+/* =========================================================
+   DETAIL TYPOGRAPHY
+   ========================================================= */
+
+.module-detail__header {
+  margin-bottom: 1.5rem;
+
+  text-align: center;
+}
+
+
+.module-detail__title {
+  margin: 0;
+
+  font-size: clamp(1.4rem, 3vw, 2.4rem);
+
+  line-height: 1;
+
+  text-transform: uppercase;
+}
+
+
+.module-detail__subtitle {
+  margin: 0.5rem 0 0;
+
+  font-style: italic;
+}
+
+
+.module-detail__section {
+  margin-top: 1.5rem;
+}
+
+
+.module-detail__section h3 {
+  margin: 0 0 0.5rem;
+
+  font-size: 1rem;
+
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  border-bottom: 1px solid rgba(66, 39, 21, 0.5);
+}
+
+
+.module-detail__section p {
+  margin: 0;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   ARTIFACT IMAGE
+   ========================================================= */
+
+.module-detail__image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+
+  background: #62402a;
+
+  border: 2px solid #362116;
+}
+
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+.module-detail__links {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 0.75rem;
+
+  margin-top: 2rem;
+}
+
+
+.module-detail__link {
+  padding: 0.6rem 0.9rem;
+
+  color: #ead8ad;
+  background: #65251d;
+
+  border: 1px solid #25140e;
+
+  text-decoration: none;
+
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+
+/* =========================================================
+   MOBILE / PORTRAIT OPEN MODULE
+   ========================================================= */
+
+@media (orientation: portrait) {
+  .dm-screen {
+    top: 0.5rem;
+
+    transform:
+      translateX(-50%)
+      scale(0.92);
+
+    transform-origin: top center;
+  }
+
+  .module-detail {
+    width: 92vw;
+    height: 88vh;
+  }
+
+  .module-detail__spread {
+    grid-template-columns: 1fr;
+
+    overflow-y: auto;
+  }
+
+  .module-detail__page {
+    overflow: visible;
+
+    padding: 8%;
+  }
+
+  .module-detail__page--left,
+  .module-detail__page--right {
+    border-left: none;
+    border-right: none;
+  }
+
+  .logbook {
+    width: 45%;
+
+    left: 3%;
+    bottom: 2%;
+
+    transform:
+      perspective(1000px)
+      rotateZ(5deg)
+      rotateX(5deg);
+  }
 }
