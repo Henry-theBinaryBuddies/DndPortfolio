@@ -266,12 +266,18 @@ body {
 }
 
 .logbook__image {
-  display: block;
-
   width: 100%;
   height: auto;
 
   pointer-events: none;
+}
+
+.logbook__image--desktop {
+  display: block;
+}
+
+.logbook__image--mobile {
+  display: none;
 }
 
 .logbook:hover {
@@ -789,48 +795,86 @@ body {
    ========================================================= */
 
 @media (orientation: portrait) {
+
   .dm-screen {
-    top: 0.5rem;
+    position: fixed;
 
-    transform:
-      translateX(-50%)
-      scale(0.92);
+    top: 0;
+    left: 0;
 
-    transform-origin: top center;
+    width: 100vw;
+    height: calc(100vh - 72px);
+
+    display: flex;
+
+    align-items: stretch;
+    justify-content: flex-start;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+
+    transform: none;
+    perspective: none;
+
+    scrollbar-width: none;
   }
 
-  .module-detail {
-    width: 92vw;
-    height: 88vh;
+  .dm-screen__panel {
+    flex: 0 0 100vw;
+
+    width: 100vw;
+    height: 100%;
+
+    scroll-snap-align: start;
+
+    transform: none;
   }
 
-  .module-detail__spread {
-    grid-template-columns: 1fr;
-
-    overflow-y: auto;
+  .dm-screen__panel--left,
+  .dm-screen__panel--center,
+  .dm-screen__panel--right {
+    transform: none;
   }
 
-  .module-detail__page {
-    overflow: visible;
+  .module-card {
+    width: 82%;
+    height: auto;
 
-    padding: 8%;
+    aspect-ratio: 1.5 / 1;
+
+    max-height: none;
   }
 
-  .module-detail__page--left,
-  .module-detail__page--right {
-    border-left: none;
-    border-right: none;
+  .dm-screen::-webkit-scrollbar {
+    display: none;
   }
 
   .logbook {
-    width: 45%;
+    position: page;
 
-    left: 3%;
-    bottom: 2%;
+    left: 0;
+    bottom: 0;
 
-    transform:
-      perspective(1000px)
-      rotateZ(5deg)
-      rotateX(5deg);
+    width: 100%;
+    height: auto;
+
+    padding: 0;
+
+    transform: none;
+
+    z-index: 20;
+  }
+
+  .logbook__image--desktop {
+    display: none;
+  }
+
+  .logbook__image--mobile {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 }
