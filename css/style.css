@@ -163,11 +163,15 @@ body {
 
   overflow: hidden;
 
+  background:
+    linear-gradient(
+      rgba(185, 154, 99, 0.20),
+      rgba(185, 154, 99, 0.20)
+    ),
+    url("../assets/textures/aged-paper.png");
+
   background-size: cover;
-  background: linear-gradient(
-    rgba(185, 154, 99, 0.20),
-    rgba(185, 154, 99, 0.20)
-  ), url("../assets/textures/aged-paper.png") center;
+  background-position: center;
 
   box-shadow:
     inset
@@ -180,7 +184,7 @@ body {
    CENTER PANEL
    ========================================================= */
 
-.dm-screen__panel--center,
+.dm-screen__panel--center
 .dm-screen__surface {
   grid-template-rows:
     auto
@@ -766,9 +770,9 @@ body {
 }
 
 
-.die:hover,
+.die:hover
 .die__image,
-.die:focus-visible,
+.die:focus-visible
 .die__image {
   filter:
     drop-shadow(
@@ -998,19 +1002,19 @@ body {
 }
 
 
-.logbook-entry-content,
+.logbook-entry-content
 time {
   font-style: italic;
 }
 
 
-.logbook-entry-content,
+.logbook-entry-content
 h3 {
   margin-top: 0.5rem;
 }
 
 
-.logbook-entry-content,
+.logbook-entry-content
 p {
   line-height: 1.6;
 }
@@ -1100,11 +1104,15 @@ p {
 
   overflow-y: auto;
 
+  background:
+    linear-gradient(
+      rgba(205, 184, 137, 0.15),
+      rgba(205, 184, 137, 0.15)
+    ),
+    url("../assets/textures/aged-paper.png");
+
   background-size: cover;
-  background: linear-gradient(
-    rgba(205, 184, 137, 0.15),
-    rgba(205, 184, 137, 0.15)
-  ), url("../assets/textures/aged-paper.png") center;
+  background-position: center;
 
   box-shadow:
     inset
@@ -1208,7 +1216,7 @@ p {
 }
 
 
-.module-detail__section,
+.module-detail__section
 h3 {
   margin:
     0 0 0.5rem;
@@ -1225,7 +1233,7 @@ h3 {
 }
 
 
-.module-detail__section,
+.module-detail__section
 p {
   margin: 0;
 
@@ -1418,7 +1426,7 @@ p {
   }
 
 
-  .dm-screen__panel--center,
+  .dm-screen__panel--center
   .dm-screen__surface {
     grid-template-rows:
       auto
@@ -1741,7 +1749,7 @@ p {
   }
 
 
-  .module-detail__section,
+  .module-detail__section
   h3 {
     font-size:
       clamp(
@@ -1752,9 +1760,9 @@ p {
   }
 
 
-  .module-detail__section,
+  .module-detail__section
   p,
-  .logbook-entry-content,
+  .logbook-entry-content
   p {
     font-size:
       clamp(
