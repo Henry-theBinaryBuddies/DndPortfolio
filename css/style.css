@@ -8,11 +8,13 @@
   box-sizing: border-box;
 }
 
+
 html,
 body {
   margin: 0;
   min-height: 100%;
 }
+
 
 body {
   min-height: 100vh;
@@ -21,66 +23,61 @@ body {
 
 /* =========================================================
    TABLE SCENE
-
-   Only responsible for the viewport/scene right now.
-   Other desk objects can be added later.
    ========================================================= */
 
 .table-scene {
   position: relative;
+
   width: 100%;
   height: 100vh;
-  background-color: black;
 
-  padding: 2rem 4rem 0;
+  padding:
+    2rem 4rem 0;
 
   overflow: hidden;
+
+  background-image: url("../assets/background.png");
+  background-size: cover;
 }
 
 
 /* =========================================================
    DM SCREEN
-
-   This is the complete physical object.
-   Scaling this element scales everything nested inside it.
    ========================================================= */
 
 .dm-screen {
-  display: flex;
-
   position: fixed;
+
   top: 2rem;
   left: 50%;
 
-  width: min(1400px, 96vw);
+  display: flex;
+
+  width:
+    min(1400px, 96vw);
+
   height: 72vh;
 
   align-items: center;
   justify-content: center;
 
-  transform: translateX(-50%);
-  transform-origin: top center;
+  transform:
+    translateX(-50%);
+
+  transform-origin:
+    top center;
 
   perspective: 1400px;
 
-  /*
-    Allows descendants to use container-relative
-    typography if needed.
-  */
-  container-type: inline-size;
+  container-type:
+    inline-size;
+
+  z-index: 5;
 }
 
 
 /* =========================================================
    PANEL FRAME
-
-   The panel is now responsible only for:
-   - physical frame
-   - perspective
-   - shadows
-   - hinge treatment
-
-   Content lives inside .dm-screen__surface.
    ========================================================= */
 
 .dm-screen__panel {
@@ -89,7 +86,8 @@ body {
   height: 100%;
   min-width: 0;
 
-  border: 14px solid transparent;
+  border:
+    14px solid transparent;
 
   border-image-source:
     url("../assets/textures/wood-frame.png");
@@ -98,19 +96,23 @@ body {
   border-image-repeat: stretch;
 
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.35);
+    0 8px 18px
+    rgba(0, 0, 0, 0.35);
 }
 
 
 /* =========================================================
-   PANEL PROPORTIONS / PERSPECTIVE
+   PANEL PERSPECTIVE
    ========================================================= */
 
 .dm-screen__panel--left {
   flex: 1;
 
-  transform-origin: right center;
-  transform: rotateY(20deg);
+  transform-origin:
+    right center;
+
+  transform:
+    rotateY(20deg);
 
   z-index: 1;
 }
@@ -126,61 +128,60 @@ body {
 .dm-screen__panel--right {
   flex: 1;
 
-  transform-origin: left center;
-  transform: rotateY(-20deg);
+  transform-origin:
+    left center;
+
+  transform:
+    rotateY(-20deg);
 
   z-index: 1;
 }
 
 
 /* =========================================================
-   INNER PAPER SURFACE
-
-   This is the actual usable area inside each wooden frame.
-
-   Modules are sized relative to THIS element rather than
-   independently against the viewport.
+   INNER PANEL SURFACE
    ========================================================= */
 
 .dm-screen__surface {
+  display: grid;
+
   width: 100%;
   height: 100%;
 
-  display: grid;
-
   grid-template-rows:
-    repeat(2, minmax(0, 1fr));
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
 
   place-items: center;
 
   gap: 3%;
-  padding: 4% 5%;
+
+  padding:
+    4% 5%;
 
   overflow: hidden;
 
-  background:
-    linear-gradient(
-      rgba(185, 154, 99, 0.20),
-      rgba(185, 154, 99, 0.20)
-    ),
-    url("../assets/textures/aged-paper.png");
-
   background-size: cover;
-  background-position: center;
+  background: linear-gradient(
+    rgba(185, 154, 99, 0.20),
+    rgba(185, 154, 99, 0.20)
+  ), url("../assets/textures/aged-paper.png") center;
 
   box-shadow:
-    inset 0 0 24px rgba(60, 35, 18, 0.35);
+    inset
+    0 0 24px
+    rgba(60, 35, 18, 0.35);
 }
 
 
 /* =========================================================
-   CENTER PANEL SURFACE
-
-   The center panel needs a dedicated row for the portfolio
-   title in addition to its two modules.
+   CENTER PANEL
    ========================================================= */
 
-.dm-screen__panel--center .dm-screen__surface {
+.dm-screen__panel--center,
+.dm-screen__surface {
   grid-template-rows:
     auto
     minmax(0, 1fr)
@@ -194,7 +195,7 @@ body {
 
 
 /* =========================================================
-   HINGE / JOINT SHADING
+   PANEL JOINTS
    ========================================================= */
 
 .dm-screen__panel--left::after,
@@ -202,6 +203,7 @@ body {
   content: "";
 
   position: absolute;
+
   top: 0;
 
   width: 25px;
@@ -216,123 +218,26 @@ body {
 .dm-screen__panel--left::after {
   right: -12px;
 
-  background: linear-gradient(
-    to left,
-    rgba(25, 12, 6, 0.5),
-    rgba(25, 12, 6, 0.18),
-    transparent
-  );
+  background:
+    linear-gradient(
+      to left,
+      rgba(25, 12, 6, 0.5),
+      rgba(25, 12, 6, 0.18),
+      transparent
+    );
 }
 
 
 .dm-screen__panel--right::after {
   left: -12px;
 
-  background: linear-gradient(
-    to right,
-    rgba(25, 12, 6, 0.5),
-    rgba(25, 12, 6, 0.18),
-    transparent
-  );
-}
-
-/* =========================================================
- Logbook.
- ========================================================= */
-.logbook {
-  position: absolute;
-
-  left: 25%;
-  bottom: .5%;
-
-  width: 11%;
-
-  padding: 0;
-  border: 0;
-
-  background: transparent;
-  cursor: pointer;
-
-  transform:
-    perspective(1000px)
-    rotateZ(4.5deg)
-    rotateX(8deg);
-
-  transition:
-    transform 180ms ease,
-    filter 180ms ease;
-
-  z-index: 10;
-}
-
-.logbook__image {
-  width: 100%;
-  height: auto;
-
-  pointer-events: none;
-}
-
-.logbook__image--desktop {
-  display: block;
-}
-
-.logbook__image--mobile {
-  display: none;
-}
-
-.logbook:hover {
-  transform:
-    perspective(1000px)
-    translateY(-8px)
-    rotateZ(7deg)
-    rotateX(5deg);
-
-  filter:
-    drop-shadow(0 10px 8px rgba(0, 0, 0, 0.4));
-}
-
-.logbook-entries {
-  display: flex;
-  flex-direction: column;
-
-  gap: 0.75rem;
-
-  margin-top: 2rem;
-}
-
-.logbook-entry {
-  width: 100%;
-
-  padding: 0.75rem 1rem;
-
-  border: 0;
-  border-bottom: 1px solid rgba(66, 39, 21, 0.4);
-
-  background: transparent;
-
-  color: #2c1d13;
-
-  font: inherit;
-  text-align: left;
-
-  cursor: pointer;
-}
-
-.logbook-entry:hover,
-.logbook-entry:focus-visible {
-  background: rgba(91, 53, 27, 0.08);
-}
-
-.logbook-entry-content time {
-  font-style: italic;
-}
-
-.logbook-entry-content h3 {
-  margin-top: 0.5rem;
-}
-
-.logbook-entry-content p {
-  line-height: 1.6;
+  background:
+    linear-gradient(
+      to right,
+      rgba(25, 12, 6, 0.5),
+      rgba(25, 12, 6, 0.18),
+      transparent
+    );
 }
 
 
@@ -342,42 +247,72 @@ body {
 
 .portfolio-title {
   width: 85%;
+  max-width: 100%;
 
   margin: 0;
 
-  text-align: center;
-
   align-self: center;
   justify-self: center;
+
+  overflow: hidden;
+
+  text-align: center;
 }
 
 
 .portfolio-title__eyebrow {
   margin: 0;
 
-  font-size: clamp(0.55rem, 0.8cqw, 0.75rem);
+  font-size:
+    clamp(
+      0.55rem,
+      0.8cqw,
+      0.75rem
+    );
 
   line-height: 1;
 
   letter-spacing: 0.12em;
+
   text-transform: uppercase;
 }
 
 
 .portfolio-title__main {
-  margin: 0.2em 0;
+  max-width: 100%;
 
-  font-size: clamp(0.8rem, 1.5cqw, 1.8rem);
+  margin:
+    0.2em 0;
+
+  font-size:
+    clamp(
+      0.8rem,
+      1.5cqw,
+      1.8rem
+    );
 
   line-height: 0.95;
+
   text-transform: uppercase;
+
+  overflow-wrap: normal;
+  word-break: normal;
+
+  hyphens: none;
+
+  text-wrap: balance;
 }
 
 
 .portfolio-title__subtitle {
   margin: 0;
 
-  font-size: clamp(0.5rem, 0.75cqw, 0.8rem);
+  font-size:
+    clamp(
+      0.5rem,
+      0.75cqw,
+      0.8rem
+    );
 
   line-height: 1.1;
 
@@ -387,11 +322,6 @@ body {
 
 /* =========================================================
    MODULE CARD
-
-   The module's size now derives directly from its
-   panel surface.
-
-   No fixed max-width.
    ========================================================= */
 
 .module-card {
@@ -408,7 +338,8 @@ body {
 
   filter:
     drop-shadow(
-      0 6px 5px rgba(0, 0, 0, 0.35)
+      0 6px 5px
+      rgba(0, 0, 0, 0.35)
     );
 
   transition:
@@ -416,23 +347,27 @@ body {
     filter 160ms ease;
 }
 
+
 .module-card:hover,
 .module-card:focus-within {
-  transform: translateY(-4%);
+  transform:
+    translateY(-4%);
+
   filter:
     drop-shadow(
-      0 10px 8px rgba(0, 0, 0, 0.45)
+      0 10px 8px
+      rgba(0, 0, 0, 0.45)
     );
 }
 
+
 /* =========================================================
    MODULE COVER
-
-   The actual clickable booklet/module.
    ========================================================= */
 
 .module-card__cover {
   display: flex;
+
   flex-direction: column;
 
   width: 100%;
@@ -443,19 +378,23 @@ body {
   overflow: hidden;
 
   color: #24170f;
+
   text-decoration: none;
 
   background: #d6c18e;
 
-  border: 2px solid #26170f;
+  border:
+    2px solid #26170f;
 
   box-shadow:
-    inset 0 0 0 2px rgba(92, 49, 24, 0.35);
+    inset
+    0 0 0 2px
+    rgba(92, 49, 24, 0.35);
 }
 
 
 /* =========================================================
-   MODULE ART AREA
+   MODULE ART
    ========================================================= */
 
 .module-card__art {
@@ -464,20 +403,23 @@ body {
   width: 100%;
   min-height: 0;
 
-  margin: 2% 0 5%;
+  margin:
+    2% 0 5%;
 
   overflow: hidden;
 
   background: #6e3527;
 
-  border: 1px solid #2d1b12;
+  border:
+    1px solid #2d1b12;
 }
 
+
 .module-card__art img {
+  display: block;
+
   width: 100%;
   height: 100%;
-
-  display: block;
 
   object-fit: cover;
 }
@@ -488,48 +430,68 @@ body {
    ========================================================= */
 
 .module-card__text {
+  flex-shrink: 0;
+
   width: 100%;
+  max-width: 100%;
+
+  overflow: hidden;
 
   text-align: center;
 }
 
+
 .module-card__title {
+  max-width: 100%;
+
   margin: 0;
 
-  font-size: clamp(0.65rem, 1.2cqw, 1.1rem);
+  font-size:
+    clamp(
+      0.65rem,
+      1.2cqw,
+      1.1rem
+    );
 
   line-height: 1;
 
   text-align: center;
   text-transform: uppercase;
+
+  overflow-wrap: normal;
+  word-break: normal;
+
+  hyphens: none;
+
+  text-wrap: balance;
 }
 
-.module-card__subtitle {
-  margin: 0.4em 0 0;
 
-  font-size: clamp(0.5rem, 0.75cqw, 0.8rem);
+.module-card__subtitle {
+  max-width: 100%;
+
+  margin:
+    0.4em 0 0;
+
+  font-size:
+    clamp(
+      0.5rem,
+      0.75cqw,
+      0.8rem
+    );
 
   line-height: 1.05;
 
   text-align: center;
+
   font-style: italic;
-}
 
-.portfolio-title,
-.module-card__text {
-  width: 100%;
-  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
 
-  overflow: hidden;
-}
+  hyphens: none;
 
-.portfolio-title__main,
-.module-card__title,
-.module-card__subtitle {
-  max-width: 100%;
-
-  overflow-wrap: break-word;
-  word-wrap: break-word;
+  text-wrap: balance;
 }
 
 
@@ -543,10 +505,17 @@ body {
   top: -2%;
   left: 50%;
 
-  width: clamp(8px, 1cqw, 14px);
+  width:
+    clamp(
+      8px,
+      1cqw,
+      14px
+    );
+
   aspect-ratio: 1;
 
-  transform: translateX(-50%);
+  transform:
+    translateX(-50%);
 
   border-radius: 50%;
 
@@ -559,49 +528,547 @@ body {
   z-index: 3;
 }
 
+
+/* =========================================================
+   TABLETOP CONTROLS
+   ========================================================= */
+
+.tabletop-controls {
+  position: absolute;
+
+  left: 25%;
+  bottom: 0.5%;
+
+  display: flex;
+
+  align-items: flex-end;
+
+  gap:
+    clamp(
+      5rem,
+      5vw,
+      10rem
+    );
+
+  z-index: 10;
+}
+
+
+/* =========================================================
+   LOGBOOK
+   ========================================================= */
+
+.logbook {
+  position: relative;
+
+  display: block;
+
+  flex: 0 0 auto;
+
+  width:
+    clamp(
+      210px,
+      15vw,
+      290px
+    );
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  line-height: 0;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  overflow: visible;
+
+  transform: rotateZ(3.5deg);
+
+  transition:
+    transform 180ms ease,
+    filter 180ms ease;
+}
+
+.logbook::after {
+  content: "";
+
+  position: absolute;
+
+  left: 50%;
+  bottom: 2%;
+
+  width: 72%;
+  height: 14%;
+
+  transform:
+    translateX(-50%)
+    rotate(4deg);
+
+  background: rgba(0, 0, 0, 0.42);
+
+  filter: blur(12px);
+
+  border-radius: 50%;
+
+  z-index: -1;
+
+  pointer-events: none;
+}
+
+.logbook__image {
+  width: 100%;
+  height: auto;
+
+  pointer-events: none;
+}
+
+
+.logbook__image--desktop {
+  display: block;
+}
+
+
+.logbook__image--mobile {
+  display: none;
+}
+
+
+.logbook:hover,
+.logbook:focus-visible {
+  transform:
+    translateY(-8px)
+    rotateZ(4.5deg);
+
+  filter:
+    drop-shadow(
+      0 10px 8px
+      rgba(0, 0, 0, 0.4)
+    );
+}
+
+
+/* =========================================================
+   DICE TRAY
+   ========================================================= */
+
+.dice-tray {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  align-self: center;
+
+  gap:
+    clamp(
+      0.15rem,
+      0.3vw,
+      0.4rem
+    );
+
+  width:
+    clamp(
+      190px,
+      15vw,
+      250px
+    );
+
+  flex:
+    0 0 auto;
+
+  transition:
+    opacity 180ms ease,
+    filter 180ms ease;
+}
+
+
+.dice-tray.is-rolling {
+  opacity: 0.4;
+
+  filter:
+    saturate(0.55);
+}
+
+
+/* =========================================================
+   DICE BUTTONS
+
+   The PNG itself supplies the die geometry.
+   The button only supplies interaction.
+   ========================================================= */
+
+.die {
+  position: relative;
+
+  display: grid;
+
+  place-items: center;
+
+  width: 100%;
+
+  aspect-ratio: 1;
+
+  padding: 0;
+
+  border: 0;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  overflow: visible;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  transform: translateY(0);
+
+  transition:
+    transform 150ms ease,
+    filter 150ms ease,
+    opacity 150ms ease;
+}
+
+
+.die__image {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+
+  pointer-events: none;
+
+  filter:
+    drop-shadow(
+      0 5px 4px
+      rgba(0, 0, 0, 0.55)
+    );
+
+  transition:
+    transform 150ms ease,
+    filter 150ms ease;
+}
+
+
+.die:hover,
+.die:focus-visible {
+  transform:
+    translateY(-6px)
+    scale(1.08);
+}
+
+
+.die:hover,
+.die__image,
+.die:focus-visible,
+.die__image {
+  filter:
+    drop-shadow(
+      0 10px 7px
+      rgba(0, 0, 0, 0.62)
+    );
+}
+
+
+.die:active {
+  transform:
+    translateY(-2px)
+    scale(0.96);
+}
+
+
+.die:disabled {
+  cursor: wait;
+
+  opacity: 0.55;
+}
+
+
+/* =========================================================
+   REAL DICEBOX WEBGL LAYER
+   ========================================================= */
+
+.dice-box {
+  position: fixed;
+
+  inset: 0;
+
+  width: 100vw;
+  height: 100dvh;
+
+  opacity: 0;
+  visibility: hidden;
+
+  pointer-events: none;
+
+  transition:
+    opacity 150ms ease;
+
+  z-index: 145;
+}
+
+
+.dice-box.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+
+.dice-box canvas {
+  display: block !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  background: transparent !important;
+
+  pointer-events: none !important;
+}
+
+
+/* =========================================================
+   DICE RESULT OVERLAY
+   ========================================================= */
+
+.dice-result-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  display: grid;
+
+  place-items: center;
+
+  padding: 1.5rem;
+
+  background:
+    rgba(12, 7, 4, 0.36);
+
+  backdrop-filter:
+    blur(1px);
+
+  -webkit-backdrop-filter:
+    blur(1px);
+
+  z-index: 160;
+}
+
+
+.dice-result-overlay[hidden] {
+  display: none;
+}
+
+
+.dice-result {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  min-width:
+    min(
+      300px,
+      80vw
+    );
+
+  padding:
+    1.75rem 2.5rem;
+
+  border:
+    2px solid
+    rgba(211, 174, 99, 0.72);
+
+  background:
+    rgba(40, 21, 14, 0.78);
+
+  color: #ead39a;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 18px 40px
+    rgba(0, 0, 0, 0.5);
+}
+
+
+.dice-result__type {
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 1rem;
+
+  letter-spacing: 0.14em;
+
+  text-transform: uppercase;
+
+  opacity: 0.85;
+}
+
+
+.dice-result__number {
+  margin:
+    0.15em 0;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(
+      4.5rem,
+      12vw,
+      8rem
+    );
+
+  line-height: 1;
+
+  text-shadow:
+    0 5px 7px
+    rgba(0, 0, 0, 0.55);
+}
+
+
+.dice-result__instruction {
+  font-size: 0.75rem;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+
+  opacity: 0.7;
+}
+
+
+/* =========================================================
+   LOGBOOK ENTRIES
+   ========================================================= */
+
+.logbook-entries {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 0.75rem;
+
+  margin-top: 2rem;
+}
+
+
+.logbook-entry {
+  width: 100%;
+
+  padding:
+    0.75rem 1rem;
+
+  border: 0;
+
+  border-bottom:
+    1px solid
+    rgba(66, 39, 21, 0.4);
+
+  background: transparent;
+
+  color: #2c1d13;
+
+  font: inherit;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.logbook-entry:hover,
+.logbook-entry:focus-visible {
+  background:
+    rgba(91, 53, 27, 0.08);
+}
+
+
+.logbook-entry-content,
+time {
+  font-style: italic;
+}
+
+
+.logbook-entry-content,
+h3 {
+  margin-top: 0.5rem;
+}
+
+
+.logbook-entry-content,
+p {
+  line-height: 1.6;
+}
+
+
 /* =========================================================
    MODULE OVERLAY
    ========================================================= */
 
 .module-overlay {
   position: fixed;
+
   inset: 0;
 
-  z-index: 100;
-
   display: grid;
+
   place-items: center;
 
-  padding: 3vh 3vw;
+  padding:
+    3vh 3vw;
 
-  background: rgba(20, 12, 8, 0.72);
+  background:
+    rgba(20, 12, 8, 0.72);
+
+  z-index: 100;
 }
 
 
-/*
-  The hidden attribute should always win over
-  .module-overlay { display: grid; }
-*/
 .module-overlay[hidden] {
   display: none;
 }
 
 
 /* =========================================================
-   OPEN MODULE
+   OPEN MODULE / LOGBOOK
    ========================================================= */
 
 .module-detail {
   position: relative;
 
-  width: min(1000px, 92vw);
-  height: min(680px, 88vh);
+  width:
+    min(
+      1000px,
+      92vw
+    );
+
+  height:
+    min(
+      680px,
+      88vh
+    );
 
   color: #2c1d13;
 
   filter:
     drop-shadow(
-      0 20px 20px rgba(0, 0, 0, 0.5)
+      0 20px 20px
+      rgba(0, 0, 0, 0.5)
     );
 }
 
@@ -623,7 +1090,7 @@ body {
 
 
 /* =========================================================
-   MODULE PAGES
+   MODULE / LOGBOOK PAGES
    ========================================================= */
 
 .module-detail__page {
@@ -633,28 +1100,30 @@ body {
 
   overflow-y: auto;
 
-  background:
-    linear-gradient(
-      rgba(205, 184, 137, 0.15),
-      rgba(205, 184, 137, 0.15)
-    ),
-    url("../assets/textures/aged-paper.png");
-
   background-size: cover;
-  background-position: center;
+  background: linear-gradient(
+    rgba(205, 184, 137, 0.15),
+    rgba(205, 184, 137, 0.15)
+  ), url("../assets/textures/aged-paper.png") center;
 
   box-shadow:
-    inset 0 0 30px rgba(65, 39, 20, 0.22);
+    inset
+    0 0 30px
+    rgba(65, 39, 20, 0.22);
 }
 
 
 .module-detail__page--left {
-  border-right: 1px solid rgba(63, 39, 22, 0.4);
+  border-right:
+    1px solid
+    rgba(63, 39, 22, 0.4);
 }
 
 
 .module-detail__page--right {
-  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  border-left:
+    1px solid
+    rgba(255, 255, 255, 0.18);
 }
 
 
@@ -668,20 +1137,22 @@ body {
   top: -1rem;
   right: -1rem;
 
-  z-index: 5;
+  display: grid;
+
+  place-items: center;
 
   width: 2.5rem;
   height: 2.5rem;
 
-  display: grid;
-  place-items: center;
-
   padding: 0;
 
-  border: 2px solid #2b170e;
+  border:
+    2px solid #2b170e;
+
   border-radius: 50%;
 
   background: #6f2d23;
+
   color: #ead8ad;
 
   font-size: 1.5rem;
@@ -690,7 +1161,10 @@ body {
   cursor: pointer;
 
   box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.4);
+    0 4px 8px
+    rgba(0, 0, 0, 0.4);
+
+  z-index: 5;
 }
 
 
@@ -708,7 +1182,12 @@ body {
 .module-detail__title {
   margin: 0;
 
-  font-size: clamp(1.4rem, 3vw, 2.4rem);
+  font-size:
+    clamp(
+      1.4rem,
+      3vw,
+      2.4rem
+    );
 
   line-height: 1;
 
@@ -717,7 +1196,8 @@ body {
 
 
 .module-detail__subtitle {
-  margin: 0.5rem 0 0;
+  margin:
+    0.5rem 0 0;
 
   font-style: italic;
 }
@@ -728,19 +1208,25 @@ body {
 }
 
 
-.module-detail__section h3 {
-  margin: 0 0 0.5rem;
+.module-detail__section,
+h3 {
+  margin:
+    0 0 0.5rem;
 
   font-size: 1rem;
 
   text-transform: uppercase;
+
   letter-spacing: 0.05em;
 
-  border-bottom: 1px solid rgba(66, 39, 21, 0.5);
+  border-bottom:
+    1px solid
+    rgba(66, 39, 21, 0.5);
 }
 
 
-.module-detail__section p {
+.module-detail__section,
+p {
   margin: 0;
 
   line-height: 1.5;
@@ -753,11 +1239,14 @@ body {
 
 .module-detail__image {
   width: 100%;
-  aspect-ratio: 16 / 9;
+
+  aspect-ratio:
+    16 / 9;
 
   background: #62402a;
 
-  border: 2px solid #362116;
+  border:
+    2px solid #362116;
 }
 
 
@@ -767,6 +1256,7 @@ body {
 
 .module-detail__links {
   display: flex;
+
   flex-wrap: wrap;
 
   gap: 0.75rem;
@@ -776,36 +1266,66 @@ body {
 
 
 .module-detail__link {
-  padding: 0.6rem 0.9rem;
+  padding:
+    0.6rem 0.9rem;
 
   color: #ead8ad;
+
   background: #65251d;
 
-  border: 1px solid #25140e;
+  border:
+    1px solid #25140e;
 
   text-decoration: none;
 
   text-transform: uppercase;
+
   font-size: 0.8rem;
 }
 
 
 /* =========================================================
-   MOBILE / PORTRAIT OPEN MODULE
+   PORTRAIT / MOBILE
    ========================================================= */
 
 @media (orientation: portrait) {
 
-  .dm-screen {
-    position: fixed;
+  /* =======================================================
+     MOBILE SCENE
+     ======================================================= */
 
-    top: 0;
-    left: 0;
+  .table-scene {
+    display: grid;
+
+    grid-template-rows:
+      minmax(0, 1fr)
+      auto;
 
     width: 100vw;
-    height: calc(100vh - 72px);
+    height: 100dvh;
+
+    padding: 0;
+
+    overflow: hidden;
+
+    background: black;
+  }
+
+
+  /* =======================================================
+     MOBILE DM SCREEN
+     ======================================================= */
+
+  .dm-screen {
+    position: relative;
+
+    top: auto;
+    left: auto;
 
     display: flex;
+
+    width: 100vw;
+    height: 100%;
 
     align-items: stretch;
     justify-content: flex-start;
@@ -813,68 +1333,498 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
 
-    scroll-snap-type: x mandatory;
+    scroll-snap-type:
+      x mandatory;
+
     scroll-behavior: smooth;
 
-    transform: none;
-    perspective: none;
+    overscroll-behavior-x:
+      contain;
+
+    -webkit-overflow-scrolling:
+      touch;
 
     scrollbar-width: none;
-  }
-
-  .dm-screen__panel {
-    flex: 0 0 100vw;
-
-    width: 100vw;
-    height: 100%;
-
-    scroll-snap-align: start;
 
     transform: none;
+
+    perspective: none;
+
+    container-type:
+      inline-size;
+
+    z-index: 5;
   }
 
-  .dm-screen__panel--left,
-  .dm-screen__panel--center,
-  .dm-screen__panel--right {
-    transform: none;
-  }
-
-  .module-card {
-    width: 82%;
-    height: auto;
-
-    aspect-ratio: 1.5 / 1;
-
-    max-height: none;
-  }
 
   .dm-screen::-webkit-scrollbar {
     display: none;
   }
 
-  .logbook {
-    position: page;
 
-    left: 0;
-    bottom: 0;
+  /* =======================================================
+     MOBILE PANELS
+     ======================================================= */
 
-    width: 100%;
-    height: auto;
+  .dm-screen__panel {
+    flex:
+      0 0 100vw;
 
-    padding: 0;
+    width: 100vw;
+    height: 100%;
+
+    min-width: 100vw;
+
+    scroll-snap-align:
+      start;
+
+    scroll-snap-stop:
+      always;
+
+    transform: none;
+  }
+
+
+  .dm-screen__panel--left,
+  .dm-screen__panel--center,
+  .dm-screen__panel--right {
+    flex:
+      0 0 100vw;
 
     transform: none;
 
+    z-index: 1;
+  }
+
+
+  .dm-screen__panel--left::after,
+  .dm-screen__panel--right::after {
+    display: none;
+  }
+
+
+  /* =======================================================
+     MOBILE PANEL SURFACES
+     ======================================================= */
+
+  .dm-screen__surface {
+    width: 100%;
+    height: 100%;
+
+    gap: 3%;
+
+    padding:
+      5% 7%;
+  }
+
+
+  .dm-screen__panel--center,
+  .dm-screen__surface {
+    grid-template-rows:
+      auto
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+
+    gap: 2.5%;
+
+    padding:
+      4% 7% 5%;
+  }
+
+
+  /* =======================================================
+     MOBILE TITLE
+     ======================================================= */
+
+  .portfolio-title {
+    width: 94%;
+
+    overflow: visible;
+  }
+
+
+  .portfolio-title__eyebrow {
+    font-size:
+      clamp(
+        0.7rem,
+        3vw,
+        0.9rem
+      );
+  }
+
+
+  .portfolio-title__main {
+    font-size:
+      clamp(
+        1.4rem,
+        6vw,
+        2rem
+      );
+
+    line-height: 0.95;
+  }
+
+
+  .portfolio-title__subtitle {
+    font-size:
+      clamp(
+        0.75rem,
+        3.4vw,
+        1rem
+      );
+  }
+
+
+  /* =======================================================
+     MOBILE MODULES
+     ======================================================= */
+
+  .module-card {
+    width: 78%;
+    height: auto;
+
+    max-width: 100%;
+    max-height: 90%;
+
+    min-width: 0;
+
+    aspect-ratio:
+      1.5 / 1;
+
+    container-type:
+      inline-size;
+  }
+
+
+  .module-card__cover {
+    padding: 4.5%;
+  }
+
+
+  .module-card__art {
+    margin:
+      1.5% 0 4%;
+  }
+
+
+  .module-card__text {
+    overflow: visible;
+  }
+
+
+  .module-card__title {
+    font-size:
+      clamp(
+        1rem,
+        6cqw,
+        1.5rem
+      );
+
+    line-height: 1;
+  }
+
+
+  .module-card__subtitle {
+    font-size:
+      clamp(
+        0.72rem,
+        4cqw,
+        1rem
+      );
+
+    line-height: 1.1;
+  }
+
+
+  .module-card__pin {
+    width:
+      clamp(
+        8px,
+        3.5cqw,
+        14px
+      );
+  }
+
+
+  /* =======================================================
+     MOBILE TABLETOP CONTROLS
+     ======================================================= */
+
+  .tabletop-controls {
+    position: relative;
+
+    left: auto;
+    bottom: auto;
+
+    display: block;
+
+    width: 100vw;
+
     z-index: 20;
   }
+
+
+  /* =======================================================
+     MOBILE LOGBOOK
+     ======================================================= */
+
+  .logbook {
+    position: relative;
+
+    display: block;
+
+    width: 100vw;
+
+    padding: 0;
+    margin: 0;
+
+    border: 0;
+
+    line-height: 0;
+
+    background: transparent;
+
+    transform: none;
+
+    filter: none;
+
+    z-index: 20;
+  }
+
+
+  .logbook:hover,
+  .logbook:focus-visible {
+    transform: none;
+
+    filter: none;
+  }
+
 
   .logbook__image--desktop {
     display: none;
   }
 
+
   .logbook__image--mobile {
     display: block;
+
     width: 100%;
     height: auto;
+
+    margin: 0;
+    padding: 0;
+
+    object-fit: contain;
+
+    pointer-events: none;
   }
+
+
+  /* =======================================================
+     MOBILE DICE
+
+     Still outside document flow.
+     They overlap the DM screen above the book.
+     ======================================================= */
+
+  .dice-tray {
+    position: absolute;
+
+    left: 50%;
+
+    bottom:
+      calc(100% - 1rem);
+
+    transform:
+      translateX(-50%);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width:
+      min(
+        96vw,
+        520px
+      );
+
+    gap:
+      clamp(
+        0.05rem,
+        0.3vw,
+        0.2rem
+      );
+
+    padding: 0;
+
+    z-index: 30;
+  }
+
+
+  .die {
+    flex:
+      0 0 auto;
+
+    width:
+      clamp(
+        48px,
+        15vw,
+        66px
+      );
+
+    max-width:
+      calc(
+        (96vw - 0.8rem) / 6
+      );
+  }
+
+
+  .die__image {
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+  }
+
+
+  /* =======================================================
+     MOBILE OPEN MODULE / LOGBOOK
+     ======================================================= */
+
+  .module-detail {
+    width: 92vw;
+
+    height: 88dvh;
+  }
+
+
+  .module-detail__spread {
+    grid-template-columns:
+      1fr;
+
+    overflow-y: auto;
+  }
+
+
+  .module-detail__page {
+    overflow: visible;
+
+    padding: 8%;
+  }
+
+
+  .module-detail__page--left,
+  .module-detail__page--right {
+    border-left: none;
+    border-right: none;
+  }
+
+
+  .module-detail__title {
+    font-size:
+      clamp(
+        1.5rem,
+        7vw,
+        2.25rem
+      );
+  }
+
+
+  .module-detail__subtitle {
+    font-size:
+      clamp(
+        0.85rem,
+        4vw,
+        1.1rem
+      );
+  }
+
+
+  .module-detail__section,
+  h3 {
+    font-size:
+      clamp(
+        0.9rem,
+        4vw,
+        1.1rem
+      );
+  }
+
+
+  .module-detail__section,
+  p,
+  .logbook-entry-content,
+  p {
+    font-size:
+      clamp(
+        0.9rem,
+        3.8vw,
+        1rem
+      );
+
+    line-height: 1.55;
+  }
+
+
+  .logbook-entry {
+    font-size:
+      clamp(
+        0.9rem,
+        4vw,
+        1.05rem
+      );
+  }
+
+
+  /* =======================================================
+     MOBILE DICE RESULT
+     ======================================================= */
+
+  .dice-result {
+    min-width:
+      min(
+        280px,
+        86vw
+      );
+
+    padding:
+      1.5rem 2rem;
+  }
+
+
+  .dice-result__number {
+    font-size:
+      clamp(
+        4.5rem,
+        24vw,
+        7rem
+      );
+  }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior:
+      auto !important;
+
+    transition-duration:
+      0.01ms !important;
+
+    animation-duration:
+      0.01ms !important;
+
+    animation-iteration-count:
+      1 !important;
+  }
+
 }
