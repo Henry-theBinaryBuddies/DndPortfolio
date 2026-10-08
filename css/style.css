@@ -313,9 +313,9 @@ body {
 
   font-size:
     clamp(
-      1rem,
-      1.5cqw,
-      1.6rem
+      2rem,
+      3cqw,
+      3.2rem
     );
 
   line-height: 1.1;
