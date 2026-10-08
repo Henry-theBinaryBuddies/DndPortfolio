@@ -1,0 +1,20 @@
+Artifact 1
+
+The quest begins
+
+Today I began the artifact 1 project, building a website to host the portfolio.
+The website is hosted on GitHub pages and uses HTML/CSS/JS. The AI used for the project was OpenAI's GPT-5.6.
+
+The idea is to create a frontend that looks similar to a dungeon master screen, where each card for each subsequent
+artifact is a pinned scroll on the dm-screen. A book will sit on the table to link to the development logs.
+Each interactive element should be a button that opens an overlay rather than navigating to a new page.
+Cards need to include a title, link to the artifact, description, link to the GitHub hosted repo, a screenshot of the artifact,
+and documentation, if applicable.
+
+Initially, I created a long description of the project idea that I had and attempted to have
+AI create the entire website in one shot. This was not successful, as I realized my prompting was still too vague.
+AI generated something that couldn't match the perspective angle I envisioned, added a lot of unnecessary elements,
+and was misinterpreting some of the ideas that I had. The amount of code generated was too much for me to reasonably audit.
+So instead, I used the boilerplate HTML and CSS that AI generated and worked on it iteratively until the visual matched what I needed.
+Prompting the AI with follow-up questions like "how to rotate the dm-screen panels to illustrate depth for the perspective angle"
+helped to refine the project idea for myself and provide better context for the AI moving forward.

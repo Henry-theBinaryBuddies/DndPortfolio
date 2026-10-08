@@ -1,0 +1,5 @@
+Side Quest:
+Need to conceive what this might be.
+This may end up being a safe place to implement a project or aspect
+that had to be abandoned previously.
+TBD...

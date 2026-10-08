@@ -1,0 +1,5 @@
+Artifact 4:
+Moonshot
+
+Project will likely be a dungeon map creator. Potentially can incorporate VTT aspects,
+such as character placement, onscreen dice rolling, character sheet importing, etc.

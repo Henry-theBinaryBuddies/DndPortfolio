@@ -1,0 +1,13 @@
+Artifact 1: Completion
+
+Today I completed the first artifact by finishing the wiring and structure of the file structure.
+This is primarily done using a json file to arrange the array of text files, and then I have nested
+directories indicating the different sections the text file should be imported into.
+Afterward, there are just plain text files I can write into. I did this to avoid having to write large walls of
+text into the HTML file.
+The importing is primarily handled by the corresponding JS files (module.js and logbook.js).
+
+I've decided to abandon the idea of adding a candle decoration to the page. This is only decorative, and
+I've already spent approximately 13.5 hours on the whole of artifact 1, which is 3.5 hour more than
+the suggested time. I believe all the functionality is complete at this point. The next focus will be artifact 2.
+

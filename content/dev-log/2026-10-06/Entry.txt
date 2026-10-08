@@ -1,0 +1,23 @@
+Artifact 1
+
+After consulting with the professors, they suggested sending screenshots to the AI to help them understand the problem.
+Unfortunately, it still wasn't able to resolve the scaling issues.
+A student overlooked the website in passing and suggested that the mobile view should be an entirely different design,
+as opposed to trying to scale the desktop view. I ended up agreeing with him.
+
+I settled on a different design where a book spine image is nested on the bottom of the page and the DM screen is
+ stacked on top of it. During this process, I had the idea to implement rollable dice onto the page to help fill out
+ the empty table and add some more interactivity to the page.
+
+ The initial dice design was pretty rudimentary: a two-dimensional polygon shape would flip and rotate around the
+ screen, and then a number would appear as an overlay. I consulted with AI on how I would go about making this 3D instead.
+ AI suggested that I use a free external library called DiceBox that already renders dice for the exact purpose I was looking for.
+ This was probably the most useful the AI had been in the entire process because it found this package, provided the code to
+ implement it, linked me to the documentation for slight adjustments, and provided a link to the source code.
+ I ended up using the library and it turned out to be a great fit for the project.
+ I tried to have AI generate the dice images for the buttons, but it continually would put the numbers in bizarre places.
+ I ended up having AI generate dice images without the numbers to compensate. I'm not entirely satisfied with the result,
+ but it's good enough for now.
+
+
+

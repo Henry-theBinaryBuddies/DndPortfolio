@@ -1,0 +1,12 @@
+Artifact 1
+
+Today I primarily focused on the DM screen and the artifact cards.
+On desktop view this was very successful, but when switching to mobile view the cards are skewing,
+and the text is too small to be readable.
+I will try to fix this later, probably need to consult with the Professors, because the AI is unable to visualize
+the screen properly to adjust reasonably from prompts alone. Since I am simply prompting an AI through a chat
+window and copying the output, I think it is losing context as I continually change the structure of the code.
+
+Later in the day I implemented the development log book. There was a lot of trial and error with different
+images and prompting to finally get the image to fit on the desk to fit the perspective, but we eventually got there.
+Mobile view is still not perfect.
