@@ -27,6 +27,11 @@ const diceResultType =
 const diceResultNumber =
   document.getElementById("dice-result-number");
 
+const diceRollSound =
+  new Audio("./assets/audio/diceroll.mp3");
+
+diceRollSound.volume = 0.7;
+
 
 /* =========================================================
    STATE
@@ -164,6 +169,23 @@ diceButtons.forEach((die) => {
       ) {
         return;
       }
+
+      /*
+        Restart the sound from the beginning
+        for each new roll.
+      */
+      diceRollSound.currentTime = 0;
+
+      diceRollSound
+        .play()
+        .catch((error) => {
+
+          console.warn(
+            "Dice sound could not play.",
+            error
+          );
+
+        });
 
 
       await rollDie(
