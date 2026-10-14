@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poll - Chronomancer</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link id="theme-css" rel="stylesheet" href="/css/themes/dnd.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/" data-t="appName">Chronomancer</a>
+    <select id="theme-select" aria-label="Theme">
+      <option value="dnd">Dungeons &amp; Dragons</option>
+      <option value="plain">Plain</option>
+    </select>
+  </header>
+  <main>
+    <div class="panel">
+      <h1 id="title"></h1>
+      <p id="meta" class="muted"></p>
+      <p><a id="back" href="/">&larr; Back</a></p>
+      <p id="load-error" class="error" role="alert"></p>
+    </div>
+
+    <div class="panel" id="confirmed" hidden>
+      <h2><span data-t="confirmed">Scheduled for</span> <span id="confirmed-when"></span></h2>
+    </div>
+
+    <div class="panel" id="grid-panel" hidden>
+      <h2 data-t="poll">Availability</h2>
+      <div class="row" id="brushes">
+        <button class="on" data-brush="free" data-t="free">Free</button>
+        <button class="secondary" data-brush="maybe" data-t="maybe">If needed</button>
+        <button class="secondary" data-brush="erase" data-t="erase">Erase</button>
+        <button id="save" data-t="save">Save</button>
+        <span id="save-msg" class="ok"></span>
+      </div>
+      <label id="scroll-label" class="row muted" hidden>
+        <span><input id="scroll-mode" type="checkbox"> Scroll instead of paint (touch screens)</span>
+      </label>
+      <p class="muted">Times shown in your timezone (<span id="tz"></span>). Drag across the grid to paint. Brighter cells are where more of the party is free.</p>
+      <div id="grid" class="grid-wrap"></div>
+    </div>
+
+    <div class="panel" id="vote-panel" hidden>
+      <h2 data-t="candidates">Best times</h2>
+      <div id="candidates"></div>
+    </div>
+
+    <div class="panel">
+      <h2 data-t="party">Party</h2>
+      <ul id="members" class="plain"></ul>
+      <div id="organizer-actions" class="row" hidden>
+        <label id="hours-label" hidden>Voting lasts (hours, blank = until you confirm)
+          <input id="vote-hours" type="number" min="1" max="336" placeholder="48">
+        </label>
+        <button id="close" data-t="close" hidden>Close</button>
+        <button id="confirm" data-t="confirm" hidden>Confirm</button>
+        <button id="cancel" class="secondary" data-t="cancel" hidden>Cancel poll</button>
+      </div>
+      <p id="action-error" class="error" role="alert"></p>
+    </div>
+  </main>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/grid.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const id = new URLSearchParams(location.search).get("id");
+    let poll, grid;
+    let brush = "free";        // kept here so a re-render never desyncs it from the buttons
+    let scrollMode = false;
+
+    function syncBrushButtons() {
+      $("brushes").querySelectorAll("[data-brush]").forEach((b) => {
+        const on = b.dataset.brush === brush;
+        b.classList.toggle("on", on); b.classList.toggle("secondary", !on);
+      });
+    }
+
+    function renderMembers() {
+      $("members").replaceChildren(...poll.members.map((m) =>
+        el("li", {}, m.display_name,
+          m.required ? el("span", { class: "badge" }, Theme.t("required")) : null,
+          el("span", { class: m.responded ? "badge ok" : "badge" },
+            m.responded ? Theme.t("responded") : Theme.t("waiting")))));
+    }
+
+    function renderCandidates() {
+      const open = poll.status === "voting";
+      $("candidates").replaceChildren(...poll.candidates.map((c) =>
+        el("div", { class: "candidate" + (poll.my_vote === c.id ? " mine" : "") },
+          el("span", { class: "when" }, fmtDateTime(c.start)),
+          el("span", { class: "muted" }, `${c.free_count} free, ${c.maybe_count} if needed`),
+          el("span", { class: "badge" }, `${c.votes} vote${c.votes === 1 ? "" : "s"}`),
+          open ? el("button", { onclick: () => vote(c.id) }, Theme.t("vote")) : null,
+          open && poll.my_role === "organizer"
+            ? el("button", { class: "secondary", onclick: () => confirmPoll(c.id) }, Theme.t("confirm")) : null)));
+    }
+
+    // keepMarks: a theme switch re-renders the page, and must not throw away unsaved painting.
+    function render(keepMarks) {
+      if (keepMarks && grid && poll.status === "collecting") poll.my_availability = grid.marksObject();
+      if (grid) grid.destroy();
+      document.title = (poll.title || "Poll") + " - Chronomancer";
+      $("title").textContent = poll.title || "Poll " + poll.id;
+      $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} free players. Status: ${poll.status}.`;
+      $("back").href = "/campaign.html?id=" + poll.campaign_id;
+      $("tz").textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const collecting = poll.status === "collecting";
+      const open = collecting || poll.status === "voting";
+      $("grid-panel").hidden = !open;
+      $("save").hidden = !collecting;
+      $("brushes").querySelectorAll("[data-brush]").forEach((b) => { b.hidden = !collecting; });
+      $("scroll-label").hidden = !(collecting && matchMedia("(pointer: coarse)").matches);
+      grid = AvailabilityGrid($("grid"), poll, () => { $("save-msg").textContent = ""; }, { brush, scrollMode });
+      syncBrushButtons();
+      $("vote-panel").hidden = !poll.candidates.length;
+      renderCandidates();
+      renderMembers();
+      const organizer = poll.my_role === "organizer";
+      $("organizer-actions").hidden = !organizer || !open;
+      $("close").hidden = !(organizer && collecting);
+      $("hours-label").hidden = !(organizer && collecting);
+      $("confirm").hidden = !(organizer && poll.status === "voting");
+      $("cancel").hidden = !(organizer && open);
+      $("confirmed").hidden = poll.status !== "confirmed";
+      if (poll.confirmed_start) $("confirmed-when").textContent = fmtDateTime(poll.confirmed_start);
+    }
+
+    async function refresh() {
+      try { poll = await Api.get("/api/polls/" + encodeURIComponent(id)); }
+      catch (e) {
+        if (e.status === 401) {
+          location.replace("/?next=" + encodeURIComponent(location.pathname + location.search));
+          return;
+        }
+        // Non-members and missing polls look the same on purpose: say how to get in.
+        $("load-error").textContent = e.status === 404 ? Theme.t("notMember") : e.message;
+        return;
+      }
+      $("load-error").textContent = "";
+      render(false);
+    }
+
+    async function act(fn) {
+      $("action-error").textContent = "";
+      try { await fn(); await refresh(); }
+      catch (e) { $("action-error").textContent = e.message; }
+    }
+    const vote = (cid) => act(() => Api.post(`/api/polls/${id}/votes`, { candidate_id: cid }));
+    const confirmPoll = (cid) => act(() => Api.post(`/api/polls/${id}/confirm`, cid ? { candidate_id: cid } : {}));
+
+    $("brushes").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-brush]");
+      if (!b || !grid) return;
+      brush = b.dataset.brush;
+      grid.setBrush(brush);
+      syncBrushButtons();
+    });
+    $("scroll-mode").addEventListener("change", (e) => {
+      scrollMode = e.target.checked;
+      if (grid) grid.setScrollMode(scrollMode);
+    });
+    $("save").addEventListener("click", () => act(async () => {
+      await Api.put(`/api/polls/${id}/availability`, { slots: grid.marks() });
+      $("save-msg").textContent = Theme.t("saved");
+    }));
+    $("close").addEventListener("click", () => act(() => {
+      const hours = parseInt($("vote-hours").value, 10);
+      return Api.post(`/api/polls/${id}/close`, hours > 0 ? { vote_hours: hours } : {});
+    }));
+    $("confirm").addEventListener("click", () => confirmPoll(null));
+    $("cancel").addEventListener("click", () => {
+      if (confirm("Cancel this poll? Players will no longer be able to respond.")) {
+        act(() => Api.post(`/api/polls/${id}/cancel`));
+      }
+    });
+    Theme.ready.then(refresh);
+    window.addEventListener("themechange", () => poll && render(true));
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --border: #d5d9e0;
+  --text: #1f2530;
+  --muted: #667085;
+  --accent: #2f5fd0;
+  --link: #2f5fd0;
+  --danger: #c0392b;
+  --ok: #1f7a3d;
+  --input-bg: #ffffff;
+  --button-bg: #2f5fd0;
+  --button-text: #ffffff;
+  --cell-bg: #f0f2f6;
+  --heat-color: #2f5fd0;
+  --free: #4caf6a;
+  --maybe: #f2c14e;
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(16, 24, 40, .1);
+  --font-display: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}

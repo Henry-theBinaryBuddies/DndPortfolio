@@ -1,0 +1,29 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
+
+:root {
+  --bg: #1b1410;
+  --panel: #2a1f17;
+  --border: #6b4f2c;
+  --text: #ecdcb8;
+  --muted: #a8946a;
+  --accent: #e0a63a;
+  --link: #f0c36b;
+  --danger: #ff8a7a;
+  --ok: #8fd18a;
+  --input-bg: #1b1410;
+  --button-bg: #6e1f1f;
+  --button-text: #f6e7c1;
+  --cell-bg: #1f1711;
+  --heat-color: #e0a63a;
+  --free: #3f8f4a;
+  --maybe: #b8892b;
+  --radius: 4px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, .5);
+  --font-display: "Cinzel", Georgia, serif;
+  --font-body: "Crimson Text", Georgia, serif;
+}
+body {
+  background-image: radial-gradient(ellipse at top, #2c2017 0%, var(--bg) 70%);
+  font-size: 1.1rem;
+}
+.panel { border-width: 2px; border-style: double; }

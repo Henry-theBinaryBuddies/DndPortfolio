@@ -1,0 +1,101 @@
+# Chronomancer: Design
+
+A themed group scheduler. A Dungeon Master (organizer) creates a campaign, players mark availability on a grid, the app ranks the best slots, the Discord bot runs a vote on the top slots, then reminds everyone before the confirmed session. D&D is the default theme, but the model is generic and works for any group.
+
+## Stack
+- **Backend:** Python 3.11+, FastAPI, SQLAlchemy 2.x, SQLite (Postgres-ready via `DATABASE_URL`).
+- **Bot:** discord.py, running in the same process as FastAPI (started in the app lifespan).
+- **Frontend:** plain HTML/CSS/JS served by FastAPI as static files. No build step.
+- **Tests:** pytest. Scheduling logic is pure Python and is tested without Discord or HTTP.
+- **Config:** environment variables via `.env` (never committed). `.env.example` documents them.
+
+## Layout
+```
+chronomancer/
+  DESIGN.md
+  requirements.txt
+  .env.example
+  app/
+    main.py            # FastAPI app, lifespan starts bot
+    config.py          # settings from env
+    db.py              # engine, session
+    models.py          # SQLAlchemy models
+    schemas.py         # pydantic request/response models
+    auth.py            # Discord OAuth, signed session cookie
+    scheduling.py      # ranking logic (pure, no I/O)
+    reminders.py       # reminder scheduler loop
+    routes/            # campaigns, polls, availability, votes
+    bot/               # client, slash commands, vote view, notifier
+  web/
+    index.html, poll.html, campaign.html
+    css/base.css, css/themes/{dnd,plain}.css
+    js/api.js, grid.js, theme.js
+    themes/{dnd,plain}.json   # wording per theme
+  tests/
+```
+
+## Data model (neutral names; every row is scoped to a guild)
+- **User**: id, discord_id (unique), display_name, avatar_url, timezone.
+- **Campaign** (UI: "Campaign" / "Group"): id, guild_id, channel_id, name, owner_user_id, cadence (none / weekly / biweekly / monthly), default_duration_min, default_window (start/end time of day), min_quorum, vote_top_n, reminder_offsets_min (JSON, default [1440, 60]).
+- **Member**: campaign_id, user_id, role (organizer / player), required (bool).
+- **Poll** (one session): id, campaign_id, date_start, date_end, window_start, window_end, slot_minutes (default 30), duration_min, status (collecting / voting / confirmed / cancelled), vote_deadline, vote_message_id, confirmed_start_utc.
+- **Availability**: poll_id, user_id, slot_start_utc, level (free / maybe). Absence means unavailable.
+- **Candidate**: poll_id, start_utc, score, free_count, maybe_count, rank.
+- **Vote**: candidate_id, user_id (one vote per user per poll, changeable until deadline).
+- **Reminder**: poll_id, user_id (nullable for channel), send_at_utc, kind (channel / dm), sent_at.
+
+All times are stored in UTC. The browser converts to and from the viewer's timezone.
+
+## Scheduling logic (`scheduling.py`)
+Input: availability for a poll, members, duration, quorum. Output: ranked candidate start times.
+1. Build the contiguous run of slots covering `duration_min` for each possible start.
+2. A player is **free** for a candidate only if every slot in it is marked; **maybe** if all are free or maybe with at least one maybe.
+3. Discard candidates missing any required player or below `min_quorum` free players.
+4. Score = `free_count * 2 + maybe_count`. Sort by score descending, then earliest start. Keep top `vote_top_n` (default 3, max 5).
+5. If fewer than 1 candidate qualifies, report why (not enough players, required player missing) so the organizer can extend the range.
+
+## Discord flows
+- **Login:** OAuth2 authorization code flow, scopes `identify` only. State parameter checked; session in a signed, HttpOnly, SameSite cookie.
+- **Install:** bot invite with minimal permissions (send messages, embed links, use slash commands). Campaign creation requires the bot to be in the target guild.
+- **Slash commands:** `/chronomancer create | link | unlink | poll | close | confirm | cancel | repost | status` and `/availability` (joins the caller and returns the poll link). `create`, `link` and `unlink` need Manage Channels or Manage Server (Discord's own resolved permissions for the caller), so a random member cannot claim a channel; `unlink` is also open to the campaign's organizer. `poll`, `close`, `confirm`, `cancel` and `repost` are organizer-only.
+- **Vote:** when the organizer closes collection (or the deadline passes), the bot posts an embed with the top N slots as buttons. A click records or changes the player's vote and updates the embed tallies.
+- **Confirm:** at the vote deadline, or on the organizer's confirm button, the highest-voted slot wins (ties go to the higher availability score, then earliest). The bot posts the result and creates the Reminder rows.
+- **Reminders:** a background loop sends channel pings and DMs at each offset. DMs that fail (closed DMs) fall back to a channel mention. Each reminder is sent once (`sent_at`).
+- **Recurrence:** after a session is confirmed, the campaign cadence proposes the next poll date range and asks the organizer to open it. It never auto-opens without the organizer's confirmation in v1.
+
+## Themes
+- `web/themes/<name>.json` holds wording (organizer, party, session, poll, etc.), `web/css/themes/<name>.css` holds styling via CSS variables.
+- `theme.js` loads the chosen theme (stored per user, default `dnd`), swaps the stylesheet, and fills text from the JSON.
+- Bot messages use the same wording file, selected by the campaign's theme setting.
+- v1 ships `dnd` and `plain`. Adding a theme is two files.
+
+## Security and public-app concerns
+- Secrets only from env. `.env` is gitignored.
+- Every query is filtered by guild/campaign membership. The API checks the logged-in user's membership on each request.
+- CSRF protection on state-changing routes (SameSite cookie plus origin check).
+- Rate limit the OAuth and availability endpoints.
+- Store the minimum user data (Discord ID, display name, avatar URL, timezone).
+- Deleting a campaign removes its polls, availability and votes.
+
+## Phases
+1. **Core (no Discord):** models, scheduling logic with tests, REST routes, availability grid UI with the D&D theme, fake user login for dev.
+2. **Discord:** OAuth login, bot client, slash commands, vote buttons, confirmation.
+3. **Reminders and recurrence:** reminder loop, DM fallback, cadence proposals.
+4. **Themes and polish:** plain theme, theme switcher, bot wording, empty and error states.
+5. **Portfolio link:** link the Chronomancer card and add an artifact write-up (requires approval to edit `index.html`).
+
+## Phase 2 as built (Discord)
+- **Shared service layer** (`app/services.py`): the web API and the bot call the same functions, so a rule exists once. Status changes (`close`, `confirm`, `cancel`) are atomic compare-and-set updates, so two simultaneous actions cannot both win or queue duplicate messages.
+- **Outbox** (`notifications` table, `app/bot/outbox.py`): actions queue `vote_open`, `vote_update`, `confirmed` and `cancelled`; a background loop delivers them. Delivery is at-least-once, in order per poll, with exponential backoff (15s up to 10 min, 12 attempts, about an hour). Rows wait while the bot is offline. `/chronomancer repost` re-sends a vote message that was given up on.
+- **Buttons** are persistent (`DynamicItem`, custom id `cm:vote:<poll>:<candidate>` / `cm:confirm:<poll>`), so they keep working after a restart, and are honoured only in the channel their campaign is bound to.
+- **Binding** a campaign to a channel happens only through the bot (never the web API), is unique per `(guild_id, channel_id)`, and needs Manage permissions. A campaign made on the web shows a notice with its invite code until linked via `/chronomancer link`.
+- **OAuth**: `identify` scope only; random per-attempt `state` checked in constant time and single-use; session reset on login; `next` limited to same-site paths (server and client side); the Discord access token is used once and never stored. Bad or expired attempts return to the login page with a message.
+- **Supervision**: the bot runs under a supervisor that retries failed starts with backoff; a rejected token stops cleanly with a message while the website keeps running. A failed command sync does not stop the bot.
+- **Background loop** also auto-confirms polls whose vote deadline has passed, independent of the bot.
+- **Not yet done / known limits:** reminders and recurrence (phase 3); commands inside threads are not recognised (use the parent channel); membership is not reconciled with Discord server membership; the session cookie is stateless (logout does not revoke a copied cookie); the rate limiter is per process and keys on the client IP (run uvicorn with `--proxy-headers` behind a proxy); there are no database migrations yet (schema changes need a fresh dev database).
+
+## Open items
+- Public hosting target (determines OAuth redirect URL and whether SQLite stays).
+- Discord application credentials (user creates; supplied via `.env`, never committed).
+- Timezone source: browser-detected by default, editable in profile.
+- Migrations (Alembic) before any deployment that holds real data.

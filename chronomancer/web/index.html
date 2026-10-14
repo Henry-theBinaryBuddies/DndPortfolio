@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chronomancer</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link id="theme-css" rel="stylesheet" href="/css/themes/dnd.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/" data-t="appName">Chronomancer</a>
+    <div class="row">
+      <select id="theme-select" aria-label="Theme">
+        <option value="dnd">Dungeons &amp; Dragons</option>
+        <option value="plain">Plain</option>
+      </select>
+      <button id="logout" class="secondary" data-t="logout" hidden>Log out</button>
+    </div>
+  </header>
+  <main>
+    <p id="tagline" class="muted" data-t="tagline"></p>
+
+    <section id="login" class="panel" hidden>
+      <h2 data-t="login">Log in</h2>
+      <p id="login-error" class="error" role="alert"></p>
+      <p id="discord-row" hidden>
+        <a id="discord-login" class="button-link" href="/auth/login" data-t="loginDiscord">Log in with Discord</a>
+      </p>
+      <div id="dev-row" hidden>
+        <p class="muted">Development login (only available when the server runs in dev mode).</p>
+        <form id="login-form" class="row">
+          <label>Discord ID <input name="discord_id" required maxlength="32"></label>
+          <label>Display name <input name="display_name" required maxlength="100"></label>
+          <button type="submit" data-t="login">Log in</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="app" hidden>
+      <div class="panel">
+        <h2 data-t="campaigns">Your Campaigns</h2>
+        <ul id="campaign-list" class="plain"></ul>
+      </div>
+      <div class="panel">
+        <h2 data-t="createCampaign">Create</h2>
+        <form id="create-form" class="row">
+          <label>Name <input name="name" required maxlength="120"></label>
+          <label>Default length (min) <input name="duration" type="number" value="180" min="30" max="1440"></label>
+          <label>Minimum free players <input name="quorum" type="number" value="2" min="1" max="50"></label>
+          <button type="submit" data-t="createCampaign">Create</button>
+        </form>
+        <p id="create-error" class="error"></p>
+      </div>
+      <div class="panel">
+        <h2 data-t="joinCampaign">Join</h2>
+        <form id="join-form" class="row">
+          <label><span data-t="inviteCode">Invite code</span> <input name="code" required maxlength="32"></label>
+          <button type="submit" data-t="joinCampaign">Join</button>
+        </form>
+        <p id="join-error" class="error"></p>
+      </div>
+    </section>
+  </main>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // Only same-site paths are honoured after login (mirrors the server-side check). Control
+    // characters are rejected because browsers strip tabs and newlines from URLs, which would
+    // turn "/<TAB>/evil.example" into the off-site "//evil.example".
+    function safeNext(n) {
+      if (!n || !n.startsWith("/") || n.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(n)) return "/";
+      try {
+        return new URL(n, location.origin).origin === location.origin ? n : "/";
+      } catch (e) { return "/"; }
+    }
+    const nextPath = safeNext(new URLSearchParams(location.search).get("next"));
+    const LOGIN_ERRORS = {
+      denied: "Discord login was cancelled.",
+      failed: "Discord login failed. Please try again.",
+      expired: "That login attempt expired. Please try again.",
+    };
+
+    async function show() {
+      try {
+        await Api.get("/api/me");
+      } catch (e) {
+        const cfg = await Api.get("/api/config");
+        $("login").hidden = false; $("app").hidden = true; $("logout").hidden = true;
+        $("discord-row").hidden = !cfg.discord_login;
+        $("dev-row").hidden = !cfg.dev_login;
+        $("discord-login").href = "/auth/login?next=" + encodeURIComponent(nextPath);
+        const err = new URLSearchParams(location.search).get("login_error");
+        $("login-error").textContent = LOGIN_ERRORS[err] || "";
+        if (!cfg.discord_login && !cfg.dev_login)
+          $("login-error").textContent = "Login is not configured on this server.";
+        return;
+      }
+      if (nextPath !== "/") { location.replace(nextPath); return; }
+      $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false;
+      const list = await Api.get("/api/campaigns");
+      $("campaign-list").replaceChildren(...list.map((c) =>
+        el("li", {}, el("a", { href: "/campaign.html?id=" + c.id }, c.name),
+          el("span", { class: "badge" }, c.my_role === "organizer" ? Theme.t("organizer") : c.my_role))));
+      if (!list.length) $("campaign-list").append(el("li", { class: "muted" }, "None yet."));
+    }
+
+    $("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      try {
+        await Api.post("/api/dev/login", {
+          discord_id: f.get("discord_id"), display_name: f.get("display_name"),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+        $("login-error").textContent = "";
+        show();
+      } catch (err) { $("login-error").textContent = err.message; }
+    });
+    $("logout").addEventListener("click", async () => { await Api.post("/api/logout"); show(); });
+    $("create-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      try {
+        const c = await Api.post("/api/campaigns", {
+          name: f.get("name"), default_duration_min: +f.get("duration"), min_quorum: +f.get("quorum"),
+          theme: Theme.current(),
+        });
+        location.href = "/campaign.html?id=" + c.id;
+      } catch (err) { $("create-error").textContent = err.message; }
+    });
+    $("join-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const r = await Api.post("/api/join", { invite_code: new FormData(e.target).get("code").trim() });
+        location.href = "/campaign.html?id=" + r.campaign_id;
+      } catch (err) { $("join-error").textContent = err.message; }
+    });
+    Theme.ready.then(show);
+  </script>
+</body>
+</html>

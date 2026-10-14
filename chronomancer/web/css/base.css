@@ -1,0 +1,71 @@
+/* Structure only. Colours, fonts and flourishes come from css/themes/<name>.css variables. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+h1, h2, h3 { font-family: var(--font-display); color: var(--accent); margin: 0 0 .5rem; }
+a { color: var(--link); }
+header.bar {
+  display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between;
+  padding: .75rem 1rem; background: var(--panel); border-bottom: 2px solid var(--border);
+}
+header.bar .brand { font-family: var(--font-display); font-size: 1.4rem; color: var(--accent); text-decoration: none; }
+main { max-width: 960px; margin: 0 auto; padding: 1rem; }
+.panel {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow);
+}
+.row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
+label { display: flex; flex-direction: column; font-size: .85rem; gap: .2rem; }
+input, select, button {
+  font: inherit; padding: .45rem .7rem; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text);
+}
+button {
+  cursor: pointer; background: var(--button-bg); color: var(--button-text);
+  border-color: var(--accent); font-family: var(--font-display);
+}
+button:hover:not(:disabled) { filter: brightness(1.15); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.secondary { background: transparent; color: var(--text); font-family: var(--font-body); }
+button.on { outline: 2px solid var(--accent); }
+.muted { color: var(--muted); font-size: .9rem; }
+.error { color: var(--danger); min-height: 1.2em; }
+.ok { color: var(--ok); }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+ul.plain li { padding: .35rem 0; border-bottom: 1px dashed var(--border); display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.badge { font-size: .75rem; padding: .05rem .5rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
+
+/* availability grid */
+.grid-wrap { overflow-x: auto; }
+table.grid { border-collapse: collapse; user-select: none; touch-action: none; }
+table.grid th { font-size: .75rem; font-weight: normal; padding: .1rem .4rem; white-space: nowrap; color: var(--muted); }
+table.grid th.time-label { text-align: right; vertical-align: top; }
+table.grid td.cell {
+  width: 5.5rem; min-width: 3rem; height: 1.2rem; border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--heat-color) calc(var(--heat, 0) * 55%), var(--cell-bg));
+  cursor: pointer;
+}
+table.grid td.cell-free { background: var(--free); }
+table.grid td.cell-maybe { background: var(--maybe); }
+table.grid td.cell-empty { border: none; }
+
+.candidate { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; padding: .5rem 0; border-bottom: 1px dashed var(--border); }
+.candidate .when { font-weight: bold; min-width: 14rem; }
+.candidate.mine { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+a.button-link {
+  display: inline-block; padding: .45rem .9rem; border-radius: var(--radius);
+  background: var(--button-bg); color: var(--button-text); border: 1px solid var(--accent);
+  font-family: var(--font-display); text-decoration: none;
+}
+a.button-link:hover { filter: brightness(1.15); }
+
+/* The hidden attribute must always win: .row, label and friends set display and would
+   otherwise keep "hidden" controls (such as organizer-only inputs) on screen. */
+[hidden] { display: none !important; }
+table.grid.scroll-mode { touch-action: auto; }

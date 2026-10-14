@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Campaign - Chronomancer</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link id="theme-css" rel="stylesheet" href="/css/themes/dnd.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/" data-t="appName">Chronomancer</a>
+    <select id="theme-select" aria-label="Theme">
+      <option value="dnd">Dungeons &amp; Dragons</option>
+      <option value="plain">Plain</option>
+    </select>
+  </header>
+  <main>
+    <div class="panel">
+      <h1 id="name"></h1>
+      <p id="invite" class="muted" hidden></p>
+      <p id="unlinked" class="muted" hidden></p>
+      <p id="load-error" class="error" role="alert"></p>
+    </div>
+    <div class="panel">
+      <h2 data-t="party">Party</h2>
+      <ul id="members" class="plain"></ul>
+    </div>
+    <div class="panel">
+      <h2 data-t="session">Sessions</h2>
+      <ul id="polls" class="plain"></ul>
+    </div>
+    <div class="panel" id="new-poll" hidden>
+      <h2 data-t="createPoll">New poll</h2>
+      <form id="poll-form" class="row">
+        <label>Title <input name="title" maxlength="120" placeholder="Session 5"></label>
+        <label>First day <input name="date_start" type="date" required></label>
+        <label>Last day <input name="date_end" type="date" required></label>
+        <label>Earliest start <input name="window_start" type="time" value="18:00" required></label>
+        <label>Latest end <input name="window_end" type="time" value="23:00" required></label>
+        <label>Length (min) <input name="duration" type="number" min="15" max="1440" required></label>
+        <label>Minimum free players <input name="quorum" type="number" min="1" max="50" required></label>
+        <button type="submit" data-t="createPoll">Create</button>
+      </form>
+      <p class="muted">Times are in your timezone: <span id="tz"></span>. Players see them in theirs.</p>
+      <p id="poll-error" class="error"></p>
+    </div>
+  </main>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const id = new URLSearchParams(location.search).get("id");
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    $("tz").textContent = tz;
+    let campaign;
+    let formReady = false; // defaults go in once; a later re-render must not overwrite typing
+
+    async function load() {
+      try {
+        campaign = await Api.get("/api/campaigns/" + encodeURIComponent(id));
+      } catch (e) {
+        if (e.status === 401) {
+          location.replace("/?next=" + encodeURIComponent(location.pathname + location.search));
+          return;
+        }
+        $("load-error").textContent = e.status === 404 ? Theme.t("notMember") : e.message;
+        return;
+      }
+      $("load-error").textContent = "";
+      document.title = campaign.name + " - Chronomancer";
+      $("name").textContent = campaign.name;
+      const organizer = campaign.my_role === "organizer";
+      if (organizer) {
+        $("invite").hidden = false;
+        $("invite").textContent = Theme.t("inviteCode") + ": " + campaign.invite_code;
+      }
+      // Say so when votes and announcements have nowhere to go (a campaign made on the web).
+      $("unlinked").hidden = !(organizer && !campaign.discord_linked);
+      if (organizer && !campaign.discord_linked) {
+        $("unlinked").textContent = Theme.t("notLinked") + " " + campaign.invite_code;
+      }
+      $("new-poll").hidden = !organizer;
+      const f = $("poll-form");
+      if (!formReady) {
+        f.duration.value = campaign.default_duration_min;
+        f.quorum.value = campaign.min_quorum;
+        formReady = true;
+      }
+
+      $("members").replaceChildren(...campaign.members.map((m) => {
+        const box = organizer ? el("input", {
+          type: "checkbox", checked: m.required ? "checked" : false,
+          onchange: async (ev) => {
+            const wanted = ev.target.checked;
+            try {
+              await Api.put(`/api/campaigns/${id}/members/${m.user_id}/required?required=${wanted}`);
+              $("load-error").textContent = "";
+            } catch (err) {
+              ev.target.checked = !wanted; // the server said no: show the truth again
+              $("load-error").textContent = err.message;
+            }
+          },
+        }) : null;
+        if (box && m.required) box.checked = true;
+        return el("li", {}, m.display_name,
+          m.role === "organizer" ? el("span", { class: "badge" }, Theme.t("organizer")) : null,
+          organizer ? el("label", { class: "muted" }, box, " " + Theme.t("required"))
+                    : (m.required ? el("span", { class: "badge" }, Theme.t("required")) : null));
+      }));
+      $("polls").replaceChildren(...campaign.polls.map((p) =>
+        el("li", {}, el("a", { href: "/poll.html?id=" + p.id }, p.title || ("Poll " + p.id)),
+          el("span", { class: "badge" }, p.status), el("span", { class: "muted" }, p.date_start + " to " + p.date_end))));
+      if (!campaign.polls.length) $("polls").append(el("li", { class: "muted" }, "None yet."));
+    }
+
+    $("poll-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      try {
+        const p = await Api.post(`/api/campaigns/${id}/polls`, {
+          title: f.get("title"), timezone: tz,
+          date_start: f.get("date_start"), date_end: f.get("date_end"),
+          window_start: f.get("window_start") + ":00", window_end: f.get("window_end") + ":00",
+          duration_min: +f.get("duration"), min_quorum: +f.get("quorum"),
+        });
+        location.href = "/poll.html?id=" + p.id;
+      } catch (err) { $("poll-error").textContent = err.message; }
+    });
+    Theme.ready.then(load);
+    window.addEventListener("themechange", () => campaign && load());
+  </script>
+</body>
+</html>
