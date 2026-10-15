@@ -17,6 +17,18 @@ from .services import ServiceError
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
 
+class FreshStaticFiles(StaticFiles):
+    """Pages, scripts and styles must always be revalidated. Without this a browser may keep
+    running an old script against a newer page (clicks that do nothing, a missing legend, a
+    timezone that is never reported) for hours. 'no-cache' still lets the browser keep a copy,
+    but it must check first, and an unchanged file costs only a tiny 304 reply."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 def _configure_logging() -> None:
     logger = logging.getLogger("chronomancer")
     if not logger.handlers:
@@ -67,7 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(oauth_router)
     app.include_router(campaigns.router)
     app.include_router(polls.router)
-    app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
+    app.mount("/", FreshStaticFiles(directory=WEB_DIR, html=True), name="web")
     return app
 
 

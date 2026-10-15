@@ -174,8 +174,12 @@
       e.preventDefault();
       const f = new FormData(e.target);
       try {
+        // The hours typed here mean the organizer's own time: send the browser's timezone with the
+        // poll, and remember it on the profile so polls started from Discord use it too.
+        const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await Api.put("/api/me", { timezone: zone });
         const p = await Api.post(`/api/campaigns/${id}/polls`, {
-          title: f.get("title"), date_start: f.get("date_start"),
+          title: f.get("title"), date_start: f.get("date_start"), timezone: zone,
           window_start: f.get("window_start") + ":00", window_end: f.get("window_end") + ":00",
         });
         location.href = "/poll.html?id=" + p.id;

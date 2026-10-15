@@ -35,6 +35,7 @@
         <li><span class="swatch cell-no"></span> <strong>3 clicks</strong> <span data-t="no">Not available</span></li>
       </ul>
       <p class="muted"><span data-t="gridHint">Tap a box to mark it.</span> Times are in your timezone (<span id="tz"></span>).</p>
+      <p class="muted" id="tz-note"></p>
       <div id="grid" class="grid-wrap"></div>
       <div class="row" id="save-row">
         <button id="save" data-t="save">Save</button>
@@ -97,7 +98,12 @@
       $("title").textContent = poll.title || "Poll " + poll.id;
       $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} free player${poll.min_quorum === 1 ? "" : "s"}. Status: ${poll.status}.`;
       $("back").href = "/campaign.html?id=" + poll.campaign_id;
-      $("tz").textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      $("tz").textContent = here;
+      // The organizer typed the hours in their own zone; say so when yours differs, because the
+      // grid below is converted to yours and will not read like the hours they chose.
+      $("tz-note").textContent = poll.timezone === here ? ""
+        : `The organizer chose these hours in ${poll.timezone}, so they appear shifted here.`;
       const collecting = poll.status === "collecting";
       const open = collecting || poll.status === "voting";
       $("grid-panel").hidden = !open;
