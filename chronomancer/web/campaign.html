@@ -60,11 +60,11 @@
         <label><span data-t="weekStart">Week starting</span>
           <input name="date_start" type="date" required>
         </label>
-        <label>Earliest start <input name="window_start" type="time" value="18:00" required></label>
-        <label>Latest end <input name="window_end" type="time" value="23:00" required></label>
+        <label>Earliest start <input name="window_start" type="time" value="00:00" required></label>
+        <label>Latest end <input name="window_end" type="time" value="00:00" required></label>
         <button type="submit" data-t="createPoll">Create</button>
       </form>
-      <p class="muted">Players mark the seven days from the start date. These hours are in your timezone (<span id="tz"></span>); everyone sees every time in their own. Length and minimum players come from the settings above.</p>
+      <p class="muted">Players mark the seven days from the start date. These hours are in your timezone (<span id="tz"></span>); 00:00 to 00:00 is the whole day, and an end of 00:00 means the end of the day. You can change them later on the poll page. Everyone sees every time in their own. Length and minimum players come from the settings above.</p>
       <p id="poll-error" class="error"></p>
     </div>
   </main>

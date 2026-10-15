@@ -276,6 +276,12 @@ def current_poll(db: Session, campaign_id: int) -> Poll | None:
 # ---------------------------------------------------------------- polls
 
 
+def hours_label(window_start: time, window_end: time) -> str:
+    """'00:00 to 24:00': an end of 00:00 is the end of the day."""
+    end = "24:00" if window_end == time(0) else f"{window_end:%H:%M}"
+    return f"{window_start:%H:%M} to {end}"
+
+
 def poll_slots(poll: Poll) -> list:
     return generate_slots(
         poll.date_start, poll.date_end, poll.window_start, poll.window_end,
@@ -330,6 +336,25 @@ def create_poll(db: Session, campaign: Campaign, *, title: str, date_start: date
     if not candidate_starts(slots, poll.slot_minutes, poll.duration_min):
         raise ServiceError(422, "session length does not fit inside the daily window")
     db.add(poll)
+    db.commit()
+    return poll
+
+
+def update_poll_hours(db: Session, poll: Poll, window_start: time, window_end: time) -> Poll:
+    """Change the daily hours of a poll that is still collecting. Marks outside the new hours are
+    kept (widening again brings them back) but are ignored until then."""
+    if poll.status != "collecting":
+        raise ServiceError(409, "the hours can only change while availability is being collected")
+    old = (poll.window_start, poll.window_end)
+    poll.window_start, poll.window_end = window_start, window_end
+    try:
+        slots = poll_slots(poll)
+    except ValueError as exc:
+        poll.window_start, poll.window_end = old
+        raise ServiceError(422, str(exc))
+    if not slots or not candidate_starts(slots, poll.slot_minutes, poll.duration_min):
+        poll.window_start, poll.window_end = old
+        raise ServiceError(422, "session length does not fit inside the daily window")
     db.commit()
     return poll
 

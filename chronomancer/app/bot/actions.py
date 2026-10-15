@@ -145,10 +145,13 @@ def _parse_day(value: str) -> date:
 
 
 def _parse_time(value: str, label: str) -> time:
+    if label == "End" and value.strip() in ("24:00", "24"):
+        return time(0)  # the end of the day is stored as 00:00
     try:
         return datetime.strptime(value.strip(), "%H:%M").time()
     except ValueError:
-        raise ServiceError(422, f"{label} must look like 18:00 (24-hour).")
+        raise ServiceError(422, f"{label} must look like 18:00 (24-hour)"
+                                + (", or 24:00 for the end of the day." if label == "End" else "."))
 
 
 def settings_summary(campaign) -> str:
@@ -320,7 +323,7 @@ def cmd_poll(db: Session, du: DUser, guild_id, channel_id, week_start: str | Non
     )
     text = wording.t(campaign.theme, "botPollCreated", title=esc(poll.title or campaign.name),
                      url=poll_url(poll))
-    text += (f"\nHours: {poll.window_start:%H:%M} to {poll.window_end:%H:%M} {tz} "
+    text += (f"\nHours: {services.hours_label(poll.window_start, poll.window_end)} {tz} "
              "(everyone sees them in their own timezone).")
     if tz == "UTC":
         text += " Open the website once and I will use your own timezone next time."

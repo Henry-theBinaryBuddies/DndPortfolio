@@ -62,6 +62,11 @@ class PollCreate(BaseModel):
     _tz = field_validator("timezone")(lambda v: v if v is None else _check_tz(v))
 
 
+class PollHours(BaseModel):
+    window_start: time
+    window_end: time  # 00:00 means the end of the day
+
+
 class SlotMark(BaseModel):
     start: datetime
     level: str = Field(pattern="^(free|maybe|no)$")

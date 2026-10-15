@@ -122,10 +122,11 @@ def register(tree: app_commands.CommandTree) -> None:
     @group.command(name="poll", description="Open a poll for one week of availability")
     @app_commands.describe(
         week_start="First of the seven days, like 2026-10-26 (default: today)",
-        start="Earliest start each day, like 18:00", end="Latest end each day, like 23:00",
+        start="Earliest start each day, like 18:00 (default: 00:00)",
+        end="Latest end each day, like 23:00 (default: 24:00, the whole day)",
         title="Name for this session")
     async def poll(interaction: discord.Interaction, week_start: Optional[str] = None,
-                   start: str = "18:00", end: str = "23:00", title: str = ""):
+                   start: str = "00:00", end: str = "24:00", title: str = ""):
         await _run(interaction, actions.cmd_poll, week_start, start, end, title)
 
     @group.command(name="advance", description="Close the poll into a vote, or decree the winning time")

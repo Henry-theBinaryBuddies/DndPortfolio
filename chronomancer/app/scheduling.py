@@ -42,8 +42,9 @@ def generate_slots(
     tz_name: str,
     slot_minutes: int,
 ) -> list:
-    """UTC-aware slot starts for every day in range, inside the daily window (local to tz_name)."""
-    if window_start >= window_end:
+    """UTC-aware slot starts for every day in range, inside the daily window (local to tz_name).
+    A window_end of 00:00 means midnight at the end of the day, so 00:00 to 00:00 is the whole day."""
+    if window_end != time(0) and window_start >= window_end:
         raise ValueError("window_start must be before window_end")
     if date_start > date_end:
         raise ValueError("date_start must not be after date_end")
@@ -57,7 +58,8 @@ def generate_slots(
         # Walk elapsed time between the window's local start and end, so a DST change
         # inside the window neither duplicates (spring) nor drops (autumn) slots.
         cursor = datetime.combine(day, window_start, tzinfo=tz).astimezone(timezone.utc)
-        end = datetime.combine(day, window_end, tzinfo=tz).astimezone(timezone.utc)
+        end_day = day + timedelta(days=1) if window_end == time(0) else day
+        end = datetime.combine(end_day, window_end, tzinfo=tz).astimezone(timezone.utc)
         while cursor + step <= end:
             slots.append(cursor)
             cursor += step

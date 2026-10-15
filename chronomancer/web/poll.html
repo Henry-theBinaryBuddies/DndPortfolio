@@ -36,6 +36,12 @@
       </ul>
       <p class="muted"><span data-t="gridHint">Tap a box to mark it.</span> Times are in your timezone (<span id="tz"></span>).</p>
       <p class="muted" id="tz-note"></p>
+      <form id="hours-form" class="row" hidden>
+        <label>Earliest start <input id="hours-start" type="time" required></label>
+        <label>Latest end <input id="hours-end" type="time" required></label>
+        <button type="submit" class="secondary">Change hours</button>
+        <span class="muted" id="hours-note"></span>
+      </form>
       <div id="grid" class="grid-wrap"></div>
       <div class="row" id="save-row">
         <button id="save" data-t="save">Save</button>
@@ -106,6 +112,11 @@
         : `The organizer chose these hours in ${poll.timezone}, so they appear shifted here.`;
       const collecting = poll.status === "collecting";
       const open = collecting || poll.status === "voting";
+      const organizerHere = poll.my_role === "organizer";
+      $("hours-form").hidden = !(organizerHere && collecting);
+      $("hours-start").value = poll.window_start;
+      $("hours-end").value = poll.window_end;
+      $("hours-note").textContent = `In ${poll.timezone}. An end of 00:00 is the end of the day.`;
       $("grid-panel").hidden = !open;
       $("save-row").hidden = !collecting;
       document.querySelector(".legend").hidden = !collecting;
@@ -150,6 +161,11 @@
       await Api.put(`/api/polls/${id}/availability`, { slots: grid.marks() });
       $("save-msg").textContent = Theme.t("saved");
     }));
+    $("hours-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      act(() => Api.patch(`/api/polls/${id}`,
+        { window_start: $("hours-start").value + ":00", window_end: $("hours-end").value + ":00" }));
+    });
     $("close").addEventListener("click", () => act(() => {
       const hours = parseInt($("vote-hours").value, 10);
       return Api.post(`/api/polls/${id}/close`, hours > 0 ? { vote_hours: hours } : {});
