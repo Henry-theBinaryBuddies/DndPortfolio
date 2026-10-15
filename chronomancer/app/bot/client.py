@@ -9,7 +9,7 @@ from . import actions, commands
 from .outbox import OutboxProcessor
 from .membership import MembershipSync
 from .reminders import ReminderProcessor
-from .views import ConfirmButton, VoteButton, vote_embed
+from .views import ConfirmButton, RsvpButton, VoteButton, vote_embed
 
 log = logging.getLogger("chronomancer.bot")
 
@@ -37,7 +37,7 @@ class ChronomancerBot(discord.Client):
         self.tree.on_error = self._on_command_error
 
     async def setup_hook(self) -> None:
-        self.add_dynamic_items(VoteButton, ConfirmButton)
+        self.add_dynamic_items(VoteButton, ConfirmButton, RsvpButton)
         commands.register(self.tree)
         # A failed sync (rate limit, transient API error) must not stop the bot: the commands
         # synced last time keep working, and buttons/outbox do not depend on the sync.
@@ -103,6 +103,24 @@ class ChronomancerBot(discord.Client):
         except Exception:  # noqa: BLE001
             log.exception("vote button failed")
             await self._apologise(interaction)
+
+    async def handle_rsvp(self, interaction: discord.Interaction, poll_id: int, answer: str):
+        """A reminder DM button. Works in direct messages, so nothing here needs a server."""
+        try:
+            user = interaction.user
+            du = actions.DUser(str(user.id), user.global_name or user.name,
+                               user.avatar.url if user.avatar else None, False)
+            outcome = await asyncio.to_thread(actions.with_db, actions.rsvp_click, du, poll_id, answer)
+            await interaction.response.send_message(outcome.text, ephemeral=True)
+        except Exception:  # noqa: BLE001
+            log.exception("attendance button failed")
+            await self._apologise(interaction)
+            return
+        if outcome.ok and outcome.snapshot is not None:  # called off: announce the new poll now
+            try:
+                await self.outbox.run_once()
+            except Exception:  # noqa: BLE001
+                log.exception("could not flush outbox after a reschedule")
 
     async def handle_confirm(self, interaction: discord.Interaction, poll_id: int):
         try:

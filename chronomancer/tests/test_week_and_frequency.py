@@ -47,11 +47,11 @@ def test_a_poll_without_a_timezone_uses_the_organizers_own(client):
 @pytest.mark.parametrize("cadence,start,expected", [
     ("weekly", date(2026, 10, 24), date(2026, 10, 31)),
     ("biweekly", date(2026, 10, 24), date(2026, 11, 7)),
-    ("monthly", date(2026, 10, 24), date(2026, 11, 24)),
-    ("monthly", date(2026, 1, 31), date(2026, 2, 28)),       # short month: clamp, never overflow
-    ("monthly", date(2028, 1, 31), date(2028, 2, 29)),       # leap year
-    ("monthly", date(2026, 12, 15), date(2027, 1, 15)),      # year rollover
-    ("quarterly", date(2026, 11, 30), date(2027, 2, 28)),
+    ("monthly", date(2026, 10, 24), date(2026, 11, 28)),     # 4th Saturday -> 4th Saturday
+    ("monthly", date(2026, 1, 31), date(2026, 2, 28)),       # a 5th Saturday counts as the 4th
+    ("monthly", date(2028, 1, 31), date(2028, 2, 28)),       # a 5th Monday -> the 4th Monday
+    ("monthly", date(2026, 12, 15), date(2027, 1, 19)),      # 3rd Tuesday, across the new year
+    ("quarterly", date(2026, 11, 30), None),                 # no longer offered
     ("annually", date(2026, 10, 24), date(2027, 10, 24)),
     ("annually", date(2028, 2, 29), date(2029, 2, 28)),      # leap day
     ("none", date(2026, 10, 24), None),
@@ -158,7 +158,7 @@ def test_exactly_the_six_documented_commands_are_registered():
     assert set(setup) == {"name", "code", "frequency", "quorum", "length", "reminders", "theme", "events"}
     assert not any(p.required for p in setup.values())  # every option is optional
     assert {c.value for c in setup["frequency"].choices} == {
-        "none", "weekly", "biweekly", "monthly", "quarterly", "annually"}
+        "none", "weekly", "biweekly", "monthly", "annually"}
 
     poll = {p.name: p for p in sub["poll"].parameters}
     assert set(poll) == {"week_start", "start", "end", "title"}  # length/quorum/timezone live in setup

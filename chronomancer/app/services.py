@@ -2,6 +2,7 @@
 from collections import Counter
 import secrets
 from calendar import monthrange
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -11,29 +12,44 @@ from sqlalchemy.orm import Session
 
 from . import config
 from .models import (
-    Availability, Campaign, Candidate, Member, Notification, Poll, PollMessage, Reminder, User,
+    Attendance, Availability, Campaign, Candidate, Member, Notification, Poll, PollMessage, Reminder, User,
     Vote, WebSession,
 )
 from .scheduling import candidate_starts, generate_slots, rank_candidates
 
 
-CADENCES = ("none", "weekly", "biweekly", "monthly", "quarterly", "annually")
+# The frequencies Discord can repeat an event at: every week, every two weeks, every month on
+# the same Nth weekday (for example the 4th Saturday), and every year on the same date.
+CADENCES = ("none", "weekly", "biweekly", "monthly", "annually")
+
+
+def nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
+    """The nth (1-4) given weekday (Monday=0) of a month."""
+    first = date(year, month, 1)
+    return first + timedelta(days=(weekday - first.weekday()) % 7 + 7 * (n - 1))
+
+
+def week_of_month(day: date) -> int:
+    """Which weekday of its month `day` is (1st, 2nd, ...), counting a 5th as the 4th, which is
+    how Discord's own monthly repeat is offered."""
+    return min(4, (day.day - 1) // 7 + 1)
 
 
 def add_cadence(day: date, cadence: str, anchor_day: int | None = None) -> date | None:
-    """The date one meeting interval after `day`, or None for a one-off campaign. Monthly,
-    quarterly and annual steps aim for `anchor_day` (default: day's own), clamped to the end
-    of short months, so Jan 31 -> Feb 28 -> Mar 31 rather than drifting to the 28th."""
+    """The date one meeting interval after `day`, or None for a one-off campaign. Monthly
+    meets on the same Nth weekday (the 4th Saturday stays the 4th Saturday); annual steps aim
+    for `anchor_day` (default: day's own), clamped to the end of short months."""
     if cadence == "weekly":
         return day + timedelta(days=7)
     if cadence == "biweekly":
         return day + timedelta(days=14)
-    months = {"monthly": 1, "quarterly": 3, "annually": 12}.get(cadence)
-    if months is None:
+    if cadence == "monthly":
+        year_carry, month0 = divmod(day.month, 12)
+        return nth_weekday(day.year + year_carry, month0 + 1, day.weekday(), week_of_month(day))
+    if cadence != "annually":
         return None
-    year_carry, month0 = divmod(day.month - 1 + months, 12)
-    year, month = day.year + year_carry, month0 + 1
-    return date(year, month, min(anchor_day or day.day, monthrange(year, month)[1]))
+    year = day.year + 1
+    return date(year, day.month, min(anchor_day or day.day, monthrange(year, day.month)[1]))
 
 
 class ServiceError(Exception):
@@ -220,7 +236,19 @@ def link_campaign(db: Session, user: User, invite_code: str, guild_id: str, chan
 
 
 def unlink_campaign(db: Session, campaign: Campaign) -> Campaign:
-    """Free the Discord channel so it can be claimed again. The campaign itself is kept."""
+    """Free the Discord channel so it can be claimed again. The campaign itself is kept; its
+    Discord events are removed (queued here, delivered using the server remembered on the
+    campaign, since the channel link is gone)."""
+    if campaign.events_guild_id:
+        targets = {s.id for s in upcoming_sessions(db, campaign.id)}
+        targets |= set(db.scalars(select(Poll.id).where(
+            Poll.campaign_id == campaign.id, Poll.discord_event_id.is_not(None))))
+        if not targets and campaign.series_event_id:
+            latest = db.scalar(select(Poll.id).where(Poll.campaign_id == campaign.id)
+                               .order_by(Poll.id.desc()).limit(1))
+            targets = {latest} if latest is not None else set()
+        for poll_id in sorted(targets):
+            enqueue_once(db, "event_sync", poll_id)
     campaign.guild_id = None
     campaign.channel_id = None
     db.commit()
@@ -233,7 +261,7 @@ def delete_campaign(db: Session, campaign_id: int) -> None:
     would inherit them)."""
     poll_ids = list(db.scalars(select(Poll.id).where(Poll.campaign_id == campaign_id)))
     if poll_ids:
-        for model in (Availability, Notification, PollMessage, Reminder):
+        for model in (Availability, Notification, PollMessage, Reminder, Attendance):
             db.execute(delete(model).where(model.poll_id.in_(poll_ids)))
     # Polls, candidates, votes and members go with the campaign via the ORM cascade.
     campaign = db.get(Campaign, campaign_id)
@@ -509,6 +537,80 @@ def cancel_poll(db: Session, poll: Poll) -> Poll:
     return poll
 
 
+@dataclass
+class RsvpResult:
+    out: int                       # active members who said they cannot make it
+    active: int                    # active members of the group
+    rescheduled: Poll | None = None  # the new poll, when this answer tipped the balance
+
+
+def declined_count(db: Session, poll: Poll) -> tuple:
+    """(people who said they cannot make it, active members). People who never answered count
+    as coming, and people who have left the server do not count at all."""
+    active = active_members(db, poll.campaign_id)
+    ids = {m.user_id for m in active}
+    out = db.scalars(select(Attendance.user_id).where(
+        Attendance.poll_id == poll.id, Attendance.answer == "out")).all()
+    return sum(1 for uid in out if uid in ids), len(ids)
+
+
+def record_attendance(db: Session, poll: Poll, user: User, answer: str) -> RsvpResult:
+    """A member answers the reminder: 'in' or 'out'. They may change their mind until the
+    session starts. When more than half of the active members cannot make it, the session is
+    called off and a new poll is opened to find another time."""
+    if answer not in ("in", "out"):
+        raise ServiceError(422, "answer must be 'in' or 'out'")
+    if poll.status != "confirmed" or poll.confirmed_start_utc is None \
+            or poll.confirmed_start_utc <= now_utc():
+        raise ServiceError(409, "this session is no longer upcoming")
+    member = get_member(db, poll.campaign_id, user.id)
+    if member is None or member.left_at is not None:
+        raise ServiceError(403, "you are not part of this group")
+    row = db.scalar(select(Attendance).where(Attendance.poll_id == poll.id, Attendance.user_id == user.id))
+    if row is None:
+        db.add(Attendance(poll_id=poll.id, user_id=user.id, answer=answer))
+    else:
+        row.answer, row.answered_at = answer, now_utc()
+    db.commit()
+    out, active = declined_count(db, poll)
+    new_poll = reschedule_after_declines(db, poll) if out * 2 > active else None
+    return RsvpResult(out, active, new_poll)
+
+
+def reschedule_after_declines(db: Session, poll: Poll) -> Poll | None:
+    """Call off a decided session and open a fresh one-week poll (same hours, length and
+    title, starting today) so the group can pick another time. The next session is not lined
+    up automatically: the new poll replaces it. Does nothing (None) if the session already
+    moved on, so repeated answers open at most one poll."""
+    claimed = db.execute(update(Poll).where(
+        Poll.id == poll.id, Poll.status == "confirmed", Poll.confirmed_start_utc > now_utc(),
+    ).values(status="cancelled", recurrence_handled=True))
+    if claimed.rowcount != 1:
+        db.rollback()
+        return None
+    db.execute(delete(Reminder).where(Reminder.poll_id == poll.id, Reminder.sent_at.is_(None)))
+    enqueue(db, "event_sync", poll.id)
+    db.refresh(poll)
+    if open_poll(db, poll.campaign_id) is not None:  # someone already opened one
+        db.commit()
+        return None
+    today = datetime.now(ZoneInfo(poll.timezone)).date()
+    following = Poll(
+        campaign_id=poll.campaign_id, title=poll.title, timezone=poll.timezone,
+        date_start=today, date_end=today + timedelta(days=config.WEEK_DAYS - 1),
+        window_start=poll.window_start, window_end=poll.window_end,
+        slot_minutes=poll.slot_minutes, duration_min=poll.duration_min,
+        min_quorum=poll.min_quorum, vote_top_n=poll.vote_top_n,
+        anchor_day=poll.anchor_day, rescheduled_from=poll.id,
+    )
+    db.add(following)
+    db.flush()
+    enqueue(db, "reschedule", following.id)
+    db.commit()
+    db.refresh(following)
+    return following
+
+
 def valid_timezone(name: str) -> bool:
     try:
         ZoneInfo(name)
@@ -564,7 +666,7 @@ def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
             setattr(campaign, field, value)
     if cadence_changed:
         replan_auto_sessions(db, campaign)
-    if events_changed:  # turning events on or off applies to the sessions already decided
+    if events_changed or cadence_changed:  # applies to the sessions already decided
         for session in upcoming_sessions(db, campaign.id):
             enqueue_once(db, "event_sync", session.id)
     if reminder_offsets_min is not None:

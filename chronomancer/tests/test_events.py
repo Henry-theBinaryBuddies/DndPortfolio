@@ -177,15 +177,17 @@ def test_events_default_to_on(db):
 # ------------------------------------------------ recurrence and replacement
 
 
-def test_an_automatically_scheduled_session_gets_its_own_event(db):
+def test_an_automatically_scheduled_session_points_the_repeating_event_at_it(db):
     campaign, _ = repeating(db)
-    first = decided(db, campaign, local(2030, 3, 2, 11))
+    decided(db, campaign, local(2030, 3, 2, 11))
     services.roll_recurrences(db, now=local(2030, 3, 2, 15).astimezone(UTC))
     world = World()
     run(world.processor.run_once())
-    # the first session (decided by hand here) and the automatic next one
-    starts = sorted(e.kwargs["start_time"] for e in world.guild.created)
-    assert local(2030, 3, 9, 11).astimezone(UTC) in starts
+    assert world.guild.created == []  # a repeating group has no per-session events
+    (event,) = world.guild.series.values()
+    # the event follows the soonest upcoming session (here still the first one, in 2030)
+    assert event["scheduled_start_time"] == "2030-03-02T19:00:00Z"
+    assert event["recurrence_rule"]["frequency"] == 2  # weekly
 
 
 def test_skipping_a_session_moves_the_event_to_the_next_one(db):
@@ -195,24 +197,26 @@ def test_skipping_a_session_moves_the_event_to_the_next_one(db):
     db.commit()
     world = World()
     run(world.processor.run_once())
-    assert len(world.guild.events) == 1
+    (event_id,) = world.guild.series
+    assert world.guild.series[event_id]["scheduled_start_time"] == "2030-03-02T19:00:00Z"
     services.cancel_poll(db, first)
     run(world.processor.run_once())
-    remaining = [e.kwargs["start_time"] for e in world.guild.events.values()]
-    assert remaining == [local(2030, 3, 9, 11).astimezone(UTC)]
+    assert list(world.guild.series) == [event_id]  # the same event, moved
+    assert world.guild.series[event_id]["scheduled_start_time"] == "2030-03-09T19:00:00Z"
 
 
-def test_a_superseded_automatic_session_loses_its_event(db):
+def test_becoming_a_one_off_group_removes_the_repeating_event(db):
     campaign, _ = repeating(db)
     decided(db, campaign, local(2030, 3, 2, 11))
     services.roll_recurrences(db, now=local(2030, 3, 2, 15).astimezone(UTC))
-    auto = all_polls(db)[-1]
     world = World()
     run(world.processor.run_once())
-    assert stored_event_id(auto.id)
+    assert len(world.guild.series) == 1
     services.update_campaign(db, campaign, cadence="none")      # drops the automatic session
     run(world.processor.run_once())
-    assert stored_event_id(auto.id) is None and len(world.guild.events) == 0
+    assert world.guild.series == {}
+    with fresh() as other:
+        assert other.get(Campaign, campaign.id).series_event_id is None
 
 
 # ------------------------------------------------ permission and failures

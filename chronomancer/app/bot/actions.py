@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import config, db as dbmod, services
-from ..models import Availability, Member, Poll
+from ..models import Availability, Member, Poll, User
 from ..services import ServiceError
 from . import wording
 from .snapshots import PollSnapshot, load_poll_snapshot
@@ -401,6 +401,32 @@ def vote_click(db: Session, du: DUser, poll_id: int, candidate_id: int, guild_id
     return _click(db, du, poll_id, guild_id, channel_id,
                   lambda poll, user: services.cast_vote(db, poll, user, candidate_id),
                   "botVoteRecorded", snapshot=True)
+
+
+def rsvp_click(db: Session, du: DUser, poll_id: int, answer: str) -> Outcome:
+    """'I'm in' / 'Can't make it' on a reminder DM. When this answer tips the group past half
+    saying no, the session is called off and a new poll is opened (the snapshot of that poll
+    comes back so the caller can flush the outbox)."""
+    poll = db.get(Poll, poll_id)
+    if poll is None:
+        return Outcome(wording.t(None, "botRsvpClosed"), False)
+    theme = poll.campaign.theme
+    user = db.scalar(select(User).where(User.discord_id == du.id))
+    if user is None:
+        return Outcome(wording.t(theme, "botRsvpStranger"), False)
+    try:
+        result = services.record_attendance(db, poll, user, answer)
+    except ServiceError as exc:
+        if exc.status == 409:
+            return Outcome(wording.t(theme, "botRsvpClosed"), False)
+        if exc.status == 403:
+            return Outcome(wording.t(theme, "botRsvpStranger"), False)
+        return Outcome(error_text(exc), False)
+    if result.rescheduled is not None:
+        return Outcome(wording.t(theme, "botRsvpCalledOff"), True, load_poll_snapshot(db, result.rescheduled.id))
+    if answer == "in":
+        return Outcome(wording.t(theme, "botRsvpInAck"), True)
+    return Outcome(wording.t(theme, "botRsvpOutAck", out=result.out, active=result.active), True)
 
 
 def confirm_click(db: Session, du: DUser, poll_id: int, guild_id, channel_id) -> Outcome:

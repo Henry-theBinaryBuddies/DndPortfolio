@@ -57,6 +57,12 @@ class Campaign(Base):
     reminder_offsets_min: Mapped[list] = mapped_column(JSON, default=lambda: [1440, 60])
     theme: Mapped[str] = mapped_column(String(32), default="dnd")
     events_enabled: Mapped[bool] = mapped_column(Boolean, default=True)  # Discord scheduled events
+    # The one repeating Discord event of a repeating group (one-off groups get an event per
+    # session instead), a fingerprint of what it was last set to, and the server it lives in
+    # (remembered so unlinking the channel can still remove it).
+    series_event_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    series_event_sig: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    events_guild_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     members: Mapped[list["Member"]] = relationship(
         back_populates="campaign", cascade="all, delete-orphan"
     )
@@ -102,6 +108,8 @@ class Poll(Base):
     recurred_from: Mapped[int | None] = mapped_column(Integer, nullable=True)  # the session this repeats
     anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)    # day of month to keep
     discord_event_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Opened automatically because too many people said they cannot make this earlier session.
+    rescheduled_from: Mapped[int | None] = mapped_column(Integer, nullable=True)
     campaign: Mapped[Campaign] = relationship(back_populates="polls")
     candidates: Mapped[list["Candidate"]] = relationship(
         back_populates="poll", cascade="all, delete-orphan", order_by="Candidate.rank"
@@ -161,6 +169,18 @@ class Notification(Base):
     retry_after = mapped_column(UTCDateTime, nullable=True)  # backoff: not before this time
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(String(300), default=None)
+
+
+class Attendance(Base):
+    """A member's answer to a session's reminder: 'in' or 'out' (can't make it)."""
+
+    __tablename__ = "attendance"
+    __table_args__ = (UniqueConstraint("poll_id", "user_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    poll_id: Mapped[int] = mapped_column(ForeignKey("polls.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    answer: Mapped[str] = mapped_column(String(3))  # in | out
+    answered_at = mapped_column(UTCDateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class Reminder(Base):

@@ -9,11 +9,12 @@ import discord
 from sqlalchemy import select
 
 from .. import db as dbmod
-from ..models import Notification, Poll, PollMessage
+from ..models import Campaign, Notification, Poll, PollMessage
+from . import events
 from .snapshots import PollSnapshot, load_poll_snapshot
 from .views import (
-    build_vote_view, cancelled_embed, confirmed_embed, recurred_embed, session_cancelled_embed,
-    vote_embed,
+    build_vote_view, cancelled_embed, confirmed_embed, recurred_embed, reschedule_embed,
+    session_cancelled_embed, vote_embed,
 )
 
 log = logging.getLogger("chronomancer.outbox")
@@ -103,11 +104,23 @@ class OutboxProcessor:
             db.commit()
 
     @staticmethod
-    def _store_event(poll_id: int, event_id: str | None) -> None:
+    def _store_event(poll_id: int, event_id: str | None, guild_id=None) -> None:
         with dbmod.SessionLocal() as db:
             poll = db.get(Poll, poll_id)
             if poll is not None:
                 poll.discord_event_id = event_id
+                if guild_id is not None:
+                    poll.campaign.events_guild_id = str(guild_id)
+                db.commit()
+
+    @staticmethod
+    def _store_series(campaign_id: int, event_id: str | None, sig: str | None, guild_id=None) -> None:
+        with dbmod.SessionLocal() as db:
+            campaign = db.get(Campaign, campaign_id)
+            if campaign is not None:
+                campaign.series_event_id, campaign.series_event_sig = event_id, sig
+                if guild_id is not None:
+                    campaign.events_guild_id = str(guild_id)
                 db.commit()
 
     @staticmethod
@@ -131,13 +144,15 @@ class OutboxProcessor:
             kind, snap = loaded
             if snap is None:
                 raise Undeliverable("poll no longer exists")
-            if snap.channel_id is None:
+            # Removing events must still work after the channel was unlinked.
+            if snap.channel_id is None and not (kind == "event_sync" and snap.events_guild_id):
                 raise Undeliverable("campaign is not linked to a Discord channel")
             handler = {
                 "vote_open": self._send_vote,
                 "vote_update": self._refresh_vote,
                 "confirmed": self._send_confirmed,
                 "recurred": self._send_recurred,
+                "reschedule": self._send_reschedule,
                 "event_sync": self._sync_event,
                 "cancelled": self._retire_vote,
             }.get(kind)
@@ -184,15 +199,73 @@ class OutboxProcessor:
                            allowed_mentions=discord.AllowedMentions.none())
 
     async def _sync_event(self, snap: PollSnapshot) -> None:
-        """Keep the Discord scheduled event in step with the session: one exists exactly while
-        the session is decided, still ahead, and events are enabled for the campaign."""
-        wanted = (snap.status == "confirmed" and snap.events_enabled
-                  and snap.confirmed_start is not None and snap.confirmed_start > _now())
-        if wanted == bool(snap.discord_event_id):
+        """Keep Discord's scheduled events in step with the group. A repeating group has ONE
+        repeating event, moved to follow its next session; a one-off group has one event per
+        decided session. Everything is removed when events are off or the channel is unlinked."""
+        guild_id = snap.guild_id or snap.events_guild_id
+        series_wanted = snap.events_enabled and snap.linked and snap.cadence != "none"
+        single_wanted = (snap.status == "confirmed" and snap.events_enabled and snap.linked
+                         and snap.cadence == "none"
+                         and snap.confirmed_start is not None and snap.confirmed_start > _now())
+        stale_series = bool(snap.series_event_id) and not series_wanted
+        moved_series = series_wanted and snap.next_start is not None and not (
+            snap.series_event_id and snap.series_event_sig == self._series_sig(snap))
+        replaced_single = series_wanted and bool(snap.discord_event_id)
+        wrong_single = not series_wanted and single_wanted != bool(snap.discord_event_id)
+        if not (stale_series or moved_series or replaced_single or wrong_single):
             return  # already as it should be
-        if self._get_guild is None or snap.guild_id is None:
+        if self._get_guild is None or guild_id is None:
             raise Undeliverable("cannot reach the Discord server")
-        guild = await self._get_guild(snap.guild_id)
+        guild = await self._get_guild(guild_id)
+        if snap.series_event_id and not series_wanted:
+            await events.delete(guild, snap.series_event_id, "Chronomancer: events turned off or group changed")
+            await asyncio.to_thread(self._store_series, snap.campaign_id, None, None)
+            snap.series_event_id = snap.series_event_sig = None
+        if series_wanted:
+            await self._sync_series(guild, snap)
+            if snap.discord_event_id:  # this session's one-off event is replaced by the series
+                await events.delete(guild, snap.discord_event_id, "Chronomancer: now a repeating event")
+                await asyncio.to_thread(self._store_event, snap.poll_id, None)
+            return
+        await self._sync_single(guild, snap, single_wanted)
+
+    @staticmethod
+    def _series_payload(snap: PollSnapshot) -> dict:
+        start = snap.next_start
+        return events.event_payload(
+            name=snap.next_title, start=start, end=start + timedelta(minutes=snap.next_duration),
+            location=snap.campaign_url,
+            description=f"{snap.campaign_name}: scheduled with Chronomancer. Details: {snap.campaign_url}",
+            rule=events.recurrence_rule(snap.cadence, start))
+
+    @classmethod
+    def _series_sig(cls, snap: PollSnapshot) -> str:
+        return events.signature(cls._series_payload(snap))
+
+    async def _sync_series(self, guild, snap: PollSnapshot) -> None:
+        if snap.next_start is None:
+            return  # nothing decided to point at: leave the event as it is
+        payload = self._series_payload(snap)
+        sig = events.signature(payload)
+        if snap.series_event_id and snap.series_event_sig == sig:
+            return
+        perms = guild.me.guild_permissions if guild.me is not None else None
+        if perms is not None and not (perms.create_events or perms.manage_events):
+            raise Undeliverable("missing the Create Events permission")
+        event_id = snap.series_event_id
+        if event_id:
+            try:
+                await events.send(guild, "PATCH", event_id, payload, "Chronomancer: session moved")
+            except discord.NotFound:
+                event_id = None  # deleted by hand: make it again
+        if not event_id:
+            created = await events.send(guild, "POST", None, payload, "Chronomancer: session confirmed")
+            event_id = str(created["id"])
+        await asyncio.to_thread(self._store_series, snap.campaign_id, event_id, sig, guild.id)
+
+    async def _sync_single(self, guild, snap: PollSnapshot, wanted: bool) -> None:
+        if wanted == bool(snap.discord_event_id):
+            return
         if not wanted:
             try:
                 await (await guild.fetch_scheduled_event(int(snap.discord_event_id))).delete(
@@ -212,7 +285,17 @@ class OutboxProcessor:
             description=f"{snap.campaign_name}: scheduled with Chronomancer. Details: {snap.campaign_url}"[:1000],
             reason="Chronomancer: session confirmed",
         )
-        await asyncio.to_thread(self._store_event, snap.poll_id, str(event.id))
+        await asyncio.to_thread(self._store_event, snap.poll_id, str(event.id), guild.id)
+
+    async def _send_reschedule(self, snap: PollSnapshot) -> None:
+        if snap.status != "collecting":  # already closed or cancelled before this went out
+            return
+        channel = await self._get_channel(snap.channel_id)
+        ids = snap.member_ids[:50]
+        await channel.send(
+            content=" ".join(f"<@{i}>" for i in ids) or None, embed=reschedule_embed(snap),
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, roles=False, users=[discord.Object(id=i) for i in ids]))
 
     async def _send_recurred(self, snap: PollSnapshot) -> None:
         if snap.status != "confirmed":  # cancelled or replaced before the announcement went out

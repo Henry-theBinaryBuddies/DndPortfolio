@@ -15,7 +15,7 @@ log = logging.getLogger("chronomancer.commands")
 NO_MENTIONS = discord.AllowedMentions.none()
 
 FREQUENCIES = (("One-off (no repeat)", "none"), ("Weekly", "weekly"), ("Every two weeks", "biweekly"),
-               ("Monthly", "monthly"), ("Quarterly", "quarterly"), ("Annually", "annually"))
+               ("Monthly, same weekday (like the 4th Saturday)", "monthly"), ("Annually", "annually"))
 
 
 def make_duser(interaction: discord.Interaction) -> DUser:

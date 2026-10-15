@@ -139,8 +139,9 @@ def test_the_local_time_survives_a_daylight_saving_change(db):
 
 
 @pytest.mark.parametrize("cadence,expected", [
-    ("weekly", "2026-10-24"), ("biweekly", "2026-10-31"), ("monthly", "2026-11-17"),
-    ("quarterly", "2027-01-17"), ("annually", "2027-10-17"),
+    ("weekly", "2026-10-24"), ("biweekly", "2026-10-31"),
+    ("monthly", "2026-11-21"),  # Oct 17 is the 3rd Saturday; Nov 21 is the 3rd Saturday of November
+    ("annually", "2027-10-17"),
 ])
 def test_each_frequency_picks_its_own_interval(db, cadence, expected):
     campaign, _ = repeating(db, cadence)
@@ -150,22 +151,22 @@ def test_each_frequency_picks_its_own_interval(db, cadence, expected):
     assert nxt.confirmed_start_utc.astimezone(PT).strftime("%Y-%m-%d %H:%M") == f"{expected} 11:00"
 
 
-def test_month_end_dates_do_not_drift(db):
+def test_monthly_sessions_keep_the_same_weekday_of_the_month(db):
+    """Like Discord's own monthly repeat: the 4th Saturday stays the 4th Saturday. A 5th
+    weekday (Jan 31) counts as the 4th, so it never skips a month that lacks a 5th."""
     campaign, _ = repeating(db, "monthly")
-    decided(db, campaign, datetime(2026, 1, 31, 11, tzinfo=UTC), tz="UTC")
+    decided(db, campaign, datetime(2026, 1, 31, 11, tzinfo=UTC), tz="UTC")  # a Saturday
     seen = []
     for _ in range(5):
         last = all_polls(db)[-1]
         services.roll_recurrences(db, now=last.confirmed_start_utc + timedelta(hours=4))
         seen.append(all_polls(db)[-1].confirmed_start_utc.strftime("%m-%d"))
-    assert seen == ["02-28", "03-31", "04-30", "05-31", "06-30"]  # back to the 31st whenever it exists
+    assert seen == ["02-28", "03-28", "04-25", "05-23", "06-27"]  # the 4th Saturday each time
 
 
 @pytest.mark.parametrize("start,cadence,anchor,expected", [
-    (date(2026, 2, 28), "monthly", 31, date(2026, 3, 31)),
-    (date(2026, 4, 30), "monthly", 31, date(2026, 5, 31)),
     (date(2027, 2, 28), "annually", 29, date(2028, 2, 29)),
-    (date(2026, 11, 30), "quarterly", 30, date(2027, 2, 28)),
+    (date(2029, 2, 28), "annually", 29, date(2030, 2, 28)),
 ])
 def test_add_cadence_honours_the_anchor_day(start, cadence, anchor, expected):
     assert add_cadence(start, cadence, anchor) == expected
@@ -334,7 +335,7 @@ def test_changing_the_frequency_replans_the_upcoming_automatic_session(db):
     services.update_campaign(db, campaign, cadence="monthly")
     polls = all_polls(db)
     assert [p.status for p in polls] == ["confirmed", "cancelled", "confirmed"]
-    assert polls[-1].confirmed_start_utc == local(2030, 4, 2, 11).astimezone(UTC)  # a month after the real session
+    assert polls[-1].confirmed_start_utc == local(2030, 4, 6, 11).astimezone(UTC)  # 1st Saturday of the next month
     assert polls[-1].recurred_from == first.id
 
 

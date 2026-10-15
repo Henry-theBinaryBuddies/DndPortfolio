@@ -10,6 +10,7 @@ from .snapshots import PollSnapshot
 
 VOTE_TEMPLATE = r"cm:vote:(?P<poll>\d+):(?P<cand>\d+)"
 CONFIRM_TEMPLATE = r"cm:confirm:(?P<poll>\d+)"
+RSVP_TEMPLATE = r"cm:rsvp:(?P<poll>\d+):(?P<ans>in|out)"
 
 COLOURS = {"dnd": 0xE0A63A, "plain": 0x2F5FD0}
 
@@ -71,6 +72,13 @@ def reminder_embed(s: PollSnapshot) -> discord.Embed:
         colour=_colour(s.theme),
     )
     embed.set_footer(text=s.campaign_name[:100])
+    return embed
+
+
+def reminder_dm_embed(s: PollSnapshot) -> discord.Embed:
+    """The reminder as sent in a direct message: the same text, plus the question the buttons answer."""
+    embed = reminder_embed(s)
+    embed.add_field(name=wording.t(s.theme, "botRsvpAskTitle"), value="\u200b", inline=False)
     return embed
 
 
@@ -136,6 +144,41 @@ class ConfirmButton(DynamicItem[Button], template=CONFIRM_TEMPLATE):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.client.handle_confirm(interaction, self.poll_id)
+
+
+class RsvpButton(DynamicItem[Button], template=RSVP_TEMPLATE):
+    """'I'm in' / 'Can't make it' on the reminder DMs."""
+
+    def __init__(self, poll_id: int, answer: str, label: str = ""):
+        super().__init__(Button(
+            style=discord.ButtonStyle.success if answer == "in" else discord.ButtonStyle.danger,
+            label=label or ("I'm in" if answer == "in" else "Can't make it"),
+            custom_id=f"cm:rsvp:{poll_id}:{answer}"))
+        self.poll_id = poll_id
+        self.answer = answer
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["poll"]), match["ans"], label=item.label or "")
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.client.handle_rsvp(interaction, self.poll_id, self.answer)
+
+
+def build_rsvp_view(s: PollSnapshot) -> View:
+    view = View(timeout=None)
+    view.add_item(RsvpButton(s.poll_id, "in", wording.t(s.theme, "botRsvpIn")[:80]))
+    view.add_item(RsvpButton(s.poll_id, "out", wording.t(s.theme, "botRsvpOut")[:80]))
+    return view
+
+
+def reschedule_embed(s: PollSnapshot) -> discord.Embed:
+    """The group's answers called a session off: here is the poll for a new time."""
+    when = f" on {discord.utils.format_dt(s.rescheduled_from_start, 'F')}" if s.rescheduled_from_start else ""
+    return discord.Embed(
+        title=wording.t(s.theme, "botRescheduleTitle"),
+        description=wording.t(s.theme, "botRescheduleBody", title=_esc(s.display_title), when=when, url=s.url),
+        colour=_colour(s.theme))
 
 
 def build_vote_view(s: PollSnapshot) -> View:

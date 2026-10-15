@@ -40,9 +40,9 @@ class FakeChannel:
         self.by_id = {}
         self.missing_messages = False
 
-    async def send(self, *, embed=None, view=None, allowed_mentions=None):
+    async def send(self, *, content=None, embed=None, view=None, allowed_mentions=None):
         msg = FakeMessage(self, 9000 + len(self.sent), embed, view)
-        msg.allowed_mentions = allowed_mentions
+        msg.content, msg.allowed_mentions = content, allowed_mentions
         self.sent.append(msg)
         self.by_id[msg.id] = msg
         return msg
@@ -68,10 +68,49 @@ class FakeEvent:
         self.guild.events.pop(self.id, None)
 
 
+class FakeHttp:
+    """Discord's REST API for scheduled events, as the repeating-event code calls it. Like the
+    real thing it refuses a request that lacks the fields Discord requires."""
+
+    def __init__(self, guild):
+        self.guild = guild
+        self.calls = []            # (method, event_id, payload)
+        self.reject_rules = False  # answer 400 to anything carrying a recurrence_rule
+
+    async def request(self, route, **kwargs):
+        payload = kwargs.get("json")
+        event_id = route.url.rstrip("/").rsplit("/", 1)[-1] if route.url.count("/scheduled-events/") else None
+        self.calls.append((route.method, event_id, payload))
+        if payload is not None:
+            for field in ("name", "entity_type", "entity_metadata", "scheduled_start_time",
+                          "scheduled_end_time", "privacy_level"):
+                assert field in payload or route.method == "PATCH", f"{field} is required"
+            if self.reject_rules and "recurrence_rule" in payload:
+                raise discord.HTTPException(type("R", (), {"status": 400, "reason": "bad"})(), "bad rule")
+        store = self.guild.series
+        if route.method == "DELETE" and event_id and int(event_id) in self.guild.events:
+            self.guild.events.pop(int(event_id))  # an event made earlier through discord.py's own call
+            return
+        if route.method == "POST":
+            self.guild._next += 1
+            store[str(self.guild._next)] = dict(payload)
+            return {"id": str(self.guild._next)}
+        if event_id not in store:
+            raise discord.NotFound(FakeResponse(), "Unknown Scheduled Event")
+        if route.method == "PATCH":
+            store[event_id].update(payload)
+            return store[event_id]
+        del store[event_id]
+
+
 class FakeGuild:
     """Just enough of discord.Guild for scheduled events."""
 
     def __init__(self, can_create=True):
+        self.id = int(GUILD)
+        self.series = {}  # event id -> fields: events made through the raw API (repeating ones)
+        self._state = type("State", (), {})()
+        self._state.http = FakeHttp(self)
         self.events, self.created, self._next = {}, [], 7000
         self.me = type("Me", (), {"guild_permissions": type(
             "P", (), {"create_events": can_create, "manage_events": False})()})()

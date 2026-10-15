@@ -13,7 +13,7 @@ from .. import db as dbmod, services
 from ..models import Member, Reminder, User
 from .outbox import MAX_ATTEMPTS, retry_delay
 from .snapshots import PollSnapshot, load_poll_snapshot
-from .views import reminder_embed
+from .views import build_rsvp_view, reminder_dm_embed, reminder_embed
 
 log = logging.getLogger("chronomancer.reminders")
 
@@ -127,7 +127,7 @@ class ReminderProcessor:
         for uid in ids:
             try:
                 user = await self._get_user(uid)
-                await user.send(embed=embed)
+                await user.send(embed=reminder_dm_embed(snap), view=build_rsvp_view(snap))
                 ok += 1
             except discord.Forbidden:
                 failed += 1  # their DMs are closed; the channel mention already reached them

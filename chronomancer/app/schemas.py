@@ -28,7 +28,7 @@ class CampaignCreate(BaseModel):
     # guild_id / channel_id are deliberately absent: a campaign is bound to a Discord channel
     # only through the bot (/chronomancer setup), which verifies the caller is in it.
     name: str = Field(min_length=1, max_length=120)
-    cadence: str = Field(default="none", pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
+    cadence: str = Field(default="none", pattern="^(none|weekly|biweekly|monthly|annually)$")
     default_duration_min: int = Field(default=180, ge=30, le=1440)
     min_quorum: int = Field(default=2, ge=1, le=50)
     vote_top_n: int = Field(default=3, ge=1, le=config.MAX_VOTE_TOP_N)
@@ -79,7 +79,7 @@ class AvailabilityPut(BaseModel):
 class CampaignUpdate(BaseModel):
     """Any subset of a campaign's settings; omitted fields are left alone."""
     name: str | None = Field(default=None, max_length=120)
-    cadence: str | None = Field(default=None, pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
+    cadence: str | None = Field(default=None, pattern="^(none|weekly|biweekly|monthly|annually)$")
     min_quorum: int | None = Field(default=None, ge=1, le=50)
     default_duration_min: int | None = Field(default=None, ge=15, le=1440)
     theme: str | None = Field(default=None, pattern="^[a-z0-9_-]{1,32}$")

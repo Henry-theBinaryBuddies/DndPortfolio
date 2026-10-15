@@ -44,6 +44,21 @@ class PollSnapshot:
     auto: bool = False
     events_enabled: bool = True
     discord_event_id: str | None = None
+    # Events: the group's repeat frequency, its one repeating event (if any), the server the
+    # events live in (still known after the channel is unlinked), and the session that event
+    # should currently point at.
+    cadence: str = "none"
+    series_event_id: str | None = None
+    series_event_sig: str | None = None
+    events_guild_id: int | None = None
+    linked: bool = True
+    next_start: datetime | None = None
+    next_duration: int = 0
+    next_title: str = ""
+    # Everyone currently in the group (for mentions), and when the session that a
+    # reschedule poll replaces was due.
+    member_ids: list = field(default_factory=list)
+    rescheduled_from_start: datetime | None = None
     campaign_url: str = ""
     reminder_times: list = field(default_factory=list)  # pending reminder send times
     reminder_offsets: list = field(default_factory=list)  # the campaign's configured timings
@@ -96,6 +111,8 @@ def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
     campaign: Campaign = poll.campaign
     counts = Counter(v.candidate_id for v in db.scalars(select(Vote).where(Vote.poll_id == poll.id)))
     message = db.get(PollMessage, poll.id)
+    upcoming = services.next_session(db, campaign.id)
+    earlier = db.get(Poll, poll.rescheduled_from) if poll.rescheduled_from else None
     organizer = db.scalar(
         select(Member).where(Member.campaign_id == campaign.id, Member.role == "organizer")
     )
@@ -123,6 +140,17 @@ def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
         auto=poll.recurred_from is not None,
         events_enabled=campaign.events_enabled,
         discord_event_id=poll.discord_event_id,
+        cadence=campaign.cadence,
+        series_event_id=campaign.series_event_id,
+        series_event_sig=campaign.series_event_sig,
+        events_guild_id=_int_or_none(campaign.events_guild_id),
+        linked=campaign.channel_id is not None,
+        next_start=upcoming.confirmed_start_utc if upcoming else None,
+        next_duration=upcoming.duration_min if upcoming else 0,
+        next_title=(upcoming.title or campaign.name) if upcoming else "",
+        member_ids=[int(m.user.discord_id) for m in services.active_members(db, campaign.id)
+                    if m.user.discord_id.isdigit()],
+        rescheduled_from_start=earlier.confirmed_start_utc if earlier else None,
         campaign_url=f"{config.PUBLIC_BASE_URL}/campaign.html?id={campaign.id}",
         reminder_times=services.pending_reminder_times(db, poll.id) if poll.status == "confirmed" else [],
         reminder_offsets=list(campaign.reminder_offsets_min or []),
