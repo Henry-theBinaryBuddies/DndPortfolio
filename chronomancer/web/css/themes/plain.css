@@ -1,23 +1,46 @@
+/* Plain: a clean, neutral look for any group. System fonts, soft cards, one blue accent. */
 :root {
-  --bg: #f6f7f9;
+  --bg: #f4f6fa;
   --panel: #ffffff;
-  --border: #d5d9e0;
-  --text: #1f2530;
-  --muted: #667085;
-  --accent: #2f5fd0;
-  --link: #2f5fd0;
-  --danger: #c0392b;
-  --ok: #1f7a3d;
+  --border: #dde2ea;
+  --border-strong: #b9c1cf;
+  --text: #1c2330;
+  --muted: #5b6678;
+  --label: #2b3445;
+  --accent: #2455c9;
+  --link: #2455c9;
+  --focus: #2455c9;
+  --danger: #b42318;
+  --ok: #17703a;
   --input-bg: #ffffff;
-  --button-bg: #2f5fd0;
+  --button-bg: #2455c9;
   --button-text: #ffffff;
-  --cell-bg: #f0f2f6;
-  --heat-color: #2f5fd0;
-  --free: #4caf6a;
-  --no: #e5534b;
-  --maybe: #f2c14e;
-  --radius: 6px;
-  --shadow: 0 1px 3px rgba(16, 24, 40, .1);
-  --font-display: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --button-border: #2455c9;
+  --cell-bg: #eef1f6;
+  --cell-border: #dde2ea;
+  --card-bg: #f8f9fc;
+  --heat-color: #2455c9;
+  --free: #3fae63;
+  --no: #e0483f;
+  --maybe: #d99100;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 6px 18px rgba(16, 24, 40, .06);
+  --header-bg: #ffffff;
+  --header-shadow: 0 1px 2px rgba(16, 24, 40, .06);
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-body: 1rem;
+  --input-shadow: inset 0 1px 2px rgba(16, 24, 40, .06);
+  --button-shadow: 0 1px 2px rgba(16, 24, 40, .2);
+  --button-glow: 0 2px 8px rgba(36, 85, 201, .35);
+  /* a calendar */
+  --brand-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='5' width='18' height='16' rx='3' fill='none' stroke='black' stroke-width='1.9'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round'/%3E%3C/svg%3E");
 }
+header.bar { border-bottom: 1px solid var(--border); }
+h1, h2 { color: var(--text); }
+h1 { font-size: 1.8rem; }
+h2 { font-size: 1.25rem; }
+header.bar .brand { color: var(--accent); font-weight: 700; }
+.panel { border-radius: 14px; }
+button, a.button-link { font-weight: 600; }
+.cell-free, .cell-maybe, .cell-no { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08) !important; }
