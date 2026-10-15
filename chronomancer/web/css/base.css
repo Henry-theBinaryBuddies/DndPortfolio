@@ -73,6 +73,13 @@ button.secondary {
   border-color: var(--border-strong, var(--border)); box-shadow: none; letter-spacing: 0;
 }
 button.secondary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); box-shadow: none; }
+/* for the one action that cannot be undone */
+button.danger {
+  background: transparent; color: var(--danger); border-color: var(--danger);
+  font-family: var(--font-body); box-shadow: none; letter-spacing: 0;
+}
+button.danger:hover:not(:disabled) { background: var(--danger); color: var(--panel); box-shadow: none; filter: none; }
+ul.plain li > button.danger { margin-left: auto; padding: .25rem .8rem; font-size: .9rem; }
 .muted { color: var(--muted); font-size: .95rem; }
 .error { color: var(--danger); min-height: 1.2em; }
 .error:empty { min-height: 0; height: 0; margin: 0; overflow: hidden; } /* no gap while there is nothing to say */
@@ -169,6 +176,8 @@ a.button-link:hover { filter: brightness(1.15); color: var(--button-text); box-s
   .candidate .when { min-width: 0; flex: 1 1 100%; }
   .candidate button { flex: 1 1 auto; width: auto; }
   ul.plain li { gap: .35rem; }
+  /* a destructive button must stay small and out of the way of a thumb, not stretch across the row */
+  ul.plain li > button.danger { width: auto; min-height: 2.25rem; margin-left: auto; font-size: .9rem; }
   ul.legend { gap: .4rem 1rem; padding: .5rem .7rem; }
   /* the grid: seven narrow day columns that fit the screen, dates stacked ("Wed," over "Oct 14") */
   table.grid { border-spacing: 1px; }

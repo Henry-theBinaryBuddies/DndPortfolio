@@ -171,6 +171,25 @@ class Notification(Base):
     error: Mapped[str | None] = mapped_column(String(300), default=None)
 
 
+class DiscordCleanup(Base):
+    """Something to remove from Discord after the group that owned it was deleted: a scheduled
+    event (guild_id + target_id) or the buttons of a vote message (channel_id + target_id). It is
+    written in the same transaction as the delete, because the ids lived on the rows being
+    removed, and delivered by the outbox with retries (it does not need the bot to be online)."""
+
+    __tablename__ = "discord_cleanup"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(8))  # event | message
+    guild_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    target_id: Mapped[str] = mapped_column(String(32))
+    created_at = mapped_column(UTCDateTime, default=lambda: datetime.now(timezone.utc))
+    processed_at = mapped_column(UTCDateTime, nullable=True)
+    retry_after = mapped_column(UTCDateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(String(300), default=None)
+
+
 class Attendance(Base):
     """A member's answer to a session's reminder: 'in' or 'out' (can't make it)."""
 

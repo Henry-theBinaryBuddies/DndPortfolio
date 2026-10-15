@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from . import config
 from .models import (
-    Attendance, Availability, Campaign, Candidate, Member, Notification, Poll, PollMessage, Reminder, User,
+    Attendance, Availability, Campaign, Candidate, DiscordCleanup, Member, Notification, Poll, PollMessage, Reminder, User,
     Vote, WebSession,
 )
 from .scheduling import candidate_starts, generate_slots, rank_candidates
@@ -255,16 +255,33 @@ def unlink_campaign(db: Session, campaign: Campaign) -> Campaign:
     return campaign
 
 
+def queue_discord_cleanup(db: Session, campaign: Campaign) -> None:
+    """Record everything the group left in Discord, so it can still be removed once the rows
+    that knew about it are gone: its one repeating event, the event of every session that still
+    has one, and the live buttons of a vote in progress."""
+    guild = campaign.events_guild_id or campaign.guild_id
+    event_ids = {campaign.series_event_id}
+    event_ids |= set(db.scalars(select(Poll.discord_event_id).where(
+        Poll.campaign_id == campaign.id, Poll.discord_event_id.is_not(None))))
+    for event_id in sorted(e for e in event_ids if e):
+        db.add(DiscordCleanup(kind="event", guild_id=guild, target_id=event_id))
+    for message in db.scalars(select(PollMessage).join(Poll, Poll.id == PollMessage.poll_id).where(
+            Poll.campaign_id == campaign.id, Poll.status == "voting")):
+        db.add(DiscordCleanup(kind="message", channel_id=message.channel_id, target_id=message.message_id))
+
+
 def delete_campaign(db: Session, campaign_id: int) -> None:
     """Remove a campaign and everything hanging off it, including outbox rows and the
     remembered Discord message (otherwise they dangle, and on SQLite a recycled poll id
     would inherit them)."""
     poll_ids = list(db.scalars(select(Poll.id).where(Poll.campaign_id == campaign_id)))
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is not None:
+        queue_discord_cleanup(db, campaign)  # same transaction as the delete below
     if poll_ids:
         for model in (Availability, Notification, PollMessage, Reminder, Attendance):
             db.execute(delete(model).where(model.poll_id.in_(poll_ids)))
     # Polls, candidates, votes and members go with the campaign via the ORM cascade.
-    campaign = db.get(Campaign, campaign_id)
     if campaign is not None:
         db.delete(campaign)
     db.commit()

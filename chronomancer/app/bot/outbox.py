@@ -9,7 +9,7 @@ import discord
 from sqlalchemy import select
 
 from .. import db as dbmod
-from ..models import Campaign, Notification, Poll, PollMessage
+from ..models import Campaign, DiscordCleanup, Notification, Poll, PollMessage
 from . import events
 from .snapshots import PollSnapshot, load_poll_snapshot
 from .views import (
@@ -56,7 +56,64 @@ class OutboxProcessor:
                 for nid in ids:
                     await self._handle(nid)
                 handled += len(ids)
+            handled += await self._drain_cleanup()
         return handled
+
+    # -- clearing out Discord after a group was deleted --
+
+    @staticmethod
+    def _cleanup_due() -> list:
+        with dbmod.SessionLocal() as db:
+            now = _now()
+            rows = db.scalars(select(DiscordCleanup).where(DiscordCleanup.processed_at.is_(None))
+                              .order_by(DiscordCleanup.id).limit(BATCH * 4)).all()
+            return [(r.id, r.kind, r.guild_id, r.channel_id, r.target_id) for r in rows
+                    if r.retry_after is None or r.retry_after <= now][:BATCH]
+
+    @staticmethod
+    def _cleanup_finish(cid: int, error: str | None, done: bool) -> None:
+        with dbmod.SessionLocal() as db:
+            row = db.get(DiscordCleanup, cid)
+            if row is None:
+                return
+            row.attempts += 1
+            row.error = error[:300] if error else None
+            if done or row.attempts >= MAX_ATTEMPTS:
+                row.processed_at, row.retry_after = _now(), None
+            else:
+                row.retry_after = _now() + retry_delay(row.attempts)
+            db.commit()
+
+    async def _drain_cleanup(self) -> int:
+        """Remove the Discord events and retire the vote buttons of deleted groups. Safe to
+        repeat: an event or message that is already gone counts as done."""
+        rows = await asyncio.to_thread(self._cleanup_due)
+        for cid, kind, guild_id, channel_id, target_id in rows:
+            try:
+                if kind == "event":
+                    if not guild_id or self._get_guild is None:
+                        raise Undeliverable("the Discord server is not known")
+                    guild = await self._get_guild(int(guild_id))
+                    await events.delete(guild, target_id, "Chronomancer: group deleted")
+                else:
+                    if not channel_id:
+                        raise Undeliverable("the channel is not known")
+                    where = await self._get_channel(int(channel_id))
+                    try:
+                        await where.get_partial_message(int(target_id)).edit(
+                            embed=discord.Embed(title="Poll closed",
+                                                description="This group was deleted, so voting is over."),
+                            view=None)
+                    except discord.NotFound:
+                        pass  # the message is already gone
+                await asyncio.to_thread(self._cleanup_finish, cid, None, True)
+            except (Undeliverable, discord.Forbidden, discord.NotFound) as exc:
+                log.warning("cleanup %s skipped: %s", cid, exc)  # retrying cannot help
+                await asyncio.to_thread(self._cleanup_finish, cid, f"{type(exc).__name__}: {exc}", True)
+            except Exception as exc:  # noqa: BLE001  (network trouble: back off and try again)
+                log.warning("cleanup %s failed: %s: %s", cid, type(exc).__name__, exc)
+                await asyncio.to_thread(self._cleanup_finish, cid, f"{type(exc).__name__}: {exc}", False)
+        return len(rows)
 
     # -- database work, always on a worker thread --
 
@@ -107,25 +164,39 @@ class OutboxProcessor:
     def _store_event(poll_id: int, event_id: str | None, guild_id=None) -> None:
         with dbmod.SessionLocal() as db:
             poll = db.get(Poll, poll_id)
-            if poll is not None:
-                poll.discord_event_id = event_id
-                if guild_id is not None:
-                    poll.campaign.events_guild_id = str(guild_id)
-                db.commit()
+            if poll is None:
+                if event_id is not None:  # the group was deleted while this event was being made
+                    db.add(DiscordCleanup(kind="event", guild_id=str(guild_id) if guild_id else None,
+                                          target_id=str(event_id)))
+                    db.commit()
+                return
+            poll.discord_event_id = event_id
+            if guild_id is not None:
+                poll.campaign.events_guild_id = str(guild_id)
+            db.commit()
 
     @staticmethod
     def _store_series(campaign_id: int, event_id: str | None, sig: str | None, guild_id=None) -> None:
         with dbmod.SessionLocal() as db:
             campaign = db.get(Campaign, campaign_id)
-            if campaign is not None:
-                campaign.series_event_id, campaign.series_event_sig = event_id, sig
-                if guild_id is not None:
-                    campaign.events_guild_id = str(guild_id)
-                db.commit()
+            if campaign is None:
+                if event_id is not None:  # the group was deleted while this event was being made
+                    db.add(DiscordCleanup(kind="event", guild_id=str(guild_id) if guild_id else None,
+                                          target_id=str(event_id)))
+                    db.commit()
+                return
+            campaign.series_event_id, campaign.series_event_sig = event_id, sig
+            if guild_id is not None:
+                campaign.events_guild_id = str(guild_id)
+            db.commit()
 
     @staticmethod
     def _store_message(poll_id: int, channel_id: int, message_id: int) -> None:
         with dbmod.SessionLocal() as db:
+            if db.get(Poll, poll_id) is None:  # deleted while the vote message was being posted
+                db.add(DiscordCleanup(kind="message", channel_id=str(channel_id), target_id=str(message_id)))
+                db.commit()
+                return
             row = db.get(PollMessage, poll_id)
             if row is None:
                 db.add(PollMessage(poll_id=poll_id, channel_id=str(channel_id),

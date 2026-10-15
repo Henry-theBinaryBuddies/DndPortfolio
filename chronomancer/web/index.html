@@ -41,6 +41,7 @@
       <div class="panel">
         <h2 data-t="campaigns">Your Campaigns</h2>
         <ul id="campaign-list" class="plain"></ul>
+        <p id="delete-error" class="error" role="alert"></p>
       </div>
       <div class="panel">
         <h2 data-t="createCampaign">Create</h2>
@@ -109,8 +110,31 @@
     function renderCampaigns() {
       $("campaign-list").replaceChildren(...campaigns.map((c) =>
         el("li", {}, el("a", { href: "/campaign.html?id=" + c.id }, c.name),
-          el("span", { class: "badge" }, c.my_role === "organizer" ? Theme.t("organizer") : Theme.t("member")))));
+          el("span", { class: "badge" }, c.my_role === "organizer" ? Theme.t("organizer") : Theme.t("member")),
+          c.my_role === "organizer"
+            ? el("button", { type: "button", class: "danger", onclick: (e) => deleteCampaign(c, e.currentTarget) },
+                Theme.t("deleteLabel"))
+            : null)));
       if (!campaigns.length) $("campaign-list").append(el("li", { class: "muted" }, "None yet."));
+    }
+
+    // Only the organizer sees the button (the server checks again). Confirm first, lock the button while
+    // the request runs, and treat "not found" as already done (a double click, or deleted elsewhere).
+    async function deleteCampaign(c, button) {
+      if (!confirm(`${Theme.t("deleteConfirmPre")} "${c.name}"? ${Theme.t("deleteConfirmPost")}`)) return;
+      $("delete-error").textContent = "";
+      button.disabled = true;
+      try {
+        await Api.del("/api/campaigns/" + c.id);
+      } catch (e) {
+        if (e.status !== 404) {
+          $("delete-error").textContent = e.message;
+          button.disabled = false;
+          return;
+        }
+      }
+      campaigns = campaigns.filter((x) => x.id !== c.id);
+      renderCampaigns();
     }
 
     $("login-form").addEventListener("submit", async (e) => {
