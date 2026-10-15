@@ -1,0 +1,17 @@
+Today was a much better experience.
+Had to get Claude to explain everything that was going on,
+but once I had a better understanding of the scope of the project it was
+easier to instruct Claude on what kind of improvements to make. Live testing
+on discord was difficult, simply due to the limitation of the program (specifically 15
+minute increments for the scheduling forced manual tests to be robust and test
+all feature simultaneously otherwise be forced to wait another 15 minutes).
+
+Was able to get aesthetics of UI cleaned up well enough. Could spend more time on this,
+but not worth it with the time constraints.
+
+The most hands on things that I was able to learn in this process was the discord API integration,
+handling hosting for the databasing embedded in the website, the limitations of the discord API,
+and manual testing in a live environment.
+
+Moving forward, will definitely have a more iterative approach. It's far too easy to get lost in the
+weeds when you just let Claude handle the entire process.
