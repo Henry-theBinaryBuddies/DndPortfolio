@@ -75,6 +75,7 @@ Wait a few minutes, then `nslookup <your address>` should show the IP.
 In the console, click **SSH** next to the VM. Then:
 
 ```bash
+sudo apt-get update && sudo apt-get install -y git      # this VM image does not include git
 git clone https://github.com/<you>/<repo>.git
 cd <repo>/chronomancer
 sudo bash deploy/setup-vm.sh
