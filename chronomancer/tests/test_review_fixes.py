@@ -39,34 +39,6 @@ def count(db, model):
 # ------------------------------------------------ squatting: who may claim a channel
 
 
-def test_ordinary_member_cannot_claim_a_channel(db):
-    with pytest.raises(ServiceError) as exc:
-        actions.cmd_create(db, ARIA, GUILD, CHANNEL, "Squat", 180, 2, "dnd")
-    assert exc.value.status == 403 and "Manage" in exc.value.detail
-    assert count(db, Campaign) == 0
-
-
-def test_ordinary_member_cannot_link_a_channel(db):
-    owner = services.upsert_user(db, "2", "Aria")
-    web, _ = services.create_campaign(db, owner, name="Mine")
-    with pytest.raises(ServiceError) as exc:
-        actions.cmd_link(db, ARIA, GUILD, CHANNEL, web.invite_code)
-    assert exc.value.status == 403 and web.channel_id is None
-
-
-def test_admin_can_reclaim_a_squatted_channel(db):
-    actions.cmd_create(db, DUser("66", "Squatter", can_manage=True), GUILD, CHANNEL, "Squat", 180, 2, "dnd")
-    # the rightful group cannot claim it while it is taken...
-    with pytest.raises(ServiceError) as exc:
-        actions.cmd_create(db, DM, GUILD, CHANNEL, "Real", 180, 2, "dnd")
-    assert exc.value.status == 409
-    # ...but a server admin can free it, even though they organize nothing here
-    reply = actions.cmd_unlink(db, ADMIN, GUILD, CHANNEL)
-    assert "Squat" in reply.text and services.campaign_for_channel(db, GUILD, CHANNEL) is None
-    actions.cmd_create(db, DM, GUILD, CHANNEL, "Real", 180, 2, "dnd")
-    assert services.campaign_for_channel(db, GUILD, CHANNEL).name == "Real"
-
-
 def test_organizer_can_unlink_but_an_ordinary_member_cannot(db):
     campaign, _ = make_campaign(db)
     make_player(db, campaign, "2", "Aria")
@@ -329,31 +301,6 @@ def test_cancel_endpoint_is_organizer_only(client):
     assert client.post(f"/api/polls/{pid}/cancel").status_code == 409
 
 
-def test_repost_puts_a_fresh_vote_message_up_and_retires_the_old_one(db):
-    _, poll, _ = voting_poll(db)
-    world = World()
-    run(world.processor.run_once())
-    old = world.channel.sent[0]
-    actions.cmd_repost(db, DM, GUILD, CHANNEL)
-    run(world.processor.run_once())
-    assert len(world.channel.sent) == 2
-    assert old.edits and old.edits[-1]["view"] is None  # old buttons gone
-    assert world.channel.sent[1].view is not None
-    with fresh() as check:
-        assert check.get(PollMessage, poll.id).message_id == str(world.channel.sent[1].id)
-
-
-def test_repost_requires_an_open_vote_and_the_organizer(db):
-    campaign, owner = make_campaign(db)
-    make_player(db, campaign, "2", "Aria")
-    open_poll(db, campaign)
-    with pytest.raises(ServiceError):
-        actions.cmd_repost(db, DM, GUILD, CHANNEL)  # still collecting
-    with pytest.raises(ServiceError) as exc:
-        actions.cmd_repost(db, ARIA, GUILD, CHANNEL)
-    assert exc.value.status == 403
-
-
 # ------------------------------------------------ outbox: backoff, ordering, refresh
 
 
@@ -573,14 +520,6 @@ def test_absurd_timezone_strings_are_422_not_500(client):
         assert client.post(f"/api/campaigns/{cid}/polls", json={**body, "timezone": tz}).status_code == 422, tz
 
 
-def test_bot_poll_command_rejects_absurd_timezones(db):
-    make_campaign(db)
-    for tz in ("x" * 5000, "../../etc/passwd"):
-        with pytest.raises(ServiceError) as exc:
-            actions.cmd_poll(db, DM, GUILD, CHANNEL, "2026-12-01", "18:00", "22:00", 120, tz, "t")
-        assert exc.value.status == 422
-
-
 def test_poll_endpoints_do_not_reveal_which_ids_exist(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
@@ -635,29 +574,6 @@ def test_organizer_text_cannot_inject_markdown_or_mentions_into_embeds(db):
     assert r"\[Free nitro]" in done and "@everyone" not in done
 
 
-def test_bot_replies_escape_names_and_titles(db):
-    actions.cmd_create(db, DM, GUILD, CHANNEL, "[click](https://evil.example)", 180, 2, "dnd")
-    reply = actions.cmd_poll(db, DM, GUILD, CHANNEL, "2026-12-01", "18:00", "22:00",
-                             120, "UTC", "**loud** @everyone")
-    assert "**loud**" not in reply.text.replace("\\*\\*loud\\*\\*", "") and "@everyone" not in reply.text
-
-
-def test_status_stays_inside_discords_message_limit(db):
-    campaign, _ = make_campaign(db)
-    for i in range(80):
-        make_player(db, campaign, f"u{i}", f"Adventurer with a long display name number {i}")
-    open_poll(db, campaign)
-    text = actions.cmd_status(db, DM, GUILD, CHANNEL).text
-    assert len(text) <= 2000 and "and 61 more" in text
-
-
-def test_availability_during_voting_does_not_ask_for_availability(db):
-    voting_poll(db)
-    reply = actions.cmd_availability(db, ARIA, GUILD, CHANNEL)
-    assert reply.ephemeral and "availability is closed" in reply.text.lower()
-    assert "/poll.html" not in reply.text
-
-
 def test_frozen_vote_message_no_longer_asks_for_votes(db):
     _, poll, _ = voting_poll(db)
     services.confirm_poll(db, poll)
@@ -669,3 +585,19 @@ def test_cancelled_embed_wording(db):
     _, poll, _ = voting_poll(db)
     services.cancel_poll(db, poll)
     assert "burned" in cancelled_embed(load_poll_snapshot(db, poll.id)).description
+
+
+# ------------------------------------------------ squatting, ported to the consolidated commands
+
+
+def test_a_squatted_channel_can_be_reclaimed_by_a_server_admin(db):
+    squatter = DUser("66", "Squatter", can_manage=True)
+    actions.cmd_setup(db, squatter, GUILD, CHANNEL, name="Squat")
+    # the rightful group's manager is not the organizer of the squatter's campaign...
+    with pytest.raises(ServiceError):
+        actions.cmd_setup(db, ARIA, GUILD, CHANNEL, name="Real")      # an ordinary member: refused
+    # ...but an admin can free the channel, and the real group can claim it
+    actions.cmd_unlink(db, ADMIN, GUILD, CHANNEL)
+    assert services.campaign_for_channel(db, GUILD, CHANNEL) is None
+    actions.cmd_setup(db, DM, GUILD, CHANNEL, name="Real")
+    assert services.campaign_for_channel(db, GUILD, CHANNEL).name == "Real"

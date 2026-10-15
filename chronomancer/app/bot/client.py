@@ -8,7 +8,7 @@ from .. import config
 from . import actions, commands
 from .outbox import OutboxProcessor
 from .reminders import ReminderProcessor
-from .views import ConfirmButton, NextButton, VoteButton, vote_embed
+from .views import ConfirmButton, VoteButton, vote_embed
 
 log = logging.getLogger("chronomancer.bot")
 
@@ -34,7 +34,7 @@ class ChronomancerBot(discord.Client):
         self.tree.on_error = self._on_command_error
 
     async def setup_hook(self) -> None:
-        self.add_dynamic_items(VoteButton, ConfirmButton, NextButton)
+        self.add_dynamic_items(VoteButton, ConfirmButton)
         commands.register(self.tree)
         # A failed sync (rate limit, transient API error) must not stop the bot: the commands
         # synced last time keep working, and buttons/outbox do not depend on the sync.
@@ -97,24 +97,6 @@ class ChronomancerBot(discord.Client):
         except Exception:  # noqa: BLE001
             log.exception("vote button failed")
             await self._apologise(interaction)
-
-    async def handle_next(self, interaction: discord.Interaction, poll_id: int):
-        try:
-            outcome = await asyncio.to_thread(
-                actions.with_db, actions.next_click, commands.make_duser(interaction), poll_id,
-                interaction.guild_id, interaction.channel_id,
-            )
-            # Success is announced to the channel (the group needs to know); errors stay private.
-            await interaction.response.send_message(outcome.text, ephemeral=not outcome.ok)
-        except Exception:  # noqa: BLE001
-            log.exception("next-poll button failed")
-            await self._apologise(interaction)
-            return
-        if outcome.ok and interaction.message is not None:
-            try:  # the button has done its job
-                await interaction.message.edit(view=None)
-            except discord.HTTPException:
-                pass
 
     async def handle_confirm(self, interaction: discord.Interaction, poll_id: int):
         try:

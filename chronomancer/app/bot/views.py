@@ -10,7 +10,6 @@ from .snapshots import PollSnapshot
 
 VOTE_TEMPLATE = r"cm:vote:(?P<poll>\d+):(?P<cand>\d+)"
 CONFIRM_TEMPLATE = r"cm:confirm:(?P<poll>\d+)"
-NEXT_TEMPLATE = r"cm:next:(?P<poll>\d+)"
 
 COLOURS = {"dnd": 0xE0A63A, "plain": 0x2F5FD0}
 
@@ -130,28 +129,6 @@ class ConfirmButton(DynamicItem[Button], template=CONFIRM_TEMPLATE):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.client.handle_confirm(interaction, self.poll_id)
-
-
-class NextButton(DynamicItem[Button], template=NEXT_TEMPLATE):
-    """Under a confirmed session of a recurring campaign: the organizer opens the next poll."""
-
-    def __init__(self, poll_id: int, label: str = "Open next poll"):
-        super().__init__(Button(style=discord.ButtonStyle.secondary, label=label,
-                                custom_id=f"cm:next:{poll_id}"))
-        self.poll_id = poll_id
-
-    @classmethod
-    async def from_custom_id(cls, interaction, item, match, /):
-        return cls(int(match["poll"]), label=item.label or "Open next poll")
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.client.handle_next(interaction, self.poll_id)
-
-
-def build_next_view(s: PollSnapshot) -> View:
-    view = View(timeout=None)
-    view.add_item(NextButton(s.poll_id, label=wording.t(s.theme, "botNextButton")[:80]))
-    return view
 
 
 def build_vote_view(s: PollSnapshot) -> View:

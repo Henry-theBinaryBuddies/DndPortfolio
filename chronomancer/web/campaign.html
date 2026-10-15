@@ -20,19 +20,31 @@
       <h1 id="name"></h1>
       <p id="invite" class="muted" hidden></p>
       <p id="unlinked" class="muted" hidden></p>
-      <label id="freq-row" hidden><span data-t="frequency">How often?</span>
-        <select id="frequency">
-          <option value="none" data-t="freq_none">One-off</option>
-          <option value="weekly" data-t="freq_weekly">Weekly</option>
-          <option value="biweekly" data-t="freq_biweekly">Every two weeks</option>
-          <option value="monthly" data-t="freq_monthly">Monthly</option>
-          <option value="quarterly" data-t="freq_quarterly">Quarterly</option>
-          <option value="annually" data-t="freq_annually">Annually</option>
-        </select>
-        <span id="freq-note" class="muted"></span>
-      </label>
       <p id="load-error" class="error" role="alert"></p>
     </div>
+
+    <div class="panel" id="settings" hidden>
+      <h2 data-t="settings">Settings</h2>
+      <form id="settings-form" class="row">
+        <label><span data-t="frequency">How often?</span>
+          <select name="cadence">
+            <option value="none" data-t="freq_none">One-off</option>
+            <option value="weekly" data-t="freq_weekly">Weekly</option>
+            <option value="biweekly" data-t="freq_biweekly">Every two weeks</option>
+            <option value="monthly" data-t="freq_monthly">Monthly</option>
+            <option value="quarterly" data-t="freq_quarterly">Quarterly</option>
+            <option value="annually" data-t="freq_annually">Annually</option>
+          </select>
+        </label>
+        <label>Session length (min) <input name="duration" type="number" min="15" max="1440" required></label>
+        <label>Minimum free players <input name="quorum" type="number" min="1" max="50" required></label>
+        <label>Timezone <input name="timezone" required maxlength="64" placeholder="America/Los_Angeles"></label>
+        <label>Remind before (like 1d, 1h, 15m) <input name="reminders" placeholder="1d, 1h"></label>
+        <button type="submit" data-t="save">Save</button>
+        <span id="settings-msg" class="ok"></span>
+      </form>
+    </div>
+
     <div class="panel">
       <h2 data-t="party">Party</h2>
       <ul id="members" class="plain"></ul>
@@ -47,15 +59,12 @@
         <label>Title <input name="title" maxlength="120" placeholder="Session 5"></label>
         <label><span data-t="weekStart">Week starting</span>
           <input name="date_start" type="date" required>
-          <span class="muted" id="week-hint">Players mark seven days from this date.</span>
         </label>
         <label>Earliest start <input name="window_start" type="time" value="18:00" required></label>
         <label>Latest end <input name="window_end" type="time" value="23:00" required></label>
-        <label>Length (min) <input name="duration" type="number" min="15" max="1440" required></label>
-        <label>Minimum free players <input name="quorum" type="number" min="1" max="50" required></label>
         <button type="submit" data-t="createPoll">Create</button>
       </form>
-      <p class="muted">Times are in your timezone: <span id="tz"></span>. Players see them in theirs.</p>
+      <p class="muted">Players mark the seven days from the start date, in <span id="tz"></span> time shown in their own timezone. Length, minimum players and timezone come from the settings above.</p>
       <p id="poll-error" class="error"></p>
     </div>
   </main>
@@ -64,10 +73,22 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const id = new URLSearchParams(location.search).get("id");
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    $("tz").textContent = tz;
     let campaign;
-    let formReady = false; // defaults go in once; a later re-render must not overwrite typing
+    let formsReady = false; // defaults go in once; a later re-render must not overwrite typing
+
+    // "1d, 1h" <-> [1440, 60]
+    function parseReminders(text) {
+      const t = text.trim().toLowerCase();
+      if (!t || t === "off" || t === "none") return [];
+      return t.split(/[,;\s]+/).map((tok) => {
+        const m = /^(\d+)([dhm])$/.exec(tok);
+        if (!m) throw new Error(`I could not read "${tok}". Use values like 1d, 2h or 30m.`);
+        return +m[1] * { d: 1440, h: 60, m: 1 }[m[2]];
+      });
+    }
+    function showReminders(minutes) {
+      return minutes.map((m) => (m % 1440 === 0 ? m / 1440 + "d" : m % 60 === 0 ? m / 60 + "h" : m + "m")).join(", ");
+    }
 
     async function load() {
       try {
@@ -83,6 +104,7 @@
       $("load-error").textContent = "";
       document.title = campaign.name + " - Chronomancer";
       $("name").textContent = campaign.name;
+      $("tz").textContent = campaign.timezone;
       const organizer = campaign.my_role === "organizer";
       if (organizer) {
         $("invite").hidden = false;
@@ -93,19 +115,17 @@
       if (organizer && !campaign.discord_linked) {
         $("unlinked").textContent = Theme.t("notLinked") + " " + campaign.invite_code;
       }
+      $("settings").hidden = !organizer;
       $("new-poll").hidden = !organizer;
-      const f = $("poll-form");
-      if (!formReady) {
-        f.duration.value = campaign.default_duration_min;
-        f.quorum.value = campaign.min_quorum;
-        // For a group that meets regularly, start from the week after the last session.
-        if (campaign.next_week_start) f.date_start.value = campaign.next_week_start;
-        formReady = true;
+      if (!formsReady) {
+        const s = $("settings-form");
+        s.cadence.value = campaign.cadence;
+        s.duration.value = campaign.default_duration_min;
+        s.quorum.value = campaign.min_quorum;
+        s.timezone.value = campaign.timezone;
+        s.reminders.value = showReminders(campaign.reminder_offsets_min);
+        formsReady = true;
       }
-      $("freq-row").hidden = !organizer;
-      $("frequency").value = campaign.cadence;
-      $("freq-note").textContent = campaign.next_week_start
-        ? "Next poll suggested for the week of " + campaign.next_week_start : "";
 
       $("members").replaceChildren(...campaign.members.map((m) => {
         const box = organizer ? el("input", {
@@ -133,30 +153,32 @@
       if (!campaign.polls.length) $("polls").append(el("li", { class: "muted" }, "None yet."));
     }
 
+    $("settings-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      $("settings-msg").textContent = "";
+      try {
+        campaign = await Api.patch(`/api/campaigns/${id}`, {
+          cadence: f.get("cadence"), default_duration_min: +f.get("duration"),
+          min_quorum: +f.get("quorum"), timezone: f.get("timezone").trim(),
+          reminder_offsets_min: parseReminders(f.get("reminders")),
+        });
+        $("tz").textContent = campaign.timezone;
+        $("load-error").textContent = "";
+        $("settings-msg").textContent = Theme.t("saved");
+      } catch (err) { $("load-error").textContent = err.message; }
+    });
+
     $("poll-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = new FormData(e.target);
       try {
         const p = await Api.post(`/api/campaigns/${id}/polls`, {
-          title: f.get("title"), timezone: tz,
-          date_start: f.get("date_start"),
+          title: f.get("title"), date_start: f.get("date_start"),
           window_start: f.get("window_start") + ":00", window_end: f.get("window_end") + ":00",
-          duration_min: +f.get("duration"), min_quorum: +f.get("quorum"),
         });
         location.href = "/poll.html?id=" + p.id;
       } catch (err) { $("poll-error").textContent = err.message; }
-    });
-    $("frequency").addEventListener("change", async (e) => {
-      try {
-        const r = await Api.put(`/api/campaigns/${id}/cadence`, { cadence: e.target.value });
-        campaign.cadence = r.cadence; campaign.next_week_start = r.next_week_start;
-        $("freq-note").textContent = r.next_week_start
-          ? "Next poll suggested for the week of " + r.next_week_start : "";
-        $("load-error").textContent = "";
-      } catch (err) {
-        e.target.value = campaign.cadence; // the server said no: show the truth again
-        $("load-error").textContent = err.message;
-      }
     });
     Theme.ready.then(load);
     window.addEventListener("themechange", () => campaign && load());

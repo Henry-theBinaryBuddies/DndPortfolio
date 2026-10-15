@@ -1,10 +1,18 @@
 """Bot behaviour as plain synchronous functions over a database session. The Discord layer
-(commands.py, client.py) is a thin wrapper, so everything here is testable without Discord."""
+(commands.py, client.py) is a thin wrapper, so everything here is testable without Discord.
+
+Commands (what the group sees):
+  /schedule            anyone: join, see what is happening, get your link
+  /chronomancer setup  create or reconfigure the campaign in this channel
+  /chronomancer poll   open a poll for one week
+  /chronomancer advance  close the poll into a vote, or decree the winner
+  /chronomancer cancel   cancel the open poll or an upcoming session
+  /chronomancer unlink   free this channel
+"""
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, time
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
-import re
+from zoneinfo import ZoneInfo
 
 import discord
 from sqlalchemy import select
@@ -27,11 +35,6 @@ class DUser:
     can_manage: bool = False
 
 
-def _esc(text: str) -> str:
-    """Organizer-controlled text must not inject markdown into bot messages."""
-    return discord.utils.escape_markdown(discord.utils.escape_mentions(text))
-
-
 @dataclass(frozen=True)
 class Reply:
     text: str
@@ -51,27 +54,40 @@ def with_db(fn, *args):
         return fn(db, *args)
 
 
+def esc(text: str) -> str:
+    """Organizer-controlled text must not inject markdown or mentions into bot messages."""
+    return discord.utils.escape_markdown(discord.utils.escape_mentions(text))
+
+
 def error_text(exc: ServiceError) -> str:
     d = exc.detail
-    if isinstance(d, dict):
-        extra = ""
-        if "considered" in d:
-            extra = (f" ({d['considered']} start times considered; {d.get('dropped_required', 0)} "
-                     f"lost a required player, {d.get('dropped_quorum', 0)} had too few free players)")
-        return str(d.get("message", "request failed")) + extra
-    return str(d)
+    if not isinstance(d, dict):
+        return str(d)
+    extra = ""
+    if "considered" in d:
+        extra = (f" ({d['considered']} start times considered; {d.get('dropped_required', 0)} "
+                 f"lost a required player, {d.get('dropped_quorum', 0)} had too few free players)")
+    return str(d.get("message", "request failed")) + extra
+
+
+# ---------------------------------------------------------------- helpers
 
 
 def _user(db: Session, du: DUser):
     return services.upsert_user(db, du.id, du.name, du.avatar_url)
 
 
-def _here(db: Session, guild_id, channel_id):
+def _in_channel(guild_id, channel_id) -> None:
     if not guild_id or not channel_id:
         raise ServiceError(400, "Use this command in a server channel.")
+
+
+def _here(db: Session, guild_id, channel_id):
+    _in_channel(guild_id, channel_id)
     campaign = services.campaign_for_channel(db, str(guild_id), str(channel_id))
     if campaign is None:
-        raise ServiceError(404, "No campaign lives in this channel yet. Use /chronomancer create here first.")
+        raise ServiceError(404, "No campaign lives in this channel yet. "
+                                "Use /chronomancer setup here to create one.")
     return campaign
 
 
@@ -83,189 +99,24 @@ def _require_organizer(db: Session, campaign, user):
     return member
 
 
-def _poll_url(poll: Poll) -> str:
+def _is_organizer(db: Session, campaign, user) -> bool:
+    member = services.get_member(db, campaign.id, user.id)
+    return member is not None and member.role == "organizer"
+
+
+def poll_url(poll: Poll) -> str:
     return f"{config.PUBLIC_BASE_URL}/poll.html?id={poll.id}"
 
 
-# ---------------------------------------------------------------- slash commands
+def campaign_url(campaign_id: int) -> str:
+    return f"{config.PUBLIC_BASE_URL}/campaign.html?id={campaign_id}"
 
 
-def cmd_create(db: Session, du: DUser, guild_id, channel_id, name: str, duration: int,
-               quorum: int, theme: str, frequency: str = "none") -> Reply:
-    if not guild_id or not channel_id:
-        raise ServiceError(400, "Use this command in a server channel.")
-    if not du.can_manage:
-        raise ServiceError(403, wording.t(theme, "botNeedManage"))
-    name = name.strip()
-    if not 1 <= len(name) <= 120:
-        raise ServiceError(422, "The name must be 1 to 120 characters.")
-    if theme not in wording.available_themes():
-        raise ServiceError(422, "Unknown theme.")
-    user = _user(db, du)
-    campaign, _ = services.create_campaign(
-        db, user, name=name, guild_id=str(guild_id), channel_id=str(channel_id),
-        default_duration_min=duration, min_quorum=quorum, theme=theme, cadence=frequency,
-    )
-    return Reply(wording.t(campaign.theme, "botCampaignCreated", name=_esc(campaign.name)))
-
-
-def cmd_frequency(db: Session, du: DUser, guild_id, channel_id, frequency: str) -> Reply:
-    """Set how often the group meets (weekly, biweekly, monthly, quarterly, annually, none)."""
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    _require_organizer(db, campaign, user)
-    services.set_cadence(db, campaign, frequency)
-    label = wording.words(campaign.theme).get("freq_" + campaign.cadence, campaign.cadence)
-    text = wording.t(campaign.theme, "botFrequencySet", frequency=label)
-    nxt = services.suggest_next_week(db, campaign)
-    if nxt:
-        text += " " + wording.t(campaign.theme, "botNextWeek", date=nxt.strftime("%A %B %d, %Y"))
-    return Reply(text)
-
-
-def cmd_link(db: Session, du: DUser, guild_id, channel_id, code: str) -> Reply:
-    if not guild_id or not channel_id:
-        raise ServiceError(400, "Use this command in a server channel.")
-    if not du.can_manage:
-        raise ServiceError(403, wording.t(wording.DEFAULT_THEME, "botNeedManage"))
-    user = _user(db, du)
-    campaign = services.link_campaign(db, user, code.strip(), str(guild_id), str(channel_id))
-    return Reply(wording.t(campaign.theme, "botCampaignLinked", name=_esc(campaign.name)))
-
-
-def cmd_unlink(db: Session, du: DUser, guild_id, channel_id) -> Reply:
-    """Free this channel. The campaign's organizer may, and so may anyone who manages the
-    channel (so a server admin can always reclaim a channel)."""
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    member = services.get_member(db, campaign.id, user.id)
-    if not du.can_manage and (member is None or member.role != "organizer"):
-        raise ServiceError(403, wording.t(campaign.theme, "botNeedManage"))
-    services.unlink_campaign(db, campaign)
-    return Reply(wording.t(campaign.theme, "botCampaignUnlinked", name=_esc(campaign.name)))
-
-
-def _parse_day(value: str, label: str) -> date:
-    try:
-        return date.fromisoformat(value.strip())
-    except ValueError:
-        raise ServiceError(422, f"{label} must look like 2026-10-24.")
-
-
-def _parse_time(value: str, label: str) -> time:
-    try:
-        return datetime.strptime(value.strip(), "%H:%M").time()
-    except ValueError:
-        raise ServiceError(422, f"{label} must look like 18:00 (24-hour).")
-
-
-def cmd_poll(db: Session, du: DUser, guild_id, channel_id, week_start: str | None,
-             start: str, end: str, length: int | None, tz: str, title: str,
-             quorum: int | None = None) -> Reply:
-    """Open a poll for one week: the seven days from week_start. Without week_start, use the
-    week the campaign's meeting frequency suggests after the last confirmed session."""
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    _require_organizer(db, campaign, user)
-    if week_start and week_start.strip():
-        first_day = _parse_day(week_start, "Week start")
-    else:
-        first_day = services.suggest_next_week(db, campaign)
-        if first_day is None:
-            raise ServiceError(422, "Which week? Give week_start, the first of the seven days, like 2026-10-26.")
-    tz = tz.strip() or "UTC"
-    if len(tz) > 64:
-        raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
-    try:
-        ZoneInfo(tz)
-    except (ZoneInfoNotFoundError, ValueError, KeyError, OSError):
-        raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
-    poll = services.create_poll(
-        db, campaign, title=title.strip()[:120], tz=tz,
-        date_start=first_day,
-        window_start=_parse_time(start, "Start"), window_end=_parse_time(end, "End"),
-        duration_min=length, min_quorum=quorum,
-    )
-    return Reply(wording.t(campaign.theme, "botPollCreated",
-                           title=_esc(poll.title or campaign.name), url=_poll_url(poll)))
-
-
-def cmd_availability(db: Session, du: DUser, guild_id, channel_id) -> Reply:
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    services.ensure_member(db, campaign.id, user.id)
-    poll = services.current_poll(db, campaign.id)
-    if poll is None or poll.status not in ("collecting", "voting"):
-        w = wording.words(campaign.theme)
-        return Reply(wording.t(campaign.theme, "botNoOpenPoll", organizer=w["organizer"]), True)
-    if poll.status == "voting":
-        return Reply(wording.t(campaign.theme, "botVotingNow"), True)
-    return Reply(wording.t(campaign.theme, "botAvailabilityLink", url=_poll_url(poll)), True)
-
-
-def cmd_status(db: Session, du: DUser, guild_id, channel_id) -> Reply:
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    services.ensure_member(db, campaign.id, user.id)
-    poll = services.current_poll(db, campaign.id)
-    if poll is None:
-        return Reply("No polls yet for this campaign.", True)
-    responded = set(db.scalars(
-        select(Availability.user_id).where(Availability.poll_id == poll.id).distinct()
-    ))
-    members = db.scalars(select(Member).where(Member.campaign_id == campaign.id)).all()
-    waiting = [m.user.display_name for m in members if m.user_id not in responded]
-    lines = [f"**{_esc(poll.title or campaign.name)}**: {poll.status}",
-             f"{len(members) - len(waiting)}/{len(members)} have marked availability."]
-    if waiting and poll.status == "collecting":
-        shown = [_esc(n) for n in waiting[:20]]
-        more = f" and {len(waiting) - 20} more" if len(waiting) > 20 else ""
-        lines.append("Still waiting on: " + ", ".join(shown) + more)
-    if poll.confirmed_start_utc:
-        lines.append(f"Confirmed for <t:{int(poll.confirmed_start_utc.timestamp())}:F>.")
-        times = services.pending_reminder_times(db, poll.id) if poll.status == "confirmed" else []
-        if times:
-            lines.append("Reminders: " + ", ".join(f"<t:{int(t.timestamp())}:f>" for t in times))
-        elif poll.status == "confirmed" and campaign.reminder_offsets_min:
-            lines.append(wording.t(campaign.theme, "botRemindersNoFit"))
-    return Reply("\n".join(lines)[:1900], True)
-
-
-def cmd_close(db: Session, du: DUser, guild_id, channel_id, vote_hours: int | None) -> Reply:
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    _require_organizer(db, campaign, user)
-    poll = services.current_poll(db, campaign.id)
-    if poll is None or poll.status != "collecting":
-        raise ServiceError(409, "No poll is collecting availability in this campaign.")
-    services.close_poll(db, poll, vote_hours=vote_hours)
-    return Reply(wording.t(campaign.theme, "botPollClosed"))
-
-
-def cmd_confirm(db: Session, du: DUser, guild_id, channel_id) -> Reply:
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    _require_organizer(db, campaign, user)
-    poll = services.current_poll(db, campaign.id)
-    if poll is None or poll.status != "voting":
-        raise ServiceError(409, "No poll is open for voting in this campaign.")
-    services.confirm_poll(db, poll)
-    return Reply(wording.t(campaign.theme, "botPollDecreed"))
-
-
-def cmd_cancel(db: Session, du: DUser, guild_id, channel_id) -> Reply:
-    """Cancel the open poll, or a decided session that has not happened yet."""
-    campaign = _here(db, guild_id, channel_id)
-    user = _user(db, du)
-    _require_organizer(db, campaign, user)
-    poll = services.current_poll(db, campaign.id)
-    if poll is None:
-        raise ServiceError(409, "There is no poll or session to cancel.")
-    services.cancel_poll(db, poll)
-    return Reply(wording.t(campaign.theme, "botPollCancelledReply"))
-
-
-_OFFSET_TOKEN = re.compile(r"^(\d+)\s*([dhm])$", re.IGNORECASE)
+def describe_minutes(total: int) -> str:
+    days, rest = divmod(total, 1440)
+    hours, mins = divmod(rest, 60)
+    return " ".join(f"{n} {word}{'' if n == 1 else 's'}"
+                    for n, word in ((days, "day"), (hours, "hour"), (mins, "minute")) if n)
 
 
 def parse_offsets(text: str) -> list:
@@ -275,56 +126,209 @@ def parse_offsets(text: str) -> list:
         return []
     minutes = []
     for token in re.split(r"[,;\s]+", text):
-        m = _OFFSET_TOKEN.match(token)
+        m = re.fullmatch(r"(\d+)([dhm])", token)
         if not m:
             raise ServiceError(422, f"I could not read {token!r}. Use values like 1d, 2h or 30m, or off.")
-        n, unit = int(m.group(1)), m.group(2)
-        minutes.append(n * {"d": 1440, "h": 60, "m": 1}[unit])
+        minutes.append(int(m.group(1)) * {"d": 1440, "h": 60, "m": 1}[m.group(2)])
     return minutes
 
 
-def describe_minutes(total: int) -> str:
-    days, rest = divmod(total, 1440)
-    hours, mins = divmod(rest, 60)
-    parts = [f"{n} {word}{'' if n == 1 else 's'}"
-             for n, word in ((days, "day"), (hours, "hour"), (mins, "minute")) if n]
-    return " ".join(parts)
+def _ts(moment: datetime, style: str = "F") -> str:
+    return f"<t:{int(moment.timestamp())}:{style}>"
 
 
-def cmd_reminders(db: Session, du: DUser, guild_id, channel_id, offsets_text: str) -> Reply:
-    """Set how long before a session the group is reminded (organizer only)."""
+def _parse_day(value: str) -> date:
+    try:
+        return date.fromisoformat(value.strip())
+    except ValueError:
+        raise ServiceError(422, "Week start must look like 2026-10-24.")
+
+
+def _parse_time(value: str, label: str) -> time:
+    try:
+        return datetime.strptime(value.strip(), "%H:%M").time()
+    except ValueError:
+        raise ServiceError(422, f"{label} must look like 18:00 (24-hour).")
+
+
+def settings_summary(campaign) -> str:
+    w = wording.words(campaign.theme)
+    return (f"{w.get('freq_' + campaign.cadence, campaign.cadence)} · "
+            f"{describe_minutes(campaign.default_duration_min)} · "
+            f"at least {campaign.min_quorum} free · {campaign.timezone} · reminders: "
+            + (", ".join(describe_minutes(m) for m in campaign.reminder_offsets_min) + " before"
+               if campaign.reminder_offsets_min else "off"))
+
+
+# ---------------------------------------------------------------- /schedule
+
+
+def cmd_schedule(db: Session, du: DUser, guild_id, channel_id) -> Reply:
+    """The one command for players. It always answers the same three things, whatever the
+    state: what is happening, what you should do, and where to click."""
     campaign = _here(db, guild_id, channel_id)
     user = _user(db, du)
-    _require_organizer(db, campaign, user)
-    services.set_reminder_offsets(db, campaign, parse_offsets(offsets_text))
-    if not campaign.reminder_offsets_min:
-        return Reply(wording.t(campaign.theme, "botRemindersOff"))
-    listed = ", ".join(describe_minutes(m) for m in campaign.reminder_offsets_min)
-    text = wording.t(campaign.theme, "botRemindersSet", offsets=listed)
-    # Tell them what this means for a session that is already decided.
-    upcoming = db.scalar(select(Poll).where(
-        Poll.campaign_id == campaign.id, Poll.status == "confirmed",
-        Poll.confirmed_start_utc > services.now_utc()).order_by(Poll.confirmed_start_utc))
-    if upcoming is not None:
-        times = services.pending_reminder_times(db, upcoming.id)
+    services.ensure_member(db, campaign.id, user.id)
+    w = wording.words(campaign.theme)
+    lines = [f"**{esc(campaign.name)}** · {w.get('freq_' + campaign.cadence, campaign.cadence)}"]
+
+    session = services.next_session(db, campaign.id)
+    if session is not None:
+        lines.append(f"{w['session']} confirmed: {_ts(session.confirmed_start_utc)} "
+                     f"({_ts(session.confirmed_start_utc, 'R')})")
+        times = services.pending_reminder_times(db, session.id)
         if times:
-            text += "\n" + wording.t(campaign.theme, "botRemindersAt",
-                                      times=", ".join(f"<t:{int(t.timestamp())}:f>" for t in times))
+            lines.append("Reminders: " + ", ".join(_ts(t, "f") for t in times))
+        elif campaign.reminder_offsets_min:
+            lines.append(wording.t(campaign.theme, "botRemindersNoFit"))
+
+    poll = services.open_poll(db, campaign.id)
+    if poll is None:
+        if session is None:
+            lines.append(f"Nothing is scheduled. The {w['organizer']} can open a poll with /chronomancer poll.")
+        link = campaign_url(campaign.id)
+    elif poll.status == "collecting":
+        responded = set(db.scalars(select(Availability.user_id).where(
+            Availability.poll_id == poll.id).distinct()))
+        members = db.scalars(select(Member).where(Member.campaign_id == campaign.id)).all()
+        waiting = [m.user.display_name for m in members if m.user_id not in responded]
+        lines.append(f"Availability is open for {esc(poll.title or campaign.name)}: "
+                     f"{len(members) - len(waiting)}/{len(members)} have responded.")
+        if waiting:
+            more = f" and {len(waiting) - 15} more" if len(waiting) > 15 else ""
+            lines.append("Still waiting on: " + ", ".join(esc(n) for n in waiting[:15]) + more)
+        lines.append("**Your turn:** mark the times you can play.")
+        link = poll_url(poll)
+    else:
+        lines.append("A vote is open in this channel for the best times.")
+        if poll.vote_deadline:
+            lines.append(f"Voting ends {_ts(poll.vote_deadline)}.")
+        lines.append("**Your turn:** vote for a time, here or on the page.")
+        link = poll_url(poll)
+    lines.append(link)
+    return Reply("\n".join(lines)[:1900], True)
+
+
+# ---------------------------------------------------------------- /chronomancer setup
+
+
+def cmd_setup(db: Session, du: DUser, guild_id, channel_id, *, name=None, code=None,
+              frequency=None, quorum=None, length=None, reminders=None, timezone=None,
+              theme=None) -> Reply:
+    """Create the campaign for this channel, or change its settings if it already exists.
+    With `code`, bind a campaign made on the website instead of creating a new one."""
+    _in_channel(guild_id, channel_id)
+    changes = {"cadence": frequency, "min_quorum": quorum, "default_duration_min": length,
+               "timezone": timezone.strip() if timezone else None, "theme": theme,
+               "reminder_offsets_min": parse_offsets(reminders) if reminders is not None else None}
+    changes = {k: v for k, v in changes.items() if v is not None}
+    themes = wording.available_themes()
+    # Validate everything first, so a bad option never leaves a half-made campaign behind.
+    services.check_campaign_settings(name=name, available_themes=themes, **changes)
+    campaign = services.campaign_for_channel(db, str(guild_id), str(channel_id))
+    user = _user(db, du)
+
+    if campaign is None:  # first time in this channel: claim it
+        if not du.can_manage:
+            raise ServiceError(403, wording.t(wording.DEFAULT_THEME, "botNeedManage"))
+        if code:
+            campaign = services.link_campaign(db, user, code.strip(), str(guild_id), str(channel_id))
+            verb = "linked to this channel"
+        elif name:
+            campaign, _ = services.create_campaign(
+                db, user, name=name, guild_id=str(guild_id), channel_id=str(channel_id),
+                available_themes=themes, **changes)
+            changes = {}  # all applied at creation
+            verb = "created"
         else:
-            text += "\n" + wording.t(campaign.theme, "botRemindersNoFit")
+            raise ServiceError(422, "Give the campaign a name, like: /chronomancer setup name:Curse of Strahd")
+    else:
+        if not du.can_manage and not _is_organizer(db, campaign, user):
+            raise ServiceError(403, wording.t(campaign.theme, "botNeedManage"))
+        verb = "updated"
+        if name:
+            changes["name"] = name
+
+    if changes:
+        services.update_campaign(db, campaign, available_themes=themes, **changes)
+    w = wording.words(campaign.theme)
+    text = f"**{esc(campaign.name)}** {verb}.\n{settings_summary(campaign)}"
+    if verb != "updated":
+        text += (f"\nEveryone: run `/schedule` in this channel to join. "
+                 f"The {w['organizer']} opens a poll with `/chronomancer poll`.")
+    elif reminders is not None:
+        text += _reminders_effect(db, campaign)  # what the new timings mean for a decided session
     return Reply(text)
 
 
-def cmd_repost(db: Session, du: DUser, guild_id, channel_id) -> Reply:
-    """Resend the vote message, for example after the bot was offline or lost permissions."""
+def _reminders_effect(db: Session, campaign) -> str:
+    """After changing reminder timings: say what will actually be sent for the next session,
+    so a timing that cannot fit is never a silent surprise."""
+    session = services.next_session(db, campaign.id)
+    if session is None or not campaign.reminder_offsets_min:
+        return ""
+    times = services.pending_reminder_times(db, session.id)
+    if times:
+        return "\nFor the next session: " + ", ".join(_ts(t, "f") for t in times)
+    return "\n" + wording.t(campaign.theme, "botRemindersNoFit")
+
+
+def cmd_unlink(db: Session, du: DUser, guild_id, channel_id) -> Reply:
+    """Free this channel. The organizer may, and so may anyone who manages the channel, so a
+    server admin can always reclaim a channel."""
     campaign = _here(db, guild_id, channel_id)
     user = _user(db, du)
-    _require_organizer(db, campaign, user)
-    poll = services.current_poll(db, campaign.id)
+    if not du.can_manage and not _is_organizer(db, campaign, user):
+        raise ServiceError(403, wording.t(campaign.theme, "botNeedManage"))
+    services.unlink_campaign(db, campaign)
+    return Reply(f"**{esc(campaign.name)}** no longer speaks in this channel. "
+                 "Its polls remain on the website.")
+
+
+# ---------------------------------------------------------------- poll lifecycle
+
+
+def cmd_poll(db: Session, du: DUser, guild_id, channel_id, week_start: str | None,
+             start: str, end: str, title: str) -> Reply:
+    """Open a poll for one week: the seven days from week_start (default: today). Length,
+    minimum players and timezone come from the campaign's settings."""
+    campaign = _here(db, guild_id, channel_id)
+    _require_organizer(db, campaign, _user(db, du))
+    if week_start and week_start.strip():
+        first_day = _parse_day(week_start)
+    else:
+        first_day = datetime.now(ZoneInfo(campaign.timezone)).date()
+    poll = services.create_poll(
+        db, campaign, title=title.strip()[:120], date_start=first_day,
+        window_start=_parse_time(start, "Start"), window_end=_parse_time(end, "End"),
+    )
+    return Reply(wording.t(campaign.theme, "botPollCreated",
+                           title=esc(poll.title or campaign.name), url=poll_url(poll)))
+
+
+def cmd_advance(db: Session, du: DUser, guild_id, channel_id, vote_hours: int | None) -> Reply:
+    """Move the open poll to its next step: collecting becomes a vote; a vote becomes a decree."""
+    campaign = _here(db, guild_id, channel_id)
+    _require_organizer(db, campaign, _user(db, du))
+    poll = services.open_poll(db, campaign.id)
     if poll is None:
-        raise ServiceError(409, "There is no poll to repost.")
-    services.requeue_vote_post(db, poll)
-    return Reply(wording.t(campaign.theme, "botReposted"), True)
+        raise ServiceError(409, "There is no open poll to move forward. Start one with /chronomancer poll.")
+    if poll.status == "collecting":
+        services.close_poll(db, poll, vote_hours=vote_hours)
+        return Reply(wording.t(campaign.theme, "botPollClosed"))
+    services.confirm_poll(db, poll)
+    return Reply(wording.t(campaign.theme, "botPollDecreed"))
+
+
+def cmd_cancel(db: Session, du: DUser, guild_id, channel_id) -> Reply:
+    """Cancel the open poll, or else the next decided session that has not happened yet."""
+    campaign = _here(db, guild_id, channel_id)
+    _require_organizer(db, campaign, _user(db, du))
+    poll = services.open_poll(db, campaign.id) or services.next_session(db, campaign.id)
+    if poll is None:
+        raise ServiceError(409, "There is no open poll or upcoming session to cancel.")
+    services.cancel_poll(db, poll)
+    return Reply(wording.t(campaign.theme, "botPollCancelledReply"))
 
 
 # ---------------------------------------------------------------- button clicks
@@ -342,45 +346,33 @@ def _poll_in_place(db: Session, poll_id: int, guild_id, channel_id) -> Poll:
     return poll
 
 
-def vote_click(db: Session, du: DUser, poll_id: int, candidate_id: int, guild_id, channel_id) -> Outcome:
+def _click(db, du, poll_id, guild_id, channel_id, act, success_key, *, organizer_only=False,
+           snapshot=False) -> Outcome:
+    """Shared body of the button handlers: locate the poll, check who may press, act."""
     theme = None
     try:
         poll = _poll_in_place(db, poll_id, guild_id, channel_id)
         theme = poll.campaign.theme
         user = _user(db, du)
-        services.ensure_member(db, poll.campaign_id, user.id)
-        services.cast_vote(db, poll, user, candidate_id)
+        if organizer_only:
+            _require_organizer(db, poll.campaign, user)
+        else:
+            services.ensure_member(db, poll.campaign_id, user.id)
+        act(poll, user)
     except ServiceError as exc:
-        if exc.status == 409:
+        if exc.status == 409:  # the poll moved on while the button was still on screen
             return Outcome(wording.t(theme, "botVoteClosed"), False)
         return Outcome(error_text(exc), False)
-    return Outcome(wording.t(theme, "botVoteRecorded"), True, load_poll_snapshot(db, poll.id))
+    return Outcome(wording.t(theme, success_key), True, load_poll_snapshot(db, poll.id) if snapshot else None)
 
 
-def next_click(db: Session, du: DUser, poll_id: int, guild_id, channel_id) -> Outcome:
-    """The organizer pressed 'open next poll' under a confirmed session."""
-    try:
-        poll = _poll_in_place(db, poll_id, guild_id, channel_id)
-        theme = poll.campaign.theme
-        user = _user(db, du)
-        _require_organizer(db, poll.campaign, user)
-        fresh = services.open_next_poll(db, poll)
-    except ServiceError as exc:
-        return Outcome(error_text(exc), False)
-    return Outcome(wording.t(theme, "botNextOpened", date=fresh.date_start.strftime("%A %B %d, %Y"),
-                             url=_poll_url(fresh)), True)
+def vote_click(db: Session, du: DUser, poll_id: int, candidate_id: int, guild_id, channel_id) -> Outcome:
+    return _click(db, du, poll_id, guild_id, channel_id,
+                  lambda poll, user: services.cast_vote(db, poll, user, candidate_id),
+                  "botVoteRecorded", snapshot=True)
 
 
 def confirm_click(db: Session, du: DUser, poll_id: int, guild_id, channel_id) -> Outcome:
-    theme = None
-    try:
-        poll = _poll_in_place(db, poll_id, guild_id, channel_id)
-        theme = poll.campaign.theme
-        user = _user(db, du)
-        _require_organizer(db, poll.campaign, user)
-        services.confirm_poll(db, poll)
-    except ServiceError as exc:
-        if exc.status == 409:
-            return Outcome(wording.t(theme, "botVoteClosed"), False)
-        return Outcome(error_text(exc), False)
-    return Outcome(wording.t(theme, "botPollDecreed"), True)
+    return _click(db, du, poll_id, guild_id, channel_id,
+                  lambda poll, user: services.confirm_poll(db, poll),
+                  "botPollDecreed", organizer_only=True)

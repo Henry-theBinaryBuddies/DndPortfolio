@@ -34,6 +34,7 @@ window.Api = (function () {
     get: (u) => call("GET", u),
     post: (u, b) => call("POST", u, b === undefined ? {} : b),
     put: (u, b) => call("PUT", u, b),
+    patch: (u, b) => call("PATCH", u, b),
     del: (u) => call("DELETE", u),
   };
 })();

@@ -2,7 +2,7 @@
 from collections import Counter
 from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -105,15 +105,18 @@ def campaign_for_channel(db: Session, guild_id: str, channel_id: str) -> Campaig
 def create_campaign(db: Session, owner: User, *, name: str, guild_id: str | None = None,
                     channel_id: str | None = None, cadence: str = "none",
                     default_duration_min: int = 180, min_quorum: int = 2, vote_top_n: int = 3,
-                    reminder_offsets_min: list | None = None, theme: str = "dnd") -> tuple:
+                    reminder_offsets_min: list | None = None, theme: str = "dnd",
+                    timezone: str = "UTC", available_themes: list | None = None) -> tuple:
+    name = check_campaign_settings(
+        name=name, cadence=cadence, min_quorum=min_quorum, default_duration_min=default_duration_min,
+        timezone=timezone, theme=theme, reminder_offsets_min=reminder_offsets_min,
+        available_themes=available_themes)
     if guild_id and channel_id and campaign_for_channel(db, guild_id, channel_id):
         raise ServiceError(409, "this channel already hosts a campaign")
-    if cadence not in CADENCES:
-        raise ServiceError(422, "frequency must be one of: " + ", ".join(CADENCES))
     campaign = Campaign(
         owner_id=owner.id, name=name, guild_id=guild_id, channel_id=channel_id,
         cadence=cadence, default_duration_min=default_duration_min, min_quorum=min_quorum,
-        vote_top_n=vote_top_n, theme=theme,
+        vote_top_n=vote_top_n, theme=theme, timezone=timezone,
         reminder_offsets_min=reminder_offsets_min if reminder_offsets_min is not None else [1440, 60],
     )
     member = Member(user=owner, role="organizer", required=True)
@@ -169,14 +172,6 @@ def delete_campaign(db: Session, campaign_id: int) -> None:
     db.commit()
 
 
-def set_cadence(db: Session, campaign: Campaign, cadence: str) -> Campaign:
-    if cadence not in CADENCES:
-        raise ServiceError(422, "frequency must be one of: " + ", ".join(CADENCES))
-    campaign.cadence = cadence
-    db.commit()
-    return campaign
-
-
 def suggest_next_week(db: Session, campaign: Campaign) -> date | None:
     """Where the next poll's week should start, from the last confirmed session plus the
     campaign's meeting frequency. None for one-off campaigns or before any session."""
@@ -188,6 +183,20 @@ def suggest_next_week(db: Session, campaign: Campaign) -> date | None:
         return None
     held_on = last.confirmed_start_utc.astimezone(ZoneInfo(last.timezone)).date()
     return add_cadence(held_on, campaign.cadence)
+
+
+def open_poll(db: Session, campaign_id: int) -> Poll | None:
+    """The poll that is collecting availability or voting, if any."""
+    return db.scalar(select(Poll).where(
+        Poll.campaign_id == campaign_id, Poll.status.in_(("collecting", "voting")))
+        .order_by(Poll.id.desc()))
+
+
+def next_session(db: Session, campaign_id: int) -> Poll | None:
+    """The soonest decided session that has not started yet."""
+    return db.scalar(select(Poll).where(
+        Poll.campaign_id == campaign_id, Poll.status == "confirmed",
+        Poll.confirmed_start_utc > now_utc()).order_by(Poll.confirmed_start_utc))
 
 
 def current_poll(db: Session, campaign_id: int) -> Poll | None:
@@ -224,8 +233,8 @@ def enqueue_once(db: Session, kind: str, poll_id: int) -> None:
         enqueue(db, kind, poll_id)
 
 
-def create_poll(db: Session, campaign: Campaign, *, title: str, tz: str, date_start: date,
-                window_start: time, window_end: time, slot_minutes: int = 30,
+def create_poll(db: Session, campaign: Campaign, *, title: str, date_start: date,
+                window_start: time, window_end: time, tz: str | None = None, slot_minutes: int = 30,
                 duration_min: int | None = None, min_quorum: int | None = None,
                 vote_top_n: int | None = None, vote_deadline: datetime | None = None) -> Poll:
     existing = current_poll(db, campaign.id)
@@ -239,7 +248,7 @@ def create_poll(db: Session, campaign: Campaign, *, title: str, tz: str, date_st
         if vote_deadline <= now_utc():
             raise ServiceError(422, "vote deadline must be in the future")
     poll = Poll(
-        campaign_id=campaign.id, title=title, timezone=tz,
+        campaign_id=campaign.id, title=title, timezone=tz or campaign.timezone,
         date_start=date_start, date_end=date_end,
         window_start=window_start, window_end=window_end, slot_minutes=slot_minutes,
         duration_min=duration_min or campaign.default_duration_min,
@@ -400,12 +409,60 @@ def cancel_poll(db: Session, poll: Poll) -> Poll:
     return poll
 
 
-def set_reminder_offsets(db: Session, campaign: Campaign, offsets: list) -> Campaign:
-    """Minutes before a session at which to remind the group (up to five, 1 minute to 30 days)."""
-    if len(offsets) > 5 or any(not isinstance(m, int) or not 1 <= m <= 60 * 24 * 30 for m in offsets):
+def valid_timezone(name: str) -> bool:
+    try:
+        ZoneInfo(name)
+        return len(name) <= 64
+    except (ZoneInfoNotFoundError, ValueError, KeyError, OSError):
+        return False
+
+
+def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default_duration_min=None,
+                            timezone=None, theme=None, reminder_offsets_min=None,
+                            available_themes=None) -> str | None:
+    """Validate any subset of a campaign's settings. Raises ServiceError for the first bad
+    value, so callers can check everything *before* writing anything. Returns the stripped name."""
+    if name is not None:
+        name = name.strip()
+        if not 1 <= len(name) <= 120:
+            raise ServiceError(422, "The name must be 1 to 120 characters.")
+    if cadence is not None and cadence not in CADENCES:
+        raise ServiceError(422, "frequency must be one of: " + ", ".join(CADENCES))
+    if min_quorum is not None and not 1 <= min_quorum <= 50:
+        raise ServiceError(422, "minimum players must be between 1 and 50")
+    if default_duration_min is not None and not 15 <= default_duration_min <= 1440:
+        raise ServiceError(422, "session length must be between 15 and 1440 minutes")
+    if timezone is not None and not valid_timezone(timezone):
+        raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
+    if theme is not None and available_themes is not None and theme not in available_themes:
+        raise ServiceError(422, "Unknown theme.")
+    if reminder_offsets_min is not None and (
+            len(reminder_offsets_min) > 5 or any(
+                not isinstance(m, int) or not 1 <= m <= 60 * 24 * 30 for m in reminder_offsets_min)):
         raise ServiceError(422, "use up to 5 reminders, each between 1 minute and 30 days before")
-    campaign.reminder_offsets_min = sorted(set(offsets), reverse=True)
-    reschedule_reminders(db, campaign)  # sessions already decided pick up the new timings
+    return name
+
+
+def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
+                    cadence: str | None = None, min_quorum: int | None = None,
+                    default_duration_min: int | None = None, timezone: str | None = None,
+                    theme: str | None = None, reminder_offsets_min: list | None = None,
+                    available_themes: tuple | list | None = None) -> Campaign:
+    """Change any of a campaign's settings in one step. Only the arguments given change, and
+    nothing changes at all if any value is invalid. Reminder timings also reschedule the
+    reminders of sessions that are already decided."""
+    name = check_campaign_settings(
+        name=name, cadence=cadence, min_quorum=min_quorum,
+        default_duration_min=default_duration_min, timezone=timezone, theme=theme,
+        reminder_offsets_min=reminder_offsets_min, available_themes=available_themes)
+    for field, value in (("name", name), ("cadence", cadence), ("min_quorum", min_quorum),
+                         ("default_duration_min", default_duration_min), ("timezone", timezone),
+                         ("theme", theme)):
+        if value is not None:
+            setattr(campaign, field, value)
+    if reminder_offsets_min is not None:
+        campaign.reminder_offsets_min = sorted(set(reminder_offsets_min), reverse=True)
+        reschedule_reminders(db, campaign)
     db.commit()
     return campaign
 
@@ -442,33 +499,6 @@ def due_reminders(db: Session, now: datetime | None = None) -> list:
             or_(Reminder.retry_after.is_(None), Reminder.retry_after <= now))
         .order_by(Reminder.send_at, Reminder.id).limit(50)
     ))
-
-
-def open_next_poll(db: Session, poll: Poll) -> Poll:
-    """Open the next poll of a recurring campaign: the suggested week, same window, length,
-    timezone and quorum as the session just decided."""
-    campaign = poll.campaign
-    latest = db.scalar(select(Poll.id).where(Poll.campaign_id == campaign.id,
-                                             Poll.status == "confirmed").order_by(Poll.id.desc()))
-    if poll.status != "confirmed" or latest != poll.id:
-        raise ServiceError(409, "that is not the campaign's latest confirmed session")
-    week = suggest_next_week(db, campaign)
-    if week is None:
-        raise ServiceError(409, "this campaign does not repeat: set a meeting frequency first")
-    return create_poll(
-        db, campaign, title=poll.title, tz=poll.timezone, date_start=week,
-        window_start=poll.window_start, window_end=poll.window_end,
-        slot_minutes=poll.slot_minutes, duration_min=poll.duration_min,
-        min_quorum=poll.min_quorum, vote_top_n=poll.vote_top_n,
-    )
-
-
-def requeue_vote_post(db: Session, poll: Poll) -> None:
-    """Organizer-triggered resend of the vote message (for example after a long outage)."""
-    if poll.status != "voting":
-        raise ServiceError(409, "there is no open vote to repost")
-    enqueue(db, "vote_open", poll.id)
-    db.commit()
 
 
 def auto_confirm_due(db: Session, now: datetime | None = None) -> list:

@@ -6,9 +6,15 @@ from .. import services
 from ..auth import current_user, require_member, require_organizer
 from ..db import get_db
 from ..models import Campaign, Member, User
-from ..schemas import CadenceUpdate, CampaignCreate, JoinRequest, RemindersUpdate
+from ..schemas import CampaignCreate, CampaignUpdate, JoinRequest
 
 router = APIRouter(prefix="/api")
+
+
+def _themes() -> list:
+    from ..bot.wording import available_themes
+
+    return available_themes()
 
 
 def _next_week(db: Session, campaign: Campaign) -> str | None:
@@ -21,6 +27,7 @@ def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
         "id": campaign.id,
         "name": campaign.name,
         "cadence": campaign.cadence,
+        "timezone": campaign.timezone,
         "next_week_start": _next_week(db, campaign),
         "default_duration_min": campaign.default_duration_min,
         "min_quorum": campaign.min_quorum,
@@ -73,20 +80,14 @@ def get_campaign(campaign_id: int, user: User = Depends(current_user),
     return campaign_json(db, member.campaign, member)
 
 
-@router.put("/campaigns/{campaign_id}/cadence")
-def set_cadence(campaign_id: int, body: CadenceUpdate, user: User = Depends(current_user),
-                db: Session = Depends(get_db)):
+@router.patch("/campaigns/{campaign_id}")
+def update_campaign(campaign_id: int, body: CampaignUpdate, user: User = Depends(current_user),
+                    db: Session = Depends(get_db)):
+    """Change any of the campaign's settings (organizer only). One endpoint, not one per field."""
     member = require_organizer(db, campaign_id, user)
-    services.set_cadence(db, member.campaign, body.cadence)
-    return {"cadence": member.campaign.cadence, "next_week_start": _next_week(db, member.campaign)}
-
-
-@router.put("/campaigns/{campaign_id}/reminders")
-def set_reminders(campaign_id: int, body: RemindersUpdate, user: User = Depends(current_user),
-                  db: Session = Depends(get_db)):
-    member = require_organizer(db, campaign_id, user)
-    services.set_reminder_offsets(db, member.campaign, body.offsets_min)
-    return {"reminder_offsets_min": member.campaign.reminder_offsets_min}
+    services.update_campaign(db, member.campaign, available_themes=_themes(),
+                             **body.model_dump(exclude_none=True))
+    return campaign_json(db, member.campaign, member)
 
 
 @router.post("/join")

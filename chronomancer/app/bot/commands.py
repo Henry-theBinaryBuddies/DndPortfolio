@@ -14,6 +14,9 @@ from .actions import DUser
 log = logging.getLogger("chronomancer.commands")
 NO_MENTIONS = discord.AllowedMentions.none()
 
+FREQUENCIES = (("One-off (no repeat)", "none"), ("Weekly", "weekly"), ("Every two weeks", "biweekly"),
+               ("Monthly", "monthly"), ("Quarterly", "quarterly"), ("Annually", "annually"))
+
 
 def make_duser(interaction: discord.Interaction) -> DUser:
     """Who is acting. Uses the account's global name and avatar, not the per-server nickname
@@ -36,22 +39,24 @@ def _bot_can_post(interaction: discord.Interaction) -> bool:
     return perms.view_channel and perms.send_messages and perms.embed_links
 
 
-async def _run(interaction: discord.Interaction, fn, *args) -> actions.Reply | None:
+async def _run(interaction: discord.Interaction, fn, *args, **kwargs) -> actions.Reply | None:
     """Run an action; on a user-facing failure reply ephemerally and return None."""
     try:
         reply = await asyncio.to_thread(
-            actions.with_db, fn, make_duser(interaction), interaction.guild_id, interaction.channel_id, *args
-        )
+            actions.with_db, lambda db: fn(db, make_duser(interaction), interaction.guild_id,
+                                           interaction.channel_id, *args, **kwargs))
     except ServiceError as exc:
         await interaction.response.send_message(actions.error_text(exc), ephemeral=True)
         return None
     await interaction.response.send_message(
-        reply.text, ephemeral=reply.ephemeral, allowed_mentions=NO_MENTIONS
-    )
+        reply.text, ephemeral=reply.ephemeral, allowed_mentions=NO_MENTIONS)
     return reply
 
 
-async def _flush_outbox(interaction: discord.Interaction) -> None:
+async def _then_flush(interaction: discord.Interaction, reply) -> None:
+    """After a command that queues Discord messages, deliver them now instead of next tick."""
+    if reply is None:
+        return
     try:
         await interaction.client.outbox.run_once()
     except Exception:  # noqa: BLE001
@@ -59,105 +64,61 @@ async def _flush_outbox(interaction: discord.Interaction) -> None:
 
 
 def register(tree: app_commands.CommandTree) -> None:
-    theme_choices = [
-        app_commands.Choice(name=wording.words(name).get("label", name), value=name)
-        for name in wording.available_themes()
-    ]
-    frequency_choices = [
-        app_commands.Choice(name=n, value=v) for n, v in (
-            ("One-off (no repeat)", "none"), ("Weekly", "weekly"), ("Every two weeks", "biweekly"),
-            ("Monthly", "monthly"), ("Quarterly", "quarterly"), ("Annually", "annually"))
-    ]
+    theme_choices = [app_commands.Choice(name=wording.words(n).get("label", n), value=n)
+                     for n in wording.available_themes()]
+    frequency_choices = [app_commands.Choice(name=n, value=v) for n, v in FREQUENCIES]
     group = app_commands.Group(
-        name="chronomancer", description="Schedule your group's sessions", guild_only=True
-    )
+        name="chronomancer", description="Run your group's schedule", guild_only=True)
 
-    @group.command(name="create", description="Create a campaign tied to this channel")
-    @app_commands.describe(name="Campaign name", duration="Session length in minutes",
-                           quorum="Minimum players who must be free for a time to qualify",
-                           theme="Wording style", frequency="How often the group meets")
-    @app_commands.choices(theme=theme_choices, frequency=frequency_choices)
-    async def create(interaction: discord.Interaction, name: str,
-                     duration: app_commands.Range[int, 30, 1440] = 180,
-                     quorum: app_commands.Range[int, 1, 50] = 2, theme: str = "dnd",
-                     frequency: str = "none"):
+    @group.command(name="setup", description="Create this channel's campaign, or change its settings")
+    @app_commands.describe(
+        name="Campaign name (needed the first time)",
+        code="Invite code, to adopt a campaign made on the website",
+        frequency="How often the group meets", quorum="Minimum players who must be free",
+        length="Session length in minutes",
+        reminders="When to remind the group before a session, like: 1d, 1h, 15m (or off)",
+        timezone="Default timezone for polls, like America/Los_Angeles", theme="Wording style")
+    @app_commands.choices(frequency=frequency_choices, theme=theme_choices)
+    async def setup(interaction: discord.Interaction, name: Optional[str] = None,
+                    code: Optional[str] = None, frequency: Optional[str] = None,
+                    quorum: Optional[app_commands.Range[int, 1, 50]] = None,
+                    length: Optional[app_commands.Range[int, 15, 1440]] = None,
+                    reminders: Optional[str] = None, timezone: Optional[str] = None,
+                    theme: Optional[str] = None):
         if not _bot_can_post(interaction):
             await interaction.response.send_message(
                 "I need View Channel, Send Messages and Embed Links in this channel first.",
                 ephemeral=True)
             return
-        await _run(interaction, actions.cmd_create, name, duration, quorum, theme, frequency)
-
-    @group.command(name="link", description="Tie a campaign made on the website to this channel")
-    @app_commands.describe(code="The invite code shown on the campaign page")
-    async def link(interaction: discord.Interaction, code: str):
-        if not _bot_can_post(interaction):
-            await interaction.response.send_message(
-                "I need View Channel, Send Messages and Embed Links in this channel first.",
-                ephemeral=True)
-            return
-        await _run(interaction, actions.cmd_link, code)
-
-    @group.command(name="unlink", description="Free this channel (organizer, or anyone who manages the channel)")
-    async def unlink(interaction: discord.Interaction):
-        await _run(interaction, actions.cmd_unlink)
-
-    @group.command(name="frequency", description="Set how often the group meets (organizer only)")
-    @app_commands.describe(frequency="How often the group meets")
-    @app_commands.choices(frequency=frequency_choices)
-    async def frequency(interaction: discord.Interaction, frequency: str):
-        await _run(interaction, actions.cmd_frequency, frequency)
-
-    @group.command(name="reminders", description="Set when the group is reminded before a session")
-    @app_commands.describe(when="Time(s) before the session, like: 1d, 1h, 15m (or off)")
-    async def reminders(interaction: discord.Interaction, when: str):
-        await _run(interaction, actions.cmd_reminders, when)
+        await _run(interaction, actions.cmd_setup, name=name, code=code, frequency=frequency,
+                   quorum=quorum, length=length, reminders=reminders, timezone=timezone, theme=theme)
 
     @group.command(name="poll", description="Open a poll for one week of availability")
     @app_commands.describe(
-        week_start="First of the seven days, like 2026-10-26 (blank: the next week per your frequency)",
+        week_start="First of the seven days, like 2026-10-26 (default: today)",
         start="Earliest start each day, like 18:00", end="Latest end each day, like 23:00",
-        length="Session length in minutes (default: the campaign's)",
-        timezone="Timezone for start/end, like America/Los_Angeles (default UTC)",
-        title="Name for this session",
-        quorum="Minimum players who must be free (default: the campaign's)")
+        title="Name for this session")
     async def poll(interaction: discord.Interaction, week_start: Optional[str] = None,
-                   start: str = "18:00", end: str = "23:00",
-                   length: Optional[app_commands.Range[int, 15, 1440]] = None,
-                   timezone: str = "UTC", title: str = "",
-                   quorum: Optional[app_commands.Range[int, 1, 50]] = None):
-        await _run(interaction, actions.cmd_poll, week_start, start, end,
-                   length, timezone, title, quorum)
+                   start: str = "18:00", end: str = "23:00", title: str = ""):
+        await _run(interaction, actions.cmd_poll, week_start, start, end, title)
 
-    @group.command(name="close", description="Close the poll and put the best times to a vote")
-    @app_commands.describe(vote_hours="Hours the vote stays open (blank: until you confirm)")
-    async def close(interaction: discord.Interaction,
-                    vote_hours: Optional[app_commands.Range[int, 1, 336]] = None):
-        if await _run(interaction, actions.cmd_close, vote_hours):
-            await _flush_outbox(interaction)
+    @group.command(name="advance", description="Close the poll into a vote, or decree the winning time")
+    @app_commands.describe(vote_hours="When closing: hours the vote stays open (blank: until you advance again)")
+    async def advance(interaction: discord.Interaction,
+                      vote_hours: Optional[app_commands.Range[int, 1, 336]] = None):
+        await _then_flush(interaction, await _run(interaction, actions.cmd_advance, vote_hours))
 
-    @group.command(name="confirm", description="Confirm the winning time now")
-    async def confirm(interaction: discord.Interaction):
-        if await _run(interaction, actions.cmd_confirm):
-            await _flush_outbox(interaction)
-
-    @group.command(name="cancel", description="Abandon the open poll so you can start a new one")
+    @group.command(name="cancel", description="Cancel the open poll, or the next upcoming session")
     async def cancel(interaction: discord.Interaction):
-        if await _run(interaction, actions.cmd_cancel):
-            await _flush_outbox(interaction)
+        await _then_flush(interaction, await _run(interaction, actions.cmd_cancel))
 
-    @group.command(name="repost", description="Post the vote message again")
-    async def repost(interaction: discord.Interaction):
-        if await _run(interaction, actions.cmd_repost):
-            await _flush_outbox(interaction)
+    @group.command(name="unlink", description="Free this channel (organizer, or anyone who manages it)")
+    async def unlink(interaction: discord.Interaction):
+        await _run(interaction, actions.cmd_unlink)
 
-    @group.command(name="status", description="See who has responded")
-    async def status(interaction: discord.Interaction):
-        await _run(interaction, actions.cmd_status)
-
-    @tree.command(name="availability", description="Join this campaign and get the link to mark your times")
+    @tree.command(name="schedule", description="Join this group and see what to do next")
     @app_commands.guild_only()
-    async def availability(interaction: discord.Interaction):
-        await _run(interaction, actions.cmd_availability)
+    async def schedule(interaction: discord.Interaction):
+        await _run(interaction, actions.cmd_schedule)
 
     tree.add_command(group)

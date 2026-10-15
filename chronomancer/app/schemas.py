@@ -34,6 +34,9 @@ class CampaignCreate(BaseModel):
     vote_top_n: int = Field(default=3, ge=1, le=config.MAX_VOTE_TOP_N)
     reminder_offsets_min: list[int] = Field(default_factory=lambda: [1440, 60])
     theme: str = Field(default="dnd", pattern="^[a-z0-9_-]{1,32}$")
+    timezone: str = "UTC"
+
+    _tz = field_validator("timezone")(_check_tz)
 
     @field_validator("reminder_offsets_min")
     @classmethod
@@ -49,7 +52,7 @@ class JoinRequest(BaseModel):
 
 class PollCreate(BaseModel):
     title: str = Field(default="", max_length=120)
-    timezone: str = "UTC"
+    timezone: str | None = None  # default: the campaign's timezone
     date_start: date  # first day of the week; the poll covers this day and the next six
     window_start: time
     window_end: time
@@ -59,7 +62,7 @@ class PollCreate(BaseModel):
     vote_top_n: int | None = Field(default=None, ge=1, le=config.MAX_VOTE_TOP_N)
     vote_deadline: datetime | None = None
 
-    _tz = field_validator("timezone")(_check_tz)
+    _tz = field_validator("timezone")(lambda v: v if v is None else _check_tz(v))
 
 
 class SlotMark(BaseModel):
@@ -71,12 +74,17 @@ class AvailabilityPut(BaseModel):
     slots: list[SlotMark]
 
 
-class CadenceUpdate(BaseModel):
-    cadence: str = Field(pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
+class CampaignUpdate(BaseModel):
+    """Any subset of a campaign's settings; omitted fields are left alone."""
+    name: str | None = Field(default=None, max_length=120)
+    cadence: str | None = Field(default=None, pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
+    min_quorum: int | None = Field(default=None, ge=1, le=50)
+    default_duration_min: int | None = Field(default=None, ge=15, le=1440)
+    timezone: str | None = None
+    theme: str | None = Field(default=None, pattern="^[a-z0-9_-]{1,32}$")
+    reminder_offsets_min: list[int] | None = Field(default=None, max_length=5)
 
-
-class RemindersUpdate(BaseModel):
-    offsets_min: list[int] = Field(max_length=5)
+    _tz = field_validator("timezone")(lambda v: v if v is None else _check_tz(v))
 
 
 class VoteCast(BaseModel):

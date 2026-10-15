@@ -46,17 +46,43 @@ def test_there_is_a_single_linear_history():
     assert revisions[-1].revision == migrate.BASELINE and revisions[-1].down_revision is None
 
 
-def test_a_pre_migration_database_is_adopted_without_losing_data(engine):
-    """Databases made by the old create_all startup have tables but no version table."""
+def legacy_database_at(engine, revision):
+    """A database as the old startup left it: the tables of `revision` and no version table."""
+    from alembic import command
+
+    with engine.begin() as conn:
+        command.upgrade(migrate.alembic_config(conn), revision)
+        conn.execute(text("drop table alembic_version"))
+    assert "alembic_version" not in inspect(engine).get_table_names()
+
+
+def test_an_old_pre_migration_database_is_adopted_and_upgraded_keeping_its_data(engine):
+    legacy_database_at(engine, migrate.BASELINE)  # the schema before the timezone column existed
+    with engine.begin() as conn:
+        conn.execute(text("insert into users (id, discord_id, display_name, timezone) "
+                          "values (1, '42', 'Aria', 'UTC')"))
+        conn.execute(text("insert into campaigns (name, owner_id, cadence, default_duration_min, "
+                          "min_quorum, vote_top_n, reminder_offsets_min, theme, invite_code) "
+                          "values ('Strahd', 1, 'none', 180, 2, 3, '[1440, 60]', 'dnd', 'code1')"))
+    migrate.upgrade(engine)
+    with engine.connect() as conn:
+        assert conn.execute(text("select display_name from users where discord_id='42'")).scalar() == "Aria"
+        row = conn.execute(text("select name, timezone from campaigns")).one()
+        assert tuple(row) == ("Strahd", "UTC")  # kept, and the new column is filled in
+    assert schema_drift(engine) == []
+
+
+def test_a_pre_migration_database_built_by_current_code_is_adopted_as_up_to_date(engine):
+    """create_all from today's models already has every column: it must not be re-migrated."""
     dbmod.Base.metadata.create_all(engine)
     with engine.begin() as conn:
         conn.execute(text("insert into users (discord_id, display_name, timezone) "
                           "values ('42', 'Aria', 'UTC')"))
-    assert "alembic_version" not in inspect(engine).get_table_names()
     migrate.upgrade(engine)
     with engine.connect() as conn:
-        assert conn.execute(text("select display_name from users where discord_id='42'")).scalar() == "Aria"
-        assert conn.execute(text("select version_num from alembic_version")).scalar() is not None
+        assert conn.execute(text("select display_name from users")).scalar() == "Aria"
+        head = ScriptDirectory(str(config.ROOT / "migrations")).get_current_head()
+        assert conn.execute(text("select version_num from alembic_version")).scalar() == head
     assert schema_drift(engine) == []
 
 

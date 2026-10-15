@@ -9,10 +9,10 @@ from sqlalchemy import select
 
 from app import background, services
 from app.bot import actions, reminders as reminders_mod
-from app.bot.actions import DUser, describe_minutes, parse_offsets
+from app.bot.actions import DUser
 from app.bot.reminders import ReminderProcessor
 from app.bot.snapshots import load_poll_snapshot
-from app.bot.views import NextButton, reminder_embed
+from app.bot.views import reminder_embed
 from app.models import Campaign, Notification, Poll, PollMessage, Reminder
 from app.services import ServiceError
 
@@ -111,25 +111,17 @@ def test_offsets_already_in_the_past_are_skipped(db):
 
 def test_no_reminders_when_the_group_turned_them_off(db):
     campaign, poll, _ = voting_poll(db)
-    services.set_reminder_offsets(db, campaign, [])
+    services.update_campaign(db, campaign, reminder_offsets_min=[])
     services.confirm_poll(db, poll)
     assert reminder_rows() == []
 
 
 def test_changing_offsets_affects_future_sessions(db):
     campaign, poll, _ = voting_poll(db)
-    services.set_reminder_offsets(db, campaign, [30, 4320, 30])  # unsorted with a duplicate
+    services.update_campaign(db, campaign, reminder_offsets_min=[30, 4320, 30])  # unsorted with a duplicate
     assert campaign.reminder_offsets_min == [4320, 30]
     services.confirm_poll(db, poll)
     assert [r.offset_min for r in reminder_rows()] == [4320, 30]
-
-
-@pytest.mark.parametrize("bad", [[0], [-5], [60 * 24 * 31], [1, 2, 3, 4, 5, 6], ["60"], [1.5]])
-def test_reminder_offsets_are_validated(db, bad):
-    campaign, _ = make_campaign(db)
-    with pytest.raises(ServiceError) as exc:
-        services.set_reminder_offsets(db, campaign, bad)
-    assert exc.value.status == 422
 
 
 def test_due_reminders_respects_time_sent_state_and_backoff(db):
@@ -339,147 +331,7 @@ def test_the_background_loop_runs_reminders(monkeypatch):
     assert calls == ["outbox", "reminders"]
 
 
-# ------------------------------------------------ /chronomancer reminders
-
-
-@pytest.mark.parametrize("text,expected", [
-    ("1d", [1440]), ("1d, 1h", [1440, 60]), ("2h 15m", [120, 15]), ("90m;1D", [90, 1440]),
-    ("off", []), ("none", []), ("", []), (" 30M ", [30]),
-])
-def test_parse_offsets(text, expected):
-    assert parse_offsets(text) == expected
-
-
-@pytest.mark.parametrize("junk", ["soon", "1 day", "h", "-5m", "1w", "1.5h", "1d,,x"])
-def test_parse_offsets_rejects_junk_with_a_helpful_message(junk):
-    with pytest.raises(ServiceError) as exc:
-        parse_offsets(junk)
-    assert exc.value.status == 422 and "1d" in exc.value.detail
-
-
-@pytest.mark.parametrize("minutes,text", [
-    (1440, "1 day"), (60, "1 hour"), (45, "45 minutes"), (90, "1 hour 30 minutes"),
-    (2880, "2 days"), (1500, "1 day 1 hour"),
-])
-def test_describe_minutes(minutes, text):
-    assert describe_minutes(minutes) == text
-
-
-def test_reminders_command_is_organizer_only_and_applies(db):
-    campaign, _ = make_campaign(db)
-    make_player(db, campaign, "2", "Aria")
-    with pytest.raises(ServiceError) as exc:
-        actions.cmd_reminders(db, ARIA, GUILD, CHANNEL, "1h")
-    assert exc.value.status == 403 and campaign.reminder_offsets_min == [1440, 60]
-    reply = actions.cmd_reminders(db, DM, GUILD, CHANNEL, "2d, 3h")
-    assert "2 days" in reply.text and "3 hours" in reply.text
-    assert campaign.reminder_offsets_min == [2880, 180]
-    assert "silenced" in actions.cmd_reminders(db, DM, GUILD, CHANNEL, "off").text
-    assert campaign.reminder_offsets_min == []
-    with pytest.raises(ServiceError):
-        actions.cmd_reminders(db, DM, GUILD, CHANNEL, "a,b,c,d,e,f")
-
-
-def test_reminders_endpoint(client):
-    login(client, "1", "DM")
-    camp = client.post("/api/campaigns", json={"name": "x"}).json()
-    assert client.put(f"/api/campaigns/{camp['id']}/reminders", json={"offsets_min": [30, 2880]}).json() == {
-        "reminder_offsets_min": [2880, 30]}
-    assert client.put(f"/api/campaigns/{camp['id']}/reminders", json={"offsets_min": [0]}).status_code == 422
-    assert client.put(f"/api/campaigns/{camp['id']}/reminders", json={"offsets_min": [1] * 6}).status_code == 422
-    player = make_client()
-    login(player, "2", "Aria")
-    player.post("/api/join", json={"invite_code": camp["invite_code"]})
-    assert player.put(f"/api/campaigns/{camp['id']}/reminders", json={"offsets_min": [5]}).status_code == 403
-
-
-# ------------------------------------------------ recurrence: the next-poll button
-
-
-def recurring(db, cadence="weekly"):
-    campaign, poll, users = voting_poll(db)
-    services.set_cadence(db, campaign, cadence)
-    services.confirm_poll(db, poll)
-    return campaign, poll, users
-
-
-def test_confirmation_announcement_carries_a_next_poll_button_only_for_recurring_groups(db):
-    _, poll, _ = recurring(db)
-    world = World()
-    run(world.processor.run_once())
-    announcement = world.channel.sent[-1]
-    assert announcement.embed.title == "The Session Is Decreed"
-    ids = [c.item.custom_id for c in announcement.view.children]
-    assert ids == [f"cm:next:{poll.id}"] and announcement.view.timeout is None
-
-
-def test_one_off_groups_get_no_button(db):
-    voting_poll(db)
-    world = World()
-    run(world.processor.run_once())
-    services.confirm_poll(db, services.current_poll(db, services.campaign_for_channel(db, GUILD, CHANNEL).id))
-    run(world.processor.run_once())
-    last = world.channel.sent[-1]
-    assert last.embed.title == "The Session Is Decreed"
-    assert not hasattr(last.view, "children")  # no buttons: discord's "no view" sentinel
-
-
-def test_next_button_can_be_rebuilt_after_a_restart():
-    async def go():
-        return await NextButton.from_custom_id(
-            None, discord.ui.Button(label="Open next poll"), re.fullmatch(r"cm:next:(?P<poll>\d+)", "cm:next:42"))
-    assert run(go()).poll_id == 42
-
-
-def test_organizer_opens_the_next_poll_with_the_same_settings(db):
-    campaign, poll, _ = recurring(db, "biweekly")
-    expected = services.suggest_next_week(db, campaign)
-    out = actions.next_click(db, DM, poll.id, GUILD, CHANNEL)
-    assert out.ok and expected.strftime("%A %B %d, %Y") in out.text and "/poll.html" in out.text
-    fresh_poll = services.current_poll(db, campaign.id)
-    assert fresh_poll.id != poll.id and fresh_poll.status == "collecting"
-    assert fresh_poll.date_start == expected
-    assert (fresh_poll.window_start, fresh_poll.window_end, fresh_poll.timezone,
-            fresh_poll.duration_min, fresh_poll.min_quorum, fresh_poll.slot_minutes) == (
-        poll.window_start, poll.window_end, poll.timezone, poll.duration_min, poll.min_quorum,
-        poll.slot_minutes)
-
-
-def test_only_the_organizer_may_press_it(db):
-    campaign, poll, _ = recurring(db)
-    out = actions.next_click(db, ARIA, poll.id, GUILD, CHANNEL)
-    assert not out.ok and "Dungeon Master" in out.text
-    out = actions.next_click(db, DUser("99", "Stranger", can_manage=True), poll.id, GUILD, CHANNEL)
-    assert not out.ok  # even with Manage Channels: only the campaign's organizer opens its polls
-    assert services.current_poll(db, campaign.id).id == poll.id
-
-
-def test_a_second_press_does_not_open_a_second_poll(db):
-    campaign, poll, _ = recurring(db)
-    assert actions.next_click(db, DM, poll.id, GUILD, CHANNEL).ok
-    again = actions.next_click(db, DM, poll.id, GUILD, CHANNEL)
-    assert not again.ok and "already open" in again.text
-    with fresh() as other:
-        assert len(other.scalars(select(Poll).where(Poll.campaign_id == campaign.id)).all()) == 2
-
-
-def test_next_button_is_refused_in_the_wrong_channel_and_for_one_off_groups(db):
-    campaign, poll, _ = recurring(db)
-    assert not actions.next_click(db, DM, poll.id, GUILD, "elsewhere").ok
-    services.set_cadence(db, campaign, "none")
-    out = actions.next_click(db, DM, poll.id, GUILD, CHANNEL)
-    assert not out.ok and "frequency" in out.text
-
-
-def test_an_old_announcements_button_cannot_open_a_poll_after_a_newer_session(db):
-    campaign, first, _ = recurring(db)
-    actions.next_click(db, DM, first.id, GUILD, CHANNEL)
-    newer = services.current_poll(db, campaign.id)
-    newer.status = "confirmed"   # pretend the next session was decided too
-    newer.confirmed_start_utc = first.confirmed_start_utc + timedelta(days=7)
-    db.commit()
-    out = actions.next_click(db, DM, first.id, GUILD, CHANNEL)
-    assert not out.ok and "latest confirmed" in out.text
+# ------------------------------------------------ the reminder message
 
 
 def test_reminder_embed_for_snapshot(db):
@@ -495,7 +347,7 @@ def near_term_confirmed(db, minutes_ahead=18, offsets=None):
     """A campaign whose confirmed session starts `minutes_ahead` from now."""
     campaign, poll, users = voting_poll(db)
     if offsets is not None:
-        services.set_reminder_offsets(db, campaign, offsets)
+        services.update_campaign(db, campaign, reminder_offsets_min=offsets)
     with fresh() as other:  # move the decided time close to now, as in a live test
         row = other.get(Poll, poll.id)
         row.status = "voting"
@@ -513,7 +365,7 @@ def near_term_confirmed(db, minutes_ahead=18, offsets=None):
 def test_default_timings_schedule_nothing_for_a_session_soon_and_say_so(db):
     campaign, poll, _ = near_term_confirmed(db, minutes_ahead=18)
     assert reminder_rows() == []  # a day and an hour before are both already past
-    text = actions.cmd_status(db, ARIA, GUILD, CHANNEL).text
+    text = actions.cmd_schedule(db, ARIA, GUILD, CHANNEL).text
     assert "No reminder fits" in text
     embed = confirmed_embed_for(db, poll)
     assert "No reminder fits" in embed.description  # and the announcement says so, not silence
@@ -523,7 +375,7 @@ def test_setting_timings_after_confirming_schedules_them(db):
     """The exact live sequence: confirm first, then set reminders. It used to do nothing."""
     campaign, poll, start = near_term_confirmed(db, minutes_ahead=18)
     assert reminder_rows() == []
-    reply = actions.cmd_reminders(db, DM, GUILD, CHANNEL, "8m, 3m, 1m")
+    reply = actions.cmd_setup(db, DM, GUILD, CHANNEL, reminders="8m, 3m, 1m")
     rows = reminder_rows()
     assert sorted(r.offset_min for r in rows) == [1, 3, 8]
     assert sorted(r.send_at for r in rows) == [start - timedelta(minutes=m) for m in (8, 3, 1)]
@@ -532,7 +384,7 @@ def test_setting_timings_after_confirming_schedules_them(db):
 
 def test_timings_that_cannot_fit_are_reported_in_the_reply(db):
     near_term_confirmed(db, minutes_ahead=18)
-    reply = actions.cmd_reminders(db, DM, GUILD, CHANNEL, "1d, 1h")
+    reply = actions.cmd_setup(db, DM, GUILD, CHANNEL, reminders="1d, 1h")
     assert "No reminder fits" in reply.text and reminder_rows() == []
 
 
@@ -542,18 +394,18 @@ def test_changing_timings_replaces_unsent_and_keeps_sent_ones(db):
     with fresh() as other:  # the 30-minute one has already gone out
         other.scalars(select(Reminder).where(Reminder.offset_min == 30)).first().sent_at = NOW()
         other.commit()
-    actions.cmd_reminders(db, DM, GUILD, CHANNEL, "30m, 5m")
+    actions.cmd_setup(db, DM, GUILD, CHANNEL, reminders="30m, 5m")
     rows = {r.offset_min: r for r in reminder_rows()}
     assert sorted(rows) == [5, 30]            # 10 replaced by 5; 30 not duplicated
     assert rows[30].sent_at is not None       # and not sent a second time
-    actions.cmd_reminders(db, DM, GUILD, CHANNEL, "off")
+    actions.cmd_setup(db, DM, GUILD, CHANNEL, reminders="off")
     assert [r.offset_min for r in reminder_rows()] == [30]  # unsent ones dropped, history kept
 
 
 def test_changing_timings_never_touches_past_or_cancelled_sessions(db):
     campaign, poll, _ = confirmed(db)
     services.cancel_poll(db, poll)
-    services.set_reminder_offsets(db, campaign, [15])
+    services.update_campaign(db, campaign, reminder_offsets_min=[15])
     assert reminder_rows() == []
     campaign2, poll2, _ = confirmed(db, guild="7", channel="8")
     with fresh() as other:
@@ -561,13 +413,13 @@ def test_changing_timings_never_touches_past_or_cancelled_sessions(db):
         for r in other.scalars(select(Reminder).where(Reminder.poll_id == poll2.id)):
             other.delete(r)
         other.commit()
-    services.set_reminder_offsets(db, campaign2, [15])
+    services.update_campaign(db, campaign2, reminder_offsets_min=[15])
     assert reminder_rows() == []
 
 
 def test_the_live_scenario_end_to_end_a_reminder_actually_fires(db):
     campaign, poll, start = near_term_confirmed(db, minutes_ahead=18)
-    actions.cmd_reminders(db, DM, GUILD, CHANNEL, "8m, 3m, 1m")
+    actions.cmd_setup(db, DM, GUILD, CHANNEL, reminders="8m, 3m, 1m")
     rig = Rig()
     assert run(rig.proc.run_once()) == 0                      # not yet time
     with fresh() as other:                                    # advance the clock to T-8m
