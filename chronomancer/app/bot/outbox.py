@@ -207,6 +207,7 @@ class OutboxProcessor:
         event = await guild.create_scheduled_event(
             name=snap.display_title[:100],
             start_time=snap.confirmed_start, end_time=snap.session_end,
+            entity_type=discord.EntityType.external,  # discord.py will not guess it from a location
             location=snap.campaign_url[:100], privacy_level=discord.PrivacyLevel.guild_only,
             description=f"{snap.campaign_name}: scheduled with Chronomancer. Details: {snap.campaign_url}"[:1000],
             reason="Chronomancer: session confirmed",

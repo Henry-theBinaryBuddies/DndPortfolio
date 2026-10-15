@@ -77,6 +77,9 @@ class FakeGuild:
             "P", (), {"create_events": can_create, "manage_events": False})()})()
 
     async def create_scheduled_event(self, **kwargs):
+        # Discord answers 400 (TAG_FIELD_MISSING) unless the event type is stated explicitly.
+        assert kwargs.get("entity_type") == discord.EntityType.external, "entity_type is required"
+        assert kwargs.get("location") and kwargs.get("end_time"), "external events need both"
         self._next += 1
         event = FakeEvent(self._next, kwargs, self)
         self.events[event.id] = event
