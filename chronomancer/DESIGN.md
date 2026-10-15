@@ -99,10 +99,12 @@ Input: availability for a poll, members, duration, quorum. Output: ranked candid
   - The background loop sends due reminders (`app/bot/reminders.py`): a channel post mentioning the whole group (mentions limited to exactly the members: never `@everyone`, never a role), then a DM to each member. The channel post goes first, so a failure there retries with backoff and nobody is DMed twice. Closed DMs are counted and skipped, since the channel mention already reached them. Each reminder is sent once, survives restarts, is skipped if the session has already started, and unlinked campaigns are reminded by DM only. Groups over 50 members are capped.
   - A confirmed future session can be cancelled (`/chronomancer cancel`, `POST /api/polls/{id}/cancel`): unsent reminders are dropped and a "called off" notice is posted.
   - For recurring campaigns the confirmation announcement carries an organizer-only "open next poll" button (persistent, `cm:next:<poll>`). It opens the suggested week with the same window, length, timezone and quorum, and refuses if a poll is already open, the group is one-off, or a newer session exists.
-- **Not yet done / known limits:** commands inside threads are not recognised (use the parent channel); membership is not reconciled with Discord server membership; the session cookie is stateless (logout does not revoke a copied cookie); the rate limiter is per process and keys on the client IP (run uvicorn with `--proxy-headers` behind a proxy); there are no database migrations yet (schema changes need a fresh dev database).
+- **Not yet done / known limits:** commands inside threads are not recognised (use the parent channel); membership is not reconciled with Discord server membership; the session cookie is stateless (logout does not revoke a copied cookie); the rate limiter is per process and keys on the client IP (run uvicorn with `--proxy-headers` behind a proxy).
+
+## Database migrations
+Schema changes are versioned with Alembic (`migrations/versions/`). The app runs `alembic upgrade head` at startup (`app/migrate.py`), so deploying new code upgrades the database. A database created before migrations existed is stamped as the baseline (`0001`) and upgraded, keeping its data. To change the schema: edit `app/models.py`, then run `python -m alembic revision --autogenerate -m "what changed"`, review the file, and commit it. A test fails if the models and migrations disagree. Set `CHRONOMANCER_AUTO_MIGRATE=0` to skip migrations (only tests do).
 
 ## Open items
 - Public hosting target (determines OAuth redirect URL and whether SQLite stays).
 - Discord application credentials (user creates; supplied via `.env`, never committed).
 - Timezone source: browser-detected by default, editable in profile.
-- Migrations (Alembic) before any deployment that holds real data.

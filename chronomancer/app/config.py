@@ -56,6 +56,7 @@ BOT_ENABLED = bool(DISCORD_BOT_TOKEN) and os.environ.get("CHRONOMANCER_BOT", "1"
 # Discord login needs the app credentials AND a redirect URI that can actually work.
 OAUTH_ENABLED = bool(DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET) and REDIRECT_URI_PROBLEM is None
 BACKGROUND_ENABLED = os.environ.get("CHRONOMANCER_BACKGROUND", "1") != "0"
+AUTO_MIGRATE = os.environ.get("CHRONOMANCER_AUTO_MIGRATE", "1") != "0"  # tests build tables directly
 TICK_SECONDS = 5
 
 MAX_VOTE_TOP_N = 5

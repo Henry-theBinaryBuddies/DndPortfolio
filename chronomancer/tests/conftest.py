@@ -8,6 +8,7 @@ os.environ.update({
     "CHRONOMANCER_DEV": "1",
     "DATABASE_URL": "sqlite://",
     "CHRONOMANCER_BACKGROUND": "0",
+    "CHRONOMANCER_AUTO_MIGRATE": "0",
     "DISCORD_BOT_TOKEN": "",
     "DISCORD_CLIENT_ID": "test-client-id",
     "DISCORD_CLIENT_SECRET": "test-client-secret",

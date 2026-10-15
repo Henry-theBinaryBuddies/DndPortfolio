@@ -31,6 +31,13 @@ def get_db():
 
 
 def init_db(bind=None):
+    """Prepare the schema: run migrations (normal startup) or, for tests that opt out with
+    CHRONOMANCER_AUTO_MIGRATE=0, create the tables straight from the models."""
     from . import models  # noqa: F401  (register tables)
 
-    Base.metadata.create_all(bind or engine)
+    if bind is None and config.AUTO_MIGRATE:
+        from .migrate import upgrade
+
+        upgrade(engine)
+    else:
+        Base.metadata.create_all(bind or engine)
