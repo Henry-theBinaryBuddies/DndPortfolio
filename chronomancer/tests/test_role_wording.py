@@ -92,9 +92,20 @@ def test_refusing_a_member_uses_the_groups_theme(db, theme, expected):
     assert expected in str(err.value.detail)
 
 
-def test_the_bot_says_group_manager_inside_a_cancelled_poll_notice():
-    text = wording.t("plain", "botPollCancelled", organizer=wording.words("plain")["organizerInline"])
-    assert text == "This poll was cancelled. The group manager may start a new one."
+def test_the_bot_says_group_manager_inside_a_cancelled_poll_notice(db):
+    """Through the real embed, not a copy of its wording."""
+    from app.bot.snapshots import load_poll_snapshot
+    from app.bot.views import cancelled_embed
+    from helpers import voting_poll
+    for theme, expected in (("plain", "The group manager may start a new one."), ("dnd", "The Dungeon Master may unfurl")):
+        _, poll, _ = voting_poll(db, guild=f"g-{theme}", channel=f"c-{theme}", theme=theme)
+        services.cancel_poll(db, poll)
+        assert expected in cancelled_embed(load_poll_snapshot(db, poll.id)).description
+
+
+def test_no_sentence_on_the_pages_still_says_players_outside_a_theme_key():
+    page = PAGES["campaign.html"]
+    assert "minimum players" not in page and 'data-t="membersLower"' in page
 
 
 def test_the_server_refuses_non_managers_in_neutral_words(client):

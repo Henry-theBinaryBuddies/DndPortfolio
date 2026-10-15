@@ -9,6 +9,7 @@
   "organizerInline": "Dungeon Master",
   "member": "Player",
   "membersCap": "Players",
+  "membersLower": "players",
   "minFreeLabel": "Minimum free players",
   "freeOne": "free player",
   "freeMany": "free players",

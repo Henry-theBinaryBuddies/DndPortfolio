@@ -9,6 +9,7 @@
   "organizerInline": "group manager",
   "member": "Member",
   "membersCap": "Members",
+  "membersLower": "members",
   "minFreeLabel": "Minimum free members",
   "freeOne": "free member",
   "freeMany": "free members",
