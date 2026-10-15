@@ -157,13 +157,14 @@ def settings_summary(campaign) -> str:
             f"{describe_minutes(campaign.default_duration_min)} · "
             f"at least {campaign.min_quorum} free · {campaign.timezone} · reminders: "
             + (", ".join(describe_minutes(m) for m in campaign.reminder_offsets_min) + " before"
-               if campaign.reminder_offsets_min else "off"))
+               if campaign.reminder_offsets_min else "off")
+            + f" · Discord events: {'on' if campaign.events_enabled else 'off'}")
 
 
 # ---------------------------------------------------------------- /schedule
 
 
-def cmd_schedule(db: Session, du: DUser, guild_id, channel_id) -> Reply:
+def cmd_schedule(db: Session, du: DUser, guild_id, channel_id, events_ok: bool = True) -> Reply:
     """The one command for players. It always answers the same three things, whatever the
     state: what is happening, what you should do, and where to click."""
     campaign = _here(db, guild_id, channel_id)
@@ -206,7 +207,9 @@ def cmd_schedule(db: Session, du: DUser, guild_id, channel_id) -> Reply:
         lines.append("**Your turn:** vote for a time, here or on the page.")
         link = poll_url(poll)
     lines.append(link)
-    return Reply("\n".join(lines)[:1900], True)
+    if _is_organizer(db, campaign, user):
+        lines.append(_events_warning(campaign, events_ok).strip())
+    return Reply("\n".join(l for l in lines if l)[:1900], True)
 
 
 # ---------------------------------------------------------------- /chronomancer setup
@@ -214,12 +217,13 @@ def cmd_schedule(db: Session, du: DUser, guild_id, channel_id) -> Reply:
 
 def cmd_setup(db: Session, du: DUser, guild_id, channel_id, *, name=None, code=None,
               frequency=None, quorum=None, length=None, reminders=None, timezone=None,
-              theme=None) -> Reply:
+              theme=None, events=None, events_ok=True) -> Reply:
     """Create the campaign for this channel, or change its settings if it already exists.
     With `code`, bind a campaign made on the website instead of creating a new one."""
     _in_channel(guild_id, channel_id)
     changes = {"cadence": frequency, "min_quorum": quorum, "default_duration_min": length,
                "timezone": timezone.strip() if timezone else None, "theme": theme,
+               "events_enabled": events,
                "reminder_offsets_min": parse_offsets(reminders) if reminders is not None else None}
     changes = {k: v for k, v in changes.items() if v is not None}
     themes = wording.available_themes()
@@ -237,8 +241,8 @@ def cmd_setup(db: Session, du: DUser, guild_id, channel_id, *, name=None, code=N
         elif name:
             campaign, _ = services.create_campaign(
                 db, user, name=name, guild_id=str(guild_id), channel_id=str(channel_id),
-                available_themes=themes, **changes)
-            changes = {}  # all applied at creation
+                available_themes=themes, **{k: v for k, v in changes.items() if k != "events_enabled"})
+            changes = {k: v for k, v in changes.items() if k == "events_enabled"}  # the rest applied
             verb = "created"
         else:
             raise ServiceError(422, "Give the campaign a name, like: /chronomancer setup name:Curse of Strahd")
@@ -253,12 +257,21 @@ def cmd_setup(db: Session, du: DUser, guild_id, channel_id, *, name=None, code=N
         services.update_campaign(db, campaign, available_themes=themes, **changes)
     w = wording.words(campaign.theme)
     text = f"**{esc(campaign.name)}** {verb}.\n{settings_summary(campaign)}"
+    text += _events_warning(campaign, events_ok)
     if verb != "updated":
         text += (f"\nEveryone: run `/schedule` in this channel to join. "
                  f"The {w['organizer']} opens a poll with `/chronomancer poll`.")
     elif reminders is not None:
         text += _reminders_effect(db, campaign)  # what the new timings mean for a decided session
     return Reply(text)
+
+
+def _events_warning(campaign, events_ok: bool) -> str:
+    """Events are on but the bot cannot create them: say so, with the fix, instead of failing quietly."""
+    if campaign.events_enabled and not events_ok:
+        return ("\n**Discord events won't be created:** I need the *Create Events* permission. "
+                "Give me that role permission, or re-invite me with the link in the bot's description.")
+    return ""
 
 
 def _reminders_effect(db: Session, campaign) -> str:

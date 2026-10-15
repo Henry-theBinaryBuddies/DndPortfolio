@@ -340,7 +340,7 @@ def test_one_run_drains_a_backlog_in_order(db):
     _, poll, _ = voting_poll(db)
     services.confirm_poll(db, poll)  # vote_open and confirmed both queued
     world = World()
-    assert run(world.processor.run_once()) == 2
+    assert run(world.processor.run_once()) == 3  # the vote, the decree, and the Discord event
     assert [m.embed.title for m in world.channel.sent][-1] == "The Session Is Decreed"
 
 

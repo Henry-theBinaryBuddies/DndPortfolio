@@ -59,13 +59,48 @@ class FakeChannel:
         return Partial()
 
 
-class World:
-    """One fake channel plus the processor wired to it."""
+class FakeEvent:
+    def __init__(self, event_id, kwargs, guild):
+        self.id, self.kwargs, self.guild, self.deleted = event_id, kwargs, guild, False
 
-    def __init__(self, channel_id=CHANNEL):
+    async def delete(self, *, reason=None):
+        self.deleted = True
+        self.guild.events.pop(self.id, None)
+
+
+class FakeGuild:
+    """Just enough of discord.Guild for scheduled events."""
+
+    def __init__(self, can_create=True):
+        self.events, self.created, self._next = {}, [], 7000
+        self.me = type("Me", (), {"guild_permissions": type(
+            "P", (), {"create_events": can_create, "manage_events": False})()})()
+
+    async def create_scheduled_event(self, **kwargs):
+        self._next += 1
+        event = FakeEvent(self._next, kwargs, self)
+        self.events[event.id] = event
+        self.created.append(event)
+        return event
+
+    async def fetch_scheduled_event(self, event_id):
+        if event_id not in self.events:
+            raise discord.NotFound(FakeResponse(), "Unknown Scheduled Event")
+        return self.events[event_id]
+
+
+class World:
+    """One fake channel and guild plus the processor wired to them."""
+
+    def __init__(self, channel_id=CHANNEL, can_create_events=True):
         self.channel = FakeChannel(channel_id)
+        self.guild = FakeGuild(can_create_events)
         self.fail_with = None
-        self.processor = OutboxProcessor(self.get_channel)
+        self.processor = OutboxProcessor(self.get_channel, self.get_guild)
+
+    async def get_guild(self, guild_id):
+        assert guild_id == int(GUILD), "bot asked for the wrong server"
+        return self.guild
 
     async def get_channel(self, channel_id):
         if self.fail_with:

@@ -67,5 +67,6 @@
   "botRecurredTitle": "Next event scheduled",
   "botRecurredBody": "**{title}** is scheduled for {when}, the same time as before.",
   "botRecurrenceNote": "When it ends, the next one is scheduled automatically for {when}.",
-  "botFollowing": "The next one is {when}."
+  "botFollowing": "The next one is {when}.",
+  "events": "Create a Discord event for each session"
 }

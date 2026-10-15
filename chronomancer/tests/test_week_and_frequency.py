@@ -158,7 +158,8 @@ def test_exactly_the_six_documented_commands_are_registered():
     assert set(sub) == {"setup", "poll", "advance", "cancel", "unlink"}
 
     setup = {p.name: p for p in sub["setup"].parameters}
-    assert set(setup) == {"name", "code", "frequency", "quorum", "length", "reminders", "timezone", "theme"}
+    assert set(setup) == {"name", "code", "frequency", "quorum", "length", "reminders", "timezone", "theme",
+                          "events"}
     assert not any(p.required for p in setup.values())  # every option is optional
     assert {c.value for c in setup["frequency"].choices} == {
         "none", "weekly", "biweekly", "monthly", "quarterly", "annually"}

@@ -67,5 +67,6 @@
   "botRecurredTitle": "The Wheel Turns",
   "botRecurredBody": "The next gathering is set at the same hour: **{title}** begins {when}.",
   "botRecurrenceNote": "When it ends, the next gathering is set automatically for {when}.",
-  "botFollowing": "The next gathering is {when}."
+  "botFollowing": "The next gathering is {when}.",
+  "events": "Raise a Discord event for each gathering"
 }

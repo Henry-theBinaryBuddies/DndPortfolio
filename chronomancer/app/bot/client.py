@@ -12,8 +12,9 @@ from .views import ConfirmButton, VoteButton, vote_embed
 
 log = logging.getLogger("chronomancer.bot")
 
-# View Channels + Send Messages + Embed Links. Editing its own messages needs nothing extra.
-INVITE_PERMISSIONS = 1024 | 2048 | 16384
+# View Channels + Send Messages + Embed Links, and Create Events (1 << 44) for scheduled events.
+# Create Events lets the bot make and remove its own events, narrower than Manage Events.
+INVITE_PERMISSIONS = 1024 | 2048 | 16384 | (1 << 44)
 
 
 def invite_url() -> str:
@@ -29,7 +30,7 @@ class ChronomancerBot(discord.Client):
         intents.guilds = True
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
-        self.outbox = OutboxProcessor(self.get_or_fetch_channel)
+        self.outbox = OutboxProcessor(self.get_or_fetch_channel, self.get_or_fetch_guild)
         self.reminders = ReminderProcessor(self.get_or_fetch_channel, self.get_or_fetch_user)
         self.tree.on_error = self._on_command_error
 
@@ -57,6 +58,9 @@ class ChronomancerBot(discord.Client):
 
     async def get_or_fetch_channel(self, channel_id: int):
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
+
+    async def get_or_fetch_guild(self, guild_id: int):
+        return self.get_guild(guild_id) or await self.fetch_guild(guild_id)
 
     async def get_or_fetch_user(self, user_id: int):
         return self.get_user(user_id) or await self.fetch_user(user_id)

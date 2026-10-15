@@ -31,6 +31,14 @@ def make_duser(interaction: discord.Interaction) -> DUser:
     )
 
 
+def _bot_can_make_events(interaction: discord.Interaction) -> bool:
+    guild = interaction.guild
+    if guild is None or guild.me is None:
+        return True  # cannot tell; the outbox reports a real failure
+    perms = guild.me.guild_permissions
+    return perms.create_events or perms.manage_events
+
+
 def _bot_can_post(interaction: discord.Interaction) -> bool:
     guild, channel = interaction.guild, interaction.channel
     if guild is None or guild.me is None or channel is None:
@@ -77,21 +85,23 @@ def register(tree: app_commands.CommandTree) -> None:
         frequency="How often the group meets", quorum="Minimum players who must be free",
         length="Session length in minutes",
         reminders="When to remind the group before a session, like: 1d, 1h, 15m (or off)",
-        timezone="Default timezone for polls, like America/Los_Angeles", theme="Wording style")
+        timezone="Default timezone for polls, like America/Los_Angeles", theme="Wording style",
+        events="Create a Discord scheduled event for each confirmed session (default: on)")
     @app_commands.choices(frequency=frequency_choices, theme=theme_choices)
     async def setup(interaction: discord.Interaction, name: Optional[str] = None,
                     code: Optional[str] = None, frequency: Optional[str] = None,
                     quorum: Optional[app_commands.Range[int, 1, 50]] = None,
                     length: Optional[app_commands.Range[int, 15, 1440]] = None,
                     reminders: Optional[str] = None, timezone: Optional[str] = None,
-                    theme: Optional[str] = None):
+                    theme: Optional[str] = None, events: Optional[bool] = None):
         if not _bot_can_post(interaction):
             await interaction.response.send_message(
                 "I need View Channel, Send Messages and Embed Links in this channel first.",
                 ephemeral=True)
             return
         await _run(interaction, actions.cmd_setup, name=name, code=code, frequency=frequency,
-                   quorum=quorum, length=length, reminders=reminders, timezone=timezone, theme=theme)
+                   quorum=quorum, length=length, reminders=reminders, timezone=timezone, theme=theme,
+                   events=events, events_ok=_bot_can_make_events(interaction))
 
     @group.command(name="poll", description="Open a poll for one week of availability")
     @app_commands.describe(
@@ -119,6 +129,6 @@ def register(tree: app_commands.CommandTree) -> None:
     @tree.command(name="schedule", description="Join this group and see what to do next")
     @app_commands.guild_only()
     async def schedule(interaction: discord.Interaction):
-        await _run(interaction, actions.cmd_schedule)
+        await _run(interaction, actions.cmd_schedule, events_ok=_bot_can_make_events(interaction))
 
     tree.add_command(group)

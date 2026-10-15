@@ -9,7 +9,7 @@ import discord
 from sqlalchemy import select
 
 from .. import db as dbmod
-from ..models import Notification, PollMessage
+from ..models import Notification, Poll, PollMessage
 from .snapshots import PollSnapshot, load_poll_snapshot
 from .views import (
     build_vote_view, cancelled_embed, confirmed_embed, recurred_embed, session_cancelled_embed,
@@ -37,9 +37,10 @@ class Undeliverable(Exception):
 
 
 class OutboxProcessor:
-    def __init__(self, get_channel):
-        # get_channel: async callable(int) -> a messageable channel
+    def __init__(self, get_channel, get_guild=None):
+        # get_channel / get_guild: async callables(int) -> a messageable channel / a guild
         self._get_channel = get_channel
+        self._get_guild = get_guild
         self._lock = asyncio.Lock()  # command handlers and the timer may both trigger a run
 
     async def run_once(self) -> int:
@@ -102,6 +103,14 @@ class OutboxProcessor:
             db.commit()
 
     @staticmethod
+    def _store_event(poll_id: int, event_id: str | None) -> None:
+        with dbmod.SessionLocal() as db:
+            poll = db.get(Poll, poll_id)
+            if poll is not None:
+                poll.discord_event_id = event_id
+                db.commit()
+
+    @staticmethod
     def _store_message(poll_id: int, channel_id: int, message_id: int) -> None:
         with dbmod.SessionLocal() as db:
             row = db.get(PollMessage, poll_id)
@@ -129,6 +138,7 @@ class OutboxProcessor:
                 "vote_update": self._refresh_vote,
                 "confirmed": self._send_confirmed,
                 "recurred": self._send_recurred,
+                "event_sync": self._sync_event,
                 "cancelled": self._retire_vote,
             }.get(kind)
             if handler is None:
@@ -172,6 +182,36 @@ class OutboxProcessor:
         channel = await self._get_channel(snap.channel_id)
         await channel.send(embed=confirmed_embed(snap),
                            allowed_mentions=discord.AllowedMentions.none())
+
+    async def _sync_event(self, snap: PollSnapshot) -> None:
+        """Keep the Discord scheduled event in step with the session: one exists exactly while
+        the session is decided, still ahead, and events are enabled for the campaign."""
+        wanted = (snap.status == "confirmed" and snap.events_enabled
+                  and snap.confirmed_start is not None and snap.confirmed_start > _now())
+        if wanted == bool(snap.discord_event_id):
+            return  # already as it should be
+        if self._get_guild is None or snap.guild_id is None:
+            raise Undeliverable("cannot reach the Discord server")
+        guild = await self._get_guild(snap.guild_id)
+        if not wanted:
+            try:
+                await (await guild.fetch_scheduled_event(int(snap.discord_event_id))).delete(
+                    reason="Chronomancer: session cancelled or events turned off")
+            except discord.NotFound:
+                pass  # someone already removed it
+            await asyncio.to_thread(self._store_event, snap.poll_id, None)
+            return
+        perms = guild.me.guild_permissions if guild.me is not None else None
+        if perms is not None and not (perms.create_events or perms.manage_events):
+            raise Undeliverable("missing the Create Events permission")
+        event = await guild.create_scheduled_event(
+            name=snap.display_title[:100],
+            start_time=snap.confirmed_start, end_time=snap.session_end,
+            location=snap.campaign_url[:100], privacy_level=discord.PrivacyLevel.guild_only,
+            description=f"{snap.campaign_name}: scheduled with Chronomancer. Details: {snap.campaign_url}"[:1000],
+            reason="Chronomancer: session confirmed",
+        )
+        await asyncio.to_thread(self._store_event, snap.poll_id, str(event.id))
 
     async def _send_recurred(self, snap: PollSnapshot) -> None:
         if snap.status != "confirmed":  # cancelled or replaced before the announcement went out

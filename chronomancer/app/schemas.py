@@ -83,6 +83,7 @@ class CampaignUpdate(BaseModel):
     timezone: str | None = None
     theme: str | None = Field(default=None, pattern="^[a-z0-9_-]{1,32}$")
     reminder_offsets_min: list[int] | None = Field(default=None, max_length=5)
+    events_enabled: bool | None = None
 
     _tz = field_validator("timezone")(lambda v: v if v is None else _check_tz(v))
 

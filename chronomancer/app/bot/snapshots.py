@@ -2,7 +2,7 @@
 (so no ORM objects, and no database access, ever happen inside async Discord code)."""
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -42,12 +42,21 @@ class PollSnapshot:
     recurrence_next: datetime | None = None
     following: datetime | None = None
     auto: bool = False
+    events_enabled: bool = True
+    discord_event_id: str | None = None
+    campaign_url: str = ""
     reminder_times: list = field(default_factory=list)  # pending reminder send times
     reminder_offsets: list = field(default_factory=list)  # the campaign's configured timings
 
     @property
     def url(self) -> str:
         return f"{config.PUBLIC_BASE_URL}/poll.html?id={self.poll_id}"
+
+    @property
+    def session_end(self) -> datetime | None:
+        if self.confirmed_start is None:
+            return None
+        return self.confirmed_start + timedelta(minutes=self.duration_min)
 
     @property
     def total_votes(self) -> int:
@@ -112,6 +121,9 @@ def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
         recurrence_next=_recurrence_next(poll, campaign),
         following=_following(db, poll, campaign),
         auto=poll.recurred_from is not None,
+        events_enabled=campaign.events_enabled,
+        discord_event_id=poll.discord_event_id,
+        campaign_url=f"{config.PUBLIC_BASE_URL}/campaign.html?id={campaign.id}",
         reminder_times=services.pending_reminder_times(db, poll.id) if poll.status == "confirmed" else [],
         reminder_offsets=list(campaign.reminder_offsets_min or []),
     )

@@ -40,6 +40,7 @@
         <label>Minimum free players <input name="quorum" type="number" min="1" max="50" required></label>
         <label>Timezone <input name="timezone" required maxlength="64" placeholder="America/Los_Angeles"></label>
         <label>Remind before (like 1d, 1h, 15m) <input name="reminders" placeholder="1d, 1h"></label>
+        <label><span><input name="events" type="checkbox"> <span data-t="events">Create a Discord event for each session</span></span></label>
         <button type="submit" data-t="save">Save</button>
         <span id="settings-msg" class="ok"></span>
       </form>
@@ -124,6 +125,7 @@
         s.quorum.value = campaign.min_quorum;
         s.timezone.value = campaign.timezone;
         s.reminders.value = showReminders(campaign.reminder_offsets_min);
+        s.events.checked = campaign.events_enabled;
         formsReady = true;
       }
 
@@ -163,6 +165,7 @@
           cadence: f.get("cadence"), default_duration_min: +f.get("duration"),
           min_quorum: +f.get("quorum"), timezone: f.get("timezone").trim(),
           reminder_offsets_min: parseReminders(f.get("reminders")),
+          events_enabled: f.get("events") === "on", // an unchecked box is simply absent from the form
         });
         $("tz").textContent = campaign.timezone;
         $("load-error").textContent = "";

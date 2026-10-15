@@ -181,6 +181,12 @@ def open_poll(db: Session, campaign_id: int) -> Poll | None:
         .order_by(Poll.id.desc()))
 
 
+def upcoming_sessions(db: Session, campaign_id: int) -> list:
+    return list(db.scalars(select(Poll).where(
+        Poll.campaign_id == campaign_id, Poll.status == "confirmed",
+        Poll.confirmed_start_utc > now_utc()).order_by(Poll.confirmed_start_utc)))
+
+
 def next_session(db: Session, campaign_id: int) -> Poll | None:
     """The soonest decided session that has not started yet."""
     return db.scalar(select(Poll).where(
@@ -356,6 +362,7 @@ def confirm_poll(db: Session, poll: Poll, candidate_id: int | None = None) -> Po
         db.rollback()
         raise ServiceError(409, "poll is not open for voting")
     enqueue(db, "confirmed", poll.id)
+    enqueue(db, "event_sync", poll.id)
     schedule_reminders(db, poll.id, chosen.start_utc, poll.campaign.reminder_offsets_min or [])
     supersede_auto_sessions(db, poll.campaign_id, keep_id=poll.id)
     db.commit()
@@ -395,6 +402,8 @@ def cancel_poll(db: Session, poll: Poll) -> Poll:
     if was_confirmed or db.get(PollMessage, poll.id) is not None:
         enqueue(db, "cancelled", poll.id)  # lets the bot retire buttons / announce the change
     if was_confirmed:
+        enqueue(db, "event_sync", poll.id)  # remove the Discord event
+    if was_confirmed:
         # Skipping one occurrence must not end the series: line up the next one now.
         db.execute(update(Poll).where(Poll.id == poll.id).values(recurrence_handled=True))
         db.refresh(poll)
@@ -415,7 +424,7 @@ def valid_timezone(name: str) -> bool:
 
 def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default_duration_min=None,
                             timezone=None, theme=None, reminder_offsets_min=None,
-                            available_themes=None) -> str | None:
+                            events_enabled=None, available_themes=None) -> str | None:
     """Validate any subset of a campaign's settings. Raises ServiceError for the first bad
     value, so callers can check everything *before* writing anything. Returns the stripped name."""
     if name is not None:
@@ -443,6 +452,7 @@ def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
                     cadence: str | None = None, min_quorum: int | None = None,
                     default_duration_min: int | None = None, timezone: str | None = None,
                     theme: str | None = None, reminder_offsets_min: list | None = None,
+                    events_enabled: bool | None = None,
                     available_themes: tuple | list | None = None) -> Campaign:
     """Change any of a campaign's settings in one step. Only the arguments given change, and
     nothing changes at all if any value is invalid. Reminder timings also reschedule the
@@ -452,6 +462,9 @@ def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
         default_duration_min=default_duration_min, timezone=timezone, theme=theme,
         reminder_offsets_min=reminder_offsets_min, available_themes=available_themes)
     cadence_changed = cadence is not None and cadence != campaign.cadence
+    events_changed = events_enabled is not None and events_enabled != campaign.events_enabled
+    if events_enabled is not None:
+        campaign.events_enabled = events_enabled
     for field, value in (("name", name), ("cadence", cadence), ("min_quorum", min_quorum),
                          ("default_duration_min", default_duration_min), ("timezone", timezone),
                          ("theme", theme)):
@@ -459,6 +472,9 @@ def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
             setattr(campaign, field, value)
     if cadence_changed:
         replan_auto_sessions(db, campaign)
+    if events_changed:  # turning events on or off applies to the sessions already decided
+        for session in upcoming_sessions(db, campaign.id):
+            enqueue_once(db, "event_sync", session.id)
     if reminder_offsets_min is not None:
         campaign.reminder_offsets_min = sorted(set(reminder_offsets_min), reverse=True)
         reschedule_reminders(db, campaign)
@@ -561,6 +577,7 @@ def schedule_next_occurrence(db: Session, poll: Poll, now: datetime | None = Non
     db.flush()
     schedule_reminders(db, following.id, start, campaign.reminder_offsets_min or [], now)
     enqueue(db, "recurred", following.id)
+    enqueue(db, "event_sync", following.id)
     return following
 
 
@@ -605,6 +622,7 @@ def _drop_session(db: Session, poll: Poll) -> bool:
         return False
     db.execute(delete(Reminder).where(Reminder.poll_id == poll.id, Reminder.sent_at.is_(None)))
     enqueue(db, "cancelled", poll.id)
+    enqueue(db, "event_sync", poll.id)
     return True
 
 
