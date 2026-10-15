@@ -99,7 +99,7 @@ def test_two_campaigns_cannot_share_a_channel_but_setup_updates_the_existing_one
 
 def test_plain_theme_uses_plain_words(db):
     reply = setup(db, name="Book Club", theme="plain")
-    assert "Organizer" in reply.text and "Dungeon Master" not in reply.text
+    assert "group manager" in reply.text and "Dungeon Master" not in reply.text
 
 
 # ---------------------------------------------------------------- setup: update permissions
@@ -369,7 +369,7 @@ def test_a_failed_advance_explains_why_and_changes_nothing(db):
     with pytest.raises(ServiceError) as exc:
         actions.cmd_advance(db, DM, GUILD, CHANNEL, None)
     text = actions.error_text(exc.value)
-    assert "start times considered" in text and "too few free players" in text
+    assert "start times considered" in text and "too few free people" in text
     assert poll.status == "collecting"
 
 

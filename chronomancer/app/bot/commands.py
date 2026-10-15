@@ -98,7 +98,7 @@ def register(tree: app_commands.CommandTree) -> None:
     @app_commands.describe(
         name="Campaign name (needed the first time)",
         code="Invite code, to adopt a campaign made on the website",
-        frequency="How often the group meets", quorum="Minimum players who must be free",
+        frequency="How often the group meets", quorum="Minimum people who must be free",
         length="Session length in minutes",
         reminders="When to remind the group before a session, like: 1d, 1h, 15m (or off)",
         theme="Wording style",
@@ -139,7 +139,7 @@ def register(tree: app_commands.CommandTree) -> None:
     async def cancel(interaction: discord.Interaction):
         await _then_flush(interaction, await _run(interaction, actions.cmd_cancel))
 
-    @group.command(name="unlink", description="Free this channel (organizer, or anyone who manages it)")
+    @group.command(name="unlink", description="Free this channel (the group's manager, or anyone who manages it)")
     async def unlink(interaction: discord.Interaction):
         await _run(interaction, actions.cmd_unlink)
 

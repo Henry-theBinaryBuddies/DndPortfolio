@@ -112,7 +112,7 @@ def cancelled_embed(s: PollSnapshot) -> discord.Embed:
     w = wording.words(s.theme)
     return discord.Embed(
         title=wording.t(s.theme, "botVoteTitle", title=_esc(s.display_title))[:256],
-        description=wording.t(s.theme, "botPollCancelled", organizer=w["organizer"]),
+        description=wording.t(s.theme, "botPollCancelled", organizer=w["organizerInline"]),
         colour=_colour(s.theme),
     )
 

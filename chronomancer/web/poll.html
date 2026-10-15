@@ -102,14 +102,14 @@
       if (grid) grid.destroy();
       document.title = (poll.title || "Poll") + " - Chronomancer";
       $("title").textContent = poll.title || "Poll " + poll.id;
-      $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} free player${poll.min_quorum === 1 ? "" : "s"}. Status: ${poll.status}.`;
+      $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} ${Theme.t(poll.min_quorum === 1 ? "freeOne" : "freeMany")}. Status: ${poll.status}.`;
       $("back").href = "/campaign.html?id=" + poll.campaign_id;
       const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
       $("tz").textContent = here;
       // The organizer typed the hours in their own zone; say so when yours differs, because the
       // grid below is converted to yours and will not read like the hours they chose.
       $("tz-note").textContent = poll.timezone === here ? ""
-        : `The organizer chose these hours in ${poll.timezone}, so they appear shifted here.`;
+        : `${Theme.t("hoursChosenBy")} ${poll.timezone}, so they appear shifted here.`;
       const collecting = poll.status === "collecting";
       const open = collecting || poll.status === "voting";
       const organizerHere = poll.my_role === "organizer";
@@ -172,7 +172,7 @@
     }));
     $("confirm").addEventListener("click", () => confirmPoll(null));
     $("cancel").addEventListener("click", () => {
-      if (confirm("Cancel this poll? Players will no longer be able to respond.")) {
+      if (confirm(Theme.t("cancelPollConfirm"))) {
         act(() => Api.post(`/api/polls/${id}/cancel`));
       }
     });

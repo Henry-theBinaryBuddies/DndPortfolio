@@ -419,7 +419,7 @@ def close_poll(db: Session, poll: Poll, vote_hours: int | None = None) -> Poll:
     if not result.candidates:
         db.rollback()  # release the claim: the poll stays open for more availability
         raise ServiceError(409, {
-            "message": "no start time satisfies the required players and quorum",
+            "message": "no start time satisfies the required people and quorum",
             "considered": result.total_considered,
             "dropped_required": result.dropped_required,
             "dropped_quorum": result.dropped_quorum,
@@ -631,7 +631,7 @@ def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default
     if cadence is not None and cadence not in CADENCES:
         raise ServiceError(422, "frequency must be one of: " + ", ".join(CADENCES))
     if min_quorum is not None and not 1 <= min_quorum <= 50:
-        raise ServiceError(422, "minimum players must be between 1 and 50")
+        raise ServiceError(422, "minimum free people must be between 1 and 50")
     if default_duration_min is not None and not 15 <= default_duration_min <= 1440:
         raise ServiceError(422, "session length must be between 15 and 1440 minutes")
     if theme is not None and available_themes is not None and theme not in available_themes:

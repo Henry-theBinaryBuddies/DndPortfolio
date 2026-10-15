@@ -33,7 +33,7 @@ def load_poll(db: Session, poll_id: int, user: User) -> tuple:
 def load_poll_as_organizer(db: Session, poll_id: int, user: User) -> Poll:
     poll, member = load_poll(db, poll_id, user)
     if member.role != "organizer":
-        raise HTTPException(403, "organizer only")
+        raise HTTPException(403, "only the group manager can do that")
     return poll
 
 

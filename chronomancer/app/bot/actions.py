@@ -66,7 +66,7 @@ def error_text(exc: ServiceError) -> str:
     extra = ""
     if "considered" in d:
         extra = (f" ({d['considered']} start times considered; {d.get('dropped_required', 0)} "
-                 f"lost a required player, {d.get('dropped_quorum', 0)} had too few free players)")
+                 f"lost a required person, {d.get('dropped_quorum', 0)} had too few free people)")
     return str(d.get("message", "request failed")) + extra
 
 
@@ -95,7 +95,7 @@ def _require_organizer(db: Session, campaign, user):
     member = services.get_member(db, campaign.id, user.id)
     if member is None or member.role != "organizer":
         w = wording.words(campaign.theme)
-        raise ServiceError(403, wording.t(campaign.theme, "botOrganizerOnly", organizer=w["organizer"]))
+        raise ServiceError(403, wording.t(campaign.theme, "botOrganizerOnly", organizer=w["organizerInline"]))
     return member
 
 
@@ -189,7 +189,7 @@ def cmd_schedule(db: Session, du: DUser, guild_id, channel_id, events_ok: bool =
     poll = services.open_poll(db, campaign.id)
     if poll is None:
         if session is None:
-            lines.append(f"Nothing is scheduled. The {w['organizer']} can open a poll with /chronomancer poll.")
+            lines.append(f"Nothing is scheduled. The {w['organizerInline']} can open a poll with /chronomancer poll.")
         link = campaign_url(campaign.id)
     elif poll.status == "collecting":
         responded = set(db.scalars(select(Availability.user_id).where(
@@ -262,7 +262,7 @@ def cmd_setup(db: Session, du: DUser, guild_id, channel_id, *, name=None, code=N
     text += _events_warning(campaign, events_ok)
     if verb != "updated":
         text += (f"\nEveryone: run `/schedule` in this channel to join. "
-                 f"The {w['organizer']} opens a poll with `/chronomancer poll`.")
+                 f"The {w['organizerInline']} opens a poll with `/chronomancer poll`.")
     elif reminders is not None:
         text += _reminders_effect(db, campaign)  # what the new timings mean for a decided session
     return Reply(text)

@@ -36,7 +36,7 @@
           </select>
         </label>
         <label>Session length (min) <input name="duration" type="number" min="15" max="1440" required></label>
-        <label>Minimum free players <input name="quorum" type="number" min="1" max="50" required></label>
+        <label><span data-t="minFreeLabel">Minimum free players</span> <input name="quorum" type="number" min="1" max="50" required></label>
         <label>Remind before (like 1d, 1h, 15m) <input name="reminders" placeholder="1d, 1h"></label>
         <label><span><input name="events" type="checkbox"> <span data-t="events">Create a Discord event for each session</span></span></label>
         <button type="submit" data-t="save">Save</button>
@@ -63,7 +63,7 @@
         <label>Latest end <input name="window_end" type="time" value="00:00" required></label>
         <button type="submit" data-t="createPoll">Create</button>
       </form>
-      <p class="muted">Players mark the seven days from the start date. These hours are in your timezone (<span id="tz"></span>); 00:00 to 00:00 is the whole day, and an end of 00:00 means the end of the day. You can change them later on the poll page. Everyone sees every time in their own. Length and minimum players come from the settings above.</p>
+      <p class="muted"><span data-t="membersCap">Players</span> mark the seven days from the start date. These hours are in your timezone (<span id="tz"></span>); 00:00 to 00:00 is the whole day, and an end of 00:00 means the end of the day. You can change them later on the poll page. Everyone sees every time in their own. Length and minimum players come from the settings above.</p>
       <p id="poll-error" class="error"></p>
     </div>
   </main>
@@ -142,7 +142,7 @@
         }) : null;
         if (box && m.required) box.checked = true;
         return el("li", {}, m.display_name,
-          m.role === "organizer" ? el("span", { class: "badge" }, Theme.t("organizer")) : null,
+          el("span", { class: "badge" }, m.role === "organizer" ? Theme.t("organizer") : Theme.t("member")),
           organizer ? el("label", { class: "muted" }, box, " " + Theme.t("required"))
                     : (m.required ? el("span", { class: "badge" }, Theme.t("required")) : null));
       }));

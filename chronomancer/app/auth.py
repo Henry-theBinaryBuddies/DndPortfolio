@@ -74,7 +74,7 @@ def require_member(db: Session, campaign_id: int, user: User) -> Member:
 def require_organizer(db: Session, campaign_id: int, user: User) -> Member:
     member = require_member(db, campaign_id, user)
     if member.role != "organizer":
-        raise HTTPException(403, "organizer only")
+        raise HTTPException(403, "only the group manager can do that")
     return member
 
 

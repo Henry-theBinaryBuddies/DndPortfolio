@@ -82,6 +82,8 @@
       expired: "That login attempt expired. Please try again.",
     };
 
+    let campaigns = [];
+
     async function show() {
       try {
         await Api.get("/api/me");
@@ -99,11 +101,16 @@
       }
       if (nextPath !== "/") { location.replace(nextPath); return; }
       $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false;
-      const list = await Api.get("/api/campaigns");
-      $("campaign-list").replaceChildren(...list.map((c) =>
+      campaigns = await Api.get("/api/campaigns");
+      renderCampaigns();
+    }
+
+    // Redrawn on a theme switch too, so the role words follow the theme.
+    function renderCampaigns() {
+      $("campaign-list").replaceChildren(...campaigns.map((c) =>
         el("li", {}, el("a", { href: "/campaign.html?id=" + c.id }, c.name),
-          el("span", { class: "badge" }, c.my_role === "organizer" ? Theme.t("organizer") : c.my_role))));
-      if (!list.length) $("campaign-list").append(el("li", { class: "muted" }, "None yet."));
+          el("span", { class: "badge" }, c.my_role === "organizer" ? Theme.t("organizer") : Theme.t("member")))));
+      if (!campaigns.length) $("campaign-list").append(el("li", { class: "muted" }, "None yet."));
     }
 
     $("login-form").addEventListener("submit", async (e) => {
@@ -136,6 +143,7 @@
         location.href = "/campaign.html?id=" + r.campaign_id;
       } catch (err) { $("join-error").textContent = err.message; }
     });
+    window.addEventListener("themechange", () => { if (!$("app").hidden) renderCampaigns(); });
     Theme.ready.then(show);
   </script>
 </body>
