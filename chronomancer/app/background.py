@@ -15,7 +15,9 @@ def _db_tick() -> tuple:
     """The time-driven database work: confirm votes whose deadline passed, and schedule the
     next session of repeating groups whose latest session just ended."""
     with dbmod.SessionLocal() as db:
-        return services.auto_confirm_due(db), services.roll_recurrences(db)
+        confirmed, scheduled = services.auto_confirm_due(db), services.roll_recurrences(db)
+        services.purge_expired_web_sessions(db)
+        return confirmed, scheduled
 
 
 class Background:

@@ -1,5 +1,6 @@
 """Operations shared by the web API and the Discord bot. Each commits its own work."""
 from collections import Counter
+import secrets
 from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -11,7 +12,7 @@ from sqlalchemy.orm import Session
 from . import config
 from .models import (
     Availability, Campaign, Candidate, Member, Notification, Poll, PollMessage, Reminder, User,
-    Vote,
+    Vote, WebSession,
 )
 from .scheduling import candidate_starts, generate_slots, rank_candidates
 
@@ -46,6 +47,40 @@ class ServiceError(Exception):
 
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# ---------------------------------------------------------------- web sessions
+
+SESSION_LIFETIME = timedelta(days=14)
+
+
+def create_web_session(db: Session, user: User) -> str:
+    token = secrets.token_urlsafe(32)
+    db.add(WebSession(id=token, user_id=user.id, expires_at=now_utc() + SESSION_LIFETIME))
+    db.commit()
+    return token
+
+
+def valid_web_session(db: Session, token: str | None) -> WebSession | None:
+    row = db.get(WebSession, token) if token else None
+    if row is None or row.expires_at <= now_utc():
+        return None
+    return row
+
+
+def end_web_sessions(db: Session, *, token: str | None = None, user_id: int | None = None) -> int:
+    """Revoke one session (log out) or every session of a user (log out everywhere)."""
+    q = delete(WebSession)
+    q = q.where(WebSession.id == token) if token is not None else q.where(WebSession.user_id == user_id)
+    result = db.execute(q)
+    db.commit()
+    return result.rowcount
+
+
+def purge_expired_web_sessions(db: Session) -> int:
+    result = db.execute(delete(WebSession).where(WebSession.expires_at <= now_utc()))
+    db.commit()
+    return result.rowcount
 
 
 # ---------------------------------------------------------------- users and membership

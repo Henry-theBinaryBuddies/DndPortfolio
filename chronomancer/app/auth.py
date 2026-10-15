@@ -35,9 +35,17 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+def start_session(db: Session, request: Request, user: User) -> None:
+    """Log the browser in. The cookie holds only a random session id, valid until the server
+    says otherwise. Starting fresh also means a cookie from before login is never reused."""
+    token = services.create_web_session(db, user)
+    request.session.clear()
+    request.session["sid"] = token
+
+
 def current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    user_id = request.session.get("user_id")
-    user = db.get(User, user_id) if user_id else None
+    session = services.valid_web_session(db, request.session.get("sid"))
+    user = db.get(User, session.user_id) if session else None
     if user is None:
         raise HTTPException(401, "not logged in")
     return user
@@ -84,15 +92,25 @@ def dev_login(body: DevLogin, request: Request, db: Session = Depends(get_db)):
         user.display_name = body.display_name
         user.timezone = body.timezone
     db.commit()
-    request.session.clear()
-    request.session["user_id"] = user.id
+    start_session(db, request, user)
     return user_json(user)
 
 
 @router.post("/logout")
-def logout(request: Request):
+def logout(request: Request, db: Session = Depends(get_db)):
+    """End this browser's session on the server, so a copied cookie stops working too."""
+    services.end_web_sessions(db, token=request.session.get("sid") or "")
     request.session.clear()
     return {"ok": True}
+
+
+@router.post("/logout-everywhere")
+def logout_everywhere(request: Request, user: User = Depends(current_user),
+                      db: Session = Depends(get_db)):
+    """End every session of this user on every device."""
+    ended = services.end_web_sessions(db, user_id=user.id)
+    request.session.clear()
+    return {"ended": ended}
 
 
 @router.get("/me")
@@ -156,6 +174,5 @@ async def oauth_callback(request: Request, code: str | None = None, state: str |
         services.upsert_user, db, str(profile["id"]),
         discord_oauth.display_name(profile), discord_oauth.avatar_url(profile),
     )
-    request.session.clear()  # fresh session on login: no fixation of a pre-login cookie
-    request.session["user_id"] = user.id
+    await run_in_threadpool(start_session, db, request, user)  # a fresh session: no fixation
     return RedirectResponse(destination, status_code=302)

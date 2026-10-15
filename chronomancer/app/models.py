@@ -179,3 +179,14 @@ class Reminder(Base):
     dm_ok: Mapped[int] = mapped_column(Integer, default=0)
     dm_failed: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(String(300), default=None)
+
+
+class WebSession(Base):
+    """A logged-in browser. The cookie carries only this random id; the server decides whether
+    it is still valid, so logging out (or 'log out everywhere') really ends the session."""
+
+    __tablename__ = "web_sessions"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at = mapped_column(UTCDateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = mapped_column(UTCDateTime, index=True)
