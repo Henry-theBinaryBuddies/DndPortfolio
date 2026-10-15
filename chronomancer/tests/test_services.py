@@ -90,10 +90,6 @@ def test_player_cannot_link_a_campaign_they_do_not_organize(db):
 def test_create_poll_validations(db):
     campaign, _ = make_campaign(db)
     with pytest.raises(ServiceError):
-        open_poll(db, campaign, date_start=date(2026, 12, 5), date_end=date(2026, 12, 1))
-    with pytest.raises(ServiceError):
-        open_poll(db, campaign, date_end=date(2027, 6, 1))
-    with pytest.raises(ServiceError):
         open_poll(db, campaign, window_start=time(22), window_end=time(18))
     with pytest.raises(ServiceError):
         open_poll(db, campaign, duration_min=600)

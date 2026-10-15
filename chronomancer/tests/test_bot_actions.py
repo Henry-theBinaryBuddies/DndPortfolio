@@ -15,11 +15,10 @@ STRANGER = DUser("99", "Stranger")
 
 
 def poll_args(**kw):
-    base = dict(first_day="2026-12-01", last_day="2026-12-03", start="18:00", end="23:00",
-                length=120, tz="UTC", title="Session 5")
+    base = dict(week_start="2026-12-01", start="18:00", end="23:00", length=120, tz="UTC",
+                title="Session 5")
     base.update(kw)
-    return (base["first_day"], base["last_day"], base["start"], base["end"],
-            base["length"], base["tz"], base["title"])
+    return (base["week_start"], base["start"], base["end"], base["length"], base["tz"], base["title"])
 
 
 # ---------------------------------------------------------------- create / link
@@ -104,8 +103,7 @@ def test_poll_created_and_link_points_at_it(db):
 
 
 @pytest.mark.parametrize("override,needle", [
-    (dict(first_day="12/01/2026"), "First day"),
-    (dict(last_day="soon"), "Last day"),
+    (dict(week_start="12/01/2026"), "Week start"),
     (dict(start="6pm"), "Start"),
     (dict(end="25:00"), "End"),
     (dict(tz="Mars/Base"), "timezone"),

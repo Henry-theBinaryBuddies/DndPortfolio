@@ -237,7 +237,7 @@ def test_deleting_through_the_api_cleans_up_too(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     pid = client.post(f"/api/campaigns/{cid}/polls", json={
-        "timezone": "UTC", "date_start": "2026-12-01", "date_end": "2026-12-02",
+        "timezone": "UTC", "date_start": "2026-12-01",
         "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}).json()["id"]
     with fresh() as db:
         db.add(Notification(kind="vote_open", poll_id=pid))
@@ -262,7 +262,7 @@ def test_second_open_poll_is_refused_by_the_service_for_every_caller(db):
 def test_web_api_also_refuses_a_second_open_poll(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
-    body = {"timezone": "UTC", "date_start": "2026-12-01", "date_end": "2026-12-02",
+    body = {"timezone": "UTC", "date_start": "2026-12-01",
             "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}
     assert client.post(f"/api/campaigns/{cid}/polls", json=body).status_code == 201
     assert client.post(f"/api/campaigns/{cid}/polls", json=body).status_code == 409
@@ -314,7 +314,7 @@ def test_cancel_endpoint_is_organizer_only(client):
     login(client, "1", "DM")
     camp = client.post("/api/campaigns", json={"name": "x"}).json()
     pid = client.post(f"/api/campaigns/{camp['id']}/polls", json={
-        "timezone": "UTC", "date_start": "2026-12-01", "date_end": "2026-12-02",
+        "timezone": "UTC", "date_start": "2026-12-01",
         "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}).json()["id"]
     player = make_client()
     login(player, "2", "Aria")
@@ -562,7 +562,7 @@ def test_duration_that_needs_more_slots_than_the_window_has_is_rejected(db):
 def test_absurd_timezone_strings_are_422_not_500(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
-    body = {"date_start": "2026-12-01", "date_end": "2026-12-02", "window_start": "18:00:00",
+    body = {"date_start": "2026-12-01", "window_start": "18:00:00",
             "window_end": "22:00:00", "duration_min": 120}
     for tz in ("x" * 5000, "Mars/Base", "../../etc/passwd", "", "\x00"):
         assert client.post(f"/api/campaigns/{cid}/polls", json={**body, "timezone": tz}).status_code == 422, tz
@@ -572,7 +572,7 @@ def test_bot_poll_command_rejects_absurd_timezones(db):
     make_campaign(db)
     for tz in ("x" * 5000, "../../etc/passwd"):
         with pytest.raises(ServiceError) as exc:
-            actions.cmd_poll(db, DM, GUILD, CHANNEL, "2026-12-01", "2026-12-02", "18:00", "22:00", 120, tz, "t")
+            actions.cmd_poll(db, DM, GUILD, CHANNEL, "2026-12-01", "18:00", "22:00", 120, tz, "t")
         assert exc.value.status == 422
 
 
@@ -580,7 +580,7 @@ def test_poll_endpoints_do_not_reveal_which_ids_exist(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     pid = client.post(f"/api/campaigns/{cid}/polls", json={
-        "timezone": "UTC", "date_start": "2026-12-01", "date_end": "2026-12-02",
+        "timezone": "UTC", "date_start": "2026-12-01",
         "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}).json()["id"]
     outsider = make_client()
     login(outsider, "99", "Stranger")
@@ -623,16 +623,16 @@ def test_organizer_text_cannot_inject_markdown_or_mentions_into_embeds(db):
     snap = load_poll_snapshot(db, poll.id)
     title = vote_embed(snap).title
     # The opening bracket is backslash-escaped, so Discord shows literal text, not a link.
-    assert "\[Free nitro]" in title and "\*\*x\*\*" in title
+    assert r"\[Free nitro]" in title and r"\*\*x\*\*" in title
     assert "@everyone" not in title  # a zero-width space breaks the mention
     services.confirm_poll(db, poll)
     done = confirmed_embed(load_poll_snapshot(db, poll.id)).description
-    assert "\[Free nitro]" in done and "@everyone" not in done
+    assert r"\[Free nitro]" in done and "@everyone" not in done
 
 
 def test_bot_replies_escape_names_and_titles(db):
     actions.cmd_create(db, DM, GUILD, CHANNEL, "[click](https://evil.example)", 180, 2, "dnd")
-    reply = actions.cmd_poll(db, DM, GUILD, CHANNEL, "2026-12-01", "2026-12-02", "18:00", "22:00",
+    reply = actions.cmd_poll(db, DM, GUILD, CHANNEL, "2026-12-01", "18:00", "22:00",
                              120, "UTC", "**loud** @everyone")
     assert "**loud**" not in reply.text.replace("\\*\\*loud\\*\\*", "") and "@everyone" not in reply.text
 

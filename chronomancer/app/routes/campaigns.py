@@ -6,16 +6,22 @@ from .. import services
 from ..auth import current_user, require_member, require_organizer
 from ..db import get_db
 from ..models import Campaign, Member, User
-from ..schemas import CampaignCreate, JoinRequest
+from ..schemas import CadenceUpdate, CampaignCreate, JoinRequest
 
 router = APIRouter(prefix="/api")
 
 
-def campaign_json(campaign: Campaign, member: Member) -> dict:
+def _next_week(db: Session, campaign: Campaign) -> str | None:
+    day = services.suggest_next_week(db, campaign)
+    return day.isoformat() if day else None
+
+
+def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
     data = {
         "id": campaign.id,
         "name": campaign.name,
         "cadence": campaign.cadence,
+        "next_week_start": _next_week(db, campaign),
         "default_duration_min": campaign.default_duration_min,
         "min_quorum": campaign.min_quorum,
         "vote_top_n": campaign.vote_top_n,
@@ -47,7 +53,7 @@ def campaign_json(campaign: Campaign, member: Member) -> dict:
 def create_campaign(body: CampaignCreate, user: User = Depends(current_user),
                     db: Session = Depends(get_db)):
     campaign, member = services.create_campaign(db, user, **body.model_dump())
-    return campaign_json(campaign, member)
+    return campaign_json(db, campaign, member)
 
 
 @router.get("/campaigns")
@@ -64,7 +70,15 @@ def list_campaigns(user: User = Depends(current_user), db: Session = Depends(get
 def get_campaign(campaign_id: int, user: User = Depends(current_user),
                  db: Session = Depends(get_db)):
     member = require_member(db, campaign_id, user)
-    return campaign_json(member.campaign, member)
+    return campaign_json(db, member.campaign, member)
+
+
+@router.put("/campaigns/{campaign_id}/cadence")
+def set_cadence(campaign_id: int, body: CadenceUpdate, user: User = Depends(current_user),
+                db: Session = Depends(get_db)):
+    member = require_organizer(db, campaign_id, user)
+    services.set_cadence(db, member.campaign, body.cadence)
+    return {"cadence": member.campaign.cadence, "next_week_start": _next_week(db, member.campaign)}
 
 
 @router.post("/join")

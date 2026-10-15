@@ -48,6 +48,16 @@
           <label>Name <input name="name" required maxlength="120"></label>
           <label>Default length (min) <input name="duration" type="number" value="180" min="30" max="1440"></label>
           <label>Minimum free players <input name="quorum" type="number" value="2" min="1" max="50"></label>
+          <label><span data-t="frequency">How often?</span>
+            <select name="frequency">
+              <option value="none" data-t="freq_none">One-off</option>
+              <option value="weekly" data-t="freq_weekly">Weekly</option>
+              <option value="biweekly" data-t="freq_biweekly">Every two weeks</option>
+              <option value="monthly" data-t="freq_monthly">Monthly</option>
+              <option value="quarterly" data-t="freq_quarterly">Quarterly</option>
+              <option value="annually" data-t="freq_annually">Annually</option>
+            </select>
+          </label>
           <button type="submit" data-t="createCampaign">Create</button>
         </form>
         <p id="create-error" class="error"></p>
@@ -126,6 +136,7 @@
       try {
         const c = await Api.post("/api/campaigns", {
           name: f.get("name"), default_duration_min: +f.get("duration"), min_quorum: +f.get("quorum"),
+          cadence: f.get("frequency"),
           theme: Theme.current(),
         });
         location.href = "/campaign.html?id=" + c.id;

@@ -86,7 +86,7 @@ def create_poll(campaign_id: int, body: PollCreate, user: User = Depends(current
     member = require_organizer(db, campaign_id, user)
     poll = services.create_poll(
         db, member.campaign, title=body.title, tz=body.timezone,
-        date_start=body.date_start, date_end=body.date_end,
+        date_start=body.date_start,
         window_start=body.window_start, window_end=body.window_end,
         slot_minutes=body.slot_minutes, duration_min=body.duration_min,
         min_quorum=body.min_quorum, vote_top_n=body.vote_top_n,

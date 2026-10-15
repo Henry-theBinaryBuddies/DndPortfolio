@@ -20,6 +20,17 @@
       <h1 id="name"></h1>
       <p id="invite" class="muted" hidden></p>
       <p id="unlinked" class="muted" hidden></p>
+      <label id="freq-row" hidden><span data-t="frequency">How often?</span>
+        <select id="frequency">
+          <option value="none" data-t="freq_none">One-off</option>
+          <option value="weekly" data-t="freq_weekly">Weekly</option>
+          <option value="biweekly" data-t="freq_biweekly">Every two weeks</option>
+          <option value="monthly" data-t="freq_monthly">Monthly</option>
+          <option value="quarterly" data-t="freq_quarterly">Quarterly</option>
+          <option value="annually" data-t="freq_annually">Annually</option>
+        </select>
+        <span id="freq-note" class="muted"></span>
+      </label>
       <p id="load-error" class="error" role="alert"></p>
     </div>
     <div class="panel">
@@ -34,8 +45,10 @@
       <h2 data-t="createPoll">New poll</h2>
       <form id="poll-form" class="row">
         <label>Title <input name="title" maxlength="120" placeholder="Session 5"></label>
-        <label>First day <input name="date_start" type="date" required></label>
-        <label>Last day <input name="date_end" type="date" required></label>
+        <label><span data-t="weekStart">Week starting</span>
+          <input name="date_start" type="date" required>
+          <span class="muted" id="week-hint">Players mark seven days from this date.</span>
+        </label>
         <label>Earliest start <input name="window_start" type="time" value="18:00" required></label>
         <label>Latest end <input name="window_end" type="time" value="23:00" required></label>
         <label>Length (min) <input name="duration" type="number" min="15" max="1440" required></label>
@@ -85,8 +98,14 @@
       if (!formReady) {
         f.duration.value = campaign.default_duration_min;
         f.quorum.value = campaign.min_quorum;
+        // For a group that meets regularly, start from the week after the last session.
+        if (campaign.next_week_start) f.date_start.value = campaign.next_week_start;
         formReady = true;
       }
+      $("freq-row").hidden = !organizer;
+      $("frequency").value = campaign.cadence;
+      $("freq-note").textContent = campaign.next_week_start
+        ? "Next poll suggested for the week of " + campaign.next_week_start : "";
 
       $("members").replaceChildren(...campaign.members.map((m) => {
         const box = organizer ? el("input", {
@@ -120,12 +139,24 @@
       try {
         const p = await Api.post(`/api/campaigns/${id}/polls`, {
           title: f.get("title"), timezone: tz,
-          date_start: f.get("date_start"), date_end: f.get("date_end"),
+          date_start: f.get("date_start"),
           window_start: f.get("window_start") + ":00", window_end: f.get("window_end") + ":00",
           duration_min: +f.get("duration"), min_quorum: +f.get("quorum"),
         });
         location.href = "/poll.html?id=" + p.id;
       } catch (err) { $("poll-error").textContent = err.message; }
+    });
+    $("frequency").addEventListener("change", async (e) => {
+      try {
+        const r = await Api.put(`/api/campaigns/${id}/cadence`, { cadence: e.target.value });
+        campaign.cadence = r.cadence; campaign.next_week_start = r.next_week_start;
+        $("freq-note").textContent = r.next_week_start
+          ? "Next poll suggested for the week of " + r.next_week_start : "";
+        $("load-error").textContent = "";
+      } catch (err) {
+        e.target.value = campaign.cadence; // the server said no: show the truth again
+        $("load-error").textContent = err.message;
+      }
     });
     Theme.ready.then(load);
     window.addEventListener("themechange", () => campaign && load());

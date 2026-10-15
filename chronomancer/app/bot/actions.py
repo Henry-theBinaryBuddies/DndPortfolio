@@ -89,7 +89,7 @@ def _poll_url(poll: Poll) -> str:
 
 
 def cmd_create(db: Session, du: DUser, guild_id, channel_id, name: str, duration: int,
-               quorum: int, theme: str) -> Reply:
+               quorum: int, theme: str, frequency: str = "none") -> Reply:
     if not guild_id or not channel_id:
         raise ServiceError(400, "Use this command in a server channel.")
     if not du.can_manage:
@@ -102,9 +102,23 @@ def cmd_create(db: Session, du: DUser, guild_id, channel_id, name: str, duration
     user = _user(db, du)
     campaign, _ = services.create_campaign(
         db, user, name=name, guild_id=str(guild_id), channel_id=str(channel_id),
-        default_duration_min=duration, min_quorum=quorum, theme=theme,
+        default_duration_min=duration, min_quorum=quorum, theme=theme, cadence=frequency,
     )
     return Reply(wording.t(campaign.theme, "botCampaignCreated", name=_esc(campaign.name)))
+
+
+def cmd_frequency(db: Session, du: DUser, guild_id, channel_id, frequency: str) -> Reply:
+    """Set how often the group meets (weekly, biweekly, monthly, quarterly, annually, none)."""
+    campaign = _here(db, guild_id, channel_id)
+    user = _user(db, du)
+    _require_organizer(db, campaign, user)
+    services.set_cadence(db, campaign, frequency)
+    label = wording.words(campaign.theme).get("freq_" + campaign.cadence, campaign.cadence)
+    text = wording.t(campaign.theme, "botFrequencySet", frequency=label)
+    nxt = services.suggest_next_week(db, campaign)
+    if nxt:
+        text += " " + wording.t(campaign.theme, "botNextWeek", date=nxt.strftime("%A %B %d, %Y"))
+    return Reply(text)
 
 
 def cmd_link(db: Session, du: DUser, guild_id, channel_id, code: str) -> Reply:
@@ -143,11 +157,20 @@ def _parse_time(value: str, label: str) -> time:
         raise ServiceError(422, f"{label} must look like 18:00 (24-hour).")
 
 
-def cmd_poll(db: Session, du: DUser, guild_id, channel_id, first_day: str, last_day: str,
-             start: str, end: str, length: int | None, tz: str, title: str) -> Reply:
+def cmd_poll(db: Session, du: DUser, guild_id, channel_id, week_start: str | None,
+             start: str, end: str, length: int | None, tz: str, title: str,
+             quorum: int | None = None) -> Reply:
+    """Open a poll for one week: the seven days from week_start. Without week_start, use the
+    week the campaign's meeting frequency suggests after the last confirmed session."""
     campaign = _here(db, guild_id, channel_id)
     user = _user(db, du)
     _require_organizer(db, campaign, user)
+    if week_start and week_start.strip():
+        first_day = _parse_day(week_start, "Week start")
+    else:
+        first_day = services.suggest_next_week(db, campaign)
+        if first_day is None:
+            raise ServiceError(422, "Which week? Give week_start, the first of the seven days, like 2026-10-26.")
     tz = tz.strip() or "UTC"
     if len(tz) > 64:
         raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
@@ -157,9 +180,9 @@ def cmd_poll(db: Session, du: DUser, guild_id, channel_id, first_day: str, last_
         raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
     poll = services.create_poll(
         db, campaign, title=title.strip()[:120], tz=tz,
-        date_start=_parse_day(first_day, "First day"), date_end=_parse_day(last_day, "Last day"),
+        date_start=first_day,
         window_start=_parse_time(start, "Start"), window_end=_parse_time(end, "End"),
-        duration_min=length,
+        duration_min=length, min_quorum=quorum,
     )
     return Reply(wording.t(campaign.theme, "botPollCreated",
                            title=_esc(poll.title or campaign.name), url=_poll_url(poll)))

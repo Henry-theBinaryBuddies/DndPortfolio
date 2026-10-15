@@ -59,5 +59,5 @@ BACKGROUND_ENABLED = os.environ.get("CHRONOMANCER_BACKGROUND", "1") != "0"
 TICK_SECONDS = 5
 
 MAX_VOTE_TOP_N = 5
-MAX_POLL_DAYS = 31
+WEEK_DAYS = 7  # every poll covers exactly one week
 MAX_VOTE_HOURS = 24 * 14

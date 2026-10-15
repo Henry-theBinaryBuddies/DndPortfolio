@@ -56,5 +56,15 @@
   "botNeedManage": "You need the Manage Channels or Manage Server permission to link a group to this channel.",
   "notMember": "You are not in this group yet. In Discord, run /availability in the group's channel to join, then reload this page.",
   "notLinked": "This group is not linked to a Discord channel, so votes and announcements will not be posted there. In the channel, run /chronomancer link with the invite code:",
-  "cancel": "Cancel poll"
+  "cancel": "Cancel poll",
+  "botFrequencySet": "Meeting frequency is now: **{frequency}**.",
+  "botNextWeek": "Next meeting: open the next poll for the week of {date}.",
+  "frequency": "How often do you meet?",
+  "freq_none": "One-off",
+  "freq_weekly": "Weekly",
+  "freq_biweekly": "Every two weeks",
+  "freq_monthly": "Monthly",
+  "freq_quarterly": "Quarterly",
+  "freq_annually": "Annually",
+  "weekStart": "Week starting"
 }

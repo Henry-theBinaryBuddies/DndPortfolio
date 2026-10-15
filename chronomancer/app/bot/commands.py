@@ -63,23 +63,30 @@ def register(tree: app_commands.CommandTree) -> None:
         app_commands.Choice(name=wording.words(name).get("label", name), value=name)
         for name in wording.available_themes()
     ]
+    frequency_choices = [
+        app_commands.Choice(name=n, value=v) for n, v in (
+            ("One-off (no repeat)", "none"), ("Weekly", "weekly"), ("Every two weeks", "biweekly"),
+            ("Monthly", "monthly"), ("Quarterly", "quarterly"), ("Annually", "annually"))
+    ]
     group = app_commands.Group(
         name="chronomancer", description="Schedule your group's sessions", guild_only=True
     )
 
     @group.command(name="create", description="Create a campaign tied to this channel")
     @app_commands.describe(name="Campaign name", duration="Session length in minutes",
-                           quorum="Minimum players who must be free", theme="Wording style")
-    @app_commands.choices(theme=theme_choices)
+                           quorum="Minimum players who must be free for a time to qualify",
+                           theme="Wording style", frequency="How often the group meets")
+    @app_commands.choices(theme=theme_choices, frequency=frequency_choices)
     async def create(interaction: discord.Interaction, name: str,
                      duration: app_commands.Range[int, 30, 1440] = 180,
-                     quorum: app_commands.Range[int, 1, 50] = 2, theme: str = "dnd"):
+                     quorum: app_commands.Range[int, 1, 50] = 2, theme: str = "dnd",
+                     frequency: str = "none"):
         if not _bot_can_post(interaction):
             await interaction.response.send_message(
                 "I need View Channel, Send Messages and Embed Links in this channel first.",
                 ephemeral=True)
             return
-        await _run(interaction, actions.cmd_create, name, duration, quorum, theme)
+        await _run(interaction, actions.cmd_create, name, duration, quorum, theme, frequency)
 
     @group.command(name="link", description="Tie a campaign made on the website to this channel")
     @app_commands.describe(code="The invite code shown on the campaign page")
@@ -95,19 +102,27 @@ def register(tree: app_commands.CommandTree) -> None:
     async def unlink(interaction: discord.Interaction):
         await _run(interaction, actions.cmd_unlink)
 
-    @group.command(name="poll", description="Open a poll for players to mark availability")
+    @group.command(name="frequency", description="Set how often the group meets (organizer only)")
+    @app_commands.describe(frequency="How often the group meets")
+    @app_commands.choices(frequency=frequency_choices)
+    async def frequency(interaction: discord.Interaction, frequency: str):
+        await _run(interaction, actions.cmd_frequency, frequency)
+
+    @group.command(name="poll", description="Open a poll for one week of availability")
     @app_commands.describe(
-        first_day="First day, like 2026-10-24", last_day="Last day, like 2026-10-31",
+        week_start="First of the seven days, like 2026-10-26 (blank: the next week per your frequency)",
         start="Earliest start each day, like 18:00", end="Latest end each day, like 23:00",
         length="Session length in minutes (default: the campaign's)",
         timezone="Timezone for start/end, like America/Los_Angeles (default UTC)",
-        title="Name for this session")
-    async def poll(interaction: discord.Interaction, first_day: str, last_day: str,
+        title="Name for this session",
+        quorum="Minimum players who must be free (default: the campaign's)")
+    async def poll(interaction: discord.Interaction, week_start: Optional[str] = None,
                    start: str = "18:00", end: str = "23:00",
                    length: Optional[app_commands.Range[int, 15, 1440]] = None,
-                   timezone: str = "UTC", title: str = ""):
-        await _run(interaction, actions.cmd_poll, first_day, last_day, start, end,
-                   length, timezone, title)
+                   timezone: str = "UTC", title: str = "",
+                   quorum: Optional[app_commands.Range[int, 1, 50]] = None):
+        await _run(interaction, actions.cmd_poll, week_start, start, end,
+                   length, timezone, title, quorum)
 
     @group.command(name="close", description="Close the poll and put the best times to a vote")
     @app_commands.describe(vote_hours="Hours the vote stays open (blank: until you confirm)")

@@ -2,12 +2,12 @@
 (so no ORM objects, and no database access, ever happen inside async Discord code)."""
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import config
+from .. import config, services
 from ..models import Campaign, Member, Poll, PollMessage, Vote
 
 
@@ -37,6 +37,7 @@ class PollSnapshot:
     message_channel_id: int | None = None
     message_id: int | None = None
     organizer_discord_id: str | None = None
+    next_week: date | None = None  # suggested start of the next poll's week, once decided
 
     @property
     def url(self) -> str:
@@ -87,4 +88,5 @@ def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
         message_channel_id=_int_or_none(message.channel_id) if message else None,
         message_id=_int_or_none(message.message_id) if message else None,
         organizer_discord_id=organizer.user.discord_id if organizer else None,
+        next_week=services.suggest_next_week(db, campaign) if poll.status == "confirmed" else None,
     )

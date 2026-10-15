@@ -4,7 +4,6 @@ POLL = {
     "title": "Session 5",
     "timezone": "UTC",
     "date_start": "2026-03-02",
-    "date_end": "2026-03-03",
     "window_start": "18:00:00",
     "window_end": "22:00:00",
     "duration_min": 120,
@@ -75,9 +74,7 @@ def test_player_cannot_create_poll_or_close(client):
 def test_poll_validation(client):
     campaign, _ = setup_party(client)
     url = f"/api/campaigns/{campaign['id']}/polls"
-    assert client.post(url, json={**POLL, "date_end": "2026-01-01"}).status_code == 422
     assert client.post(url, json={**POLL, "duration_min": 600}).status_code == 422
-    assert client.post(url, json={**POLL, "date_end": "2026-12-31"}).status_code == 422
     assert client.post(url, json={**POLL, "timezone": "Mars/Base"}).status_code == 422
 
 

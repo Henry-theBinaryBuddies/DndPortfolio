@@ -28,7 +28,7 @@ class CampaignCreate(BaseModel):
     # guild_id / channel_id are deliberately absent: a campaign is bound to a Discord channel
     # only through the bot (/chronomancer create or link), which verifies the caller is in it.
     name: str = Field(min_length=1, max_length=120)
-    cadence: str = Field(default="none", pattern="^(none|weekly|biweekly|monthly)$")
+    cadence: str = Field(default="none", pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
     default_duration_min: int = Field(default=180, ge=30, le=1440)
     min_quorum: int = Field(default=2, ge=1, le=50)
     vote_top_n: int = Field(default=3, ge=1, le=config.MAX_VOTE_TOP_N)
@@ -50,8 +50,7 @@ class JoinRequest(BaseModel):
 class PollCreate(BaseModel):
     title: str = Field(default="", max_length=120)
     timezone: str = "UTC"
-    date_start: date
-    date_end: date
+    date_start: date  # first day of the week; the poll covers this day and the next six
     window_start: time
     window_end: time
     slot_minutes: int = Field(default=30, ge=15, le=120)
@@ -70,6 +69,10 @@ class SlotMark(BaseModel):
 
 class AvailabilityPut(BaseModel):
     slots: list[SlotMark]
+
+
+class CadenceUpdate(BaseModel):
+    cadence: str = Field(pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
 
 
 class VoteCast(BaseModel):

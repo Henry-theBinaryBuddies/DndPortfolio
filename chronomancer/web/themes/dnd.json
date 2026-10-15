@@ -56,5 +56,15 @@
   "botNeedManage": "You need the Manage Channels or Manage Server permission to bind a campaign to this channel.",
   "notMember": "You are not part of this party yet. In Discord, run /availability in the campaign's channel to join, then reload this page.",
   "notLinked": "This campaign is not tied to a Discord channel, so votes and announcements will not be posted there. In the channel, run /chronomancer link with the invite rune:",
-  "cancel": "Burn the Scroll"
+  "cancel": "Burn the Scroll",
+  "botFrequencySet": "The party's rhythm is now: **{frequency}**.",
+  "botNextWeek": "Next gathering: unfurl the next scroll for the week of {date}.",
+  "frequency": "How often does the party gather?",
+  "freq_none": "Just once",
+  "freq_weekly": "Every week",
+  "freq_biweekly": "Every two weeks",
+  "freq_monthly": "Every month",
+  "freq_quarterly": "Every quarter",
+  "freq_annually": "Every year",
+  "weekStart": "Week begins"
 }

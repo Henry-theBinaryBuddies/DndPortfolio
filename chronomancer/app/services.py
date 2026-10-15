@@ -1,6 +1,8 @@
 """Operations shared by the web API and the Discord bot. Each commits its own work."""
 from collections import Counter
+from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
@@ -11,6 +13,23 @@ from .models import (
     Availability, Campaign, Candidate, Member, Notification, Poll, PollMessage, User, Vote,
 )
 from .scheduling import candidate_starts, generate_slots, rank_candidates
+
+
+CADENCES = ("none", "weekly", "biweekly", "monthly", "quarterly", "annually")
+
+
+def add_cadence(day: date, cadence: str) -> date | None:
+    """The date one meeting interval after `day`, or None for a one-off campaign."""
+    if cadence == "weekly":
+        return day + timedelta(days=7)
+    if cadence == "biweekly":
+        return day + timedelta(days=14)
+    months = {"monthly": 1, "quarterly": 3, "annually": 12}.get(cadence)
+    if months is None:
+        return None
+    year_carry, month0 = divmod(day.month - 1 + months, 12)
+    year, month = day.year + year_carry, month0 + 1
+    return date(year, month, min(day.day, monthrange(year, month)[1]))  # Jan 31 + 1 month = Feb 28
 
 
 class ServiceError(Exception):
@@ -88,6 +107,8 @@ def create_campaign(db: Session, owner: User, *, name: str, guild_id: str | None
                     reminder_offsets_min: list | None = None, theme: str = "dnd") -> tuple:
     if guild_id and channel_id and campaign_for_channel(db, guild_id, channel_id):
         raise ServiceError(409, "this channel already hosts a campaign")
+    if cadence not in CADENCES:
+        raise ServiceError(422, "frequency must be one of: " + ", ".join(CADENCES))
     campaign = Campaign(
         owner_id=owner.id, name=name, guild_id=guild_id, channel_id=channel_id,
         cadence=cadence, default_duration_min=default_duration_min, min_quorum=min_quorum,
@@ -147,6 +168,27 @@ def delete_campaign(db: Session, campaign_id: int) -> None:
     db.commit()
 
 
+def set_cadence(db: Session, campaign: Campaign, cadence: str) -> Campaign:
+    if cadence not in CADENCES:
+        raise ServiceError(422, "frequency must be one of: " + ", ".join(CADENCES))
+    campaign.cadence = cadence
+    db.commit()
+    return campaign
+
+
+def suggest_next_week(db: Session, campaign: Campaign) -> date | None:
+    """Where the next poll's week should start, from the last confirmed session plus the
+    campaign's meeting frequency. None for one-off campaigns or before any session."""
+    if campaign.cadence == "none":
+        return None
+    last = db.scalar(select(Poll).where(Poll.campaign_id == campaign.id,
+                                        Poll.status == "confirmed").order_by(Poll.id.desc()))
+    if last is None or last.confirmed_start_utc is None:
+        return None
+    held_on = last.confirmed_start_utc.astimezone(ZoneInfo(last.timezone)).date()
+    return add_cadence(held_on, campaign.cadence)
+
+
 def current_poll(db: Session, campaign_id: int) -> Poll | None:
     """The open poll if there is one, otherwise the most recent."""
     polls = db.scalars(
@@ -182,16 +224,14 @@ def enqueue_once(db: Session, kind: str, poll_id: int) -> None:
 
 
 def create_poll(db: Session, campaign: Campaign, *, title: str, tz: str, date_start: date,
-                date_end: date, window_start: time, window_end: time, slot_minutes: int = 30,
+                window_start: time, window_end: time, slot_minutes: int = 30,
                 duration_min: int | None = None, min_quorum: int | None = None,
                 vote_top_n: int | None = None, vote_deadline: datetime | None = None) -> Poll:
     existing = current_poll(db, campaign.id)
     if existing is not None and existing.status in ("collecting", "voting"):
         raise ServiceError(409, "A poll is already open in this campaign. Close or confirm it first.")
-    if date_end < date_start:
-        raise ServiceError(422, "last day must not be before first day")
-    if (date_end - date_start).days + 1 > config.MAX_POLL_DAYS:
-        raise ServiceError(422, f"poll may cover at most {config.MAX_POLL_DAYS} days")
+    # A poll is always exactly one week: the grid players paint is seven days starting here.
+    date_end = date_start + timedelta(days=config.WEEK_DAYS - 1)
     if vote_deadline is not None:
         if vote_deadline.tzinfo is None:
             raise ServiceError(422, "vote deadline must include a timezone")

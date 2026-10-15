@@ -46,9 +46,12 @@ def vote_embed(s: PollSnapshot) -> discord.Embed:
 def confirmed_embed(s: PollSnapshot) -> discord.Embed:
     when = (f"{discord.utils.format_dt(s.confirmed_start, 'F')} "
             f"({discord.utils.format_dt(s.confirmed_start, 'R')})") if s.confirmed_start else "?"
+    text = wording.t(s.theme, "botConfirmedBody", title=_esc(s.display_title), when=when)
+    if s.next_week:  # the campaign meets regularly: say where the next poll should start
+        text += "\n\n" + wording.t(s.theme, "botNextWeek", date=s.next_week.strftime("%A %B %d, %Y"))
     return discord.Embed(
         title=wording.t(s.theme, "botConfirmedTitle"),
-        description=wording.t(s.theme, "botConfirmedBody", title=_esc(s.display_title), when=when),
+        description=text,
         colour=_colour(s.theme),
     )
 
