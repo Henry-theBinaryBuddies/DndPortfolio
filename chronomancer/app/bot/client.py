@@ -90,7 +90,7 @@ class ChronomancerBot(discord.Client):
         try:
             outcome = await asyncio.to_thread(
                 actions.with_db, actions.vote_click, commands.make_duser(interaction), poll_id,
-                candidate_id, interaction.guild_id, interaction.channel_id,
+                candidate_id, interaction.guild_id, commands.home_channel_id(interaction),
             )
             if not (outcome.ok and outcome.snapshot):
                 await interaction.response.send_message(outcome.text, ephemeral=True)
@@ -106,7 +106,7 @@ class ChronomancerBot(discord.Client):
         try:
             outcome = await asyncio.to_thread(
                 actions.with_db, actions.confirm_click, commands.make_duser(interaction), poll_id,
-                interaction.guild_id, interaction.channel_id,
+                interaction.guild_id, commands.home_channel_id(interaction),
             )
             await interaction.response.send_message(outcome.text, ephemeral=True)
         except Exception:  # noqa: BLE001

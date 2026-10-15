@@ -31,6 +31,22 @@ def make_duser(interaction: discord.Interaction) -> DUser:
     )
 
 
+def home_channel(interaction: discord.Interaction):
+    """The channel a campaign is bound to. Inside a thread that is the thread's parent, so the
+    group can talk about the schedule in a thread of its channel."""
+    channel = interaction.channel
+    if isinstance(channel, discord.Thread) and channel.parent is not None:
+        return channel.parent
+    return channel
+
+
+def home_channel_id(interaction: discord.Interaction):
+    channel = interaction.channel
+    if isinstance(channel, discord.Thread):
+        return channel.parent_id
+    return interaction.channel_id
+
+
 def _bot_can_make_events(interaction: discord.Interaction) -> bool:
     guild = interaction.guild
     if guild is None or guild.me is None:
@@ -40,7 +56,7 @@ def _bot_can_make_events(interaction: discord.Interaction) -> bool:
 
 
 def _bot_can_post(interaction: discord.Interaction) -> bool:
-    guild, channel = interaction.guild, interaction.channel
+    guild, channel = interaction.guild, home_channel(interaction)
     if guild is None or guild.me is None or channel is None:
         return True  # cannot tell; the outbox will report a real failure later
     perms = channel.permissions_for(guild.me)
@@ -52,7 +68,7 @@ async def _run(interaction: discord.Interaction, fn, *args, **kwargs) -> actions
     try:
         reply = await asyncio.to_thread(
             actions.with_db, lambda db: fn(db, make_duser(interaction), interaction.guild_id,
-                                           interaction.channel_id, *args, **kwargs))
+                                           home_channel_id(interaction), *args, **kwargs))
     except ServiceError as exc:
         await interaction.response.send_message(actions.error_text(exc), ephemeral=True)
         return None
