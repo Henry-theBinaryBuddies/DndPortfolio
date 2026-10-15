@@ -1,0 +1,14 @@
+# Caddy gets and renews the HTTPS certificate for SITE_ADDRESS automatically (ports 80 and 443 must be open).
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy app:8000
+
+	header {
+		# Keep browsers on HTTPS, stop the pages being framed (clickjacking), and limit what leaks in links.
+		Strict-Transport-Security "max-age=15552000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
