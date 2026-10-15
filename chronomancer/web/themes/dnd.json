@@ -39,7 +39,7 @@
   "botVoteClosed": "Voting has ended for this scroll.",
   "botVotesWord": "votes",
   "botFreeWord": "free",
-  "botMaybeWord": "if needed",
+  "botMaybeWord": "maybe",
   "botPollClosed": "The scroll is sealed. The vote will appear in this channel shortly.",
   "botPollDecreed": "The session is decreed. Watch this channel for the announcement.",
   "botPollCancelled": "This scroll was burned. The {organizer} may unfurl a new one.",
@@ -69,5 +69,5 @@
   "botFollowing": "The next gathering is {when}.",
   "events": "Raise a Discord event for each gathering",
   "no": "Not available",
-  "gridHint": "Tap a box to mark it: green is available, yellow is maybe, red is not available. Tap a day or a time to fill a whole column or row."
+  "gridHint": "Click (or tap) a box once for available, twice for maybe, three times for not available. One more click clears it. Click a day or a time to fill a whole column or row."
 }

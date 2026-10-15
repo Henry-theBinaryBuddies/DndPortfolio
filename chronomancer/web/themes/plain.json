@@ -39,7 +39,7 @@
   "botVoteClosed": "Voting has ended for this poll.",
   "botVotesWord": "votes",
   "botFreeWord": "free",
-  "botMaybeWord": "if needed",
+  "botMaybeWord": "maybe",
   "botPollClosed": "The poll is closed. The vote will appear in this channel shortly.",
   "botPollDecreed": "The event is confirmed. Watch this channel for the announcement.",
   "botPollCancelled": "This poll was cancelled. The {organizer} may start a new one.",
@@ -69,5 +69,5 @@
   "botFollowing": "The next one is {when}.",
   "events": "Create a Discord event for each session",
   "no": "Not available",
-  "gridHint": "Tap a box to mark it: green is available, yellow is maybe, red is not available. Tap a day or a time to fill a whole column or row."
+  "gridHint": "Click (or tap) a box once for available, twice for maybe, three times for not available. One more click clears it. Click a day or a time to fill a whole column or row."
 }

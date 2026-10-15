@@ -29,10 +29,10 @@
 
     <div class="panel" id="grid-panel" hidden>
       <h2 data-t="poll">Availability</h2>
-      <ul class="legend" aria-label="Colour key">
-        <li><span class="swatch cell-free"></span> <span data-t="free">Available</span></li>
-        <li><span class="swatch cell-maybe"></span> <span data-t="maybe">Maybe</span></li>
-        <li><span class="swatch cell-no"></span> <span data-t="no">Not available</span></li>
+      <ul class="legend" aria-label="What each click does">
+        <li><span class="swatch cell-free"></span> <strong>1 click</strong> <span data-t="free">Available</span></li>
+        <li><span class="swatch cell-maybe"></span> <strong>2 clicks</strong> <span data-t="maybe">Maybe</span></li>
+        <li><span class="swatch cell-no"></span> <strong>3 clicks</strong> <span data-t="no">Not available</span></li>
       </ul>
       <p class="muted"><span data-t="gridHint">Tap a box to mark it.</span> Times are in your timezone (<span id="tz"></span>).</p>
       <div id="grid" class="grid-wrap"></div>
@@ -82,7 +82,7 @@
       $("candidates").replaceChildren(...poll.candidates.map((c) =>
         el("div", { class: "candidate" + (poll.my_vote === c.id ? " mine" : "") },
           el("span", { class: "when" }, fmtDateTime(c.start)),
-          el("span", { class: "muted" }, `${c.free_count} free, ${c.maybe_count} if needed`),
+          el("span", { class: "muted" }, `${c.free_count} free, ${c.maybe_count} maybe`),
           el("span", { class: "badge" }, `${c.votes} vote${c.votes === 1 ? "" : "s"}`),
           open ? el("button", { onclick: () => vote(c.id) }, Theme.t("vote")) : null,
           open && poll.my_role === "organizer"
