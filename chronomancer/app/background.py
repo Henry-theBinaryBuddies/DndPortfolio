@@ -2,6 +2,7 @@
 confirming polls whose vote deadline has passed, and delivering queued Discord messages."""
 import asyncio
 import logging
+import time
 
 from . import config, db as dbmod, services
 
@@ -20,10 +21,16 @@ def _db_tick() -> tuple:
         return confirmed, scheduled
 
 
+def _compact() -> int:
+    with dbmod.SessionLocal() as db:
+        return services.compact_finished_polls(db)
+
+
 class Background:
     def __init__(self):
         self.bot = None
         self._tasks: list = []
+        self._next_compaction = None  # monotonic time; None until the first tick
 
     async def start(self) -> None:
         if config.BOT_ENABLED:
@@ -78,11 +85,34 @@ class Background:
                     await bot.outbox.run_once()
                     await bot.reminders.run_once()
                     await bot.membership.run_if_due()
+                await self._compact_if_due()
             except asyncio.CancelledError:
                 raise
             except Exception:  # noqa: BLE001
                 log.exception("background tick failed")
             await asyncio.sleep(config.TICK_SECONDS)
+
+    async def _compact_if_due(self) -> None:
+        """Slim old history now and then. It runs after the Discord work, never delaying it, in its own
+        try block so a failure cannot disturb anything else, and the next run is scheduled first so a
+        failing sweep retries on the interval instead of every tick. The first run waits a minute."""
+        if not config.COMPACT_ENABLED:
+            return
+        now = time.monotonic()
+        if self._next_compaction is None:
+            self._next_compaction = now + 60
+            return
+        if now < self._next_compaction:
+            return
+        self._next_compaction = now + config.COMPACT_EVERY_SECONDS
+        try:
+            removed = await asyncio.to_thread(_compact)
+            if removed:
+                log.info("compacted old availability: %d rows removed", removed)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001
+            log.exception("history compaction failed; will retry later")
 
     async def stop(self) -> None:
         for task in self._tasks:

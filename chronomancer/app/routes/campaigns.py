@@ -18,6 +18,7 @@ def _themes() -> list:
 
 
 def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
+    history = services.recent_sessions(campaign)
     data = {
         "id": campaign.id,
         "name": campaign.name,
@@ -40,12 +41,14 @@ def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
             for m in campaign.members if m.left_at is None
         ],
         "polls": [
-            {"id": p.id, "title": p.title, "status": p.status,
+            {"id": p.id, "title": p.title, "status": p.status, "phase": phase,
              "date_start": p.date_start.isoformat(), "date_end": p.date_end.isoformat(),
              "confirmed_start": p.confirmed_start_utc.isoformat().replace("+00:00", "Z")
              if p.confirmed_start_utc else None, "auto": p.recurred_from is not None}
-            for p in campaign.polls
+            for p, phase in history["sessions"]
         ],
+        "polls_hidden": history["hidden"],        # older held sessions that are kept but not listed
+        "polls_called_off": history["called_off"],  # cancelled polls, counted instead of listed
     }
     if member.role == "organizer":
         data["invite_code"] = campaign.invite_code

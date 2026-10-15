@@ -307,6 +307,64 @@ def next_session(db: Session, campaign_id: int) -> Poll | None:
         Poll.confirmed_start_utc > now_utc()).order_by(Poll.confirmed_start_utc))
 
 
+def session_phase(poll: Poll, now: datetime | None = None) -> str:
+    """Where a session is in its life: open (collecting or voting), upcoming (decided, not over),
+    held (decided and over) or called_off (cancelled)."""
+    now = now or now_utc()
+    if poll.status in ("collecting", "voting"):
+        return "open"
+    if poll.status == "cancelled":
+        return "called_off"
+    start = poll.confirmed_start_utc
+    if start is not None and start + timedelta(minutes=poll.duration_min) > now:
+        return "upcoming"
+    return "held"
+
+
+def recent_sessions(campaign: Campaign, now: datetime | None = None, shown: int | None = None) -> dict:
+    """What the campaign page lists: everything still live (open polls and upcoming sessions) and
+    the latest few sessions that were really held. Called-off polls are only counted, so a run
+    of reschedules cannot push real sessions out of the list. Nothing is deleted by this."""
+    now = now or now_utc()
+    shown = config.SESSIONS_SHOWN if shown is None else shown
+    phases = [(p, session_phase(p, now)) for p in campaign.polls]
+    start = lambda p: p.confirmed_start_utc or now  # noqa: E731
+    opened = sorted((p for p, ph in phases if ph == "open"), key=lambda p: -p.id)
+    upcoming = sorted((p for p, ph in phases if ph == "upcoming"), key=start)
+    held = sorted((p for p, ph in phases if ph == "held"), key=lambda p: (start(p), p.id), reverse=True)
+    return {
+        "sessions": [(p, "open") for p in opened] + [(p, "upcoming") for p in upcoming]
+                    + [(p, "held") for p in held[:shown]],
+        "hidden": max(0, len(held) - shown),
+        "called_off": sum(1 for _, ph in phases if ph == "called_off"),
+    }
+
+
+def compact_finished_polls(db: Session, now: datetime | None = None, keep_days: int | None = None,
+                           max_polls: int = 200) -> int:
+    """Drop the per-person availability of sessions that are decided or called off and older than
+    `keep_days`. That grid is about 95-99% of what a session stores and nothing reads it once the
+    poll is closed; votes, candidates and the session itself stay. Each poll is its own small
+    transaction, and the delete re-checks the poll's status, so it cannot race a state change.
+    Returns how many availability rows were removed."""
+    now = now or now_utc()
+    cutoff = now - timedelta(days=config.AVAILABILITY_KEEP_DAYS if keep_days is None else keep_days)
+    terminal = ("confirmed", "cancelled")
+    poll_ids = db.scalars(select(Poll.id).where(
+        Poll.status.in_(terminal), Poll.date_end < cutoff.date(),
+        or_(Poll.confirmed_start_utc.is_(None), Poll.confirmed_start_utc < cutoff),
+        select(Availability.id).where(Availability.poll_id == Poll.id).exists(),
+    ).order_by(Poll.id).limit(max_polls)).all()
+    removed = 0
+    for poll_id in poll_ids:
+        result = db.execute(delete(Availability).where(
+            Availability.poll_id == poll_id,
+            select(Poll.id).where(Poll.id == poll_id, Poll.status.in_(terminal)).exists()))
+        db.commit()
+        removed += result.rowcount
+    return removed
+
+
 def current_poll(db: Session, campaign_id: int) -> Poll | None:
     """The open poll if there is one, otherwise the most recent."""
     polls = db.scalars(
@@ -353,8 +411,7 @@ def create_poll(db: Session, campaign: Campaign, *, title: str, date_start: date
                 vote_top_n: int | None = None, vote_deadline: datetime | None = None) -> Poll:
     if tz is not None and not valid_timezone(tz):
         raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
-    existing = current_poll(db, campaign.id)
-    if existing is not None and existing.status in ("collecting", "voting"):
+    if open_poll(db, campaign.id) is not None:
         raise ServiceError(409, "A poll is already open in this campaign. Close or confirm it first.")
     # A poll is always exactly one week: the grid players paint is seven days starting here.
     date_end = date_start + timedelta(days=config.WEEK_DAYS - 1)

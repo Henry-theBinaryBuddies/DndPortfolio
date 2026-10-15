@@ -80,7 +80,8 @@
       $("members").replaceChildren(...poll.members.map((m) =>
         el("li", {}, m.display_name,
           m.required ? el("span", { class: "badge" }, Theme.t("required")) : null,
-          el("span", { class: m.responded ? "badge ok" : "badge" },
+          // answered / waiting only means something while the poll is open (the server sends null once closed)
+          m.responded === null ? null : el("span", { class: m.responded ? "badge ok" : "badge" },
             m.responded ? Theme.t("responded") : Theme.t("waiting")))));
     }
 

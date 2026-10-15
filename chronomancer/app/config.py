@@ -56,6 +56,12 @@ BOT_ENABLED = bool(DISCORD_BOT_TOKEN) and os.environ.get("CHRONOMANCER_BOT", "1"
 # Discord login needs the app credentials AND a redirect URI that can actually work.
 OAUTH_ENABLED = bool(DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET) and REDIRECT_URI_PROBLEM is None
 BACKGROUND_ENABLED = os.environ.get("CHRONOMANCER_BACKGROUND", "1") != "0"
+# Keeping history small: a finished session's per-person availability grid is dropped after this
+# many days (CHRONOMANCER_COMPACT=0 turns the sweep off); the sessions themselves are never deleted.
+COMPACT_ENABLED = os.environ.get("CHRONOMANCER_COMPACT", "1") != "0"
+AVAILABILITY_KEEP_DAYS = 14
+COMPACT_EVERY_SECONDS = 3600
+SESSIONS_SHOWN = 3
 AUTO_MIGRATE = os.environ.get("CHRONOMANCER_AUTO_MIGRATE", "1") != "0"  # tests build tables directly
 TICK_SECONDS = 5
 

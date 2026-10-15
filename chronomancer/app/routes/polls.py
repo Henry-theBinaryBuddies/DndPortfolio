@@ -49,6 +49,9 @@ def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
     votes = db.scalars(select(Vote).where(Vote.poll_id == poll.id)).all()
     vote_counts = Counter(v.candidate_id for v in votes)
     my_vote = next((v.candidate_id for v in votes if v.user_id == user.id), None)
+    # Who has answered only means something while availability is being collected or voted on; once a
+    # session is closed its availability may have been compacted away, so say nothing then.
+    live = poll.status in ("collecting", "voting")
     responded = {row.user_id for row in rows}
     return {
         "id": poll.id,
@@ -73,7 +76,7 @@ def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
         },
         "members": [
             {"user_id": m.user_id, "display_name": m.user.display_name,
-             "required": m.required, "responded": m.user_id in responded}
+             "required": m.required, "responded": (m.user_id in responded) if live else None}
             for m in poll.campaign.members if m.left_at is None
         ],
         "candidates": [

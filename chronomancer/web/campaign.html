@@ -51,6 +51,7 @@
     <div class="panel">
       <h2 data-t="session">Sessions</h2>
       <ul id="polls" class="plain"></ul>
+      <p id="polls-note" class="muted"></p>
     </div>
     <div class="panel" id="new-poll" hidden>
       <h2 data-t="createPoll">New poll</h2>
@@ -73,6 +74,8 @@
     const $ = (id) => document.getElementById(id);
     const id = new URLSearchParams(location.search).get("id");
     let campaign;
+    // What the Sessions list calls each kind (open polls keep their status word: collecting or voting).
+    const PHASE_LABEL = { upcoming: "scheduled", held: "held" };
     let formsReady = false; // defaults go in once; a later re-render must not overwrite typing
 
     // "1d, 1h" <-> [1440, 60]
@@ -148,9 +151,14 @@
       }));
       $("polls").replaceChildren(...campaign.polls.map((p) =>
         el("li", {}, el("a", { href: "/poll.html?id=" + p.id }, p.title || ("Poll " + p.id)),
-          el("span", { class: "badge" }, p.status), p.auto ? el("span", { class: "badge" }, "automatic") : null,
+          el("span", { class: "badge" }, PHASE_LABEL[p.phase] || p.status), p.auto ? el("span", { class: "badge" }, "automatic") : null,
           el("span", { class: "muted" }, p.confirmed_start ? fmtDateTime(p.confirmed_start) : p.date_start + " to " + p.date_end))));
       if (!campaign.polls.length) $("polls").append(el("li", { class: "muted" }, "None yet."));
+      // Older held sessions are kept but not listed, and called-off polls are only counted.
+      const notes = [];
+      if (campaign.polls_hidden) notes.push(`${campaign.polls_hidden} older session${campaign.polls_hidden === 1 ? "" : "s"} not shown`);
+      if (campaign.polls_called_off) notes.push(`${campaign.polls_called_off} called off`);
+      $("polls-note").textContent = notes.join(" · ");
     }
 
     $("settings-form").addEventListener("submit", async (e) => {
