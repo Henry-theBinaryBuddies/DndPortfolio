@@ -38,7 +38,7 @@ def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
                 "role": m.role,
                 "required": m.required,
             }
-            for m in campaign.members
+            for m in campaign.members if m.left_at is None
         ],
         "polls": [
             {"id": p.id, "title": p.title, "status": p.status,
@@ -62,7 +62,7 @@ def create_campaign(body: CampaignCreate, user: User = Depends(current_user),
 
 @router.get("/campaigns")
 def list_campaigns(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    members = db.scalars(select(Member).where(Member.user_id == user.id)).all()
+    members = db.scalars(select(Member).where(Member.user_id == user.id, Member.left_at.is_(None))).all()
     return [
         {"id": m.campaign.id, "name": m.campaign.name, "my_role": m.role,
          "theme": m.campaign.theme}
@@ -93,6 +93,10 @@ def join_campaign(body: JoinRequest, user: User = Depends(current_user),
     campaign = db.scalar(select(Campaign).where(Campaign.invite_code == body.invite_code))
     if campaign is None:
         raise HTTPException(404, "invalid invite code")
+    if campaign.guild_id and campaign.channel_id:
+        # A group that lives in Discord admits people through Discord (/schedule in its
+        # channel), which is what proves they are in the server. An invite code cannot.
+        raise HTTPException(409, "This group lives in Discord. Run /schedule in its channel to join.")
     services.ensure_member(db, campaign.id, user.id)
     return {"campaign_id": campaign.id}
 
@@ -102,7 +106,8 @@ def set_required(campaign_id: int, user_id: int, required: bool,
                  user: User = Depends(current_user), db: Session = Depends(get_db)):
     require_organizer(db, campaign_id, user)
     member = db.scalar(
-        select(Member).where(Member.campaign_id == campaign_id, Member.user_id == user_id)
+        select(Member).where(Member.campaign_id == campaign_id, Member.user_id == user_id,
+                             Member.left_at.is_(None))
     )
     if member is None:
         raise HTTPException(404, "member not found")

@@ -54,7 +54,8 @@ def user_json(user: User) -> dict:
 
 def require_member(db: Session, campaign_id: int, user: User) -> Member:
     member = db.scalar(
-        select(Member).where(Member.campaign_id == campaign_id, Member.user_id == user.id)
+        select(Member).where(Member.campaign_id == campaign_id, Member.user_id == user.id,
+                             Member.left_at.is_(None))
     )
     if member is None:
         # Same answer for "no such campaign" and "not yours": do not leak existence.

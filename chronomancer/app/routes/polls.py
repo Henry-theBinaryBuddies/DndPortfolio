@@ -68,7 +68,7 @@ def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
         "members": [
             {"user_id": m.user_id, "display_name": m.user.display_name,
              "required": m.required, "responded": m.user_id in responded}
-            for m in poll.campaign.members
+            for m in poll.campaign.members if m.left_at is None
         ],
         "candidates": [
             {"id": c.id, "start": iso(c.start_utc), "rank": c.rank, "score": c.score,

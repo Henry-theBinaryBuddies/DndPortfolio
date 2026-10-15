@@ -75,6 +75,7 @@ class Background:
                 if bot is not None and bot.is_ready():
                     await bot.outbox.run_once()
                     await bot.reminders.run_once()
+                    await bot.membership.run_if_due()
             except asyncio.CancelledError:
                 raise
             except Exception:  # noqa: BLE001

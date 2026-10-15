@@ -74,6 +74,9 @@ class Member(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     role: Mapped[str] = mapped_column(String(16), default="player")  # organizer | player
     required: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Set when the person is no longer in the Discord server. They stop counting everywhere
+    # (polls, reminders, access) until they show up again through Discord.
+    left_at = mapped_column(UTCDateTime, nullable=True)
     campaign: Mapped[Campaign] = relationship(back_populates="members")
     user: Mapped[User] = relationship()
 

@@ -320,6 +320,11 @@ def test_the_background_loop_runs_reminders(monkeypatch):
             async def run_once():
                 calls.append("reminders")
 
+        class membership:
+            @staticmethod
+            async def run_if_due():
+                calls.append("membership")
+
     async def stop(_):
         raise asyncio.CancelledError
 
@@ -328,7 +333,7 @@ def test_the_background_loop_runs_reminders(monkeypatch):
     bg.bot = Bot()
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(bg._loop())
-    assert calls == ["outbox", "reminders"]
+    assert calls == ["outbox", "reminders", "membership"]
 
 
 # ------------------------------------------------ the reminder message

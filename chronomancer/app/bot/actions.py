@@ -191,7 +191,7 @@ def cmd_schedule(db: Session, du: DUser, guild_id, channel_id, events_ok: bool =
     elif poll.status == "collecting":
         responded = set(db.scalars(select(Availability.user_id).where(
             Availability.poll_id == poll.id).distinct()))
-        members = db.scalars(select(Member).where(Member.campaign_id == campaign.id)).all()
+        members = services.active_members(db, campaign.id)
         waiting = [m.user.display_name for m in members if m.user_id not in responded]
         lines.append(f"Availability is open for {esc(poll.title or campaign.name)}: "
                      f"{len(members) - len(waiting)}/{len(members)} have responded.")

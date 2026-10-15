@@ -65,7 +65,8 @@ class ReminderProcessor:
             if snap is not None:
                 members = [int(d) for d in db.scalars(
                     select(User.discord_id).join(Member, Member.user_id == User.id)
-                    .where(Member.campaign_id == snap.campaign_id).order_by(Member.id))
+                    .where(Member.campaign_id == snap.campaign_id, Member.left_at.is_(None))
+                    .order_by(Member.id))
                     if d.isdigit()]
             return ReminderJob(reminder.id, reminder.offset_min, snap, members)
 

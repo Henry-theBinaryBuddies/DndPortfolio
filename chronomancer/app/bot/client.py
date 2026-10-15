@@ -7,6 +7,7 @@ from discord import app_commands
 from .. import config
 from . import actions, commands
 from .outbox import OutboxProcessor
+from .membership import MembershipSync
 from .reminders import ReminderProcessor
 from .views import ConfirmButton, VoteButton, vote_embed
 
@@ -32,6 +33,7 @@ class ChronomancerBot(discord.Client):
         self.tree = app_commands.CommandTree(self)
         self.outbox = OutboxProcessor(self.get_or_fetch_channel, self.get_or_fetch_guild)
         self.reminders = ReminderProcessor(self.get_or_fetch_channel, self.get_or_fetch_user)
+        self.membership = MembershipSync(self.get_or_fetch_guild)
         self.tree.on_error = self._on_command_error
 
     async def setup_hook(self) -> None:

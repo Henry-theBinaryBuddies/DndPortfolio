@@ -75,15 +75,26 @@ def upsert_user(db: Session, discord_id: str, display_name: str,
 
 
 def get_member(db: Session, campaign_id: int, user_id: int) -> Member | None:
-    return db.scalar(
-        select(Member).where(Member.campaign_id == campaign_id, Member.user_id == user_id)
-    )
+    """The person's membership, if they are still in the group (people who left Discord are not)."""
+    return db.scalar(select(Member).where(
+        Member.campaign_id == campaign_id, Member.user_id == user_id, Member.left_at.is_(None)))
+
+
+def active_members(db: Session, campaign_id: int) -> list:
+    return list(db.scalars(select(Member).where(
+        Member.campaign_id == campaign_id, Member.left_at.is_(None)).order_by(Member.id)))
 
 
 def ensure_member(db: Session, campaign_id: int, user_id: int) -> Member:
+    """Join the group, or come back to it: someone who left and shows up again through Discord
+    is restored (their old role and 'required' flag come back with them)."""
     for _ in range(2):
-        member = get_member(db, campaign_id, user_id)
+        member = db.scalar(select(Member).where(
+            Member.campaign_id == campaign_id, Member.user_id == user_id))
         if member is not None:
+            if member.left_at is not None:
+                member.left_at = None
+                db.commit()
             return member
         try:
             member = Member(campaign_id=campaign_id, user_id=user_id, role="player")
@@ -96,6 +107,18 @@ def ensure_member(db: Session, campaign_id: int, user_id: int) -> Member:
 
 
 # ---------------------------------------------------------------- campaigns
+
+
+def mark_members_left(db: Session, member_ids: list) -> int:
+    """Record that these people are no longer in the Discord server. Organizers are never
+    removed this way, so a campaign cannot end up without anyone able to run it."""
+    if not member_ids:
+        return 0
+    result = db.execute(update(Member).where(
+        Member.id.in_(member_ids), Member.role != "organizer", Member.left_at.is_(None)
+    ).values(left_at=now_utc()))
+    db.commit()
+    return result.rowcount
 
 
 def campaign_for_channel(db: Session, guild_id: str, channel_id: str) -> Campaign | None:
@@ -282,7 +305,7 @@ def close_poll(db: Session, poll: Poll, vote_hours: int | None = None) -> Poll:
     for row in db.scalars(select(Availability).where(Availability.poll_id == poll.id)):
         availability.setdefault(row.user_id, {})[row.slot_start_utc] = row.level
     # Queried explicitly: a relationship cached earlier in this session could be stale.
-    members = db.scalars(select(Member).where(Member.campaign_id == poll.campaign_id)).all()
+    members = active_members(db, poll.campaign_id)
     result = rank_candidates(
         slots=poll_slots(poll),
         availability=availability,
