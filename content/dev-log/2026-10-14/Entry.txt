@@ -1,3 +1,5 @@
+Artifact 2:
+
 Completed the configuration on Claude code and integrated it into the system.
 Started working with the model on Sonnet 5.5, and used medium settings at first.
 Began by scoping the project and making a claude.md file with the restrictions and

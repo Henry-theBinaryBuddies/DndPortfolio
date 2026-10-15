@@ -1,3 +1,5 @@
+Artifact 2:
+
 Today was a much better experience.
 Had to get Claude to explain everything that was going on,
 but once I had a better understanding of the scope of the project it was
@@ -11,7 +13,7 @@ but not worth it with the time constraints.
 
 The most hands on things that I was able to learn in this process was the discord API integration,
 handling hosting for the databasing embedded in the website, the limitations of the discord API,
-and manual testing in a live environment.
+launching a live app/bot online, and manual testing in a live environment.
 
 Moving forward, will definitely have a more iterative approach. It's far too easy to get lost in the
 weeds when you just let Claude handle the entire process.
