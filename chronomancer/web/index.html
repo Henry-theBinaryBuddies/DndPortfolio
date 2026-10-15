@@ -60,8 +60,15 @@
         </form>
         <p id="join-error" class="error"></p>
       </div>
+      <div class="panel">
+        <h2 data-t="yourData">Your data</h2>
+        <p class="muted" data-t="deleteMyDataIntro">Remove your profile, availability, votes and memberships.</p>
+        <button type="button" id="delete-data" class="danger" data-t="deleteMyData">Delete my data</button>
+        <p id="data-error" class="error" role="alert"></p>
+      </div>
     </section>
   </main>
+  <footer class="site"><a href="/privacy.html">Privacy</a> <span aria-hidden="true">&middot;</span> <a href="/terms.html">Terms</a></footer>
   <script src="/js/theme.js"></script>
   <script src="/js/api.js"></script>
   <script>
@@ -136,6 +143,23 @@
       campaigns = campaigns.filter((x) => x.id !== c.id);
       renderCampaigns();
     }
+
+    // Removes the person's own data and logs them out. The server refuses while they still run a group
+    // and says which, so the message is shown as it comes.
+    $("delete-data").addEventListener("click", async (e) => {
+      if (!confirm(Theme.t("deleteMyDataConfirm"))) return;
+      const button = e.currentTarget;
+      $("data-error").textContent = "";
+      button.disabled = true;
+      try {
+        await Api.del("/api/me");
+        campaigns = [];
+        await show();
+      } catch (err) {
+        $("data-error").textContent = err.message;
+      }
+      button.disabled = false;
+    });
 
     $("login-form").addEventListener("submit", async (e) => {
       e.preventDefault();

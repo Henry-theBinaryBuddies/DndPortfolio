@@ -41,6 +41,14 @@ header.bar .brand::before {
   content: ""; width: 1.5rem; height: 1.5rem; background: currentColor;
   -webkit-mask: var(--brand-icon) center / contain no-repeat; mask: var(--brand-icon) center / contain no-repeat;
 }
+footer.site { max-width: 980px; margin: 0 auto; padding: 0 1rem 2rem; text-align: center; color: var(--muted); font-size: .9rem; }
+footer.site a { color: var(--muted); }
+footer.site a:hover { color: var(--accent); }
+/* long-form pages (privacy policy, terms) */
+.legal h2 { margin-top: 1.6rem; }
+.legal ul { padding-left: 1.3rem; }
+.legal li { margin-bottom: .4rem; }
+.legal code { font-size: .95em; }
 main { max-width: 980px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
 
 .panel {

@@ -113,6 +113,14 @@ def logout_everywhere(request: Request, user: User = Depends(current_user),
     return {"ended": ended}
 
 
+@router.delete("/me", status_code=204)
+def delete_me(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Delete my data: the profile, memberships, availability, votes and every login of this person.
+    Refused (409) while they still run a group."""
+    services.delete_user_data(db, user)
+    request.session.clear()
+
+
 @router.get("/me")
 def me(user: User = Depends(current_user)):
     return user_json(user)

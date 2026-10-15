@@ -84,6 +84,28 @@ def valid_web_session(db: Session, token: str | None) -> WebSession | None:
     return row
 
 
+def delete_user_data(db: Session, user: User) -> dict:
+    """Remove a person's data: their profile, group memberships, availability, votes, attendance
+    answers and logins. Refused while they run a group, because a group needs its organizer and
+    deleting it takes everyone else's sessions with it: they delete those groups first (which
+    also clears the groups' Discord events). What other members already saw (tallies, a past
+    session) is not personal data and stays. Returns how many rows of each kind were removed."""
+    running = list(db.scalars(select(Campaign).where(or_(
+        Campaign.owner_id == user.id,
+        Campaign.id.in_(select(Member.campaign_id).where(Member.user_id == user.id,
+                                                          Member.role == "organizer"))))))
+    if running:
+        names = ", ".join(f'"{c.name}"' for c in running)
+        raise ServiceError(409, f"You run {names}. Delete {'it' if len(running) == 1 else 'them'} first "
+                                "(the Delete button on the home page), then delete your data.")
+    removed = {}
+    for model in (Availability, Vote, Attendance, Member, WebSession):
+        removed[model.__tablename__] = db.execute(delete(model).where(model.user_id == user.id)).rowcount
+    db.execute(delete(User).where(User.id == user.id))
+    db.commit()
+    return removed
+
+
 def end_web_sessions(db: Session, *, token: str | None = None, user_id: int | None = None) -> int:
     """Revoke one session (log out) or every session of a user (log out everywhere)."""
     q = delete(WebSession)
