@@ -94,6 +94,10 @@ class Poll(Base):
     status: Mapped[str] = mapped_column(String(16), default="collecting")
     vote_deadline = mapped_column(UTCDateTime, nullable=True)
     confirmed_start_utc = mapped_column(UTCDateTime, nullable=True)
+    # Recurrence: once a decided session has ended and its follow-up was handled, never again.
+    recurrence_handled: Mapped[bool] = mapped_column(Boolean, default=False)
+    recurred_from: Mapped[int | None] = mapped_column(Integer, nullable=True)  # the session this repeats
+    anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)    # day of month to keep
     campaign: Mapped[Campaign] = relationship(back_populates="polls")
     candidates: Mapped[list["Candidate"]] = relationship(
         back_populates="poll", cascade="all, delete-orphan", order_by="Candidate.rank"

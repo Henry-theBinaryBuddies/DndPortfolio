@@ -327,8 +327,15 @@ def cmd_cancel(db: Session, du: DUser, guild_id, channel_id) -> Reply:
     poll = services.open_poll(db, campaign.id) or services.next_session(db, campaign.id)
     if poll is None:
         raise ServiceError(409, "There is no open poll or upcoming session to cancel.")
+    was_session = poll.status == "confirmed"
     services.cancel_poll(db, poll)
-    return Reply(wording.t(campaign.theme, "botPollCancelledReply"))
+    text = wording.t(campaign.theme, "botPollCancelledReply")
+    if was_session:  # cancelling one occurrence skips it; say where the series goes next
+        following = services.next_session(db, campaign.id)
+        if following is not None:
+            text += f" The next session is {_ts(following.confirmed_start_utc)}."
+        text += " To stop repeating altogether, set the frequency to one-off with `/chronomancer setup`."
+    return Reply(text)
 
 
 # ---------------------------------------------------------------- button clicks

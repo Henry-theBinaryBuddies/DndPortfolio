@@ -19,8 +19,10 @@ from .scheduling import candidate_starts, generate_slots, rank_candidates
 CADENCES = ("none", "weekly", "biweekly", "monthly", "quarterly", "annually")
 
 
-def add_cadence(day: date, cadence: str) -> date | None:
-    """The date one meeting interval after `day`, or None for a one-off campaign."""
+def add_cadence(day: date, cadence: str, anchor_day: int | None = None) -> date | None:
+    """The date one meeting interval after `day`, or None for a one-off campaign. Monthly,
+    quarterly and annual steps aim for `anchor_day` (default: day's own), clamped to the end
+    of short months, so Jan 31 -> Feb 28 -> Mar 31 rather than drifting to the 28th."""
     if cadence == "weekly":
         return day + timedelta(days=7)
     if cadence == "biweekly":
@@ -30,7 +32,7 @@ def add_cadence(day: date, cadence: str) -> date | None:
         return None
     year_carry, month0 = divmod(day.month - 1 + months, 12)
     year, month = day.year + year_carry, month0 + 1
-    return date(year, month, min(day.day, monthrange(year, month)[1]))  # Jan 31 + 1 month = Feb 28
+    return date(year, month, min(anchor_day or day.day, monthrange(year, month)[1]))
 
 
 class ServiceError(Exception):
@@ -170,19 +172,6 @@ def delete_campaign(db: Session, campaign_id: int) -> None:
     if campaign is not None:
         db.delete(campaign)
     db.commit()
-
-
-def suggest_next_week(db: Session, campaign: Campaign) -> date | None:
-    """Where the next poll's week should start, from the last confirmed session plus the
-    campaign's meeting frequency. None for one-off campaigns or before any session."""
-    if campaign.cadence == "none":
-        return None
-    last = db.scalar(select(Poll).where(Poll.campaign_id == campaign.id,
-                                        Poll.status == "confirmed").order_by(Poll.id.desc()))
-    if last is None or last.confirmed_start_utc is None:
-        return None
-    held_on = last.confirmed_start_utc.astimezone(ZoneInfo(last.timezone)).date()
-    return add_cadence(held_on, campaign.cadence)
 
 
 def open_poll(db: Session, campaign_id: int) -> Poll | None:
@@ -368,6 +357,7 @@ def confirm_poll(db: Session, poll: Poll, candidate_id: int | None = None) -> Po
         raise ServiceError(409, "poll is not open for voting")
     enqueue(db, "confirmed", poll.id)
     schedule_reminders(db, poll.id, chosen.start_utc, poll.campaign.reminder_offsets_min or [])
+    supersede_auto_sessions(db, poll.campaign_id, keep_id=poll.id)
     db.commit()
     db.refresh(poll)
     return poll
@@ -404,6 +394,12 @@ def cancel_poll(db: Session, poll: Poll) -> Poll:
     db.execute(delete(Reminder).where(Reminder.poll_id == poll.id, Reminder.sent_at.is_(None)))
     if was_confirmed or db.get(PollMessage, poll.id) is not None:
         enqueue(db, "cancelled", poll.id)  # lets the bot retire buttons / announce the change
+    if was_confirmed:
+        # Skipping one occurrence must not end the series: line up the next one now.
+        db.execute(update(Poll).where(Poll.id == poll.id).values(recurrence_handled=True))
+        db.refresh(poll)
+        if poll.campaign.cadence != "none":
+            schedule_next_occurrence(db, poll)
     db.commit()
     db.refresh(poll)
     return poll
@@ -455,11 +451,14 @@ def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
         name=name, cadence=cadence, min_quorum=min_quorum,
         default_duration_min=default_duration_min, timezone=timezone, theme=theme,
         reminder_offsets_min=reminder_offsets_min, available_themes=available_themes)
+    cadence_changed = cadence is not None and cadence != campaign.cadence
     for field, value in (("name", name), ("cadence", cadence), ("min_quorum", min_quorum),
                          ("default_duration_min", default_duration_min), ("timezone", timezone),
                          ("theme", theme)):
         if value is not None:
             setattr(campaign, field, value)
+    if cadence_changed:
+        replan_auto_sessions(db, campaign)
     if reminder_offsets_min is not None:
         campaign.reminder_offsets_min = sorted(set(reminder_offsets_min), reverse=True)
         reschedule_reminders(db, campaign)
@@ -516,3 +515,112 @@ def auto_confirm_due(db: Session, now: datetime | None = None) -> list:
         except ServiceError:
             db.rollback()
     return confirmed
+
+
+# ---------------------------------------------------------------- recurrence
+
+
+def next_occurrence(poll: Poll, cadence: str, now: datetime | None = None) -> tuple | None:
+    """(start_utc, local_date) of the next session after `poll`, at the same local clock time,
+    or None for a one-off campaign. Occurrences that would already be over are skipped, so
+    after downtime the series catches up to the next one still ahead."""
+    now = now or now_utc()
+    tz = ZoneInfo(poll.timezone)
+    local = poll.confirmed_start_utc.astimezone(tz)
+    anchor = poll.anchor_day or local.day
+    day = local.date()
+    for _ in range(400):  # bounded: a long outage must not loop forever
+        day = add_cadence(day, cadence, anchor)
+        if day is None:
+            return None
+        start = datetime.combine(day, local.time(), tzinfo=tz).astimezone(timezone.utc)
+        if start + timedelta(minutes=poll.duration_min) > now:
+            return start, day
+    return None
+
+
+def schedule_next_occurrence(db: Session, poll: Poll, now: datetime | None = None) -> Poll | None:
+    """Create the next session of a recurring campaign: already confirmed, with its reminders
+    and an announcement queued. Does nothing for a one-off campaign."""
+    campaign = poll.campaign
+    found = next_occurrence(poll, campaign.cadence, now)
+    if found is None:
+        return None
+    start, day = found
+    local_start = poll.confirmed_start_utc.astimezone(ZoneInfo(poll.timezone))
+    following = Poll(
+        campaign_id=campaign.id, title=poll.title, timezone=poll.timezone,
+        date_start=day, date_end=day + timedelta(days=config.WEEK_DAYS - 1),
+        window_start=poll.window_start, window_end=poll.window_end,
+        slot_minutes=poll.slot_minutes, duration_min=poll.duration_min,
+        min_quorum=poll.min_quorum, vote_top_n=poll.vote_top_n,
+        status="confirmed", confirmed_start_utc=start,
+        recurred_from=poll.id, anchor_day=poll.anchor_day or local_start.day,
+    )
+    db.add(following)
+    db.flush()
+    schedule_reminders(db, following.id, start, campaign.reminder_offsets_min or [], now)
+    enqueue(db, "recurred", following.id)
+    return following
+
+
+def roll_recurrences(db: Session, now: datetime | None = None) -> list:
+    """For every decided session that has now ended, schedule the next one (recurring
+    campaigns only). Each session is handled exactly once. Returns the new poll ids."""
+    now = now or now_utc()
+    started = db.scalars(select(Poll).where(
+        Poll.status == "confirmed", Poll.recurrence_handled.is_(False),
+        Poll.confirmed_start_utc <= now)).all()
+    created = []
+    for poll in started:
+        if poll.confirmed_start_utc + timedelta(minutes=poll.duration_min) > now:
+            continue  # still in progress
+        claimed = db.execute(update(Poll).where(Poll.id == poll.id, Poll.recurrence_handled.is_(False))
+                             .values(recurrence_handled=True))
+        if claimed.rowcount != 1:
+            db.rollback()
+            continue
+        following = schedule_next_occurrence(db, poll, now) if poll.campaign.cadence != "none" else None
+        db.commit()
+        if following is not None:
+            created.append(following.id)
+    return created
+
+
+def _future_auto_sessions(db: Session, campaign_id: int, exclude_id: int | None = None) -> list:
+    """Upcoming sessions that were scheduled automatically (not decided by a poll)."""
+    q = select(Poll).where(
+        Poll.campaign_id == campaign_id, Poll.status == "confirmed", Poll.recurred_from.is_not(None),
+        Poll.recurrence_handled.is_(False), Poll.confirmed_start_utc > now_utc())
+    if exclude_id is not None:
+        q = q.where(Poll.id != exclude_id)
+    return list(db.scalars(q))
+
+
+def _drop_session(db: Session, poll: Poll) -> bool:
+    """Cancel a decided session (status, reminders, notification). False if it moved on."""
+    claimed = db.execute(update(Poll).where(Poll.id == poll.id, Poll.status == "confirmed")
+                         .values(status="cancelled", recurrence_handled=True))
+    if claimed.rowcount != 1:
+        return False
+    db.execute(delete(Reminder).where(Reminder.poll_id == poll.id, Reminder.sent_at.is_(None)))
+    enqueue(db, "cancelled", poll.id)
+    return True
+
+
+def supersede_auto_sessions(db: Session, campaign_id: int, keep_id: int) -> None:
+    """A newly decided session replaces automatically scheduled ones, which would otherwise
+    double up with it. The group is told (the old ones were announced)."""
+    for stale in _future_auto_sessions(db, campaign_id, exclude_id=keep_id):
+        _drop_session(db, stale)
+
+
+def replan_auto_sessions(db: Session, campaign: Campaign) -> None:
+    """The meeting frequency changed: redo the upcoming automatic session from the session it
+    followed, using the new interval (or drop it if the group no longer repeats)."""
+    for session in _future_auto_sessions(db, campaign.id):
+        source = db.get(Poll, session.recurred_from)
+        if not _drop_session(db, session):
+            continue
+        if source is not None and campaign.cadence != "none":
+            schedule_next_occurrence(db, source)

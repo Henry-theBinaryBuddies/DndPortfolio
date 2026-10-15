@@ -11,9 +11,11 @@ BOT_RETRY_MIN = 5
 BOT_RETRY_MAX = 300
 
 
-def _auto_confirm() -> list:
+def _db_tick() -> tuple:
+    """The time-driven database work: confirm votes whose deadline passed, and schedule the
+    next session of repeating groups whose latest session just ended."""
     with dbmod.SessionLocal() as db:
-        return services.auto_confirm_due(db)
+        return services.auto_confirm_due(db), services.roll_recurrences(db)
 
 
 class Background:
@@ -64,9 +66,11 @@ class Background:
     async def _loop(self) -> None:
         while True:
             try:
-                confirmed = await asyncio.to_thread(_auto_confirm)
+                confirmed, scheduled = await asyncio.to_thread(_db_tick)
                 if confirmed:
                     log.info("auto-confirmed polls %s", confirmed)
+                if scheduled:
+                    log.info("scheduled the next session (polls %s)", scheduled)
                 bot = self.bot
                 if bot is not None and bot.is_ready():
                     await bot.outbox.run_once()

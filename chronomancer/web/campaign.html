@@ -149,7 +149,8 @@
       }));
       $("polls").replaceChildren(...campaign.polls.map((p) =>
         el("li", {}, el("a", { href: "/poll.html?id=" + p.id }, p.title || ("Poll " + p.id)),
-          el("span", { class: "badge" }, p.status), el("span", { class: "muted" }, p.date_start + " to " + p.date_end))));
+          el("span", { class: "badge" }, p.status), p.auto ? el("span", { class: "badge" }, "automatic") : null,
+          el("span", { class: "muted" }, p.confirmed_start ? fmtDateTime(p.confirmed_start) : p.date_start + " to " + p.date_end))));
       if (!campaign.polls.length) $("polls").append(el("li", { class: "muted" }, "None yet."));
     }
 

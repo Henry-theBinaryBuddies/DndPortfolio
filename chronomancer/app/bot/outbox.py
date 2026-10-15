@@ -12,7 +12,7 @@ from .. import db as dbmod
 from ..models import Notification, PollMessage
 from .snapshots import PollSnapshot, load_poll_snapshot
 from .views import (
-    build_vote_view, cancelled_embed, confirmed_embed, session_cancelled_embed,
+    build_vote_view, cancelled_embed, confirmed_embed, recurred_embed, session_cancelled_embed,
     vote_embed,
 )
 
@@ -128,6 +128,7 @@ class OutboxProcessor:
                 "vote_open": self._send_vote,
                 "vote_update": self._refresh_vote,
                 "confirmed": self._send_confirmed,
+                "recurred": self._send_recurred,
                 "cancelled": self._retire_vote,
             }.get(kind)
             if handler is None:
@@ -171,6 +172,12 @@ class OutboxProcessor:
         channel = await self._get_channel(snap.channel_id)
         await channel.send(embed=confirmed_embed(snap),
                            allowed_mentions=discord.AllowedMentions.none())
+
+    async def _send_recurred(self, snap: PollSnapshot) -> None:
+        if snap.status != "confirmed":  # cancelled or replaced before the announcement went out
+            return
+        channel = await self._get_channel(snap.channel_id)
+        await channel.send(embed=recurred_embed(snap), allowed_mentions=discord.AllowedMentions.none())
 
     async def _retire_vote(self, snap: PollSnapshot) -> None:
         await self._edit_original(snap, embed=cancelled_embed(snap), view=None)

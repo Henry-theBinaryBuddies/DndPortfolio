@@ -17,18 +17,12 @@ def _themes() -> list:
     return available_themes()
 
 
-def _next_week(db: Session, campaign: Campaign) -> str | None:
-    day = services.suggest_next_week(db, campaign)
-    return day.isoformat() if day else None
-
-
 def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
     data = {
         "id": campaign.id,
         "name": campaign.name,
         "cadence": campaign.cadence,
         "timezone": campaign.timezone,
-        "next_week_start": _next_week(db, campaign),
         "default_duration_min": campaign.default_duration_min,
         "min_quorum": campaign.min_quorum,
         "vote_top_n": campaign.vote_top_n,
@@ -47,7 +41,9 @@ def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
         ],
         "polls": [
             {"id": p.id, "title": p.title, "status": p.status,
-             "date_start": p.date_start.isoformat(), "date_end": p.date_end.isoformat()}
+             "date_start": p.date_start.isoformat(), "date_end": p.date_end.isoformat(),
+             "confirmed_start": p.confirmed_start_utc.isoformat().replace("+00:00", "Z")
+             if p.confirmed_start_utc else None, "auto": p.recurred_from is not None}
             for p in campaign.polls
         ],
     }

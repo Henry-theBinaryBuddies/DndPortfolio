@@ -50,8 +50,8 @@ def confirmed_embed(s: PollSnapshot) -> discord.Embed:
             f"({discord.utils.format_dt(s.confirmed_start, 'R')})") if s.confirmed_start else "?"
     text = wording.t(s.theme, "botConfirmedBody", title=_esc(s.display_title), when=when)
     text += _reminder_line(s)
-    if s.next_week:  # the campaign meets regularly: say where the next poll should start
-        text += "\n\n" + wording.t(s.theme, "botNextWeek", date=s.next_week.strftime("%A %B %d, %Y"))
+    if s.recurrence_next:  # a repeating group: promise what will happen when this one ends
+        text += "\n\n" + wording.t(s.theme, "botRecurrenceNote", when=_when(s.recurrence_next))
     return discord.Embed(
         title=wording.t(s.theme, "botConfirmedTitle"),
         description=text,
@@ -75,12 +75,19 @@ def reminder_embed(s: PollSnapshot) -> discord.Embed:
 
 
 def session_cancelled_embed(s: PollSnapshot) -> discord.Embed:
-    return discord.Embed(
-        title=wording.t(s.theme, "botSessionCancelledTitle"),
-        description=wording.t(s.theme, "botSessionCancelled",
-                              when=discord.utils.format_dt(s.confirmed_start, "F")),
-        colour=_colour(s.theme),
-    )
+    text = wording.t(s.theme, "botSessionCancelled", when=discord.utils.format_dt(s.confirmed_start, "F"))
+    if s.following:
+        text += " " + wording.t(s.theme, "botFollowing", when=_when(s.following))
+    return discord.Embed(title=wording.t(s.theme, "botSessionCancelledTitle"),
+                         description=text, colour=_colour(s.theme))
+
+
+def recurred_embed(s: PollSnapshot) -> discord.Embed:
+    """Announcement for a session the bot scheduled by itself, the same time as the last one."""
+    text = wording.t(s.theme, "botRecurredBody", title=_esc(s.display_title), when=_when(s.confirmed_start))
+    text += _reminder_line(s)
+    return discord.Embed(title=wording.t(s.theme, "botRecurredTitle"), description=text,
+                         colour=_colour(s.theme))
 
 
 def _reminder_line(s: PollSnapshot) -> str:

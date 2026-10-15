@@ -49,7 +49,6 @@
   "notMember": "You are not in this group yet. In Discord, run /availability in the group's channel to join, then reload this page.",
   "notLinked": "This group is not linked to a Discord channel, so votes and announcements will not be posted there. In the channel, run /chronomancer link with the invite code:",
   "cancel": "Cancel poll",
-  "botNextWeek": "Next meeting: open the next poll for the week of {date}.",
   "frequency": "How often do you meet?",
   "freq_none": "One-off",
   "freq_weekly": "Weekly",
@@ -64,5 +63,9 @@
   "botSessionCancelled": "The event planned for {when} is cancelled.",
   "botRemindersAt": "Reminders will go out at: {times}.",
   "botRemindersNoFit": "No reminder fits before the event, because it is sooner than your reminder times. Change them with `/chronomancer reminders`.",
-  "settings": "Settings"
+  "settings": "Settings",
+  "botRecurredTitle": "Next event scheduled",
+  "botRecurredBody": "**{title}** is scheduled for {when}, the same time as before.",
+  "botRecurrenceNote": "When it ends, the next one is scheduled automatically for {when}.",
+  "botFollowing": "The next one is {when}."
 }

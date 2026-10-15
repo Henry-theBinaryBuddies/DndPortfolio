@@ -2,7 +2,7 @@
 (so no ORM objects, and no database access, ever happen inside async Discord code)."""
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -37,7 +37,11 @@ class PollSnapshot:
     message_channel_id: int | None = None
     message_id: int | None = None
     organizer_discord_id: str | None = None
-    next_week: date | None = None  # suggested start of the next poll's week, once decided
+    # Recurrence: when the next session will be scheduled for (a decided session of a repeating
+    # group), the session that follows a cancelled one, and whether this one was automatic.
+    recurrence_next: datetime | None = None
+    following: datetime | None = None
+    auto: bool = False
     reminder_times: list = field(default_factory=list)  # pending reminder send times
     reminder_offsets: list = field(default_factory=list)  # the campaign's configured timings
 
@@ -59,6 +63,21 @@ def _int_or_none(value) -> int | None:
         return int(value) if value else None
     except (TypeError, ValueError):
         return None
+
+
+def _recurrence_next(poll: Poll, campaign: Campaign) -> datetime | None:
+    if poll.status != "confirmed" or poll.recurrence_handled or campaign.cadence == "none":
+        return None
+    found = services.next_occurrence(poll, campaign.cadence)
+    return found[0] if found else None
+
+
+def _following(db: Session, poll: Poll, campaign: Campaign) -> datetime | None:
+    """For a cancelled session of a repeating group: when the next one is."""
+    if poll.status != "cancelled" or poll.confirmed_start_utc is None or campaign.cadence == "none":
+        return None
+    upcoming = services.next_session(db, campaign.id)
+    return upcoming.confirmed_start_utc if upcoming else None
 
 
 def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
@@ -90,7 +109,9 @@ def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
         message_channel_id=_int_or_none(message.channel_id) if message else None,
         message_id=_int_or_none(message.message_id) if message else None,
         organizer_discord_id=organizer.user.discord_id if organizer else None,
-        next_week=services.suggest_next_week(db, campaign) if poll.status == "confirmed" else None,
+        recurrence_next=_recurrence_next(poll, campaign),
+        following=_following(db, poll, campaign),
+        auto=poll.recurred_from is not None,
         reminder_times=services.pending_reminder_times(db, poll.id) if poll.status == "confirmed" else [],
         reminder_offsets=list(campaign.reminder_offsets_min or []),
     )
