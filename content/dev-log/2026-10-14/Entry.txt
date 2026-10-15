@@ -1,0 +1,29 @@
+Completed the configuration on Claude code and integrated it into the system.
+Started working with the model on Sonnet 5.5, and used medium settings at first.
+Began by scoping the project and making a claude.md file with the restrictions and
+parameters for Claude agent to adhere to. Claude generated a requirements document
+for Artifact 2, based on the specs I requested. I reviewed them, and approved, but
+only allowed manual permissions. For about two hours I was reviewing everything
+that Claude was doing, but they were all primarily change directory commands in
+command console. Claude did have me manually configure a few things, like downloading
+the latest Python package, configuring the discord developer accounts, and sourcing
+the API keys for it to place in the .env file while it wired the API to the codebase.
+
+While reviewing the code and updates that the agent was doing it became clear that it
+had crossed into the realm of unrecognizability for me. I genuinely couldn't understand
+most of what it was doing and since it was already following the documented specs I didn't
+bother asking for clarification. By this time the codebase had ballooned to nearly 85MB, making
+it impossible for me to review most of the code.
+
+The coding was taking a lot of time, so I adjusted it to Ultra code mode and ended up giving
+it automatic permissions. It ended up running through all the tokens by hour 3.25.
+
+I took a break until tokens restored at ~6:30. At this point the application was finally
+testable. The discord wiring seemed to be functioning as intended but reminder notification tests were
+consistently failing. Because this was in incremental chunks of half hours, this delayed progress by a
+lot.
+
+Overall, this has been a mostly negative experience. Because the code base has escaped my comprehension and
+grasp, I feel like there is no way for me to truly audit where the bugs are. I'm truly just prompting corrections
+to it and noticing an enormous amount of redundancy in its design. I realize this is likely due to me letting Claude
+code handle everything and not working on this iteratively.

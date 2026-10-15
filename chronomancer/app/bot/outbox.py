@@ -11,7 +11,10 @@ from sqlalchemy import select
 from .. import db as dbmod
 from ..models import Notification, PollMessage
 from .snapshots import PollSnapshot, load_poll_snapshot
-from .views import build_vote_view, cancelled_embed, confirmed_embed, vote_embed
+from .views import (
+    build_next_view, build_vote_view, cancelled_embed, confirmed_embed, session_cancelled_embed,
+    vote_embed,
+)
 
 log = logging.getLogger("chronomancer.outbox")
 
@@ -166,8 +169,14 @@ class OutboxProcessor:
     async def _send_confirmed(self, snap: PollSnapshot) -> None:
         await self._edit_original(snap, embed=vote_embed(snap), view=None)  # freeze final tallies
         channel = await self._get_channel(snap.channel_id)
-        await channel.send(embed=confirmed_embed(snap),
+        # A recurring campaign gets a button so the organizer can open the next poll in a click.
+        view = build_next_view(snap) if snap.next_week else discord.utils.MISSING
+        await channel.send(embed=confirmed_embed(snap), view=view,
                            allowed_mentions=discord.AllowedMentions.none())
 
     async def _retire_vote(self, snap: PollSnapshot) -> None:
         await self._edit_original(snap, embed=cancelled_embed(snap), view=None)
+        if snap.confirmed_start is not None:  # a decided session was called off: say so
+            channel = await self._get_channel(snap.channel_id)
+            await channel.send(embed=session_cancelled_embed(snap),
+                               allowed_mentions=discord.AllowedMentions.none())

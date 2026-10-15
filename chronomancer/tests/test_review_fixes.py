@@ -289,9 +289,14 @@ def test_cancel_of_a_posted_vote_retires_the_buttons(db):
     assert len(world.channel.sent) == 1  # edited in place, nothing new posted
 
 
-def test_cancel_after_confirm_is_refused(db):
+def test_a_session_that_already_happened_cannot_be_cancelled(db):
     _, poll, _ = voting_poll(db)
     services.confirm_poll(db, poll)
+    with fresh() as other:  # pretend the session was in the past
+        row = other.get(Poll, poll.id)
+        row.confirmed_start_utc = datetime.now(timezone.utc) - timedelta(days=1)
+        other.commit()
+    db.refresh(poll)
     with pytest.raises(ServiceError) as exc:
         services.cancel_poll(db, poll)
     assert exc.value.status == 409 and poll.status == "confirmed"

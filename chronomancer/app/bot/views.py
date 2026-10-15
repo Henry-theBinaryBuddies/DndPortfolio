@@ -4,10 +4,13 @@ import discord
 from discord.ui import Button, DynamicItem, View
 
 from . import wording
+from datetime import datetime
+
 from .snapshots import PollSnapshot
 
 VOTE_TEMPLATE = r"cm:vote:(?P<poll>\d+):(?P<cand>\d+)"
 CONFIRM_TEMPLATE = r"cm:confirm:(?P<poll>\d+)"
+NEXT_TEMPLATE = r"cm:next:(?P<poll>\d+)"
 
 COLOURS = {"dnd": 0xE0A63A, "plain": 0x2F5FD0}
 
@@ -47,6 +50,7 @@ def confirmed_embed(s: PollSnapshot) -> discord.Embed:
     when = (f"{discord.utils.format_dt(s.confirmed_start, 'F')} "
             f"({discord.utils.format_dt(s.confirmed_start, 'R')})") if s.confirmed_start else "?"
     text = wording.t(s.theme, "botConfirmedBody", title=_esc(s.display_title), when=when)
+    text += _reminder_line(s)
     if s.next_week:  # the campaign meets regularly: say where the next poll should start
         text += "\n\n" + wording.t(s.theme, "botNextWeek", date=s.next_week.strftime("%A %B %d, %Y"))
     return discord.Embed(
@@ -54,6 +58,40 @@ def confirmed_embed(s: PollSnapshot) -> discord.Embed:
         description=text,
         colour=_colour(s.theme),
     )
+
+
+def _when(dt: datetime) -> str:
+    return f"{discord.utils.format_dt(dt, 'F')} ({discord.utils.format_dt(dt, 'R')})"
+
+
+def reminder_embed(s: PollSnapshot) -> discord.Embed:
+    embed = discord.Embed(
+        title=wording.t(s.theme, "botReminderTitle"),
+        description=wording.t(s.theme, "botReminderBody", title=_esc(s.display_title),
+                              when=_when(s.confirmed_start)),
+        colour=_colour(s.theme),
+    )
+    embed.set_footer(text=s.campaign_name[:100])
+    return embed
+
+
+def session_cancelled_embed(s: PollSnapshot) -> discord.Embed:
+    return discord.Embed(
+        title=wording.t(s.theme, "botSessionCancelledTitle"),
+        description=wording.t(s.theme, "botSessionCancelled",
+                              when=discord.utils.format_dt(s.confirmed_start, "F")),
+        colour=_colour(s.theme),
+    )
+
+
+def _reminder_line(s: PollSnapshot) -> str:
+    """Say what will (or will not) happen, so a missing reminder is never a silent surprise."""
+    if s.reminder_times:
+        when = ", ".join(discord.utils.format_dt(t, "f") for t in s.reminder_times)
+        return "\n\n" + wording.t(s.theme, "botRemindersAt", times=when)
+    if s.reminder_offsets:  # reminders are on, but none still fit before the session
+        return "\n\n" + wording.t(s.theme, "botRemindersNoFit")
+    return ""
 
 
 def cancelled_embed(s: PollSnapshot) -> discord.Embed:
@@ -92,6 +130,28 @@ class ConfirmButton(DynamicItem[Button], template=CONFIRM_TEMPLATE):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.client.handle_confirm(interaction, self.poll_id)
+
+
+class NextButton(DynamicItem[Button], template=NEXT_TEMPLATE):
+    """Under a confirmed session of a recurring campaign: the organizer opens the next poll."""
+
+    def __init__(self, poll_id: int, label: str = "Open next poll"):
+        super().__init__(Button(style=discord.ButtonStyle.secondary, label=label,
+                                custom_id=f"cm:next:{poll_id}"))
+        self.poll_id = poll_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["poll"]), label=item.label or "Open next poll")
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.client.handle_next(interaction, self.poll_id)
+
+
+def build_next_view(s: PollSnapshot) -> View:
+    view = View(timeout=None)
+    view.add_item(NextButton(s.poll_id, label=wording.t(s.theme, "botNextButton")[:80]))
+    return view
 
 
 def build_vote_view(s: PollSnapshot) -> View:

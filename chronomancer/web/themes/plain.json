@@ -66,5 +66,15 @@
   "freq_monthly": "Monthly",
   "freq_quarterly": "Quarterly",
   "freq_annually": "Annually",
-  "weekStart": "Week starting"
+  "weekStart": "Week starting",
+  "botReminderTitle": "Reminder",
+  "botReminderBody": "**{title}** begins {when}.",
+  "botNextButton": "Open next poll",
+  "botNextOpened": "The next poll is open for the week of {date}. Run `/availability` or open it here: {url}",
+  "botSessionCancelledTitle": "Event cancelled",
+  "botSessionCancelled": "The event planned for {when} is cancelled.",
+  "botRemindersSet": "Reminders will go out {offsets} before each event.",
+  "botRemindersOff": "Reminders are turned off.",
+  "botRemindersAt": "Reminders will go out at: {times}.",
+  "botRemindersNoFit": "No reminder fits before the event, because it is sooner than your reminder times. Change them with `/chronomancer reminders`."
 }

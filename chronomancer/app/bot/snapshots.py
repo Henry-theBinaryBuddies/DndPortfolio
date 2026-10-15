@@ -38,6 +38,8 @@ class PollSnapshot:
     message_id: int | None = None
     organizer_discord_id: str | None = None
     next_week: date | None = None  # suggested start of the next poll's week, once decided
+    reminder_times: list = field(default_factory=list)  # pending reminder send times
+    reminder_offsets: list = field(default_factory=list)  # the campaign's configured timings
 
     @property
     def url(self) -> str:
@@ -89,4 +91,6 @@ def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
         message_id=_int_or_none(message.message_id) if message else None,
         organizer_discord_id=organizer.user.discord_id if organizer else None,
         next_week=services.suggest_next_week(db, campaign) if poll.status == "confirmed" else None,
+        reminder_times=services.pending_reminder_times(db, poll.id) if poll.status == "confirmed" else [],
+        reminder_offsets=list(campaign.reminder_offsets_min or []),
     )

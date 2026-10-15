@@ -75,6 +75,10 @@ class CadenceUpdate(BaseModel):
     cadence: str = Field(pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
 
 
+class RemindersUpdate(BaseModel):
+    offsets_min: list[int] = Field(max_length=5)
+
+
 class VoteCast(BaseModel):
     candidate_id: int
 

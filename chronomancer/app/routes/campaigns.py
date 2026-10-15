@@ -6,7 +6,7 @@ from .. import services
 from ..auth import current_user, require_member, require_organizer
 from ..db import get_db
 from ..models import Campaign, Member, User
-from ..schemas import CadenceUpdate, CampaignCreate, JoinRequest
+from ..schemas import CadenceUpdate, CampaignCreate, JoinRequest, RemindersUpdate
 
 router = APIRouter(prefix="/api")
 
@@ -79,6 +79,14 @@ def set_cadence(campaign_id: int, body: CadenceUpdate, user: User = Depends(curr
     member = require_organizer(db, campaign_id, user)
     services.set_cadence(db, member.campaign, body.cadence)
     return {"cadence": member.campaign.cadence, "next_week_start": _next_week(db, member.campaign)}
+
+
+@router.put("/campaigns/{campaign_id}/reminders")
+def set_reminders(campaign_id: int, body: RemindersUpdate, user: User = Depends(current_user),
+                  db: Session = Depends(get_db)):
+    member = require_organizer(db, campaign_id, user)
+    services.set_reminder_offsets(db, member.campaign, body.offsets_min)
+    return {"reminder_offsets_min": member.campaign.reminder_offsets_min}
 
 
 @router.post("/join")

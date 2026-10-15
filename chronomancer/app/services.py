@@ -4,13 +4,14 @@ from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import config
 from .models import (
-    Availability, Campaign, Candidate, Member, Notification, Poll, PollMessage, User, Vote,
+    Availability, Campaign, Candidate, Member, Notification, Poll, PollMessage, Reminder, User,
+    Vote,
 )
 from .scheduling import candidate_starts, generate_slots, rank_candidates
 
@@ -159,7 +160,7 @@ def delete_campaign(db: Session, campaign_id: int) -> None:
     would inherit them)."""
     poll_ids = list(db.scalars(select(Poll.id).where(Poll.campaign_id == campaign_id)))
     if poll_ids:
-        for model in (Availability, Notification, PollMessage):
+        for model in (Availability, Notification, PollMessage, Reminder):
             db.execute(delete(model).where(model.poll_id.in_(poll_ids)))
     # Polls, candidates, votes and members go with the campaign via the ORM cascade.
     campaign = db.get(Campaign, campaign_id)
@@ -357,24 +358,109 @@ def confirm_poll(db: Session, poll: Poll, candidate_id: int | None = None) -> Po
         db.rollback()
         raise ServiceError(409, "poll is not open for voting")
     enqueue(db, "confirmed", poll.id)
+    schedule_reminders(db, poll.id, chosen.start_utc, poll.campaign.reminder_offsets_min or [])
     db.commit()
     db.refresh(poll)
     return poll
+
+
+def schedule_reminders(db: Session, poll_id: int, session_start: datetime, offsets: list,
+                       now: datetime | None = None) -> list:
+    """One reminder per offset (minutes before the session). Offsets that are already in the
+    past (the session is sooner than that) are skipped rather than sent late and wrong."""
+    now = now or now_utc()
+    created = []
+    for minutes in sorted(set(offsets), reverse=True):
+        send_at = session_start - timedelta(minutes=minutes)
+        if send_at <= now:
+            continue
+        reminder = Reminder(poll_id=poll_id, offset_min=minutes, send_at=send_at)
+        db.add(reminder)
+        created.append(reminder)
+    return created
 
 
 def cancel_poll(db: Session, poll: Poll) -> Poll:
-    """Abandon an open poll so a new one can be created."""
-    claimed = db.execute(update(Poll).where(Poll.id == poll.id,
-                                            Poll.status.in_(("collecting", "voting")))
-                         .values(status="cancelled"))
+    """Abandon a poll: an open one, or a confirmed session that has not happened yet. Unsent
+    reminders are dropped so nobody is told about a session that is off."""
+    was_confirmed = poll.status == "confirmed"
+    claimed = db.execute(update(Poll).where(
+        Poll.id == poll.id,
+        or_(Poll.status.in_(("collecting", "voting")),
+            and_(Poll.status == "confirmed", Poll.confirmed_start_utc > now_utc())),
+    ).values(status="cancelled"))
     if claimed.rowcount != 1:
         db.rollback()
         raise ServiceError(409, "poll is already finished")
-    if db.get(PollMessage, poll.id) is not None:
-        enqueue(db, "cancelled", poll.id)  # lets the bot retire the vote buttons
+    db.execute(delete(Reminder).where(Reminder.poll_id == poll.id, Reminder.sent_at.is_(None)))
+    if was_confirmed or db.get(PollMessage, poll.id) is not None:
+        enqueue(db, "cancelled", poll.id)  # lets the bot retire buttons / announce the change
     db.commit()
     db.refresh(poll)
     return poll
+
+
+def set_reminder_offsets(db: Session, campaign: Campaign, offsets: list) -> Campaign:
+    """Minutes before a session at which to remind the group (up to five, 1 minute to 30 days)."""
+    if len(offsets) > 5 or any(not isinstance(m, int) or not 1 <= m <= 60 * 24 * 30 for m in offsets):
+        raise ServiceError(422, "use up to 5 reminders, each between 1 minute and 30 days before")
+    campaign.reminder_offsets_min = sorted(set(offsets), reverse=True)
+    reschedule_reminders(db, campaign)  # sessions already decided pick up the new timings
+    db.commit()
+    return campaign
+
+
+def reschedule_reminders(db: Session, campaign: Campaign, now: datetime | None = None) -> list:
+    """Re-plan reminders for the campaign's upcoming decided sessions after the timings
+    changed. Reminders already sent are left alone and not repeated; unsent ones are replaced."""
+    now = now or now_utc()
+    upcoming = db.scalars(select(Poll).where(
+        Poll.campaign_id == campaign.id, Poll.status == "confirmed",
+        Poll.confirmed_start_utc > now).order_by(Poll.confirmed_start_utc)).all()
+    planned = []
+    for poll in upcoming:
+        db.execute(delete(Reminder).where(Reminder.poll_id == poll.id, Reminder.sent_at.is_(None)))
+        already_sent = set(db.scalars(select(Reminder.offset_min).where(
+            Reminder.poll_id == poll.id, Reminder.sent_at.is_not(None))))
+        offsets = [m for m in (campaign.reminder_offsets_min or []) if m not in already_sent]
+        planned += schedule_reminders(db, poll.id, poll.confirmed_start_utc, offsets, now)
+    return planned
+
+
+def pending_reminder_times(db: Session, poll_id: int) -> list:
+    """When the group will next be reminded about this session, soonest first."""
+    return list(db.scalars(select(Reminder.send_at).where(
+        Reminder.poll_id == poll_id, Reminder.sent_at.is_(None)).order_by(Reminder.send_at)))
+
+
+def due_reminders(db: Session, now: datetime | None = None) -> list:
+    """Ids of reminders that should go out now, oldest first (retry backoff respected)."""
+    now = now or now_utc()
+    return list(db.scalars(
+        select(Reminder.id).where(
+            Reminder.sent_at.is_(None), Reminder.send_at <= now,
+            or_(Reminder.retry_after.is_(None), Reminder.retry_after <= now))
+        .order_by(Reminder.send_at, Reminder.id).limit(50)
+    ))
+
+
+def open_next_poll(db: Session, poll: Poll) -> Poll:
+    """Open the next poll of a recurring campaign: the suggested week, same window, length,
+    timezone and quorum as the session just decided."""
+    campaign = poll.campaign
+    latest = db.scalar(select(Poll.id).where(Poll.campaign_id == campaign.id,
+                                             Poll.status == "confirmed").order_by(Poll.id.desc()))
+    if poll.status != "confirmed" or latest != poll.id:
+        raise ServiceError(409, "that is not the campaign's latest confirmed session")
+    week = suggest_next_week(db, campaign)
+    if week is None:
+        raise ServiceError(409, "this campaign does not repeat: set a meeting frequency first")
+    return create_poll(
+        db, campaign, title=poll.title, tz=poll.timezone, date_start=week,
+        window_start=poll.window_start, window_end=poll.window_end,
+        slot_minutes=poll.slot_minutes, duration_min=poll.duration_min,
+        min_quorum=poll.min_quorum, vote_top_n=poll.vote_top_n,
+    )
 
 
 def requeue_vote_post(db: Session, poll: Poll) -> None:

@@ -108,6 +108,11 @@ def register(tree: app_commands.CommandTree) -> None:
     async def frequency(interaction: discord.Interaction, frequency: str):
         await _run(interaction, actions.cmd_frequency, frequency)
 
+    @group.command(name="reminders", description="Set when the group is reminded before a session")
+    @app_commands.describe(when="Time(s) before the session, like: 1d, 1h, 15m (or off)")
+    async def reminders(interaction: discord.Interaction, when: str):
+        await _run(interaction, actions.cmd_reminders, when)
+
     @group.command(name="poll", description="Open a poll for one week of availability")
     @app_commands.describe(
         week_start="First of the seven days, like 2026-10-26 (blank: the next week per your frequency)",

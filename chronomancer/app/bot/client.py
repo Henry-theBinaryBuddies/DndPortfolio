@@ -7,7 +7,8 @@ from discord import app_commands
 from .. import config
 from . import actions, commands
 from .outbox import OutboxProcessor
-from .views import ConfirmButton, VoteButton, vote_embed
+from .reminders import ReminderProcessor
+from .views import ConfirmButton, NextButton, VoteButton, vote_embed
 
 log = logging.getLogger("chronomancer.bot")
 
@@ -29,10 +30,11 @@ class ChronomancerBot(discord.Client):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
         self.outbox = OutboxProcessor(self.get_or_fetch_channel)
+        self.reminders = ReminderProcessor(self.get_or_fetch_channel, self.get_or_fetch_user)
         self.tree.on_error = self._on_command_error
 
     async def setup_hook(self) -> None:
-        self.add_dynamic_items(VoteButton, ConfirmButton)
+        self.add_dynamic_items(VoteButton, ConfirmButton, NextButton)
         commands.register(self.tree)
         # A failed sync (rate limit, transient API error) must not stop the bot: the commands
         # synced last time keep working, and buttons/outbox do not depend on the sync.
@@ -55,6 +57,9 @@ class ChronomancerBot(discord.Client):
 
     async def get_or_fetch_channel(self, channel_id: int):
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
+
+    async def get_or_fetch_user(self, user_id: int):
+        return self.get_user(user_id) or await self.fetch_user(user_id)
 
     # ------------------------------------------------------------ interactions
 
@@ -92,6 +97,24 @@ class ChronomancerBot(discord.Client):
         except Exception:  # noqa: BLE001
             log.exception("vote button failed")
             await self._apologise(interaction)
+
+    async def handle_next(self, interaction: discord.Interaction, poll_id: int):
+        try:
+            outcome = await asyncio.to_thread(
+                actions.with_db, actions.next_click, commands.make_duser(interaction), poll_id,
+                interaction.guild_id, interaction.channel_id,
+            )
+            # Success is announced to the channel (the group needs to know); errors stay private.
+            await interaction.response.send_message(outcome.text, ephemeral=not outcome.ok)
+        except Exception:  # noqa: BLE001
+            log.exception("next-poll button failed")
+            await self._apologise(interaction)
+            return
+        if outcome.ok and interaction.message is not None:
+            try:  # the button has done its job
+                await interaction.message.edit(view=None)
+            except discord.HTTPException:
+                pass
 
     async def handle_confirm(self, interaction: discord.Interaction, poll_id: int):
         try:

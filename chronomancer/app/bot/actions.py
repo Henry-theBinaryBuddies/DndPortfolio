@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import re
+
 import discord
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -221,6 +223,11 @@ def cmd_status(db: Session, du: DUser, guild_id, channel_id) -> Reply:
         lines.append("Still waiting on: " + ", ".join(shown) + more)
     if poll.confirmed_start_utc:
         lines.append(f"Confirmed for <t:{int(poll.confirmed_start_utc.timestamp())}:F>.")
+        times = services.pending_reminder_times(db, poll.id) if poll.status == "confirmed" else []
+        if times:
+            lines.append("Reminders: " + ", ".join(f"<t:{int(t.timestamp())}:f>" for t in times))
+        elif poll.status == "confirmed" and campaign.reminder_offsets_min:
+            lines.append(wording.t(campaign.theme, "botRemindersNoFit"))
     return Reply("\n".join(lines)[:1900], True)
 
 
@@ -247,14 +254,65 @@ def cmd_confirm(db: Session, du: DUser, guild_id, channel_id) -> Reply:
 
 
 def cmd_cancel(db: Session, du: DUser, guild_id, channel_id) -> Reply:
+    """Cancel the open poll, or a decided session that has not happened yet."""
     campaign = _here(db, guild_id, channel_id)
     user = _user(db, du)
     _require_organizer(db, campaign, user)
     poll = services.current_poll(db, campaign.id)
-    if poll is None or poll.status not in ("collecting", "voting"):
-        raise ServiceError(409, "No poll is open in this campaign.")
+    if poll is None:
+        raise ServiceError(409, "There is no poll or session to cancel.")
     services.cancel_poll(db, poll)
     return Reply(wording.t(campaign.theme, "botPollCancelledReply"))
+
+
+_OFFSET_TOKEN = re.compile(r"^(\d+)\s*([dhm])$", re.IGNORECASE)
+
+
+def parse_offsets(text: str) -> list:
+    """'1d, 2h 15m' -> [1440, 120, 15]. 'off' or 'none' -> []. Raises ServiceError on junk."""
+    text = text.strip().lower()
+    if text in ("", "off", "none", "no"):
+        return []
+    minutes = []
+    for token in re.split(r"[,;\s]+", text):
+        m = _OFFSET_TOKEN.match(token)
+        if not m:
+            raise ServiceError(422, f"I could not read {token!r}. Use values like 1d, 2h or 30m, or off.")
+        n, unit = int(m.group(1)), m.group(2)
+        minutes.append(n * {"d": 1440, "h": 60, "m": 1}[unit])
+    return minutes
+
+
+def describe_minutes(total: int) -> str:
+    days, rest = divmod(total, 1440)
+    hours, mins = divmod(rest, 60)
+    parts = [f"{n} {word}{'' if n == 1 else 's'}"
+             for n, word in ((days, "day"), (hours, "hour"), (mins, "minute")) if n]
+    return " ".join(parts)
+
+
+def cmd_reminders(db: Session, du: DUser, guild_id, channel_id, offsets_text: str) -> Reply:
+    """Set how long before a session the group is reminded (organizer only)."""
+    campaign = _here(db, guild_id, channel_id)
+    user = _user(db, du)
+    _require_organizer(db, campaign, user)
+    services.set_reminder_offsets(db, campaign, parse_offsets(offsets_text))
+    if not campaign.reminder_offsets_min:
+        return Reply(wording.t(campaign.theme, "botRemindersOff"))
+    listed = ", ".join(describe_minutes(m) for m in campaign.reminder_offsets_min)
+    text = wording.t(campaign.theme, "botRemindersSet", offsets=listed)
+    # Tell them what this means for a session that is already decided.
+    upcoming = db.scalar(select(Poll).where(
+        Poll.campaign_id == campaign.id, Poll.status == "confirmed",
+        Poll.confirmed_start_utc > services.now_utc()).order_by(Poll.confirmed_start_utc))
+    if upcoming is not None:
+        times = services.pending_reminder_times(db, upcoming.id)
+        if times:
+            text += "\n" + wording.t(campaign.theme, "botRemindersAt",
+                                      times=", ".join(f"<t:{int(t.timestamp())}:f>" for t in times))
+        else:
+            text += "\n" + wording.t(campaign.theme, "botRemindersNoFit")
+    return Reply(text)
 
 
 def cmd_repost(db: Session, du: DUser, guild_id, channel_id) -> Reply:
@@ -297,6 +355,20 @@ def vote_click(db: Session, du: DUser, poll_id: int, candidate_id: int, guild_id
             return Outcome(wording.t(theme, "botVoteClosed"), False)
         return Outcome(error_text(exc), False)
     return Outcome(wording.t(theme, "botVoteRecorded"), True, load_poll_snapshot(db, poll.id))
+
+
+def next_click(db: Session, du: DUser, poll_id: int, guild_id, channel_id) -> Outcome:
+    """The organizer pressed 'open next poll' under a confirmed session."""
+    try:
+        poll = _poll_in_place(db, poll_id, guild_id, channel_id)
+        theme = poll.campaign.theme
+        user = _user(db, du)
+        _require_organizer(db, poll.campaign, user)
+        fresh = services.open_next_poll(db, poll)
+    except ServiceError as exc:
+        return Outcome(error_text(exc), False)
+    return Outcome(wording.t(theme, "botNextOpened", date=fresh.date_start.strftime("%A %B %d, %Y"),
+                             url=_poll_url(fresh)), True)
 
 
 def confirm_click(db: Session, du: DUser, poll_id: int, guild_id, channel_id) -> Outcome:

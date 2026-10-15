@@ -152,3 +152,20 @@ class Notification(Base):
     retry_after = mapped_column(UTCDateTime, nullable=True)  # backoff: not before this time
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(String(300), default=None)
+
+
+class Reminder(Base):
+    """A scheduled 'your session starts soon' message for a confirmed poll."""
+
+    __tablename__ = "reminders"
+    __table_args__ = (UniqueConstraint("poll_id", "offset_min"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    poll_id: Mapped[int] = mapped_column(ForeignKey("polls.id"), index=True)
+    offset_min: Mapped[int] = mapped_column(Integer)      # minutes before the session
+    send_at = mapped_column(UTCDateTime, index=True)
+    sent_at = mapped_column(UTCDateTime, nullable=True)   # set once delivered or given up
+    retry_after = mapped_column(UTCDateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    dm_ok: Mapped[int] = mapped_column(Integer, default=0)
+    dm_failed: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(String(300), default=None)

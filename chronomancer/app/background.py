@@ -70,6 +70,7 @@ class Background:
                 bot = self.bot
                 if bot is not None and bot.is_ready():
                     await bot.outbox.run_once()
+                    await bot.reminders.run_once()
             except asyncio.CancelledError:
                 raise
             except Exception:  # noqa: BLE001
