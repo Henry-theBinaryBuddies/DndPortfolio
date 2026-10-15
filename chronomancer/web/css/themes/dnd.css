@@ -92,3 +92,97 @@ ul.legend .swatch { box-shadow: inset 0 1px 0 #ffffff40, inset 0 -2px 3px #00000
 @media (max-width: 640px) {
   .panel::before { inset: 4px; opacity: .6; }
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Classic D&D imagery: silhouettes in web/img/, painted in theme colours with CSS masks. They are
+   decoration only (CSS, so screen readers never see them), and none of this exists in the plain
+   theme. */
+:root {
+  --img-hourglass: url("../../img/hourglass.svg");
+  --img-scroll: url("../../img/scroll.svg");
+  --img-swords: url("../../img/swords.svg");
+  --img-sword: url("../../img/sword.svg");
+  --img-shield: url("../../img/shield.svg");
+  --img-crown: url("../../img/crown.svg");
+  --img-d20: url("../../img/d20.svg");
+  --img-potion: url("../../img/potion.svg");
+  --img-helm: url("../../img/helm.svg");
+  --img-wizard: url("../../img/wizard.svg");
+  --img-castle: url("../../img/castle.svg");
+  --img-dragon-head: url("../../img/dragon-head.svg");
+  --img-skyline: url("../../img/skyline.svg");
+  --img-dragon: url("../../img/dragon.svg");
+  --img-wizard-figure: url("../../img/wizard-figure.svg");
+}
+
+/* the header: a village skyline with a castle, a wizard's tower and a dragon overhead */
+header.bar { position: relative; min-height: 5rem; overflow: hidden; }
+header.bar > * { position: relative; z-index: 1; }
+header.bar::after {
+  content: ""; position: absolute; right: 0; bottom: 0; width: min(100%, 1000px); height: 4.4rem;
+  background: var(--accent); opacity: .34; pointer-events: none;
+  -webkit-mask: var(--img-skyline) right bottom / auto 100% no-repeat; mask: var(--img-skyline) right bottom / auto 100% no-repeat;
+}
+
+/* a dragon and a wizard in the margins, behind the panels, on wide screens */
+html::before, html::after {
+  content: ""; position: fixed; z-index: -2; pointer-events: none; background: var(--accent); opacity: .09;
+}
+html::before {
+  left: -30px; bottom: 0; width: min(48vw, 680px); aspect-ratio: 440 / 300;
+  -webkit-mask: var(--img-dragon) left bottom / contain no-repeat; mask: var(--img-dragon) left bottom / contain no-repeat;
+}
+html::after {
+  right: 0; bottom: 0; height: min(80vh, 640px); aspect-ratio: 200 / 380;
+  -webkit-mask: var(--img-wizard-figure) right bottom / contain no-repeat; mask: var(--img-wizard-figure) right bottom / contain no-repeat;
+}
+
+/* an emblem before each heading */
+h1::before, h2::before {
+  content: ""; display: var(--h-on, none); width: 1.2em; height: 1.2em; margin-right: .5em; vertical-align: -.2em;
+  background: var(--accent);
+  -webkit-mask: var(--h-icon) center / contain no-repeat; mask: var(--h-icon) center / contain no-repeat;
+}
+h2[data-t="campaigns"], h1#name { --h-on: inline-block; --h-icon: var(--img-castle); }
+h2[data-t="createCampaign"] { --h-on: inline-block; --h-icon: var(--img-wizard); }
+h2[data-t="joinCampaign"] { --h-on: inline-block; --h-icon: var(--img-shield); }
+h2[data-t="login"] { --h-on: inline-block; --h-icon: var(--img-dragon-head); }
+h2[data-t="settings"] { --h-on: inline-block; --h-icon: var(--img-potion); }
+h2[data-t="party"] { --h-on: inline-block; --h-icon: var(--img-helm); }
+h2[data-t="session"], h1#title { --h-on: inline-block; --h-icon: var(--img-hourglass); }
+h2[data-t="candidates"] { --h-on: inline-block; --h-icon: var(--img-swords); }
+h2[data-t="createPoll"], h2[data-t="poll"] { --h-on: inline-block; --h-icon: var(--img-scroll); }
+#confirmed h2 { --h-on: inline-block; --h-icon: var(--img-crown); }
+
+/* and on the buttons that do something */
+button[data-t]::before, a.button-link::before, .candidate button::before {
+  content: ""; display: var(--b-on, none); width: 1.15em; height: 1.15em; margin-right: .5em; vertical-align: -.2em;
+  background: currentColor;
+  -webkit-mask: var(--b-icon) center / contain no-repeat; mask: var(--b-icon) center / contain no-repeat;
+}
+button[data-t="createCampaign"], button[data-t="createPoll"] { --b-on: inline-block; --b-icon: var(--img-d20); }
+button[data-t="joinCampaign"] { --b-on: inline-block; --b-icon: var(--img-shield); }
+button[data-t="login"], a.button-link { --b-on: inline-block; --b-icon: var(--img-helm); }
+button[data-t="save"] { --b-on: inline-block; --b-icon: var(--img-scroll); }
+button[data-t="confirm"], .candidate button.secondary { --b-on: inline-block; --b-icon: var(--img-sword); }
+button[data-t="close"] { --b-on: inline-block; --b-icon: var(--img-hourglass); }
+.candidate button:not(.secondary) { --b-on: inline-block; --b-icon: var(--img-d20); }
+
+/* an empty list shows an emblem instead of a bare "None yet." */
+ul.plain li.muted:only-child { display: block; text-align: center; padding: 1rem 0 .5rem; font-style: italic; }
+ul.plain li.muted:only-child::before {
+  content: ""; display: block; width: 4.5rem; height: 4.5rem; margin: 0 auto .5rem;
+  background: var(--accent); opacity: .55;
+  -webkit-mask: var(--e-icon, var(--img-scroll)) center / contain no-repeat; mask: var(--e-icon, var(--img-scroll)) center / contain no-repeat;
+}
+#campaign-list li.muted:only-child { --e-icon: var(--img-castle); }
+#polls li.muted:only-child { --e-icon: var(--img-hourglass); }
+
+@media (max-width: 900px) {
+  html::before, html::after { display: none; }
+}
+@media (max-width: 640px) {
+  header.bar { min-height: 0; }
+  header.bar::after { height: 3.2rem; opacity: .26; }
+  h1::before, h2::before { width: 1.05em; height: 1.05em; margin-right: .4em; }
+}
