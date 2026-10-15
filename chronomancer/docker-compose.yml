@@ -1,0 +1,41 @@
+# Two containers: the app, and Caddy in front of it (it gets and renews the HTTPS certificate by itself).
+# Secrets and settings live in .env next to this file (see .env.production.example). Never commit it.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite:////data/chronomancer.db
+    volumes:
+      - ./data:/data              # the database and its backups: keep this folder
+    expose:
+      - "8000"                    # reachable by Caddy only, never published to the internet
+    mem_limit: 640m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env, for example chronomancer.example.com}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data          # the certificates
+      - caddy-config:/config
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  caddy-data:
+  caddy-config:

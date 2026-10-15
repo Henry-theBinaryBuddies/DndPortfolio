@@ -1,0 +1,20 @@
+# Never bake secrets, data or clutter into the image.
+.env
+.env.*
+!.env.example
+!.env.production.example
+*.db
+*.db-journal
+data/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+deploy/
+DESIGN.md
+DEPLOY.md
+docker-compose.yml
+Dockerfile
+.git
+.idea

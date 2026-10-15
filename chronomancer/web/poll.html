@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poll - Chronomancer</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link id="theme-css" rel="stylesheet" href="/css/themes/dnd.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/" data-t="appName">Chronomancer</a>
+    <select id="theme-select" aria-label="Theme">
+      <option value="dnd">Dungeons &amp; Dragons</option>
+      <option value="plain">Plain</option>
+    </select>
+  </header>
+  <main>
+    <div class="panel">
+      <h1 id="title"></h1>
+      <p id="meta" class="muted"></p>
+      <p><a id="back" href="/">&larr; Back</a></p>
+      <p id="load-error" class="error" role="alert"></p>
+    </div>
+
+    <div class="panel" id="confirmed" hidden>
+      <h2><span data-t="confirmed">Scheduled for</span> <span id="confirmed-when"></span></h2>
+    </div>
+
+    <div class="panel" id="grid-panel" hidden>
+      <h2 data-t="poll">Availability</h2>
+      <ul class="legend" aria-label="What each click does">
+        <li><span class="swatch cell-free"></span> <strong>1 click</strong> <span data-t="free">Available</span></li>
+        <li><span class="swatch cell-maybe"></span> <strong>2 clicks</strong> <span data-t="maybe">Maybe</span></li>
+        <li><span class="swatch cell-no"></span> <strong>3 clicks</strong> <span data-t="no">Not available</span></li>
+      </ul>
+      <p class="muted"><span data-t="gridHint">Tap a box to mark it.</span> Times are in your timezone (<span id="tz"></span>).</p>
+      <p class="muted" id="tz-note"></p>
+      <form id="hours-form" class="row" hidden>
+        <label>Earliest start <input id="hours-start" type="time" required></label>
+        <label>Latest end <input id="hours-end" type="time" required></label>
+        <button type="submit" class="secondary">Change hours</button>
+        <span class="muted" id="hours-note"></span>
+      </form>
+      <div id="grid" class="grid-wrap"></div>
+      <div class="row" id="save-row">
+        <button id="save" data-t="save">Save</button>
+        <span id="save-msg" class="ok"></span>
+      </div>
+    </div>
+
+    <div class="panel" id="vote-panel" hidden>
+      <h2 data-t="candidates">Best times</h2>
+      <div id="candidates"></div>
+    </div>
+
+    <div class="panel">
+      <h2 data-t="party">Party</h2>
+      <ul id="members" class="plain"></ul>
+      <div id="organizer-actions" class="row" hidden>
+        <label id="hours-label" hidden>Voting lasts (hours, blank = until you confirm)
+          <input id="vote-hours" type="number" min="1" max="336" placeholder="48">
+        </label>
+        <button id="close" data-t="close" hidden>Close</button>
+        <button id="confirm" data-t="confirm" hidden>Confirm</button>
+        <button id="cancel" class="secondary" data-t="cancel" hidden>Cancel poll</button>
+      </div>
+      <p id="action-error" class="error" role="alert"></p>
+    </div>
+  </main>
+  <footer class="site"><a href="/privacy.html">Privacy</a> <span aria-hidden="true">&middot;</span> <a href="/terms.html">Terms</a></footer>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/grid.js?v=2"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const id = new URLSearchParams(location.search).get("id");
+    let poll, grid;
+
+    function renderMembers() {
+      $("members").replaceChildren(...poll.members.map((m) =>
+        el("li", {}, m.display_name,
+          m.required ? el("span", { class: "badge" }, Theme.t("required")) : null,
+          // answered / waiting only means something while the poll is open (the server sends null once closed)
+          m.responded === null ? null : el("span", { class: m.responded ? "badge ok" : "badge" },
+            m.responded ? Theme.t("responded") : Theme.t("waiting")))));
+    }
+
+    function renderCandidates() {
+      const open = poll.status === "voting";
+      $("candidates").replaceChildren(...poll.candidates.map((c) =>
+        el("div", { class: "candidate" + (poll.my_vote === c.id ? " mine" : "") },
+          el("span", { class: "when" }, fmtDateTime(c.start)),
+          el("span", { class: "muted" }, `${c.free_count} free, ${c.maybe_count} maybe`),
+          el("span", { class: "badge" }, `${c.votes} vote${c.votes === 1 ? "" : "s"}`),
+          open ? el("button", { onclick: () => vote(c.id) }, Theme.t("vote")) : null,
+          open && poll.my_role === "organizer"
+            ? el("button", { class: "secondary", onclick: () => confirmPoll(c.id) }, Theme.t("confirm")) : null)));
+    }
+
+    // keepMarks: a theme switch re-renders the page, and must not throw away unsaved painting.
+    function render(keepMarks) {
+      if (keepMarks && grid && poll.status === "collecting") poll.my_availability = grid.marksObject();
+      if (grid) grid.destroy();
+      document.title = (poll.title || "Poll") + " - Chronomancer";
+      $("title").textContent = poll.title || "Poll " + poll.id;
+      $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} ${Theme.t(poll.min_quorum === 1 ? "freeOne" : "freeMany")}. Status: ${poll.status}.`;
+      $("back").href = "/campaign.html?id=" + poll.campaign_id;
+      const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      $("tz").textContent = here;
+      // The organizer typed the hours in their own zone; say so when yours differs, because the
+      // grid below is converted to yours and will not read like the hours they chose.
+      $("tz-note").textContent = poll.timezone === here ? ""
+        : `${Theme.t("hoursChosenBy")} ${poll.timezone}, so they appear shifted here.`;
+      const collecting = poll.status === "collecting";
+      const open = collecting || poll.status === "voting";
+      const organizerHere = poll.my_role === "organizer";
+      $("hours-form").hidden = !(organizerHere && collecting);
+      $("hours-start").value = poll.window_start;
+      $("hours-end").value = poll.window_end;
+      $("hours-note").textContent = `In ${poll.timezone}. An end of 00:00 is the end of the day.`;
+      $("grid-panel").hidden = !open;
+      $("save-row").hidden = !collecting;
+      document.querySelector(".legend").hidden = !collecting;
+      grid = AvailabilityGrid($("grid"), poll, () => { $("save-msg").textContent = ""; });
+      $("vote-panel").hidden = !poll.candidates.length;
+      renderCandidates();
+      renderMembers();
+      const organizer = poll.my_role === "organizer";
+      $("organizer-actions").hidden = !organizer || !open;
+      $("close").hidden = !(organizer && collecting);
+      $("hours-label").hidden = !(organizer && collecting);
+      $("confirm").hidden = !(organizer && poll.status === "voting");
+      $("cancel").hidden = !(organizer && open);
+      $("confirmed").hidden = poll.status !== "confirmed";
+      if (poll.confirmed_start) $("confirmed-when").textContent = fmtDateTime(poll.confirmed_start);
+    }
+
+    async function refresh() {
+      try { poll = await Api.get("/api/polls/" + encodeURIComponent(id)); }
+      catch (e) {
+        if (e.status === 401) {
+          location.replace("/?next=" + encodeURIComponent(location.pathname + location.search));
+          return;
+        }
+        // Non-members and missing polls look the same on purpose: say how to get in.
+        $("load-error").textContent = e.status === 404 ? Theme.t("notMember") : e.message;
+        return;
+      }
+      $("load-error").textContent = "";
+      render(false);
+    }
+
+    async function act(fn) {
+      $("action-error").textContent = "";
+      try { await fn(); await refresh(); }
+      catch (e) { $("action-error").textContent = e.message; }
+    }
+    const vote = (cid) => act(() => Api.post(`/api/polls/${id}/votes`, { candidate_id: cid }));
+    const confirmPoll = (cid) => act(() => Api.post(`/api/polls/${id}/confirm`, cid ? { candidate_id: cid } : {}));
+
+    $("save").addEventListener("click", () => act(async () => {
+      await Api.put(`/api/polls/${id}/availability`, { slots: grid.marks() });
+      $("save-msg").textContent = Theme.t("saved");
+    }));
+    $("hours-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      act(() => Api.patch(`/api/polls/${id}`,
+        { window_start: $("hours-start").value + ":00", window_end: $("hours-end").value + ":00" }));
+    });
+    $("close").addEventListener("click", () => act(() => {
+      const hours = parseInt($("vote-hours").value, 10);
+      return Api.post(`/api/polls/${id}/close`, hours > 0 ? { vote_hours: hours } : {});
+    }));
+    $("confirm").addEventListener("click", () => confirmPoll(null));
+    $("cancel").addEventListener("click", () => {
+      if (confirm(Theme.t("cancelPollConfirm"))) {
+        act(() => Api.post(`/api/polls/${id}/cancel`));
+      }
+    });
+    Theme.ready.then(refresh);
+    window.addEventListener("themechange", () => poll && render(true));
+  </script>
+</body>
+</html>
