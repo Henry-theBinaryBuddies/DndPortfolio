@@ -125,7 +125,6 @@
       try {
         const c = await Api.post("/api/campaigns", {
           name: f.get("name"), theme: Theme.current(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
         location.href = "/campaign.html?id=" + c.id;
       } catch (err) { $("create-error").textContent = err.message; }

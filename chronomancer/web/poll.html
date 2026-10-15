@@ -29,18 +29,17 @@
 
     <div class="panel" id="grid-panel" hidden>
       <h2 data-t="poll">Availability</h2>
-      <div class="row" id="brushes">
-        <button class="on" data-brush="free" data-t="free">Free</button>
-        <button class="secondary" data-brush="maybe" data-t="maybe">If needed</button>
-        <button class="secondary" data-brush="erase" data-t="erase">Erase</button>
+      <ul class="legend" aria-label="Colour key">
+        <li><span class="swatch cell-free"></span> <span data-t="free">Available</span></li>
+        <li><span class="swatch cell-maybe"></span> <span data-t="maybe">Maybe</span></li>
+        <li><span class="swatch cell-no"></span> <span data-t="no">Not available</span></li>
+      </ul>
+      <p class="muted"><span data-t="gridHint">Tap a box to mark it.</span> Times are in your timezone (<span id="tz"></span>).</p>
+      <div id="grid" class="grid-wrap"></div>
+      <div class="row" id="save-row">
         <button id="save" data-t="save">Save</button>
         <span id="save-msg" class="ok"></span>
       </div>
-      <label id="scroll-label" class="row muted" hidden>
-        <span><input id="scroll-mode" type="checkbox"> Scroll instead of paint (touch screens)</span>
-      </label>
-      <p class="muted">Times shown in your timezone (<span id="tz"></span>). Drag across the grid to paint. Brighter cells are where more of the party is free.</p>
-      <div id="grid" class="grid-wrap"></div>
     </div>
 
     <div class="panel" id="vote-panel" hidden>
@@ -69,15 +68,6 @@
     const $ = (id) => document.getElementById(id);
     const id = new URLSearchParams(location.search).get("id");
     let poll, grid;
-    let brush = "free";        // kept here so a re-render never desyncs it from the buttons
-    let scrollMode = false;
-
-    function syncBrushButtons() {
-      $("brushes").querySelectorAll("[data-brush]").forEach((b) => {
-        const on = b.dataset.brush === brush;
-        b.classList.toggle("on", on); b.classList.toggle("secondary", !on);
-      });
-    }
 
     function renderMembers() {
       $("members").replaceChildren(...poll.members.map((m) =>
@@ -105,17 +95,15 @@
       if (grid) grid.destroy();
       document.title = (poll.title || "Poll") + " - Chronomancer";
       $("title").textContent = poll.title || "Poll " + poll.id;
-      $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} free players. Status: ${poll.status}.`;
+      $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} free player${poll.min_quorum === 1 ? "" : "s"}. Status: ${poll.status}.`;
       $("back").href = "/campaign.html?id=" + poll.campaign_id;
       $("tz").textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const collecting = poll.status === "collecting";
       const open = collecting || poll.status === "voting";
       $("grid-panel").hidden = !open;
-      $("save").hidden = !collecting;
-      $("brushes").querySelectorAll("[data-brush]").forEach((b) => { b.hidden = !collecting; });
-      $("scroll-label").hidden = !(collecting && matchMedia("(pointer: coarse)").matches);
-      grid = AvailabilityGrid($("grid"), poll, () => { $("save-msg").textContent = ""; }, { brush, scrollMode });
-      syncBrushButtons();
+      $("save-row").hidden = !collecting;
+      document.querySelector(".legend").hidden = !collecting;
+      grid = AvailabilityGrid($("grid"), poll, () => { $("save-msg").textContent = ""; });
       $("vote-panel").hidden = !poll.candidates.length;
       renderCandidates();
       renderMembers();
@@ -152,17 +140,6 @@
     const vote = (cid) => act(() => Api.post(`/api/polls/${id}/votes`, { candidate_id: cid }));
     const confirmPoll = (cid) => act(() => Api.post(`/api/polls/${id}/confirm`, cid ? { candidate_id: cid } : {}));
 
-    $("brushes").addEventListener("click", (e) => {
-      const b = e.target.closest("[data-brush]");
-      if (!b || !grid) return;
-      brush = b.dataset.brush;
-      grid.setBrush(brush);
-      syncBrushButtons();
-    });
-    $("scroll-mode").addEventListener("change", (e) => {
-      scrollMode = e.target.checked;
-      if (grid) grid.setScrollMode(scrollMode);
-    });
     $("save").addEventListener("click", () => act(async () => {
       await Api.put(`/api/polls/${id}/availability`, { slots: grid.marks() });
       $("save-msg").textContent = Theme.t("saved");

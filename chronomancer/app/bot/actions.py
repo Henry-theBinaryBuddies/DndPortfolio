@@ -155,7 +155,7 @@ def settings_summary(campaign) -> str:
     w = wording.words(campaign.theme)
     return (f"{w.get('freq_' + campaign.cadence, campaign.cadence)} · "
             f"{describe_minutes(campaign.default_duration_min)} · "
-            f"at least {campaign.min_quorum} free · {campaign.timezone} · reminders: "
+            f"at least {campaign.min_quorum} free · reminders: "
             + (", ".join(describe_minutes(m) for m in campaign.reminder_offsets_min) + " before"
                if campaign.reminder_offsets_min else "off")
             + f" · Discord events: {'on' if campaign.events_enabled else 'off'}")
@@ -216,14 +216,13 @@ def cmd_schedule(db: Session, du: DUser, guild_id, channel_id, events_ok: bool =
 
 
 def cmd_setup(db: Session, du: DUser, guild_id, channel_id, *, name=None, code=None,
-              frequency=None, quorum=None, length=None, reminders=None, timezone=None,
+              frequency=None, quorum=None, length=None, reminders=None,
               theme=None, events=None, events_ok=True) -> Reply:
     """Create the campaign for this channel, or change its settings if it already exists.
     With `code`, bind a campaign made on the website instead of creating a new one."""
     _in_channel(guild_id, channel_id)
     changes = {"cadence": frequency, "min_quorum": quorum, "default_duration_min": length,
-               "timezone": timezone.strip() if timezone else None, "theme": theme,
-               "events_enabled": events,
+               "theme": theme, "events_enabled": events,
                "reminder_offsets_min": parse_offsets(reminders) if reminders is not None else None}
     changes = {k: v for k, v in changes.items() if v is not None}
     themes = wording.available_themes()
@@ -303,20 +302,29 @@ def cmd_unlink(db: Session, du: DUser, guild_id, channel_id) -> Reply:
 
 def cmd_poll(db: Session, du: DUser, guild_id, channel_id, week_start: str | None,
              start: str, end: str, title: str) -> Reply:
-    """Open a poll for one week: the seven days from week_start (default: today). Length,
-    minimum players and timezone come from the campaign's settings."""
+    """Open a poll for one week: the seven days from week_start (default: today). Length and
+    minimum players come from the campaign's settings. The daily hours are read in the
+    organizer's own timezone (learned from their browser; UTC until they have visited the
+    website); every player sees every time in their own timezone."""
     campaign = _here(db, guild_id, channel_id)
-    _require_organizer(db, campaign, _user(db, du))
+    user = _user(db, du)
+    _require_organizer(db, campaign, user)
+    tz = user.timezone or "UTC"
     if week_start and week_start.strip():
         first_day = _parse_day(week_start)
     else:
-        first_day = datetime.now(ZoneInfo(campaign.timezone)).date()
+        first_day = datetime.now(ZoneInfo(tz)).date()
     poll = services.create_poll(
-        db, campaign, title=title.strip()[:120], date_start=first_day,
+        db, campaign, title=title.strip()[:120], date_start=first_day, tz=tz,
         window_start=_parse_time(start, "Start"), window_end=_parse_time(end, "End"),
     )
-    return Reply(wording.t(campaign.theme, "botPollCreated",
-                           title=esc(poll.title or campaign.name), url=poll_url(poll)))
+    text = wording.t(campaign.theme, "botPollCreated", title=esc(poll.title or campaign.name),
+                     url=poll_url(poll))
+    text += (f"\nHours: {poll.window_start:%H:%M} to {poll.window_end:%H:%M} {tz} "
+             "(everyone sees them in their own timezone).")
+    if tz == "UTC":
+        text += " Open the website once and I will use your own timezone next time."
+    return Reply(text)
 
 
 def cmd_advance(db: Session, du: DUser, guild_id, channel_id, vote_hours: int | None) -> Reply:

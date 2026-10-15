@@ -41,9 +41,9 @@ def decided(db, campaign, start, *, duration=180, tz="America/Los_Angeles", recu
     return poll
 
 
-def repeating(db, cadence="weekly", tz="America/Los_Angeles", **kw):
+def repeating(db, cadence="weekly", **kw):
     campaign, owner = make_campaign(db)
-    services.update_campaign(db, campaign, cadence=cadence, timezone=tz, **kw)
+    services.update_campaign(db, campaign, cadence=cadence, **kw)
     return campaign, owner
 
 
@@ -151,7 +151,7 @@ def test_each_frequency_picks_its_own_interval(db, cadence, expected):
 
 
 def test_month_end_dates_do_not_drift(db):
-    campaign, _ = repeating(db, "monthly", tz="UTC")
+    campaign, _ = repeating(db, "monthly")
     decided(db, campaign, datetime(2026, 1, 31, 11, tzinfo=UTC), tz="UTC")
     seen = []
     for _ in range(5):
@@ -208,8 +208,7 @@ def test_the_new_session_gets_its_reminders(db):
 
 def test_an_unlinked_web_campaign_repeats_too(db):
     owner = services.upsert_user(db, "1", "DM")
-    campaign, _ = services.create_campaign(db, owner, name="Web only", cadence="weekly",
-                                           timezone="America/Los_Angeles")
+    campaign, _ = services.create_campaign(db, owner, name="Web only", cadence="weekly")
     decided(db, campaign, local(2026, 10, 17, 11))
     assert len(services.roll_recurrences(db, now=local(2026, 10, 17, 15).astimezone(UTC))) == 1
 

@@ -1,11 +1,13 @@
 /* Structure only. Colours, fonts and flourishes come from css/themes/<name>.css variables. */
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   line-height: 1.5;
+  overflow-wrap: anywhere; /* long names, codes and URLs must wrap, never push the page wider */
 }
 h1, h2, h3 { font-family: var(--font-display); color: var(--accent); margin: 0 0 .5rem; }
 a { color: var(--link); }
@@ -17,13 +19,13 @@ header.bar .brand { font-family: var(--font-display); font-size: 1.4rem; color: 
 main { max-width: 960px; margin: 0 auto; padding: 1rem; }
 .panel {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow);
+  padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow); min-width: 0;
 }
 .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
-label { display: flex; flex-direction: column; font-size: .85rem; gap: .2rem; }
+label { display: flex; flex-direction: column; font-size: .85rem; gap: .2rem; min-width: 0; }
 input, select, button {
   font: inherit; padding: .45rem .7rem; border-radius: var(--radius);
-  border: 1px solid var(--border); background: var(--input-bg); color: var(--text);
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text); max-width: 100%;
 }
 button {
   cursor: pointer; background: var(--button-bg); color: var(--button-text);
@@ -32,7 +34,6 @@ button {
 button:hover:not(:disabled) { filter: brightness(1.15); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 button.secondary { background: transparent; color: var(--text); font-family: var(--font-body); }
-button.on { outline: 2px solid var(--accent); }
 .muted { color: var(--muted); font-size: .9rem; }
 .error { color: var(--danger); min-height: 1.2em; }
 .ok { color: var(--ok); }
@@ -40,19 +41,31 @@ ul.plain { list-style: none; padding: 0; margin: 0; }
 ul.plain li { padding: .35rem 0; border-bottom: 1px dashed var(--border); display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .badge { font-size: .75rem; padding: .05rem .5rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
 
-/* availability grid */
+/* availability grid: a painted box per slot, coloured by the person's own answer */
 .grid-wrap { overflow-x: auto; }
-table.grid { border-collapse: collapse; user-select: none; touch-action: none; }
-table.grid th { font-size: .75rem; font-weight: normal; padding: .1rem .4rem; white-space: nowrap; color: var(--muted); }
-table.grid th.time-label { text-align: right; vertical-align: top; }
-table.grid td.cell {
-  width: 5.5rem; min-width: 3rem; height: 1.2rem; border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--heat-color) calc(var(--heat, 0) * 55%), var(--cell-bg));
-  cursor: pointer;
+table.grid {
+  border-collapse: collapse; user-select: none; width: 100%; table-layout: fixed;
+  touch-action: manipulation; /* taps work instantly and the page still scrolls under a finger */
 }
-table.grid td.cell-free { background: var(--free); }
-table.grid td.cell-maybe { background: var(--maybe); }
+table.grid th { font-size: .75rem; font-weight: normal; padding: .1rem .2rem; color: var(--muted); }
+table.grid th.day-head { cursor: pointer; text-align: center; line-height: 1.15; padding-bottom: .3rem; }
+table.grid th.day-head:hover, table.grid th.time-label:hover { color: var(--accent); }
+table.grid th.time-label { width: 3rem; text-align: right; vertical-align: top; cursor: pointer; white-space: nowrap; padding-right: .35rem; }
+table.grid.readonly th { cursor: default; }
+table.grid td.cell {
+  height: 1.5rem; border: 1px solid var(--border); cursor: pointer;
+  background: color-mix(in srgb, var(--heat-color) calc(var(--heat, 0) * 45%), var(--cell-bg));
+}
+table.grid.readonly td.cell { cursor: default; }
+table.grid td.cell:focus-visible, table.grid th:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 table.grid td.cell-empty { border: none; }
+/* the answer colours (also used by the legend swatches) */
+.cell-free { background: var(--free) !important; }
+.cell-maybe { background: var(--maybe) !important; }
+.cell-no { background: var(--no) !important; }
+ul.legend { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; padding: 0; margin: 0 0 .5rem; }
+ul.legend li { display: flex; align-items: center; gap: .4rem; font-size: .9rem; }
+ul.legend .swatch { display: inline-block; width: 1.1rem; height: 1.1rem; border-radius: 3px; border: 1px solid var(--border); }
 
 .candidate { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; padding: .5rem 0; border-bottom: 1px dashed var(--border); }
 .candidate .when { font-weight: bold; min-width: 14rem; }
@@ -68,4 +81,29 @@ a.button-link:hover { filter: brightness(1.15); }
 /* The hidden attribute must always win: .row, label and friends set display and would
    otherwise keep "hidden" controls (such as organizer-only inputs) on screen. */
 [hidden] { display: none !important; }
-table.grid.scroll-mode { touch-action: auto; }
+
+/* Phones. Everything stacks, controls are big enough to tap, and nothing may be wider than the screen. */
+@media (max-width: 640px) {
+  body { font-size: 1rem; }
+  header.bar { padding: .5rem .75rem; gap: .5rem; }
+  header.bar .brand { font-size: 1.15rem; }
+  main { padding: .5rem; }
+  .panel { padding: .75rem; margin-bottom: .75rem; }
+  h1 { font-size: 1.45rem; }
+  h2 { font-size: 1.15rem; }
+  .row { align-items: stretch; }
+  .row > label, .row > button, .row > input, .row > select { flex: 1 1 100%; }
+  input, select, button { min-height: 2.75rem; font-size: 1rem; width: 100%; }
+  input[type="checkbox"] { width: auto; min-height: 0; }
+  button, a.button-link { min-height: 2.75rem; }
+  a.button-link { display: block; text-align: center; padding-top: .7rem; }
+  .candidate { gap: .5rem; }
+  .candidate .when { min-width: 0; flex: 1 1 100%; }
+  .candidate button { flex: 1 1 auto; width: auto; }
+  ul.plain li { gap: .35rem; }
+  /* the grid: seven narrow day columns that fit the screen, dates stacked ("Wed," over "Oct 14") */
+  table.grid th { font-size: .62rem; padding: 0 .05rem; }
+  table.grid th.day-head .dow, table.grid th.day-head .md { display: block; }
+  table.grid th.time-label { width: 2.5rem; padding-right: .2rem; }
+  table.grid td.cell { height: 1.7rem; }
+}

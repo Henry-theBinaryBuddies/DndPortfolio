@@ -56,7 +56,6 @@ class Campaign(Base):
     vote_top_n: Mapped[int] = mapped_column(Integer, default=3)
     reminder_offsets_min: Mapped[list] = mapped_column(JSON, default=lambda: [1440, 60])
     theme: Mapped[str] = mapped_column(String(32), default="dnd")
-    timezone: Mapped[str] = mapped_column(String(64), default="UTC")  # default for new polls
     events_enabled: Mapped[bool] = mapped_column(Boolean, default=True)  # Discord scheduled events
     members: Mapped[list["Member"]] = relationship(
         back_populates="campaign", cascade="all, delete-orphan"

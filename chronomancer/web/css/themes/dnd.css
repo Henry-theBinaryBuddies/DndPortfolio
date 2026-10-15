@@ -16,7 +16,8 @@
   --cell-bg: #1f1711;
   --heat-color: #e0a63a;
   --free: #3f8f4a;
-  --maybe: #b8892b;
+  --no: #b3392f;
+  --maybe: #d4b02e;
   --radius: 4px;
   --shadow: 0 2px 8px rgba(0, 0, 0, .5);
   --font-display: "Cinzel", Georgia, serif;

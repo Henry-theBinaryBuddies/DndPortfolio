@@ -67,8 +67,9 @@ def test_an_old_pre_migration_database_is_adopted_and_upgraded_keeping_its_data(
     migrate.upgrade(engine)
     with engine.connect() as conn:
         assert conn.execute(text("select display_name from users where discord_id='42'")).scalar() == "Aria"
-        row = conn.execute(text("select name, timezone from campaigns")).one()
-        assert tuple(row) == ("Strahd", "UTC")  # kept, and the new column is filled in
+        assert conn.execute(text("select name from campaigns")).scalar() == "Strahd"  # kept
+        columns = {c["name"] for c in inspect(conn).get_columns("campaigns")}
+        assert "timezone" not in columns and "events_enabled" in columns  # old column gone, new ones in
     assert schema_drift(engine) == []
 
 

@@ -42,18 +42,17 @@ def test_setup_creates_the_campaign_bound_to_this_channel(db):
 
 
 def test_setup_applies_every_option_in_one_command(db):
-    setup(db, name="Strahd", frequency="biweekly", quorum=1, length=120, reminders="2d, 30m",
-          timezone="America/Los_Angeles", theme="plain")
+    setup(db, name="Strahd", frequency="biweekly", quorum=1, length=120, reminders="2d, 30m", theme="plain")
     c = services.campaign_for_channel(db, GUILD, CHANNEL)
-    assert (c.cadence, c.min_quorum, c.default_duration_min, c.timezone, c.theme) == (
-        "biweekly", 1, 120, "America/Los_Angeles", "plain")
+    assert (c.cadence, c.min_quorum, c.default_duration_min, c.theme) == ("biweekly", 1, 120, "plain")
     assert c.reminder_offsets_min == [2880, 30]
 
 
 def test_setup_summary_shows_the_settings(db):
-    reply = setup(db, name="Strahd", frequency="weekly", quorum=1, length=90, timezone="UTC", reminders="1h")
-    for needle in ("Every week", "1 hour 30 minutes", "at least 1 free", "UTC", "1 hour before"):
+    reply = setup(db, name="Strahd", frequency="weekly", quorum=1, length=90, reminders="1h")
+    for needle in ("Every week", "1 hour 30 minutes", "at least 1 free", "1 hour before"):
         assert needle in reply.text, needle
+    assert "UTC" not in reply.text and "imezone" not in reply.text  # there is no timezone setting
     assert "reminders: off" in setup(db, reminders="off").text
 
 
@@ -77,7 +76,6 @@ def test_setup_outside_a_server_channel_is_refused(db):
 
 @pytest.mark.parametrize("kwargs", [
     dict(name="   "), dict(name="x" * 121), dict(name="ok", theme="nope"),
-    dict(name="ok", timezone="Mars/Base"), dict(name="ok", timezone="x" * 5000),
     dict(name="ok", frequency="hourly"), dict(name="ok", reminders="soon"),
     dict(name="ok", reminders="1d, 1h, 30m, 15m, 5m, 1m"), dict(name="ok", quorum=0),
     dict(name="ok", length=5),
@@ -259,22 +257,40 @@ def test_schedule_escapes_organizer_controlled_text(db):
 # ---------------------------------------------------------------- poll
 
 
-def test_poll_uses_the_campaigns_settings(db):
+def test_poll_uses_the_campaigns_settings_and_the_organizers_timezone(db):
     campaign, _ = make_campaign(db)
-    services.update_campaign(db, campaign, min_quorum=1, default_duration_min=90, timezone="America/Los_Angeles")
+    services.update_campaign(db, campaign, min_quorum=1, default_duration_min=90)
+    services.upsert_user(db, "1", "Dungeon Master", tz="America/Los_Angeles")  # learned from their browser
     reply = poll_cmd(db)
     poll = services.open_poll(db, campaign.id)
     assert f"/poll.html?id={poll.id}" in reply.text and "Session 5" in reply.text
     assert (poll.min_quorum, poll.duration_min, poll.timezone) == (1, 90, "America/Los_Angeles")
+    assert "18:00 to 23:00 America/Los_Angeles" in reply.text and "own timezone" in reply.text
+    assert "Open the website" not in reply.text  # the zone is known, no nagging
     assert (poll.date_start.isoformat(), poll.date_end.isoformat()) == ("2026-12-01", "2026-12-07")
 
 
-def test_poll_defaults_to_a_week_starting_today_in_the_campaigns_timezone(db):
+def test_poll_defaults_to_a_week_starting_today_in_the_organizers_timezone(db):
     campaign, _ = make_campaign(db)
-    services.update_campaign(db, campaign, timezone="Pacific/Auckland")
+    services.upsert_user(db, "1", "Dungeon Master", tz="Pacific/Auckland")
     actions.cmd_poll(db, DM, GUILD, CHANNEL, None, "18:00", "23:00", "")
-    expected = datetime.now(ZoneInfo("Pacific/Auckland")).date()
-    assert services.open_poll(db, campaign.id).date_start == expected
+    assert services.open_poll(db, campaign.id).date_start == datetime.now(ZoneInfo("Pacific/Auckland")).date()
+
+
+def test_an_organizer_whose_timezone_is_unknown_gets_utc_and_a_hint(db):
+    campaign, _ = make_campaign(db)
+    reply = poll_cmd(db)
+    assert services.open_poll(db, campaign.id).timezone == "UTC"
+    assert "18:00 to 23:00 UTC" in reply.text and "Open the website once" in reply.text
+
+
+def test_a_players_timezone_never_changes_how_the_organizers_hours_are_read(db):
+    campaign, _ = make_campaign(db)
+    services.upsert_user(db, "1", "Dungeon Master", tz="Asia/Tokyo")
+    make_player(db, campaign, "2", "Aria")
+    services.upsert_user(db, "2", "Aria", tz="America/New_York")
+    poll_cmd(db)
+    assert services.open_poll(db, campaign.id).timezone == "Asia/Tokyo"
 
 
 def test_poll_is_organizer_only_with_themed_message(db):

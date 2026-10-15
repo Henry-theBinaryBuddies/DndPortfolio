@@ -38,7 +38,6 @@
         </label>
         <label>Session length (min) <input name="duration" type="number" min="15" max="1440" required></label>
         <label>Minimum free players <input name="quorum" type="number" min="1" max="50" required></label>
-        <label>Timezone <input name="timezone" required maxlength="64" placeholder="America/Los_Angeles"></label>
         <label>Remind before (like 1d, 1h, 15m) <input name="reminders" placeholder="1d, 1h"></label>
         <label><span><input name="events" type="checkbox"> <span data-t="events">Create a Discord event for each session</span></span></label>
         <button type="submit" data-t="save">Save</button>
@@ -65,7 +64,7 @@
         <label>Latest end <input name="window_end" type="time" value="23:00" required></label>
         <button type="submit" data-t="createPoll">Create</button>
       </form>
-      <p class="muted">Players mark the seven days from the start date, in <span id="tz"></span> time shown in their own timezone. Length, minimum players and timezone come from the settings above.</p>
+      <p class="muted">Players mark the seven days from the start date. These hours are in your timezone (<span id="tz"></span>); everyone sees every time in their own. Length and minimum players come from the settings above.</p>
       <p id="poll-error" class="error"></p>
     </div>
   </main>
@@ -105,7 +104,7 @@
       $("load-error").textContent = "";
       document.title = campaign.name + " - Chronomancer";
       $("name").textContent = campaign.name;
-      $("tz").textContent = campaign.timezone;
+      $("tz").textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const organizer = campaign.my_role === "organizer";
       if (organizer) {
         $("invite").hidden = false;
@@ -123,7 +122,6 @@
         s.cadence.value = campaign.cadence;
         s.duration.value = campaign.default_duration_min;
         s.quorum.value = campaign.min_quorum;
-        s.timezone.value = campaign.timezone;
         s.reminders.value = showReminders(campaign.reminder_offsets_min);
         s.events.checked = campaign.events_enabled;
         formsReady = true;
@@ -163,11 +161,10 @@
       try {
         campaign = await Api.patch(`/api/campaigns/${id}`, {
           cadence: f.get("cadence"), default_duration_min: +f.get("duration"),
-          min_quorum: +f.get("quorum"), timezone: f.get("timezone").trim(),
+          min_quorum: +f.get("quorum"),
           reminder_offsets_min: parseReminders(f.get("reminders")),
           events_enabled: f.get("events") === "on", // an unchecked box is simply absent from the form
         });
-        $("tz").textContent = campaign.timezone;
         $("load-error").textContent = "";
         $("settings-msg").textContent = Theme.t("saved");
       } catch (err) { $("load-error").textContent = err.message; }

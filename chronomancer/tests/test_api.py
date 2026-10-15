@@ -173,3 +173,31 @@ def test_web_created_campaigns_reject_absurd_reminder_settings(client):
     assert bad.status_code == 422
     neg = client.post("/api/campaigns", json={"name": "x", "reminder_offsets_min": [-5]})
     assert neg.status_code == 422
+
+
+def test_red_boxes_are_saved_and_count_as_having_responded(client):
+    campaign, (aria, borin) = setup_party(client)
+    poll = client.post(f"/api/campaigns/{campaign['id']}/polls", json=POLL).json()
+    pid, slots = poll["id"], poll["slots"]
+    saved = aria.put(f"/api/polls/{pid}/availability", json={"slots": [
+        {"start": slots[0], "level": "no"}, {"start": slots[1], "level": "maybe"},
+        {"start": slots[2], "level": "free"}]})
+    assert saved.status_code == 200 and saved.json() == {"saved": 3}
+    mine = aria.get(f"/api/polls/{pid}").json()
+    assert mine["my_availability"] == {slots[0]: "no", slots[1]: "maybe", slots[2]: "free"}
+    # red does not light up the group's heat map; yellow and green do
+    assert slots[0] not in mine["slot_counts"] or mine["slot_counts"][slots[0]] == {"free": 0, "maybe": 0}
+    assert mine["slot_counts"][slots[2]]["free"] == 1 and mine["slot_counts"][slots[1]]["maybe"] == 1
+    # a player who only marked red has still answered
+    borin.put(f"/api/polls/{pid}/availability", json={"slots": [{"start": slots[0], "level": "no"}]})
+    members = {m["display_name"]: m["responded"] for m in client.get(f"/api/polls/{pid}").json()["members"]}
+    assert members["Borin"] is True and members["Dungeon Master"] is False
+
+
+def test_unknown_levels_are_refused(client):
+    campaign, _ = setup_party(client)
+    poll = client.post(f"/api/campaigns/{campaign['id']}/polls", json=POLL).json()
+    for bad in ("erase", "yes", "", "FREE"):
+        r = client.put(f"/api/polls/{poll['id']}/availability", json={"slots": [
+            {"start": poll["slots"][0], "level": bad}]})
+        assert r.status_code == 422, bad

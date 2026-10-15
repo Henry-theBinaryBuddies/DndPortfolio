@@ -14,7 +14,7 @@ from . import config, discord_oauth, services
 from .db import get_db
 from .models import Member, User
 from .ratelimit import limit_auth
-from .schemas import DevLogin
+from .schemas import DevLogin, TimezoneUpdate
 
 log = logging.getLogger("chronomancer.auth")
 
@@ -116,6 +116,12 @@ def logout_everywhere(request: Request, user: User = Depends(current_user),
 @router.get("/me")
 def me(user: User = Depends(current_user)):
     return user_json(user)
+
+
+@router.put("/me")
+def update_me(body: TimezoneUpdate, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """The browser tells us its timezone, so poll hours typed by an organizer mean their own time."""
+    return user_json(services.set_user_timezone(db, user, body.timezone))
 
 
 @router.get("/config")

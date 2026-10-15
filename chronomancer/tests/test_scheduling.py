@@ -98,3 +98,30 @@ def test_player_with_no_availability_counts_as_unavailable():
     slots = slots_for(date(2026, 3, 2), 18, 20)
     r = rank_candidates(slots, {1: mark(slots)}, [1, 2], [], 30, 60, 1, 5)
     assert r.candidates[0].free_ids == (1,)
+
+
+# ---- marking a box red ("not available") is different from not answering, but ranks the same
+
+
+def test_a_red_box_counts_as_unavailable_not_as_maybe():
+    slots = slots_for(date(2026, 3, 2), 18, 20)
+    red = mark(slots, "no")
+    r = rank_candidates(slots, {1: mark(slots), 2: red}, [1, 2], [], 30, 60, 1, 5)
+    best = r.candidates[0]
+    assert best.free_ids == (1,) and best.maybe_ids == ()  # player 2 is in neither list
+
+
+def test_one_red_box_inside_a_session_rules_the_player_out_of_it():
+    slots = slots_for(date(2026, 3, 2), 18, 20)
+    mixed = mark(slots)
+    mixed[slots[1]] = "no"
+    r = rank_candidates(slots, {1: mixed}, [1], [], 30, 60, 0, 5)
+    starts = {c.start: c for c in r.candidates}
+    assert slots[0] not in [c.start for c in r.candidates if 1 in c.free_ids + c.maybe_ids]   # 18:00-19:00 hits the red box
+    assert 1 in starts[slots[2]].free_ids                                                    # 19:00-20:00 is clear
+
+
+def test_a_required_player_who_marked_every_box_red_blocks_the_poll():
+    slots = slots_for(date(2026, 3, 2), 18, 20)
+    r = rank_candidates(slots, {1: mark(slots), 2: mark(slots, "no")}, [1, 2], [2], 30, 60, 1, 5)
+    assert r.candidates == [] and r.dropped_required == r.total_considered

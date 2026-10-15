@@ -109,6 +109,17 @@ def upsert_user(db: Session, discord_id: str, display_name: str,
     raise ServiceError(500, "could not create user")
 
 
+def set_user_timezone(db: Session, user: User, tz: str) -> User:
+    """Remember the timezone of the person's browser. Poll hours are read in the organizer's
+    timezone; everyone else sees every time converted to their own."""
+    if not valid_timezone(tz):
+        raise ServiceError(422, "Unknown timezone.")
+    if user.timezone != tz:
+        user.timezone = tz
+        db.commit()
+    return user
+
+
 def get_member(db: Session, campaign_id: int, user_id: int) -> Member | None:
     """The person's membership, if they are still in the group (people who left Discord are not)."""
     return db.scalar(select(Member).where(
@@ -166,17 +177,16 @@ def create_campaign(db: Session, owner: User, *, name: str, guild_id: str | None
                     channel_id: str | None = None, cadence: str = "none",
                     default_duration_min: int = 180, min_quorum: int = 2, vote_top_n: int = 3,
                     reminder_offsets_min: list | None = None, theme: str = "dnd",
-                    timezone: str = "UTC", available_themes: list | None = None) -> tuple:
+                    available_themes: list | None = None) -> tuple:
     name = check_campaign_settings(
         name=name, cadence=cadence, min_quorum=min_quorum, default_duration_min=default_duration_min,
-        timezone=timezone, theme=theme, reminder_offsets_min=reminder_offsets_min,
-        available_themes=available_themes)
+        theme=theme, reminder_offsets_min=reminder_offsets_min, available_themes=available_themes)
     if guild_id and channel_id and campaign_for_channel(db, guild_id, channel_id):
         raise ServiceError(409, "this channel already hosts a campaign")
     campaign = Campaign(
         owner_id=owner.id, name=name, guild_id=guild_id, channel_id=channel_id,
         cadence=cadence, default_duration_min=default_duration_min, min_quorum=min_quorum,
-        vote_top_n=vote_top_n, theme=theme, timezone=timezone,
+        vote_top_n=vote_top_n, theme=theme,
         reminder_offsets_min=reminder_offsets_min if reminder_offsets_min is not None else [1440, 60],
     )
     member = Member(user=owner, role="organizer", required=True)
@@ -290,6 +300,8 @@ def create_poll(db: Session, campaign: Campaign, *, title: str, date_start: date
                 window_start: time, window_end: time, tz: str | None = None, slot_minutes: int = 30,
                 duration_min: int | None = None, min_quorum: int | None = None,
                 vote_top_n: int | None = None, vote_deadline: datetime | None = None) -> Poll:
+    if tz is not None and not valid_timezone(tz):
+        raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
     existing = current_poll(db, campaign.id)
     if existing is not None and existing.status in ("collecting", "voting"):
         raise ServiceError(409, "A poll is already open in this campaign. Close or confirm it first.")
@@ -301,7 +313,7 @@ def create_poll(db: Session, campaign: Campaign, *, title: str, date_start: date
         if vote_deadline <= now_utc():
             raise ServiceError(422, "vote deadline must be in the future")
     poll = Poll(
-        campaign_id=campaign.id, title=title, timezone=tz or campaign.timezone,
+        campaign_id=campaign.id, title=title, timezone=tz or "UTC",
         date_start=date_start, date_end=date_end,
         window_start=window_start, window_end=window_end, slot_minutes=slot_minutes,
         duration_min=duration_min or campaign.default_duration_min,
@@ -481,8 +493,8 @@ def valid_timezone(name: str) -> bool:
 
 
 def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default_duration_min=None,
-                            timezone=None, theme=None, reminder_offsets_min=None,
-                            events_enabled=None, available_themes=None) -> str | None:
+                            theme=None, reminder_offsets_min=None, events_enabled=None,
+                            available_themes=None) -> str | None:
     """Validate any subset of a campaign's settings. Raises ServiceError for the first bad
     value, so callers can check everything *before* writing anything. Returns the stripped name."""
     if name is not None:
@@ -495,8 +507,6 @@ def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default
         raise ServiceError(422, "minimum players must be between 1 and 50")
     if default_duration_min is not None and not 15 <= default_duration_min <= 1440:
         raise ServiceError(422, "session length must be between 15 and 1440 minutes")
-    if timezone is not None and not valid_timezone(timezone):
-        raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
     if theme is not None and available_themes is not None and theme not in available_themes:
         raise ServiceError(422, "Unknown theme.")
     if reminder_offsets_min is not None and (
@@ -508,7 +518,7 @@ def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default
 
 def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
                     cadence: str | None = None, min_quorum: int | None = None,
-                    default_duration_min: int | None = None, timezone: str | None = None,
+                    default_duration_min: int | None = None,
                     theme: str | None = None, reminder_offsets_min: list | None = None,
                     events_enabled: bool | None = None,
                     available_themes: tuple | list | None = None) -> Campaign:
@@ -517,15 +527,14 @@ def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
     reminders of sessions that are already decided."""
     name = check_campaign_settings(
         name=name, cadence=cadence, min_quorum=min_quorum,
-        default_duration_min=default_duration_min, timezone=timezone, theme=theme,
+        default_duration_min=default_duration_min, theme=theme,
         reminder_offsets_min=reminder_offsets_min, available_themes=available_themes)
     cadence_changed = cadence is not None and cadence != campaign.cadence
     events_changed = events_enabled is not None and events_enabled != campaign.events_enabled
     if events_enabled is not None:
         campaign.events_enabled = events_enabled
     for field, value in (("name", name), ("cadence", cadence), ("min_quorum", min_quorum),
-                         ("default_duration_min", default_duration_min), ("timezone", timezone),
-                         ("theme", theme)):
+                         ("default_duration_min", default_duration_min), ("theme", theme)):
         if value is not None:
             setattr(campaign, field, value)
     if cadence_changed:

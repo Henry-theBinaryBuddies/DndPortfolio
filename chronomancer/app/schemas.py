@@ -26,7 +26,7 @@ class DevLogin(BaseModel):
 
 class CampaignCreate(BaseModel):
     # guild_id / channel_id are deliberately absent: a campaign is bound to a Discord channel
-    # only through the bot (/chronomancer create or link), which verifies the caller is in it.
+    # only through the bot (/chronomancer setup), which verifies the caller is in it.
     name: str = Field(min_length=1, max_length=120)
     cadence: str = Field(default="none", pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
     default_duration_min: int = Field(default=180, ge=30, le=1440)
@@ -34,9 +34,6 @@ class CampaignCreate(BaseModel):
     vote_top_n: int = Field(default=3, ge=1, le=config.MAX_VOTE_TOP_N)
     reminder_offsets_min: list[int] = Field(default_factory=lambda: [1440, 60])
     theme: str = Field(default="dnd", pattern="^[a-z0-9_-]{1,32}$")
-    timezone: str = "UTC"
-
-    _tz = field_validator("timezone")(_check_tz)
 
     @field_validator("reminder_offsets_min")
     @classmethod
@@ -52,7 +49,7 @@ class JoinRequest(BaseModel):
 
 class PollCreate(BaseModel):
     title: str = Field(default="", max_length=120)
-    timezone: str | None = None  # default: the campaign's timezone
+    timezone: str | None = None  # default: the organizer's own timezone
     date_start: date  # first day of the week; the poll covers this day and the next six
     window_start: time
     window_end: time
@@ -67,7 +64,7 @@ class PollCreate(BaseModel):
 
 class SlotMark(BaseModel):
     start: datetime
-    level: str = Field(pattern="^(free|maybe)$")
+    level: str = Field(pattern="^(free|maybe|no)$")
 
 
 class AvailabilityPut(BaseModel):
@@ -80,12 +77,15 @@ class CampaignUpdate(BaseModel):
     cadence: str | None = Field(default=None, pattern="^(none|weekly|biweekly|monthly|quarterly|annually)$")
     min_quorum: int | None = Field(default=None, ge=1, le=50)
     default_duration_min: int | None = Field(default=None, ge=15, le=1440)
-    timezone: str | None = None
     theme: str | None = Field(default=None, pattern="^[a-z0-9_-]{1,32}$")
     reminder_offsets_min: list[int] | None = Field(default=None, max_length=5)
     events_enabled: bool | None = None
 
-    _tz = field_validator("timezone")(lambda v: v if v is None else _check_tz(v))
+
+class TimezoneUpdate(BaseModel):
+    timezone: str
+
+    _tz = field_validator("timezone")(_check_tz)
 
 
 class VoteCast(BaseModel):

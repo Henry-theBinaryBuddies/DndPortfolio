@@ -32,9 +32,9 @@ def test_the_api_ignores_a_client_supplied_end_date(client):
     assert days == [f"2026-12-0{d}" for d in range(1, 8)]  # a week, not the three months asked for
 
 
-def test_a_poll_without_a_timezone_uses_the_campaigns(client):
-    login(client, "1", "DM")
-    cid = client.post("/api/campaigns", json={"name": "x", "timezone": "Asia/Tokyo"}).json()["id"]
+def test_a_poll_without_a_timezone_uses_the_organizers_own(client):
+    login(client, "1", "DM", tz="Asia/Tokyo")
+    cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     poll = client.post(f"/api/campaigns/{cid}/polls", json={
         "date_start": "2026-12-01", "window_start": "18:00:00", "window_end": "22:00:00",
         "duration_min": 120}).json()
@@ -66,34 +66,31 @@ def test_add_cadence(cadence, start, expected):
 def test_update_campaign_changes_only_what_is_given(db):
     campaign, _ = make_campaign(db)
     services.update_campaign(db, campaign, cadence="monthly")
-    assert (campaign.cadence, campaign.min_quorum, campaign.timezone) == ("monthly", 2, "UTC")
-    services.update_campaign(db, campaign, min_quorum=1, timezone="Asia/Tokyo", name="  Renamed  ")
-    assert (campaign.cadence, campaign.min_quorum, campaign.timezone, campaign.name) == (
-        "monthly", 1, "Asia/Tokyo", "Renamed")
+    assert (campaign.cadence, campaign.min_quorum, campaign.default_duration_min) == ("monthly", 2, 180)
+    services.update_campaign(db, campaign, min_quorum=1, name="  Renamed  ")
+    assert (campaign.cadence, campaign.min_quorum, campaign.name) == ("monthly", 1, "Renamed")
 
 
 @pytest.mark.parametrize("bad", [
     dict(cadence="hourly"), dict(min_quorum=0), dict(min_quorum=51), dict(default_duration_min=14),
-    dict(timezone="Mars/Base"), dict(timezone="x" * 100), dict(name=" "), dict(name="x" * 121),
+    dict(name=" "), dict(name="x" * 121),
     dict(reminder_offsets_min=[0]), dict(reminder_offsets_min=[1] * 6),
     dict(reminder_offsets_min=[60 * 24 * 31]),
 ])
 def test_one_bad_setting_rejects_the_whole_update(db, bad):
     campaign, _ = make_campaign(db)
-    before = (campaign.name, campaign.cadence, campaign.min_quorum, campaign.timezone)
+    before = (campaign.name, campaign.cadence, campaign.min_quorum)
     valid_change = {"cadence": "weekly"} if "cadence" not in bad else {"min_quorum": 1}
     with pytest.raises(ServiceError) as exc:
         services.update_campaign(db, campaign, **valid_change, **bad)  # a good value plus a bad one
     assert exc.value.status == 422
-    assert (campaign.name, campaign.cadence, campaign.min_quorum, campaign.timezone) == before
+    assert (campaign.name, campaign.cadence, campaign.min_quorum) == before
 
 
 def test_create_campaign_validates_before_writing(db):
     owner = services.upsert_user(db, "1", "DM")
     with pytest.raises(ServiceError):
         services.create_campaign(db, owner, name="x", cadence="hourly")
-    with pytest.raises(ServiceError):
-        services.create_campaign(db, owner, name="x", timezone="Mars/Base")
     with pytest.raises(ServiceError):
         services.create_campaign(db, owner, name=" ")
     assert services.campaign_for_channel(db, "g", "c") is None
@@ -106,15 +103,15 @@ def test_patch_endpoint_changes_any_subset(client):
     body = r.json()
     assert r.status_code == 200 and body["cadence"] == "weekly"
     assert body["reminder_offsets_min"] == [2880, 30] and body["min_quorum"] == 2  # untouched
-    r = client.patch(f"/api/campaigns/{camp['id']}", json={"timezone": "Asia/Tokyo", "min_quorum": 1})
-    assert (r.json()["timezone"], r.json()["min_quorum"], r.json()["cadence"]) == ("Asia/Tokyo", 1, "weekly")
+    r = client.patch(f"/api/campaigns/{camp['id']}", json={"min_quorum": 1, "default_duration_min": 90})
+    assert (r.json()["min_quorum"], r.json()["default_duration_min"], r.json()["cadence"]) == (1, 90, "weekly")
 
 
 def test_patch_endpoint_validation_and_permissions(client):
     login(client, "1", "DM")
     camp = client.post("/api/campaigns", json={"name": "x"}).json()
     url = f"/api/campaigns/{camp['id']}"
-    for bad in ({"cadence": "daily"}, {"min_quorum": 0}, {"timezone": "Mars/Base"},
+    for bad in ({"cadence": "daily"}, {"min_quorum": 0},
                 {"reminder_offsets_min": [0]}, {"reminder_offsets_min": [1] * 6}, {"theme": "klingon"},
                 {"default_duration_min": 5}):
         assert client.patch(url, json=bad).status_code == 422, bad
@@ -158,8 +155,7 @@ def test_exactly_the_six_documented_commands_are_registered():
     assert set(sub) == {"setup", "poll", "advance", "cancel", "unlink"}
 
     setup = {p.name: p for p in sub["setup"].parameters}
-    assert set(setup) == {"name", "code", "frequency", "quorum", "length", "reminders", "timezone", "theme",
-                          "events"}
+    assert set(setup) == {"name", "code", "frequency", "quorum", "length", "reminders", "theme", "events"}
     assert not any(p.required for p in setup.values())  # every option is optional
     assert {c.value for c in setup["frequency"].choices} == {
         "none", "weekly", "biweekly", "monthly", "quarterly", "annually"}
@@ -167,3 +163,42 @@ def test_exactly_the_six_documented_commands_are_registered():
     poll = {p.name: p for p in sub["poll"].parameters}
     assert set(poll) == {"week_start", "start", "end", "title"}  # length/quorum/timezone live in setup
     assert not poll["week_start"].required
+
+# ------------------------------------------------ timezones: stored in UTC, shown in the viewer's zone
+
+
+def test_the_browser_reports_its_timezone_and_it_is_remembered(client):
+    login(client, "1", "DM")                              # logged in with the default UTC
+    assert client.get("/api/me").json()["timezone"] == "UTC"
+    r = client.put("/api/me", json={"timezone": "America/Los_Angeles"})
+    assert r.status_code == 200 and r.json()["timezone"] == "America/Los_Angeles"
+    assert client.get("/api/me").json()["timezone"] == "America/Los_Angeles"
+
+
+@pytest.mark.parametrize("bad", ["Mars/Base", "x" * 100, "", "../../etc/passwd"])
+def test_a_bogus_browser_timezone_is_refused(client, bad):
+    login(client, "1", "DM")
+    assert client.put("/api/me", json={"timezone": bad}).status_code == 422
+    assert client.get("/api/me").json()["timezone"] == "UTC"
+
+
+def test_reporting_a_timezone_needs_a_login(client):
+    assert client.put("/api/me", json={"timezone": "UTC"}).status_code == 401
+
+
+def test_campaigns_have_no_timezone_setting_any_more(client):
+    login(client, "1", "DM")
+    camp = client.post("/api/campaigns", json={"name": "x", "timezone": "Asia/Tokyo"}).json()
+    assert "timezone" not in camp                          # ignored if sent, never stored or returned
+    r = client.patch(f"/api/campaigns/{camp['id']}", json={"timezone": "Asia/Tokyo"})
+    assert r.status_code == 200 and "timezone" not in r.json()
+
+
+def test_a_polls_hours_follow_the_organizers_zone_but_slots_are_stored_in_utc(client):
+    login(client, "1", "DM", tz="Asia/Tokyo")
+    cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
+    poll = client.post(f"/api/campaigns/{cid}/polls", json={
+        "date_start": "2026-12-01", "window_start": "18:00:00", "window_end": "19:00:00",
+        "duration_min": 30}).json()
+    assert poll["timezone"] == "Asia/Tokyo"
+    assert poll["slots"][0] == "2026-12-01T09:00:00Z"      # 18:00 in Tokyo is 09:00 UTC: stored as UTC

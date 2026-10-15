@@ -22,7 +22,6 @@ def campaign_json(db: Session, campaign: Campaign, member: Member) -> dict:
         "id": campaign.id,
         "name": campaign.name,
         "cadence": campaign.cadence,
-        "timezone": campaign.timezone,
         "events_enabled": campaign.events_enabled,
         "default_duration_min": campaign.default_duration_min,
         "min_quorum": campaign.min_quorum,

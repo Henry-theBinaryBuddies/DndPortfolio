@@ -39,6 +39,17 @@ window.Api = (function () {
   };
 })();
 
+// Tell the server which timezone this browser is in, so poll hours an organizer types mean their
+// own time. Runs on every page; does nothing when logged out or already up to date.
+(async function syncTimezone() {
+  try {
+    const res = await fetch("/api/me", { credentials: "same-origin" });
+    if (!res.ok) return;
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (zone && (await res.json()).timezone !== zone) await window.Api.put("/api/me", { timezone: zone });
+  } catch (e) { /* best effort */ }
+})();
+
 // Safe DOM helper: el("div", {class: "x"}, "text", childEl)
 window.el = function (tag, attrs, ...kids) {
   const node = document.createElement(tag);

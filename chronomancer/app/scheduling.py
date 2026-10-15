@@ -6,7 +6,8 @@ from zoneinfo import ZoneInfo
 
 FREE = "free"
 MAYBE = "maybe"
-LEVELS = (FREE, MAYBE)
+NO = "no"          # marked red: explicitly not available (as opposed to not having answered)
+LEVELS = (FREE, MAYBE, NO)
 
 
 @dataclass(frozen=True)
@@ -100,7 +101,7 @@ def rank_candidates(
         free_ids, maybe_ids = [], []
         for uid in players:
             levels = [availability.get(uid, {}).get(s) for s in run]
-            if any(lv is None for lv in levels):
+            if any(lv not in (FREE, MAYBE) for lv in levels):  # unmarked, or marked "no"
                 continue
             (free_ids if all(lv == FREE for lv in levels) else maybe_ids).append(uid)
         attending = set(free_ids) | set(maybe_ids)
