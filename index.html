@@ -50,6 +50,7 @@
           data-view-url="https://35-225-68-147.sslip.io"
           data-repo-url="https://github.com/Henry-theBinaryBuddies/DndPortfolio"
           data-document-url="https://github.com/Henry-theBinaryBuddies/DndPortfolio/blob/master/chronomancer/README.md"
+          data-gallery
           data-tools="Python, FastAPI, SQLite, discord.py, JavaScript, HTML, CSS, Docker, Google Cloud, pytest,
         Claude Sonnet 5.5"
         >
@@ -546,6 +547,57 @@
 
 
         <div class="module-detail__image">
+        </div>
+
+
+        <div
+          class="module-gallery"
+          id="module-gallery"
+          role="group"
+          aria-roledescription="carousel"
+          aria-label="Screenshots"
+          hidden
+        >
+
+          <div class="module-gallery__frame">
+
+            <img
+              class="module-gallery__image"
+              id="module-gallery-image"
+              alt=""
+            >
+
+            <button
+              class="module-gallery__button module-gallery__button--previous"
+              id="module-gallery-previous"
+              type="button"
+              aria-label="Previous screenshot"
+            >
+              &#8249;
+            </button>
+
+            <button
+              class="module-gallery__button module-gallery__button--next"
+              id="module-gallery-next"
+              type="button"
+              aria-label="Next screenshot"
+            >
+              &#8250;
+            </button>
+
+            <p
+              class="module-gallery__counter"
+              id="module-gallery-counter"
+            ></p>
+
+          </div>
+
+          <p
+            class="module-gallery__caption"
+            id="module-gallery-caption"
+            aria-live="polite"
+          ></p>
+
         </div>
 
 

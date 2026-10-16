@@ -1,0 +1,42 @@
+[
+  {
+    "src": "./assets/screenshots/artifact-2/04-grid.jpg",
+    "alt": "The Scroll of Availability: a week-long grid with green, yellow and red cells, and brown shading on the evenings when other people are free.",
+    "caption": "Everyone marks when they are free: green is available, yellow is maybe, red is not available. The shading shows when others are free."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/06-vote.jpg",
+    "alt": "A ranked list of the three best times, each with the number of people free, a vote count, a Cast Your Vote button and a Decree the Session button.",
+    "caption": "The best times are ranked and put to a vote. The organizer can decree the winner."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/03-sessions.jpg",
+    "alt": "A list of sessions marked collecting, scheduled, automatic and held, with a note saying one older session is not shown and one was called off.",
+    "caption": "Past, upcoming and automatically scheduled sessions. Older ones are kept but not listed."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/02-settings.jpg",
+    "alt": "The campaign settings: how often the group gathers, session length, minimum free players, reminder times and a Discord event option.",
+    "caption": "Settings: how often the group meets, session length, how many must be free, reminders, and a Discord event for each session."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/01-home.jpg",
+    "alt": "The home page in the Dungeons and Dragons theme, listing four groups with the person's role in each.",
+    "caption": "The home page: your groups and your role in each, in the Dungeons & Dragons theme."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/05-grid-plain.jpg",
+    "alt": "The same availability grid in the plain theme, with a white page, blue accents and the same green, yellow and red cells.",
+    "caption": "The same grid in the plain theme, for groups that are not playing a game."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/08-home-plain.jpg",
+    "alt": "The home page in the plain theme, where the roles read Group manager and Member.",
+    "caption": "The plain theme also changes the wording: Group manager and Member instead of Dungeon Master and Player."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/07-mobile.jpg",
+    "alt": "Three phone screens side by side: the home page, the availability grid and the vote, all laid out for a narrow screen.",
+    "caption": "It works on phones."
+  }
+]
