@@ -80,7 +80,7 @@ def require_organizer(db: Session, campaign_id: int, user: User) -> Member:
 
 @router.post("/dev/login", dependencies=[Depends(limit_auth)])
 def dev_login(body: DevLogin, request: Request, db: Session = Depends(get_db)):
-    """Fake login for local development only. Replaced by Discord OAuth in phase 2."""
+    """Fake login for local development only (CHRONOMANCER_DEV=1); real logins go through Discord OAuth."""
     if not config.DEV_MODE:
         raise HTTPException(404, "not found")
     user = db.scalar(select(User).where(User.discord_id == body.discord_id))

@@ -38,7 +38,7 @@ mistake can never become a surprise bill.
 | Name | `chronomancer` | |
 | Region | `us-central1` (Iowa). `us-west1` (Oregon) or `us-east1` (South Carolina) also work. | Only these three regions are in the free allowance. |
 | Machine type | **E2 > e2-micro** | The free machine (2 shared vCPUs, 1 GB memory). |
-| Boot disk | **Ubuntu 24.04 LTS**, size **30 GB**, type **Standard persistent disk** (`pd-standard`) | Balanced and SSD disks are not free; 30 GB standard is. |
+| Boot disk | **Debian 13** or **Ubuntu 24.04 LTS** (the setup script supports both), size **30 GB**, type **Standard persistent disk** (`pd-standard`) | Balanced and SSD disks are not free; 30 GB standard is. |
 | Firewall | tick **Allow HTTP traffic** and **Allow HTTPS traffic** | Caddy needs ports 80 and 443. |
 
 The price estimate on the page sometimes shows a few dollars even when the settings are free; if region, machine type,
@@ -75,12 +75,13 @@ Wait a few minutes, then `nslookup <your address>` should show the IP.
 In the console, click **SSH** next to the VM. Then:
 
 ```bash
+sudo apt-get update && sudo apt-get install -y git      # this VM image does not include git
 git clone https://github.com/<you>/<repo>.git
 cd <repo>/chronomancer
 sudo bash deploy/setup-vm.sh
 ```
 
-The script installs Docker, adds 2 GB of swap (the VM only has 1 GB of memory), turns on automatic security updates and
+The script installs Docker (from Docker's own package repository, so it works the same on Debian and Ubuntu), adds 2 GB of swap (the VM only has 1 GB of memory), turns on automatic security updates and
 prepares the data folder. When it finishes, **log out of SSH and back in once** so the Docker permission applies.
 
 > **Heads-up:** your repo also serves the `chronomancer/` folder through GitHub Pages as plain files. It is not

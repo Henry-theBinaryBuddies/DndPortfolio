@@ -1,7 +1,6 @@
 """Theme wording for bot messages: the same web/themes/<name>.json files the web UI uses."""
 import json
 from functools import lru_cache
-from pathlib import Path
 
 from .. import config
 

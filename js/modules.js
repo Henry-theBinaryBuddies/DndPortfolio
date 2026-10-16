@@ -170,7 +170,6 @@ async function openModuleOverlay(
 
   }
 
-
   updateModuleHeader(
     card
   );
@@ -179,6 +178,9 @@ async function openModuleOverlay(
   updateModuleImage(
     card
   );
+
+  updateModuleLinks(card);
+  updateModuleText(card);
 
 
   setSectionMessage(
@@ -305,6 +307,7 @@ function updateModuleHeader(
   card
 ) {
 
+
   const title =
     card.querySelector(
       ".module-card__title"
@@ -327,6 +330,81 @@ function updateModuleHeader(
     subtitle
       ? subtitle.textContent.trim()
       : "";
+
+}
+
+/* =========================================================
+   UPDATE TOOLS TEXT
+   ========================================================= */
+function updateModuleText(card) {
+  const toolText = moduleOverlay.querySelector("#tools_text");
+
+  const text = card.dataset.tools;
+
+  if (text) {
+    toolText.textContent = text;
+  } else {
+    toolText.textContent = "TBD";
+  }
+
+}
+
+/* =========================================================
+   UPDATE MODULE LINKS
+   ========================================================= */
+function updateModuleLinks (card) {
+  const artifactLink =
+    moduleOverlay.querySelector(
+      "#artifact_link"
+    );
+
+  const artifactNote = card.dataset.viewUrl;
+
+  if (artifactNote) {
+    artifactLink.href = artifactNote;
+    artifactLink.target = "_blank";
+    artifactLink.rel = "noopener noreferrer";
+  } else {
+    artifactLink.href = "#";
+    artifactLink.target = "";
+    artifactLink.rel = "";
+  }
+
+  const repoLink =
+    moduleOverlay.querySelector(
+      "#repo_link"
+    );
+
+  const repoNote = card.dataset.repoUrl;
+
+
+  if (repoNote) {
+    repoLink.href = repoNote;
+    repoLink.target = "_blank";
+    repoLink.rel = "noopener noreferrer";
+  } else {
+    repoLink.href = "#";
+    repoLink.target = "";
+    repoLink.rel = "";
+  }
+
+  const docNote = card.dataset.documentUrl;
+
+
+  const docLink =
+    moduleOverlay.querySelector(
+      "#documentation_link"
+    );
+
+  if (docNote) {
+    docLink.href = docNote;
+    docLink.target = "_blank";
+    docLink.rel = "noopener noreferrer";
+  } else {
+    docLink.href = "#";
+    docLink.target = "";
+    docLink.rel = "";
+  }
 
 }
 
@@ -387,6 +465,7 @@ function updateModuleImage(
   );
 
 }
+
 
 
 /* =========================================================

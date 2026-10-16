@@ -177,8 +177,10 @@ def test_caddy_proxies_to_the_app_and_adds_basic_security_headers():
 def test_the_scripts_do_what_the_guide_says():
     assert "python -m app.backup" in BACKUP_SH and "tail -n +15" in BACKUP_SH and "BACKUP_BUCKET" in BACKUP_SH
     assert "set -euo pipefail" in BACKUP_SH and "set -euo pipefail" in SETUP
-    for needed in ("docker.io", "docker-compose-v2", "unattended-upgrades", "/swapfile"):
+    for needed in ("docker-ce", "docker-compose-plugin", "download.docker.com/linux/${ID}", "unattended-upgrades", "/swapfile"):
         assert needed in SETUP
+    assert "docker-compose-v2" not in SETUP and "docker.io" not in SETUP      # Ubuntu-only packages: they broke Debian
+    assert 'case "${ID}" in' in SETUP and "debian|ubuntu" in SETUP
 
 
 def test_every_setting_the_app_reads_is_documented_for_production():

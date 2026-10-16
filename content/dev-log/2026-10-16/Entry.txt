@@ -1,0 +1,9 @@
+Artifact 2:
+
+Finished and published the scheduler. Cleaned up the code, wrote the README and operating docs, then put it live.
+
+Hosting: GitHub Pages can only serve static files, so the app and the bot needed a server. Compared Render, Supabase, Fly.io, Railway, a small VPS and Google Cloud. Render's free tier sleeps, which takes the bot offline, and its free database expires after 30 days. Supabase is only a database. Settled on Google Cloud's always-free e2-micro VM with SQLite on its own disk, packaged in Docker with Caddy handling HTTPS, and a free sslip.io address instead of buying a domain.
+
+Problems I hit setting it up: git wasn't installed on the VM. The VM was Debian, not Ubuntu, so the setup script's Docker package didn't exist; it now installs Docker from Docker's own repository. The firewall allowed port 80 but not 443, so the site timed out until I turned HTTPS on. I mixed up Cloud Shell and the VM's own terminal. My laptop copy of the bot kept answering commands with localhost links until I stopped it, because two copies of a bot with the same token share the commands.
+
+Also added at the end: deleting a campaign from the home page (which now removes its Discord events too), a Delete my data button, a privacy policy and terms of service (Discord requires them for a public bot), nightly database backups copied to a Cloud Storage bucket, role names that follow the theme, fantasy artwork for the D&D theme, and limits on how much session history is kept.

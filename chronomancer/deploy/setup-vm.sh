@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# One-time setup of a fresh Ubuntu 24.04 VM (the Google Cloud e2-micro). Run it once, from the repo folder:
+# One-time setup of a fresh Debian 12/13 or Ubuntu 22.04/24.04 VM (the Google Cloud e2-micro). Run it once,
+# from the repo folder:
 #   cd ~/<repo>/chronomancer && sudo bash deploy/setup-vm.sh
-# It is safe to run again. It installs Docker, adds swap (the e2-micro has only 1 GB of memory), turns on
-# automatic security updates, and prepares the data folder.
+# It is safe to run again. It installs Docker from Docker's own package repository, adds swap (the e2-micro has
+# only 1 GB of memory), turns on automatic security updates, and prepares the data folder.
 set -euo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -11,10 +12,25 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 cd "$(dirname "$0")/.."
 
-echo "== Installing Docker, Compose and automatic security updates"
+. /etc/os-release
+case "${ID}" in
+  debian|ubuntu) ;;
+  *) echo "This script supports Debian and Ubuntu, not '${ID}'." >&2; exit 1 ;;
+esac
+
+echo "== Installing Docker (from Docker's repository for ${ID} ${VERSION_CODENAME}) and automatic security updates"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y docker.io docker-compose-v2 unattended-upgrades cron
+apt-get install -y ca-certificates curl unattended-upgrades cron
+if ! docker compose version >/dev/null 2>&1; then
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL "https://download.docker.com/linux/${ID}/gpg" -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${ID} ${VERSION_CODENAME} stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update -y
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+fi
 systemctl enable --now docker
 systemctl enable --now cron
 dpkg-reconfigure -f noninteractive unattended-upgrades || true
