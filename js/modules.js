@@ -26,6 +26,133 @@ const moduleDetailImage =
 
 
 /* =========================================================
+   PHOTO GALLERY
+   ========================================================= */
+
+const moduleGallery =
+  document.getElementById("module-gallery");
+
+const moduleGalleryImage =
+  document.getElementById("module-gallery-image");
+
+const moduleGalleryCaption =
+  document.getElementById("module-gallery-caption");
+
+const moduleGalleryCounter =
+  document.getElementById("module-gallery-counter");
+
+const moduleGalleryPrevious =
+  document.getElementById("module-gallery-previous");
+
+const moduleGalleryNext =
+  document.getElementById("module-gallery-next");
+
+let galleryPhotos = [];
+
+let galleryIndex = 0;
+
+
+/*
+  These handlers are attached once, here, and not each
+  time an artifact opens. Attaching them on every open
+  would stack them, and one click would then move
+  several photos.
+*/
+moduleGalleryPrevious.addEventListener(
+  "click",
+  () => showGalleryPhoto(galleryIndex - 1)
+);
+
+moduleGalleryNext.addEventListener(
+  "click",
+  () => showGalleryPhoto(galleryIndex + 1)
+);
+
+document.addEventListener(
+  "keydown",
+  (event) => {
+
+    if (
+      moduleOverlay.hidden ||
+      moduleGallery.hidden ||
+      galleryPhotos.length < 2
+    ) {
+      return;
+    }
+
+    if (event.key === "ArrowLeft") {
+
+      event.preventDefault();
+
+      showGalleryPhoto(galleryIndex - 1);
+
+    }
+    else if (event.key === "ArrowRight") {
+
+      event.preventDefault();
+
+      showGalleryPhoto(galleryIndex + 1);
+
+    }
+
+  }
+);
+
+
+/* A swipe left or right moves one photo on a touch screen. */
+let galleryTouchStartX = null;
+
+let galleryTouchStartY = null;
+
+moduleGallery.addEventListener(
+  "touchstart",
+  (event) => {
+
+    galleryTouchStartX =
+      event.changedTouches[0].clientX;
+
+    galleryTouchStartY =
+      event.changedTouches[0].clientY;
+
+  },
+  { passive: true }
+);
+
+moduleGallery.addEventListener(
+  "touchend",
+  (event) => {
+
+    if (galleryTouchStartX === null) {
+      return;
+    }
+
+    const moveX =
+      event.changedTouches[0].clientX -
+      galleryTouchStartX;
+
+    const moveY =
+      event.changedTouches[0].clientY -
+      galleryTouchStartY;
+
+    galleryTouchStartX = null;
+
+    if (
+      Math.abs(moveX) > 50 &&
+      Math.abs(moveX) > Math.abs(moveY) * 1.5
+    ) {
+
+      showGalleryPhoto(
+        galleryIndex + (moveX < 0 ? 1 : -1)
+      );
+
+    }
+
+  },
+  { passive: true }
+);
+
+
+/* =========================================================
    LOCATE CONTENT SECTIONS
    ========================================================= */
 
@@ -182,6 +309,12 @@ async function openModuleOverlay(
   updateModuleLinks(card);
   updateModuleText(card);
 
+  /*
+    The panel is shared, so a gallery from the artifact
+    that was open before must never stay on screen.
+  */
+  setGallery([]);
+
 
   setSectionMessage(
     aboutSection,
@@ -204,6 +337,16 @@ async function openModuleOverlay(
 
   const basePath =
     `./content/artifacts/${artifactId}`;
+
+
+  /*
+    Only a card marked data-gallery has a Gallery.json,
+    so other artifacts never ask for a file that is not there.
+  */
+  const galleryRequest =
+    card.hasAttribute("data-gallery")
+      ? loadTextFile(`${basePath}/Gallery.json`)
+      : null;
 
 
   const [
@@ -270,6 +413,35 @@ async function openModuleOverlay(
 
   }
 
+
+  if (galleryRequest) {
+
+    const galleryResult =
+      await galleryRequest;
+
+
+    if (
+      requestId !==
+      activeContentRequest
+    ) {
+
+      return;
+
+    }
+
+
+    if (galleryResult.ok) {
+
+      setGallery(
+        parseGallery(
+          galleryResult.text
+        )
+      );
+
+    }
+
+  }
+
 }
 
 
@@ -288,6 +460,9 @@ function closeModuleOverlay() {
     to the module that was just closed.
   */
   activeContentRequest++;
+
+
+  setGallery([]);
 
 
   if (lastModuleTrigger) {
@@ -404,6 +579,174 @@ function updateModuleLinks (card) {
     docLink.href = "#";
     docLink.target = "";
     docLink.rel = "";
+  }
+
+}
+
+
+/* =========================================================
+   PHOTO GALLERY FUNCTIONS
+   ========================================================= */
+
+/*
+  Turns the text of Gallery.json into a clean list.
+  Anything that is not a photo on this same site is
+  ignored, so a typo in the file cannot break the panel.
+*/
+function parseGallery(
+  text
+) {
+
+  let list;
+
+  try {
+
+    list = JSON.parse(text);
+
+  }
+  catch (error) {
+
+    console.error(
+      "Gallery.json is not valid JSON",
+      error
+    );
+
+    return [];
+
+  }
+
+
+  if (!Array.isArray(list)) {
+
+    return [];
+
+  }
+
+
+  return list
+    .filter((item) =>
+      item &&
+      typeof item.src === "string" &&
+      item.src.trim() !== "" &&
+      new URL(
+        item.src,
+        document.baseURI
+      ).origin === location.origin
+    )
+    .map((item) => ({
+      src: item.src.trim(),
+      alt:
+        typeof item.alt === "string"
+          ? item.alt
+          : "",
+      caption:
+        typeof item.caption === "string"
+          ? item.caption
+          : ""
+    }));
+
+}
+
+
+/* Show one photo, wrapping round at either end. */
+function showGalleryPhoto(
+  index
+) {
+
+  if (galleryPhotos.length === 0) {
+    return;
+  }
+
+
+  galleryIndex =
+    (index + galleryPhotos.length) %
+    galleryPhotos.length;
+
+
+  const photo =
+    galleryPhotos[galleryIndex];
+
+
+  moduleGalleryImage.src =
+    photo.src;
+
+  moduleGalleryImage.alt =
+    photo.alt;
+
+  moduleGalleryCaption.textContent =
+    photo.caption;
+
+  moduleGalleryCounter.textContent =
+    `${galleryIndex + 1} / ${galleryPhotos.length}`;
+
+
+  /* Start loading the next photo so it is ready. */
+  new Image().src =
+    galleryPhotos[
+      (galleryIndex + 1) %
+      galleryPhotos.length
+    ].src;
+
+}
+
+
+/*
+  Put a list of photos on screen, or (with an empty
+  list) take the gallery away and bring back the
+  single cover picture.
+*/
+function setGallery(
+  photos
+) {
+
+  galleryPhotos =
+    photos;
+
+  galleryIndex =
+    0;
+
+
+  const hasGallery =
+    photos.length > 0;
+
+  const hasSeveral =
+    photos.length > 1;
+
+
+  moduleGallery.hidden =
+    !hasGallery;
+
+  moduleDetailImage.hidden =
+    hasGallery;
+
+  moduleGalleryPrevious.hidden =
+    !hasSeveral;
+
+  moduleGalleryNext.hidden =
+    !hasSeveral;
+
+  moduleGalleryCounter.hidden =
+    !hasSeveral;
+
+
+  if (hasGallery) {
+
+    showGalleryPhoto(0);
+
+  }
+  else {
+
+    moduleGalleryImage.removeAttribute("src");
+
+    moduleGalleryImage.alt =
+      "";
+
+    moduleGalleryCaption.textContent =
+      "";
+
+    moduleGalleryCounter.textContent =
+      "";
+
   }
 
 }
