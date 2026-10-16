@@ -38,5 +38,25 @@
     "src": "./assets/screenshots/artifact-2/07-mobile.jpg",
     "alt": "Three phone screens side by side: the home page, the availability grid and the vote, all laid out for a narrow screen.",
     "caption": "It works on phones."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/09-reminder.jpg",
+    "alt": "A reminder direct message from the bot asking \"Will you be there?\", with I'm in and Can't make it buttons.",
+    "caption": "No more reminding your players by hand: the bot sends each one a reminder with I'm in and Can't make it buttons."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/10-announcement.jpg",
+    "alt": "Two bot messages in a Discord channel: the session is decreed with the next one scheduled automatically, followed by a reminder that mentions the party.",
+    "caption": "Automated announcements and reminders go out to your entire party, and the next session is scheduled for you."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/11-event.jpg",
+    "alt": "A Discord event created by the bot, showing its date and time, a link to the group, and the series of weekly events that follow.",
+    "caption": "Prefer Discord's own tools? The bot creates the event for you and repeats it every week."
+  },
+  {
+    "src": "./assets/screenshots/artifact-2/12-vote.jpg",
+    "alt": "The bot's vote message in a Discord channel, listing three ranked times with Vote buttons and a Decree the session button.",
+    "caption": "No more arguing over dates: vote for the time that works for you and the bot handles the rest."
   }
 ]
