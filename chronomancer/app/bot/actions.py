@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import config, db as dbmod, services
-from ..models import Availability, Member, Poll, User
+from ..models import Availability, Poll, User
 from ..services import ServiceError
 from . import wording
 from .snapshots import PollSnapshot, load_poll_snapshot

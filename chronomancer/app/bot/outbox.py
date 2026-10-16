@@ -20,7 +20,7 @@ from .views import (
 log = logging.getLogger("chronomancer.outbox")
 
 # Retry delays: 15s, 30s, 60s, 2m, 4m, 8m, then 10m each. Twelve attempts is roughly an
-# hour of outage tolerance before a message is given up on (the organizer can /repost).
+# hour of outage tolerance before a message is given up on (the failure is kept in the row's error).
 MAX_ATTEMPTS = 12
 BATCH = 50
 
@@ -251,7 +251,7 @@ class OutboxProcessor:
 
     async def _send_vote(self, snap: PollSnapshot) -> None:
         channel = await self._get_channel(snap.channel_id)
-        if snap.message_id:  # a repost: retire the old buttons first
+        if snap.message_id:  # a vote message already exists (a repeat delivery): retire its buttons first
             await self._edit_original(snap, view=None)
         message = await channel.send(
             embed=vote_embed(snap), view=build_vote_view(snap),

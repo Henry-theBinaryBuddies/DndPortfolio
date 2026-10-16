@@ -7,7 +7,6 @@ from zoneinfo import ZoneInfo
 FREE = "free"
 MAYBE = "maybe"
 NO = "no"          # marked red: explicitly not available (as opposed to not having answered)
-LEVELS = (FREE, MAYBE, NO)
 
 
 @dataclass(frozen=True)
