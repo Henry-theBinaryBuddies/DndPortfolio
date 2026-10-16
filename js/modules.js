@@ -180,6 +180,7 @@ async function openModuleOverlay(
   );
 
   updateModuleLinks(card);
+  updateModuleText(card);
 
 
   setSectionMessage(
@@ -333,6 +334,22 @@ function updateModuleHeader(
 }
 
 /* =========================================================
+   UPDATE TOOLS TEXT
+   ========================================================= */
+function updateModuleText(card) {
+  const toolText = moduleOverlay.querySelector("#tools_text");
+
+  const text = card.dataset.tools;
+
+  if (text) {
+    toolText.textContent = text;
+  } else {
+    toolText.textContent = "TBD";
+  }
+
+}
+
+/* =========================================================
    UPDATE MODULE LINKS
    ========================================================= */
 function updateModuleLinks (card) {
@@ -448,6 +465,7 @@ function updateModuleImage(
   );
 
 }
+
 
 
 /* =========================================================
