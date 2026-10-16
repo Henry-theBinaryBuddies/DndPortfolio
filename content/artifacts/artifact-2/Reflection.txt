@@ -1,3 +1,11 @@
 Artifact 2:
 Reflection
-To be continued...
+
+Made some ambitious choices with this one.
+I had no experience with Python, the discord api,
+hosting a bot, or building something at this scale where live testing required
+hosting local servers. In addition, this was my first time using a fully
+agentic workflow, using Claude, using Claude code, and prompt engineering.
+Ended up resulting in an application I'm happy with given the time constraints.
+It will require further tuning as I get more experience with it to find bugs
+and pain points.
