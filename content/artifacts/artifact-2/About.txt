@@ -1,5 +1,9 @@
 Artifact 2
 
-To Be Determined
+Chronomancer (Scheduling Assistant)
 
-Likely will be something lightweight, like a cookies cached adventure log.
+A group scheduler with a Discord bot, built for tabletop game nights but usable by any group. The organizer creates a group, everyone marks when they are free on a one-week grid, and the app ranks the best times. The bot runs a vote in the Discord channel, confirms the session, creates a Discord event, and sends reminders: a direct message with "I'm in" and "Can't make it" buttons, and if more than half of the group can't come, a new poll opens. Repeating groups schedule their next session automatically at the same local time.
+
+Built with Python (FastAPI, SQLAlchemy, SQLite, discord.py) and plain HTML, CSS and JavaScript, with a Dungeons & Dragons theme and a plain theme. Runs in Docker on a free Google Cloud VM.
+
+Live: https://35-225-68-147.sslip.io
