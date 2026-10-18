@@ -8,14 +8,14 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from . import config
 from .models import (
     Attendance, Availability, Campaign, Candidate, DiscordCleanup, Member, Notification, Poll, PollMessage, Reminder, User,
     Vote, WebSession,
 )
-from .scheduling import candidate_starts, generate_slots, rank_candidates
+from .scheduling import best_overlap, candidate_starts, generate_slots, rank_candidates
 
 
 # The frequencies Discord can repeat an event at: every week, every two weeks, every month on
@@ -213,21 +213,22 @@ def campaign_for_channel(db: Session, guild_id: str, channel_id: str) -> Campaig
 
 def create_campaign(db: Session, owner: User, *, name: str, guild_id: str | None = None,
                     channel_id: str | None = None, cadence: str = "none",
-                    default_duration_min: int = 180, min_quorum: int = 2, vote_top_n: int = 3,
+                    default_duration_min: int = 180, vote_top_n: int = 3,
                     reminder_offsets_min: list | None = None, theme: str = "dnd",
                     available_themes: list | None = None) -> tuple:
     name = check_campaign_settings(
-        name=name, cadence=cadence, min_quorum=min_quorum, default_duration_min=default_duration_min,
+        name=name, cadence=cadence, default_duration_min=default_duration_min,
         theme=theme, reminder_offsets_min=reminder_offsets_min, available_themes=available_themes)
     if guild_id and channel_id and campaign_for_channel(db, guild_id, channel_id):
         raise ServiceError(409, "this channel already hosts a campaign")
     campaign = Campaign(
         owner_id=owner.id, name=name, guild_id=guild_id, channel_id=channel_id,
-        cadence=cadence, default_duration_min=default_duration_min, min_quorum=min_quorum,
+        cadence=cadence, default_duration_min=default_duration_min,
         vote_top_n=vote_top_n, theme=theme,
         reminder_offsets_min=reminder_offsets_min if reminder_offsets_min is not None else [1440, 60],
     )
-    member = Member(user=owner, role="organizer", required=True)
+    # Nobody is required by default: a required person who has not answered blocks every time.
+    member = Member(user=owner, role="organizer", required=False)
     campaign.members.append(member)
     db.add(campaign)
     try:
@@ -362,29 +363,101 @@ def recent_sessions(campaign: Campaign, now: datetime | None = None, shown: int 
     }
 
 
+def _droppable_marks():
+    """(alias, condition) for availability rows that nothing will read again: the person has
+    answered a newer poll in the same group (so their latest answers are elsewhere), or has left
+    the group. A person's most recent answers are kept, because they pre-fill their next poll."""
+    mark = aliased(Availability)
+    later = aliased(Availability)
+    later_poll = aliased(Poll)
+    superseded = select(later.id).join(later_poll, later_poll.id == later.poll_id).where(
+        later_poll.campaign_id == Poll.campaign_id, later_poll.id > Poll.id,
+        later.user_id == mark.user_id).correlate(Poll, mark).exists()
+    still_in = select(Member.id).where(
+        Member.campaign_id == Poll.campaign_id, Member.user_id == mark.user_id,
+        Member.left_at.is_(None)).correlate(Poll, mark).exists()
+    return mark, or_(superseded, ~still_in)
+
+
 def compact_finished_polls(db: Session, now: datetime | None = None, keep_days: int | None = None,
                            max_polls: int = 200) -> int:
     """Drop the per-person availability of sessions that are decided or called off and older than
     `keep_days`. That grid is about 95-99% of what a session stores and nothing reads it once the
-    poll is closed; votes, candidates and the session itself stay. Each poll is its own small
-    transaction, and the delete re-checks the poll's status, so it cannot race a state change.
+    poll is closed; votes, candidates and the session itself stay. Each person's latest answers
+    in a group are the exception (see _droppable_marks). Each poll is its own small transaction,
+    and the delete re-checks the poll's status, so it cannot race a state change.
     Returns how many availability rows were removed."""
     now = now or now_utc()
     cutoff = now - timedelta(days=config.AVAILABILITY_KEEP_DAYS if keep_days is None else keep_days)
     terminal = ("confirmed", "cancelled")
+    mark, droppable = _droppable_marks()
     poll_ids = db.scalars(select(Poll.id).where(
         Poll.status.in_(terminal), Poll.date_end < cutoff.date(),
         or_(Poll.confirmed_start_utc.is_(None), Poll.confirmed_start_utc < cutoff),
-        select(Availability.id).where(Availability.poll_id == Poll.id).exists(),
+        select(mark.id).where(mark.poll_id == Poll.id, droppable).exists(),
     ).order_by(Poll.id).limit(max_polls)).all()
     removed = 0
     for poll_id in poll_ids:
+        mark, droppable = _droppable_marks()
         result = db.execute(delete(Availability).where(
-            Availability.poll_id == poll_id,
+            Availability.id.in_(select(mark.id).join(Poll, Poll.id == mark.poll_id).where(
+                mark.poll_id == poll_id, droppable)),
             select(Poll.id).where(Poll.id == poll_id, Poll.status.in_(terminal)).exists()))
         db.commit()
         removed += result.rowcount
     return removed
+
+
+_LEVEL_ORDER = {"no": 0, "maybe": 1, "free": 2}
+_WEEK_MINUTES = 7 * 24 * 60
+
+
+def _week_minute(slot: datetime, tz: ZoneInfo) -> int:
+    """Where a moment falls in the week on the local clock: minutes since Monday 00:00."""
+    local = slot.astimezone(tz)
+    return local.weekday() * 1440 + local.hour * 60 + local.minute
+
+
+def suggest_availability(db: Session, poll: Poll, user: User, now: datetime | None = None) -> dict | None:
+    """A draft for a new poll, copied from the person's most recent earlier poll in the same group
+    that has any of their answers. Boxes are matched by weekday and time of day on the poll's own
+    clock, so the week may start on another day and daylight saving does not shift anything. A box
+    that has already begun is skipped. Nothing is saved: the person must look it over and press
+    Save. Returns None when there is nothing to copy."""
+    now = now or now_utc()
+    source = db.scalar(select(Poll).where(
+        Poll.campaign_id == poll.campaign_id, Poll.id < poll.id,
+        select(Availability.id).where(Availability.poll_id == Poll.id,
+                                      Availability.user_id == user.id).exists(),
+    ).order_by(Poll.id.desc()).limit(1))
+    if source is None:
+        return None
+    old_tz, new_tz = ZoneInfo(source.timezone), ZoneInfo(poll.timezone)
+    old_len, new_len = source.slot_minutes, poll.slot_minutes
+    old_boxes = {_week_minute(s, old_tz) for s in poll_slots(source)}
+    old_marks = {_week_minute(r.slot_start_utc, old_tz): r.level for r in db.scalars(
+        select(Availability).where(Availability.poll_id == source.id, Availability.user_id == user.id))}
+    marks, outside = {}, 0
+    for slot in poll_slots(poll):
+        if slot <= now:
+            continue
+        start = _week_minute(slot, new_tz)
+        if new_len >= old_len:    # the same size or coarser: the old boxes that make up this one
+            covered = [(start + k) % _WEEK_MINUTES for k in range(0, new_len, old_len)]
+        else:                     # finer: the one old box that contains this one
+            covered = [(start - k) % _WEEK_MINUTES for k in range(old_len)
+                       if (start - k) % _WEEK_MINUTES in old_boxes][:1]
+        if not covered or any(m not in old_boxes for m in covered):
+            outside += 1          # that poll did not cover this time of day: nothing to copy
+            continue
+        levels = [old_marks.get(m) for m in covered]
+        if any(level is None for level in levels):
+            continue              # the person left it unmarked (or part of it): leave it blank
+        marks[slot] = min(levels, key=_LEVEL_ORDER.__getitem__)  # the most cautious answer
+    if not marks:
+        return None
+    return {"marks": marks, "from_title": source.title, "from_start": source.date_start,
+            "outside": outside}
 
 
 def current_poll(db: Session, campaign_id: int) -> Poll | None:
@@ -429,7 +502,7 @@ def enqueue_once(db: Session, kind: str, poll_id: int) -> None:
 
 def create_poll(db: Session, campaign: Campaign, *, title: str, date_start: date,
                 window_start: time, window_end: time, tz: str | None = None, slot_minutes: int = 30,
-                duration_min: int | None = None, min_quorum: int | None = None,
+                duration_min: int | None = None,
                 vote_top_n: int | None = None, vote_deadline: datetime | None = None) -> Poll:
     if tz is not None and not valid_timezone(tz):
         raise ServiceError(422, "Unknown timezone. Use a name like America/Los_Angeles or UTC.")
@@ -447,7 +520,6 @@ def create_poll(db: Session, campaign: Campaign, *, title: str, date_start: date
         date_start=date_start, date_end=date_end,
         window_start=window_start, window_end=window_end, slot_minutes=slot_minutes,
         duration_min=duration_min or campaign.default_duration_min,
-        min_quorum=min_quorum or campaign.min_quorum,
         vote_top_n=vote_top_n or campaign.vote_top_n,
         vote_deadline=vote_deadline,
     )
@@ -509,17 +581,12 @@ def close_poll(db: Session, poll: Poll, vote_hours: int | None = None) -> Poll:
         required=[m.user_id for m in members if m.required],
         slot_minutes=poll.slot_minutes,
         duration_min=poll.duration_min,
-        min_quorum=poll.min_quorum,
         top_n=poll.vote_top_n,
     )
     if not result.candidates:
+        message = no_time_message(poll, members, availability, result)
         db.rollback()  # release the claim: the poll stays open for more availability
-        raise ServiceError(409, {
-            "message": "no start time satisfies the required people and quorum",
-            "considered": result.total_considered,
-            "dropped_required": result.dropped_required,
-            "dropped_quorum": result.dropped_quorum,
-        })
+        raise ServiceError(409, {"message": message, "considered": result.total_considered})
     for rank, cand in enumerate(result.candidates, start=1):
         db.add(Candidate(poll_id=poll.id, start_utc=cand.start, score=cand.score,
                          free_count=cand.free_count, maybe_count=cand.maybe_count, rank=rank))
@@ -534,6 +601,40 @@ def close_poll(db: Session, poll: Poll, vote_hours: int | None = None) -> Poll:
     enqueue(db, "vote_open", poll.id)
     db.commit()
     return poll
+
+
+def _length_text(minutes: int) -> str:
+    if minutes % 60 == 0:
+        hours = minutes // 60
+        return f"{hours} hour" + ("" if hours == 1 else "s")
+    return f"{minutes} minutes"
+
+
+def no_time_message(poll: Poll, members: list, availability: dict, result) -> str:
+    """Say why a poll cannot be closed, and what to do about it. Only used when no start time can
+    be offered at all, which is rare: any time at which at least one person can attend is offered."""
+    if result.total_considered and result.skipped_past == result.total_considered:
+        return ("Every time in this poll has already passed. Start a new poll for the days ahead.")
+    if not any(availability.get(m.user_id) for m in members):
+        return "Nobody has marked any availability yet."
+    if result.dropped_required:
+        # Which required people are not free for a whole session at any of the future starts?
+        needed = [m for m in members if m.required]
+        names = ", ".join(m.user.display_name for m in needed)
+        return (f"Everyone who is marked Required has to be free for the whole session, and at no "
+                f"time are all of them ({names}) free together. Untick Required for anyone who "
+                f"does not have to be there, or ask them to mark more times.")
+    tz = ZoneInfo(poll.timezone)
+    overlap = best_overlap(poll_slots(poll), availability, [m.user_id for m in members],
+                           poll.slot_minutes)
+    length = _length_text(poll.duration_min)
+    if overlap is None:
+        return f"Nobody is free for a whole {length} session. Ask people to mark more times."
+    start, end = overlap.start.astimezone(tz), overlap.end.astimezone(tz)
+    return (f"Nobody is free for a whole {length} session. The closest is {start:%a %b %d}, "
+            f"{start:%H:%M}-{end:%H:%M}, when {overlap.people} of {len(members)} people are free "
+            f"together ({_length_text(overlap.minutes)}). Shorten the session length, or ask "
+            f"people to mark longer blocks.")
 
 
 def cast_vote(db: Session, poll: Poll, user: User, candidate_id: int) -> Candidate:
@@ -696,7 +797,7 @@ def reschedule_after_declines(db: Session, poll: Poll) -> Poll | None:
         date_start=today, date_end=today + timedelta(days=config.WEEK_DAYS - 1),
         window_start=poll.window_start, window_end=poll.window_end,
         slot_minutes=poll.slot_minutes, duration_min=poll.duration_min,
-        min_quorum=poll.min_quorum, vote_top_n=poll.vote_top_n,
+        vote_top_n=poll.vote_top_n,
         anchor_day=poll.anchor_day, rescheduled_from=poll.id,
     )
     db.add(following)
@@ -715,7 +816,7 @@ def valid_timezone(name: str) -> bool:
         return False
 
 
-def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default_duration_min=None,
+def check_campaign_settings(*, name=None, cadence=None, default_duration_min=None,
                             theme=None, reminder_offsets_min=None, events_enabled=None,
                             available_themes=None) -> str | None:
     """Validate any subset of a campaign's settings. Raises ServiceError for the first bad
@@ -726,8 +827,6 @@ def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default
             raise ServiceError(422, "The name must be 1 to 120 characters.")
     if cadence is not None and cadence not in CADENCES:
         raise ServiceError(422, "frequency must be one of: " + ", ".join(CADENCES))
-    if min_quorum is not None and not 1 <= min_quorum <= 50:
-        raise ServiceError(422, "minimum free people must be between 1 and 50")
     if default_duration_min is not None and not 15 <= default_duration_min <= 1440:
         raise ServiceError(422, "session length must be between 15 and 1440 minutes")
     if theme is not None and available_themes is not None and theme not in available_themes:
@@ -740,7 +839,7 @@ def check_campaign_settings(*, name=None, cadence=None, min_quorum=None, default
 
 
 def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
-                    cadence: str | None = None, min_quorum: int | None = None,
+                    cadence: str | None = None,
                     default_duration_min: int | None = None,
                     theme: str | None = None, reminder_offsets_min: list | None = None,
                     events_enabled: bool | None = None,
@@ -749,14 +848,14 @@ def update_campaign(db: Session, campaign: Campaign, *, name: str | None = None,
     nothing changes at all if any value is invalid. Reminder timings also reschedule the
     reminders of sessions that are already decided."""
     name = check_campaign_settings(
-        name=name, cadence=cadence, min_quorum=min_quorum,
+        name=name, cadence=cadence,
         default_duration_min=default_duration_min, theme=theme,
         reminder_offsets_min=reminder_offsets_min, available_themes=available_themes)
     cadence_changed = cadence is not None and cadence != campaign.cadence
     events_changed = events_enabled is not None and events_enabled != campaign.events_enabled
     if events_enabled is not None:
         campaign.events_enabled = events_enabled
-    for field, value in (("name", name), ("cadence", cadence), ("min_quorum", min_quorum),
+    for field, value in (("name", name), ("cadence", cadence),
                          ("default_duration_min", default_duration_min), ("theme", theme)):
         if value is not None:
             setattr(campaign, field, value)
@@ -859,7 +958,7 @@ def schedule_next_occurrence(db: Session, poll: Poll, now: datetime | None = Non
         date_start=day, date_end=day + timedelta(days=config.WEEK_DAYS - 1),
         window_start=poll.window_start, window_end=poll.window_end,
         slot_minutes=poll.slot_minutes, duration_min=poll.duration_min,
-        min_quorum=poll.min_quorum, vote_top_n=poll.vote_top_n,
+        vote_top_n=poll.vote_top_n,
         status="confirmed", confirmed_start_utc=start,
         recurred_from=poll.id, anchor_day=poll.anchor_day or local_start.day,
     )

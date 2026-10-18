@@ -111,7 +111,7 @@ def test_only_the_organizer_may_change_hours(client):
 
 def test_hours_cannot_change_once_voting_has_begun(client):
     login(client, "1", "DM")
-    cid = client.post("/api/campaigns", json={"name": "x", "min_quorum": 1}).json()["id"]
+    cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     poll = client.post(f"/api/campaigns/{cid}/polls", json=POLL).json()
     marks = [{"start": s, "level": "free"} for s in poll["slots"][:2]]  # a full hour
     client.put(f"/api/polls/{poll['id']}/availability", json={"slots": marks})

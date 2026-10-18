@@ -98,7 +98,7 @@ def register(tree: app_commands.CommandTree) -> None:
     @app_commands.describe(
         name="Campaign name (needed the first time)",
         code="Invite code, to adopt a campaign made on the website",
-        frequency="How often the group meets", quorum="Minimum people who must be free",
+        frequency="How often the group meets",
         length="Session length in minutes",
         reminders="When to remind the group before a session, like: 1d, 1h, 15m (or off)",
         theme="Wording style",
@@ -106,7 +106,6 @@ def register(tree: app_commands.CommandTree) -> None:
     @app_commands.choices(frequency=frequency_choices, theme=theme_choices)
     async def setup(interaction: discord.Interaction, name: Optional[str] = None,
                     code: Optional[str] = None, frequency: Optional[str] = None,
-                    quorum: Optional[app_commands.Range[int, 1, 50]] = None,
                     length: Optional[app_commands.Range[int, 15, 1440]] = None,
                     reminders: Optional[str] = None,
                     theme: Optional[str] = None, events: Optional[bool] = None):
@@ -116,7 +115,7 @@ def register(tree: app_commands.CommandTree) -> None:
                 ephemeral=True)
             return
         await _run(interaction, actions.cmd_setup, name=name, code=code, frequency=frequency,
-                   quorum=quorum, length=length, reminders=reminders, theme=theme,
+                   length=length, reminders=reminders, theme=theme,
                    events=events, events_ok=_bot_can_make_events(interaction))
 
     @group.command(name="poll", description="Open a poll for one week of availability")

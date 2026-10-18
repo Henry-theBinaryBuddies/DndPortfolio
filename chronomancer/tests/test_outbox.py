@@ -270,7 +270,7 @@ def test_campaign_without_a_channel_is_skipped_not_retried(db):
     from datetime import date
     from helpers import make_player, mark_all_free
     owner = services.upsert_user(db, "1", "DM")
-    campaign, _ = services.create_campaign(db, owner, name="Web only", min_quorum=1)
+    campaign, _ = services.create_campaign(db, owner, name="Web only")
     poll = open_poll(db, campaign)
     mark_all_free(db, poll, owner)
     services.close_poll(db, poll)

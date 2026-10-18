@@ -3,11 +3,10 @@ from conftest import login, make_client
 POLL = {
     "title": "Session 5",
     "timezone": "UTC",
-    "date_start": "2026-03-02",
+    "date_start": "2031-03-03",
     "window_start": "18:00:00",
     "window_end": "22:00:00",
     "duration_min": 120,
-    "min_quorum": 2,
 }
 
 
@@ -91,8 +90,8 @@ def test_full_flow_to_confirmed_session(client):
     campaign, (aria, borin) = setup_party(client)
     poll = client.post(f"/api/campaigns/{campaign['id']}/polls", json=POLL).json()
     pid, slots = poll["id"], poll["slots"]
-    day1 = [s for s in slots if s.startswith("2026-03-02")]
-    day2 = [s for s in slots if s.startswith("2026-03-03")]
+    day1 = [s for s in slots if s.startswith("2031-03-03")]
+    day2 = [s for s in slots if s.startswith("2031-03-04")]
 
     everyone_day1 = {"slots": [{"start": s, "level": "free"} for s in day1]}
     only_day2 = {"slots": [{"start": s, "level": "free"} for s in day2]}
@@ -106,7 +105,7 @@ def test_full_flow_to_confirmed_session(client):
     assert body["status"] == "voting"
     cands = body["candidates"]
     assert 1 <= len(cands) <= 3
-    assert all(c["start"].startswith("2026-03-02") for c in cands)  # DM + Aria beat Borin alone
+    assert all(c["start"].startswith("2031-03-03") for c in cands)  # DM + Aria beat Borin alone
 
     assert aria.post(f"/api/polls/{pid}/votes", json={"candidate_id": cands[-1]["id"]}).status_code == 200
     assert client.post(f"/api/polls/{pid}/votes", json={"candidate_id": cands[-1]["id"]}).status_code == 200

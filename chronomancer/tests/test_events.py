@@ -159,7 +159,7 @@ def test_saving_other_settings_does_not_resync_events(db):
     campaign, poll, _ = voting_poll(db)
     services.confirm_poll(db, poll)
     before = len(sync_notifications(db))
-    services.update_campaign(db, campaign, min_quorum=1, events_enabled=True)  # unchanged switch
+    services.update_campaign(db, campaign, default_duration_min=180, events_enabled=True)  # unchanged switch
     assert len(sync_notifications(db)) == before
 
 
@@ -291,7 +291,7 @@ def test_no_warning_when_events_are_switched_off(db):
 def test_setup_warns_about_the_missing_permission(db):
     reply = actions.cmd_setup(db, DM, GUILD, CHANNEL, name="Strahd", events_ok=False)
     assert "Create Events" in reply.text
-    assert "Create Events" not in actions.cmd_setup(db, DM, GUILD, CHANNEL, quorum=1, events_ok=True).text
+    assert "Create Events" not in actions.cmd_setup(db, DM, GUILD, CHANNEL, length=120, events_ok=True).text
 
 
 def test_the_invite_link_requests_create_events():

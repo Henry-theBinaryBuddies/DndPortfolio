@@ -37,20 +37,20 @@ def test_setup_creates_the_campaign_bound_to_this_channel(db):
     assert "Curse of Strahd" in reply.text and "created" in reply.text and not reply.ephemeral
     campaign = services.campaign_for_channel(db, GUILD, CHANNEL)
     organizer = services.get_member(db, campaign.id, services.upsert_user(db, "1", "x").id)
-    assert organizer.role == "organizer" and organizer.required
+    assert organizer.role == "organizer" and not organizer.required  # nobody is required by default
     assert "/schedule" in reply.text and "/chronomancer poll" in reply.text  # tells the group what to do next
 
 
 def test_setup_applies_every_option_in_one_command(db):
-    setup(db, name="Strahd", frequency="biweekly", quorum=1, length=120, reminders="2d, 30m", theme="plain")
+    setup(db, name="Strahd", frequency="biweekly", length=120, reminders="2d, 30m", theme="plain")
     c = services.campaign_for_channel(db, GUILD, CHANNEL)
-    assert (c.cadence, c.min_quorum, c.default_duration_min, c.theme) == ("biweekly", 1, 120, "plain")
+    assert (c.cadence, c.default_duration_min, c.theme) == ("biweekly", 120, "plain")
     assert c.reminder_offsets_min == [2880, 30]
 
 
 def test_setup_summary_shows_the_settings(db):
-    reply = setup(db, name="Strahd", frequency="weekly", quorum=1, length=90, reminders="1h")
-    for needle in ("Every week", "1 hour 30 minutes", "at least 1 free", "1 hour before"):
+    reply = setup(db, name="Strahd", frequency="weekly", length=90, reminders="1h")
+    for needle in ("Every week", "1 hour 30 minutes", "1 hour before"):
         assert needle in reply.text, needle
     assert "UTC" not in reply.text and "imezone" not in reply.text  # there is no timezone setting
     assert "reminders: off" in setup(db, reminders="off").text
@@ -77,8 +77,7 @@ def test_setup_outside_a_server_channel_is_refused(db):
 @pytest.mark.parametrize("kwargs", [
     dict(name="   "), dict(name="x" * 121), dict(name="ok", theme="nope"),
     dict(name="ok", frequency="hourly"), dict(name="ok", reminders="soon"),
-    dict(name="ok", reminders="1d, 1h, 30m, 15m, 5m, 1m"), dict(name="ok", quorum=0),
-    dict(name="ok", length=5),
+    dict(name="ok", reminders="1d, 1h, 30m, 15m, 5m, 1m"), dict(name="ok", length=5),
 ])
 def test_setup_rejects_bad_input_and_changes_nothing(db, kwargs):
     with pytest.raises(ServiceError) as exc:
@@ -87,12 +86,12 @@ def test_setup_rejects_bad_input_and_changes_nothing(db, kwargs):
     assert db.scalars(select(Campaign)).first() is None or kwargs.get("name") == "ok"
     campaign = services.campaign_for_channel(db, GUILD, CHANNEL)
     if campaign is not None:  # a half-applied create must not leave odd settings behind
-        assert campaign.cadence == "none" and campaign.min_quorum == 2
+        assert campaign.cadence == "none" and campaign.default_duration_min == 180
 
 
 def test_two_campaigns_cannot_share_a_channel_but_setup_updates_the_existing_one(db):
     setup(db, name="One")
-    reply = setup(db, name="Renamed", quorum=3)
+    reply = setup(db, name="Renamed", length=60)
     assert "updated" in reply.text and db.scalars(select(Campaign)).all()[0].name == "Renamed"
     assert len(db.scalars(select(Campaign)).all()) == 1
 
@@ -109,14 +108,14 @@ def test_an_ordinary_member_cannot_change_settings(db):
     campaign, _ = make_campaign(db)
     make_player(db, campaign, "2", "Aria")
     with pytest.raises(ServiceError) as exc:
-        setup(db, ARIA, quorum=1)
-    assert exc.value.status == 403 and campaign.min_quorum == 2
+        setup(db, ARIA, length=60)
+    assert exc.value.status == 403 and campaign.default_duration_min == 180
 
 
 def test_the_organizer_can_change_settings_even_without_manage_rights(db):
     campaign, _ = make_campaign(db)
-    setup(db, DUser("1", "Dungeon Master", can_manage=False), quorum=1)
-    assert campaign.min_quorum == 1
+    setup(db, DUser("1", "Dungeon Master", can_manage=False), length=60)
+    assert campaign.default_duration_min == 60
 
 
 def test_a_server_admin_can_reconfigure_any_campaign_in_the_server(db):
@@ -141,9 +140,9 @@ def test_changing_reminders_reschedules_a_decided_session(db):
 def test_setup_with_a_code_adopts_a_campaign_made_on_the_web(db):
     owner = services.upsert_user(db, "1", "Dungeon Master")
     web, _ = services.create_campaign(db, owner, name="Made on web")
-    reply = setup(db, code=f"  {web.invite_code}  ", quorum=1)
+    reply = setup(db, code=f"  {web.invite_code}  ", length=60)
     assert "linked" in reply.text and "Made on web" in reply.text
-    assert services.campaign_for_channel(db, GUILD, CHANNEL).id == web.id and web.min_quorum == 1
+    assert services.campaign_for_channel(db, GUILD, CHANNEL).id == web.id and web.default_duration_min == 60
 
 
 def test_only_the_organizer_can_adopt_a_web_campaign(db):
@@ -259,12 +258,12 @@ def test_schedule_escapes_organizer_controlled_text(db):
 
 def test_poll_uses_the_campaigns_settings_and_the_organizers_timezone(db):
     campaign, _ = make_campaign(db)
-    services.update_campaign(db, campaign, min_quorum=1, default_duration_min=90)
+    services.update_campaign(db, campaign, default_duration_min=90)
     services.upsert_user(db, "1", "Dungeon Master", tz="America/Los_Angeles")  # learned from their browser
     reply = poll_cmd(db)
     poll = services.open_poll(db, campaign.id)
     assert f"/poll.html?id={poll.id}" in reply.text and "Session 5" in reply.text
-    assert (poll.min_quorum, poll.duration_min, poll.timezone) == (1, 90, "America/Los_Angeles")
+    assert (poll.duration_min, poll.timezone) == (90, "America/Los_Angeles")
     assert "18:00 to 23:00 America/Los_Angeles" in reply.text and "own timezone" in reply.text
     assert "Open the website" not in reply.text  # the zone is known, no nagging
     assert (poll.date_start.isoformat(), poll.date_end.isoformat()) == ("2026-12-01", "2026-12-07")
@@ -369,7 +368,7 @@ def test_a_failed_advance_explains_why_and_changes_nothing(db):
     with pytest.raises(ServiceError) as exc:
         actions.cmd_advance(db, DM, GUILD, CHANNEL, None)
     text = actions.error_text(exc.value)
-    assert "start times considered" in text and "too few free people" in text
+    assert text == "Nobody has marked any availability yet."
     assert poll.status == "collecting"
 
 

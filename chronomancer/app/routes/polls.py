@@ -11,6 +11,7 @@ from ..db import get_db
 from ..models import Availability, Member, Poll, User, Vote
 from ..ratelimit import availability_limiter
 from ..schemas import AvailabilityPut, CloseRequest, ConfirmRequest, PollCreate, PollHours, VoteCast
+from ..scheduling import rank_candidates
 from ..services import poll_slots
 
 router = APIRouter(prefix="/api")
@@ -37,15 +38,37 @@ def load_poll_as_organizer(db: Session, poll_id: int, user: User) -> Poll:
     return poll
 
 
+def best_so_far(poll: Poll, rows: list, members: list) -> dict | None:
+    """The best time the group could be offered right now, or None while there is none."""
+    availability = {}
+    for row in rows:
+        availability.setdefault(row.user_id, {})[row.slot_start_utc] = row.level
+    result = rank_candidates(
+        slots=poll_slots(poll), availability=availability, players=[m.user_id for m in members],
+        required=[m.user_id for m in members if m.required], slot_minutes=poll.slot_minutes,
+        duration_min=poll.duration_min, top_n=1)
+    if not result.candidates:
+        return None
+    top = result.candidates[0]
+    return {"start": iso(top.start), "free_count": top.free_count, "maybe_count": top.maybe_count}
+
+
 def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
     slots = poll_slots(poll)
     current = set(slots)
     # Marks outside the current hours are kept in the database but not shown or counted.
     rows = [r for r in db.scalars(select(Availability).where(Availability.poll_id == poll.id))
             if r.slot_start_utc in current]
+    active = [m for m in poll.campaign.members if m.left_at is None]
+    active_ids = {m.user_id for m in active}
     counts = {}
+    people = {}  # slot -> level -> user ids, for the other members' marks (shown on the grid)
     for row in rows:
+        if row.user_id not in active_ids:
+            continue  # someone who left the group no longer counts towards the group's times
         counts.setdefault(iso(row.slot_start_utc), Counter())[row.level] += 1
+        if row.user_id != user.id:  # the page adds the viewer's own, live, marks itself
+            people.setdefault(iso(row.slot_start_utc), {}).setdefault(row.level, []).append(row.user_id)
     votes = db.scalars(select(Vote).where(Vote.poll_id == poll.id)).all()
     vote_counts = Counter(v.candidate_id for v in votes)
     my_vote = next((v.candidate_id for v in votes if v.user_id == user.id), None)
@@ -53,6 +76,16 @@ def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
     # session is closed its availability may have been compacted away, so say nothing then.
     live = poll.status in ("collecting", "voting")
     responded = {row.user_id for row in rows}
+    best = best_so_far(poll, rows, active) if poll.status == "collecting" else None
+    my_marks = {iso(r.slot_start_utc): r.level for r in rows if r.user_id == user.id}
+    draft = None
+    if poll.status == "collecting" and not my_marks:
+        # A draft copied from their last answers, to look over and save. It is never stored.
+        found = services.suggest_availability(db, poll, user)
+        if found:
+            draft = {"marks": {iso(s): level for s, level in found["marks"].items()},
+                     "from_title": found["from_title"], "from_start": found["from_start"].isoformat(),
+                     "outside": found["outside"]}
     return {
         "id": poll.id,
         "campaign_id": poll.campaign_id,
@@ -63,17 +96,19 @@ def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
         "window_end": f"{poll.window_end:%H:%M}",  # 00:00 = end of the day
         "slot_minutes": poll.slot_minutes,
         "duration_min": poll.duration_min,
-        "min_quorum": poll.min_quorum,
         "vote_deadline": iso(poll.vote_deadline) if poll.vote_deadline else None,
         "confirmed_start": iso(poll.confirmed_start_utc) if poll.confirmed_start_utc else None,
         "my_role": member.role,
         "slots": [iso(s) for s in slots],
-        "my_availability": {
-            iso(r.slot_start_utc): r.level for r in rows if r.user_id == user.id
-        },
+        "my_availability": my_marks,
+        "suggestion": draft,
         "slot_counts": {
             s: {"free": c["free"], "maybe": c["maybe"]} for s, c in counts.items()
         },
+        "slot_people": people if live else {},
+        "party_size": len(active),
+        "my_user_id": user.id,
+        "best_so_far": best,
         "members": [
             {"user_id": m.user_id, "display_name": m.user.display_name,
              "required": m.required, "responded": (m.user_id in responded) if live else None}
@@ -98,7 +133,7 @@ def create_poll(campaign_id: int, body: PollCreate, user: User = Depends(current
         date_start=body.date_start,
         window_start=body.window_start, window_end=body.window_end,
         slot_minutes=body.slot_minutes, duration_min=body.duration_min,
-        min_quorum=body.min_quorum, vote_top_n=body.vote_top_n,
+        vote_top_n=body.vote_top_n,
         vote_deadline=body.vote_deadline,
     )
     return poll_json(db, poll, member, user)

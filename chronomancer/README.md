@@ -9,7 +9,7 @@ It was built for tabletop game nights and works for any group that needs a regul
 ## What it does
 
 - **Weekly availability grid.** Click a box once for *available* (green), twice for *maybe* (yellow), three times for *not available* (red), a fourth time to clear it. Drag with a mouse to paint, tap a day or a time to fill a whole column or row. Everyone sees times in their own timezone.
-- **Ranking and voting.** The best times (everyone required is free, enough people are free) go to a vote in the Discord channel. The organizer confirms, or the vote ends at its deadline.
+- **Ranking and voting.** The best times always go to a vote (the ones where the most people are free, and everyone marked Required is). On the availability grid each box shows how many people are free and hovering lists who, so the group can see the overlap while they mark times. Times that have already begun are greyed out and never offered. The grid refreshes every 30 seconds. A new poll opens with a draft copied from your last answers in the group (by weekday and time), which you check and save, so a fixed week is never painted twice in the Discord channel. The organizer confirms, or the vote ends at its deadline.
 - **Reminders.** A channel post and a direct message before each session (by default 1 day and 1 hour). The direct message has **I'm in / Can't make it** buttons; if more than half of the group can't make it, the session is called off and a new poll opens.
 - **Repeating groups.** Weekly, every two weeks, monthly (the same Nth weekday), or yearly. When a session ends, the next one is scheduled at the same local time, and the group has **one repeating Discord event** that always points at the next session.
 - **Two looks.** A rich Dungeons & Dragons theme and a clean plain theme, switchable in the page header. Works on phones.
@@ -20,7 +20,7 @@ It was built for tabletop game nights and works for any group that needs a regul
 | Command | Who | What it does |
 |---|---|---|
 | `/schedule` | anyone | Joins you to this channel's group, then says what is happening and what to do, with a link |
-| `/chronomancer setup` | Manage Channels | Creates this channel's group, or changes its settings (`name`, `code`, `frequency`, `quorum`, `length`, `reminders`, `theme`, `events`) |
+| `/chronomancer setup` | Manage Channels | Creates this channel's group, or changes its settings (`name`, `code`, `frequency`, `length`, `reminders`, `theme`, `events`) |
 | `/chronomancer poll` | organizer | Opens a one-week poll (`week_start`, `start`, `end`, `title`; the hours default to the whole day) |
 | `/chronomancer advance` | organizer | Closes availability into a vote, or decrees the winning time (`vote_hours`) |
 | `/chronomancer cancel` | organizer | Cancels the open poll, or the next session |

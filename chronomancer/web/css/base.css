@@ -121,10 +121,14 @@ table.grid th.time-label { width: 3.2rem; text-align: right; vertical-align: top
 table.grid.readonly th { cursor: default; }
 table.grid td.cell {
   height: 1.55rem; border: 1px solid var(--cell-border, var(--border)); border-radius: 4px; cursor: pointer;
-  background: color-mix(in srgb, var(--heat-color) calc(var(--heat, 0) * 45%), var(--cell-bg));
+  background: color-mix(in srgb, var(--heat-color) calc(var(--heat, 0) * 70%), var(--cell-bg));
   transition: filter .08s, transform .08s;
 }
+table.grid td.cell { text-align: center; font-size: .72rem; line-height: 1.4rem; padding: 0; min-width: 1.6rem; color: var(--cell-count, var(--text)); text-shadow: 0 0 2px var(--cell-bg); }
 table.grid td.cell:hover { filter: brightness(1.3); }
+/* a box that has already begun: dimmed, and it cannot be marked */
+table.grid td.cell-past { opacity: .35; cursor: not-allowed; }
+table.grid td.cell-past:hover { filter: none; }
 table.grid.readonly td.cell { cursor: default; }
 table.grid.readonly td.cell:hover { filter: none; }
 table.grid td.cell:focus-visible, table.grid th:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -133,6 +137,11 @@ table.grid td.cell-empty { border: none; background: none; }
 .cell-free { background: var(--free) !important; border-color: var(--free-edge, transparent) !important; }
 .cell-maybe { background: var(--maybe) !important; border-color: var(--maybe-edge, transparent) !important; }
 .cell-no { background: var(--no) !important; border-color: var(--no-edge, transparent) !important; }
+/* a draft copied from the last poll, and the Save row that stays in view on a long grid */
+.draft-banner { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin: .5rem 0; padding: .6rem .8rem; border: 1px solid var(--accent); border-radius: var(--radius); }
+.warn { color: var(--accent); font-weight: 600; }
+#save-row { position: sticky; bottom: 0; z-index: 2; padding: .5rem 0; background: var(--panel-bg, var(--panel)); }
+p.best-so-far { margin: .4rem 0; font-weight: 600; color: var(--accent); }
 ul.legend {
   list-style: none; display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; padding: .6rem .9rem; margin: 0 0 .75rem;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg, transparent);

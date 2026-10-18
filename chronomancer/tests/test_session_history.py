@@ -35,7 +35,7 @@ def called_off(db, campaign, n):
 def open_poll_row(db, campaign):
     poll = Poll(campaign_id=campaign.id, title="x", timezone="UTC", date_start=date(2030, 1, 1),
                 date_end=date(2030, 1, 7), window_start=time(10), window_end=time(15), slot_minutes=30,
-                duration_min=60, min_quorum=1, vote_top_n=3, status="collecting")
+                duration_min=60, vote_top_n=3, status="collecting")
     db.add(poll)
     db.commit()
     return poll
@@ -130,12 +130,18 @@ def test_the_api_reports_phases_and_the_counts(client):
 # ------------------------------------------------ dropping old availability
 
 
-def finished_poll(db, status="confirmed"):
+def finished_poll(db, status="confirmed", superseded=True):
+    """A finished session. By default everyone has since answered a newer poll, because a
+    person's most recent answers are kept (they pre-fill their next poll) and only older ones go."""
     campaign, poll, users = voting_poll(db)
     if status == "confirmed":
         services.confirm_poll(db, poll)
     else:
         services.cancel_poll(db, poll)
+    if superseded:
+        newer = open_poll(db, campaign, date_start=date(2030, 6, 1))
+        for user in users:
+            mark_all_free(db, newer, user)
     return campaign, poll, users
 
 
@@ -203,10 +209,8 @@ def test_compacting_twice_does_nothing_the_second_time(db):
 
 def test_each_sweep_is_bounded_and_the_rest_waits_for_the_next(db):
     ids = []
-    for i in range(3):
-        _, poll, _ = finished_poll(db) if i == 0 else (None, None, None)
-        if poll is not None:
-            ids.append(poll.id)
+    _, first, _ = finished_poll(db)
+    ids.append(first.id)
     campaign, _ = make_campaign(db, guild="7000", channel="7001")
     users = [make_player(db, campaign, f"9{i}", f"P{i}") for i in range(2)]
     for i in range(3):
@@ -220,7 +224,38 @@ def test_each_sweep_is_bounded_and_the_rest_waits_for_the_next(db):
     left = [i for i in ids if availability_rows(i)]
     assert first > 0 and len(left) == len(ids) - 2
     assert services.compact_finished_polls(db, now=LONG_AFTER, max_polls=10) > 0
-    assert [i for i in ids if availability_rows(i)] == []
+    assert [i for i in ids if availability_rows(i)] == [ids[-1]]   # the newest answers are kept
+
+
+def test_a_persons_latest_answers_are_kept_however_old(db):
+    """They pre-fill the next poll, so a biweekly or monthly group still has something to copy."""
+    _, poll, _ = finished_poll(db, superseded=False)
+    assert services.compact_finished_polls(db, now=LONG_AFTER) == 0 and availability_rows(poll.id) > 0
+
+
+def test_only_the_people_who_answered_a_newer_poll_lose_the_old_one(db):
+    campaign, poll, users = finished_poll(db, superseded=False)
+    newer = open_poll(db, campaign, date_start=date(2030, 6, 1))
+    mark_all_free(db, newer, users[0])                       # only one person answered again
+    before = availability_rows(poll.id)
+    removed = services.compact_finished_polls(db, now=LONG_AFTER)
+    assert 0 < removed < before and availability_rows(poll.id) == before - removed
+    with fresh() as other:
+        left = {u for (u,) in other.execute(select(Availability.user_id).where(Availability.poll_id == poll.id))}
+    assert users[0].id not in left and left == {u.id for u in users[1:]}
+
+
+def test_the_answers_of_someone_who_left_the_group_are_dropped_with_the_old_session(db):
+    campaign, poll, users = finished_poll(db, superseded=False)
+    with fresh() as other:
+        member = other.scalar(select(services.Member).where(
+            services.Member.campaign_id == campaign.id, services.Member.user_id == users[1].id))
+        member.left_at = LONG_AFTER
+        other.commit()
+    services.compact_finished_polls(db, now=LONG_AFTER)
+    with fresh() as other:
+        left = {u for (u,) in other.execute(select(Availability.user_id).where(Availability.poll_id == poll.id))}
+    assert users[1].id not in left and users[0].id in left
 
 
 def test_the_delete_only_touches_polls_that_are_still_finished(db):
@@ -248,7 +283,7 @@ def test_the_delete_only_touches_polls_that_are_still_finished(db):
 
 def test_a_closed_poll_does_not_report_who_answered(client):
     login(client, "1", "DM")
-    cid = client.post("/api/campaigns", json={"name": "x", "min_quorum": 1}).json()["id"]
+    cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     poll = client.post(f"/api/campaigns/{cid}/polls", json={
         "date_start": "2030-03-01", "window_start": "10:00:00", "window_end": "14:00:00", "duration_min": 60}).json()
     marks = [{"start": s, "level": "free"} for s in poll["slots"][:4]]

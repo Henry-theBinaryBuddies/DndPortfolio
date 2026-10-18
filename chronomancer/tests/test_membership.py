@@ -94,7 +94,7 @@ def test_marking_is_idempotent(db):
 
 
 def test_a_required_player_who_left_no_longer_blocks_the_poll(db):
-    campaign, owner = make_campaign(db, quorum=1)
+    campaign, owner = make_campaign(db)
     aria = make_player(db, campaign, "2", "Aria")
     services.get_member(db, campaign.id, aria.id).required = True
     db.commit()

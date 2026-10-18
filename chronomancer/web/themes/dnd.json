@@ -14,9 +14,6 @@
   "member": "Player",
   "membersCap": "Players",
   "membersLower": "players",
-  "minFreeLabel": "Minimum free players",
-  "freeOne": "free player",
-  "freeMany": "free players",
   "hoursChosenBy": "The Dungeon Master chose these hours in",
   "cancelPollConfirm": "Cancel this poll? Players will no longer be able to respond.",
   "party": "Party",
@@ -94,5 +91,6 @@
   "botRescheduleBody": "More than half the party cannot make **{title}**{when}, so it is called off. Mark when you are free for the coming week: {url}",
   "events": "Raise a Discord event for each gathering",
   "no": "Not available",
+  "consensusHint": "The number in each box is how many of the party are free or maybe, and it updates as people answer. Hover over a box to see who. Boxes that have already begun are greyed out.",
   "gridHint": "Click (or tap) a box once for available, twice for maybe, three times for not available. One more click clears it. Click a day or a time to fill a whole column or row."
 }

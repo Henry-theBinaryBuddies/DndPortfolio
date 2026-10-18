@@ -30,7 +30,6 @@ class CampaignCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     cadence: str = Field(default="none", pattern="^(none|weekly|biweekly|monthly|annually)$")
     default_duration_min: int = Field(default=180, ge=30, le=1440)
-    min_quorum: int = Field(default=2, ge=1, le=50)
     vote_top_n: int = Field(default=3, ge=1, le=config.MAX_VOTE_TOP_N)
     reminder_offsets_min: list[int] = Field(default_factory=lambda: [1440, 60])
     theme: str = Field(default="dnd", pattern="^[a-z0-9_-]{1,32}$")
@@ -55,7 +54,6 @@ class PollCreate(BaseModel):
     window_end: time
     slot_minutes: int = Field(default=30, ge=15, le=120)
     duration_min: int | None = Field(default=None, ge=15, le=1440)
-    min_quorum: int | None = Field(default=None, ge=1, le=50)
     vote_top_n: int | None = Field(default=None, ge=1, le=config.MAX_VOTE_TOP_N)
     vote_deadline: datetime | None = None
 
@@ -80,7 +78,6 @@ class CampaignUpdate(BaseModel):
     """Any subset of a campaign's settings; omitted fields are left alone."""
     name: str | None = Field(default=None, max_length=120)
     cadence: str | None = Field(default=None, pattern="^(none|weekly|biweekly|monthly|annually)$")
-    min_quorum: int | None = Field(default=None, ge=1, le=50)
     default_duration_min: int | None = Field(default=None, ge=15, le=1440)
     theme: str | None = Field(default=None, pattern="^[a-z0-9_-]{1,32}$")
     reminder_offsets_min: list[int] | None = Field(default=None, max_length=5)

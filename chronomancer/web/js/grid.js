@@ -6,6 +6,11 @@
 // available) -> unmarked. With a mouse you can drag to paint the same state across boxes. Tap a
 // day or a time to cycle a whole column or row (this is what makes phones practical: touch drags
 // are left to scrolling).
+//
+// Everyone's answers are visible, as on When2Meet: each box shows how many people are free or
+// maybe (including your own, live, mark) and hovering it lists who. Boxes that have already begun
+// are greyed out and cannot be marked. setConsensus() redraws the other people's answers without
+// touching what you have marked but not yet saved.
 window.AvailabilityGrid = function (container, poll, onChange) {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const pollDay = new Intl.DateTimeFormat("en-CA", { timeZone: poll.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
@@ -34,7 +39,8 @@ window.AvailabilityGrid = function (container, poll, onChange) {
 
   const mine = { ...poll.my_availability };
   const editable = poll.status === "collecting";
-  const maxCount = Math.max(1, poll.members.length);
+  const nameOf = () => new Map(poll.members.map((m) => [m.user_id, m.display_name]));
+  const isPast = (iso) => new Date(iso).getTime() <= Date.now();
   let painting = false;
   let brush;               // the state being painted by the current drag
   let last = null;         // the previous box of the drag
@@ -47,16 +53,39 @@ window.AvailabilityGrid = function (container, poll, onChange) {
     const node = nodes.get(iso);
     const level = mine[iso];
     for (const state of ["free", "maybe", "no"]) node.classList.toggle("cell-" + state, level === state);
-    const c = poll.slot_counts[iso];
-    const total = c ? c.free + c.maybe : 0;
-    node.style.setProperty("--heat", String(total / maxCount));
-    const when = fullFmt.format(new Date(iso));
-    node.title = `${when}: ${level ? LABEL[level] : "not marked"}` + (c ? ` (${c.free} free, ${c.maybe} maybe)` : "");
-    node.setAttribute("aria-label", node.title);
+    const past = isPast(iso);
+    node.classList.toggle("cell-past", past);
+    // Everyone else's answers for this box, plus yours as it is right now.
+    const names = nameOf();
+    const others = (poll.slot_people || {})[iso] || {};
+    const groups = { free: [], maybe: [], no: [] };
+    const answered = new Set();
+    for (const state of ["free", "maybe", "no"]) {
+      for (const id of others[state] || []) {
+        groups[state].push(names.get(id) || "Someone");
+        answered.add(id);
+      }
+    }
+    if (level) groups[level].unshift("You");
+    const waiting = poll.members
+      .filter((m) => m.user_id !== poll.my_user_id && !answered.has(m.user_id))
+      .map((m) => m.display_name);
+    if (!level) waiting.unshift("You");
+    const total = groups.free.length + groups.maybe.length;
+    const party = Math.max(1, poll.party_size || poll.members.length);
+    node.style.setProperty("--heat", String(total / party));
+    node.textContent = total ? String(total) : "";
+    const lines = [fullFmt.format(new Date(iso)) + (past ? " (already begun)" : "") + `: ${total} of ${party} free`];
+    for (const state of ["free", "maybe", "no"]) {
+      if (groups[state].length) lines.push(`${LABEL[state]} (${groups[state].length}): ${groups[state].join(", ")}`);
+    }
+    if (waiting.length) lines.push(`No answer (${waiting.length}): ${waiting.join(", ")}`);
+    node.title = lines.join("\n");
+    node.setAttribute("aria-label", lines.join(". "));
   }
 
   function set(iso, level) {
-    if (!editable) return;
+    if (!editable || isPast(iso)) return;
     if (level === undefined) delete mine[iso];
     else mine[iso] = level;
     paintNode(iso);
@@ -80,6 +109,7 @@ window.AvailabilityGrid = function (container, poll, onChange) {
   // A whole day or time: if its boxes all share a state, move them all to the next one;
   // otherwise start them all at green.
   function cycleGroup(isos) {
+    isos = isos.filter((i) => !isPast(i));
     if (!editable || !isos.length) return;
     const states = new Set(isos.map((i) => mine[i]));
     const target = states.size === 1 ? nextState([...states][0]) : "free";
@@ -135,7 +165,7 @@ window.AvailabilityGrid = function (container, poll, onChange) {
   table.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.pointerType === "touch" || !editable) return;
     const iso = slotUnder(e);
-    if (!iso) return;
+    if (!iso || isPast(iso)) return;
     painting = true;
     suppressClick = true;
     last = null;
@@ -173,6 +203,20 @@ window.AvailabilityGrid = function (container, poll, onChange) {
   return {
     marks: () => Object.entries(mine).map(([start, level]) => ({ start, level })),
     marksObject: () => ({ ...mine }),
+    // Take in newer answers from the others (the page polls the server) without losing your marks.
+    // Replace everything you have marked (a draft copied from your last poll, or a clean slate).
+    loadMarks: (marks) => {
+      for (const iso of Object.keys(mine)) delete mine[iso];
+      Object.assign(mine, marks);
+      nodes.forEach((_, iso) => paintNode(iso));
+      onChange && onChange(mine);
+    },
+    setConsensus: (fresh) => {
+      poll.slot_people = fresh.slot_people;
+      poll.members = fresh.members;
+      poll.party_size = fresh.party_size;
+      nodes.forEach((_, iso) => paintNode(iso));
+    },
     destroy: () => {
       window.removeEventListener("pointerup", stop);
       window.removeEventListener("pointercancel", stop);
