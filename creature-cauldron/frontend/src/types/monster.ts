@@ -1,0 +1,197 @@
+// Monster schema (2014 rules). Mirrors the design in docs/REQUIREMENTS.md.
+// Once the Python back end exists these types will be generated from its
+// OpenAPI spec; until then they are the source of truth.
+
+export type Size = "tiny" | "small" | "medium" | "large" | "huge" | "gargantuan";
+
+export type CreatureType =
+  | "aberration"
+  | "beast"
+  | "celestial"
+  | "construct"
+  | "dragon"
+  | "elemental"
+  | "fey"
+  | "fiend"
+  | "giant"
+  | "humanoid"
+  | "monstrosity"
+  | "ooze"
+  | "plant"
+  | "undead";
+
+export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
+
+export type DamageType =
+  | "acid"
+  | "bludgeoning"
+  | "cold"
+  | "fire"
+  | "force"
+  | "lightning"
+  | "necrotic"
+  | "piercing"
+  | "poison"
+  | "psychic"
+  | "radiant"
+  | "slashing"
+  | "thunder";
+
+export type Source = "srd" | "curated" | "ai" | "reskin";
+
+export type Role =
+  | "brute"
+  | "skirmisher"
+  | "controller"
+  | "artillery"
+  | "lurker"
+  | "leader"
+  | "solo";
+
+export type Environment =
+  | "arctic"
+  | "coast"
+  | "desert"
+  | "forest"
+  | "grassland"
+  | "hill"
+  | "mountain"
+  | "swamp"
+  | "underdark"
+  | "underwater"
+  | "urban"
+  | "dungeon"
+  | "planar";
+
+/** Derived by code from the stat block, never trusted from the AI. */
+export type Feature =
+  | "flying"
+  | "swimming"
+  | "multiattack"
+  | "breath-weapon"
+  | "legendary"
+  | "spellcasting"
+  | "regeneration";
+
+export interface DamageRoll {
+  dice: string; // e.g. "2d6"
+  bonus: number;
+  type: DamageType;
+}
+
+export interface Recharge {
+  min: number; // recharges on a roll of min-6
+}
+
+// The hybrid action model: a discriminated union on `kind`.
+// attack, save and multiattack are typed; text is free-form prose.
+
+export interface AttackAction {
+  kind: "attack";
+  name: string;
+  attack: {
+    mode: "melee_weapon" | "ranged_weapon" | "melee_spell" | "ranged_spell";
+    ability: Ability;
+    to_hit: number;
+    reach?: number;
+    range?: { normal: number; long: number };
+    targets: string;
+  };
+  damage: DamageRoll[];
+  effects_text?: string | null;
+  conditions?: string[];
+}
+
+export interface SaveAction {
+  kind: "save";
+  name: string;
+  recharge?: Recharge;
+  save: { ability: Ability; dc: number };
+  area?: { shape: "cone" | "line" | "radius" | "cube" | "sphere"; size: number; width?: number };
+  on_fail: DamageRoll[];
+  on_success: "half" | "none";
+  effects_text?: string | null;
+}
+
+export interface MultiattackAction {
+  kind: "multiattack";
+  name: string;
+  sequence: { action: string; count: number }[];
+  text?: string | null;
+}
+
+export interface TextAction {
+  kind: "text";
+  name: string;
+  text: string;
+  recharge?: Recharge;
+}
+
+export type Action = AttackAction | SaveAction | MultiattackAction | TextAction;
+
+export interface Spellcasting {
+  ability: Ability;
+  dc: number;
+  attack_bonus: number;
+  text: string;
+}
+
+export interface LegendaryActions {
+  per_round: number;
+  options: { name: string; cost: number; text: string }[];
+}
+
+export interface Monster {
+  // identity and provenance
+  id: string;
+  schema_version: number;
+  name: string;
+  source: Source;
+  validated: boolean;
+  parent_id?: string | null;
+  generator?: string | null;
+  attribution?: string | null;
+
+  // core stat block
+  size: Size;
+  type: CreatureType;
+  subtypes: string[];
+  alignment: string;
+  armor_class: { value: number; note?: string };
+  hit_points: { average: number; dice: string };
+  speeds: { walk?: number; fly?: number; swim?: number; climb?: number; burrow?: number; hover?: boolean };
+  abilities: Record<Ability, number>;
+  saves: Partial<Record<Ability, number>>;
+  skills: Record<string, number>;
+  vulnerabilities: DamageType[];
+  resistances: DamageType[];
+  immunities: DamageType[];
+  condition_immunities: string[];
+  senses: {
+    darkvision?: number;
+    blindsight?: number;
+    tremorsense?: number;
+    truesight?: number;
+    passive_perception: number;
+  };
+  languages: string;
+  challenge: { cr: string; cr_value: number; xp: number; proficiency_bonus: number };
+
+  // abilities
+  traits: TextAction[];
+  actions: Action[];
+  bonus_actions: Action[];
+  reactions: Action[];
+  legendary_actions?: LegendaryActions | null;
+  spellcasting?: Spellcasting | null;
+
+  // discovery tags
+  environments: Environment[];
+  role: Role;
+  damage_themes: DamageType[];
+  flavor_themes: string[];
+  features: Feature[];
+
+  // presentation
+  description: string;
+}

@@ -1,0 +1,57 @@
+:root {
+  --paper: #f4ead5;
+  --ink: #2b1d14;
+  --accent: #7a1f1f;
+  --muted: #6b5a4a;
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--ink);
+  background: #1d1611;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 48rem;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background: var(--paper);
+  border-radius: 6px;
+}
+
+h1,
+h2 {
+  color: var(--accent);
+  margin: 0 0 0.5rem;
+}
+
+.tagline {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.monster-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.monster-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #d8c9a8;
+}
+
+.monster-list span {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.error {
+  color: var(--accent);
+  font-weight: bold;
+}

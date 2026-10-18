@@ -1,0 +1,374 @@
+[
+  {
+    "id": "cinderkite-3a1f",
+    "schema_version": 1,
+    "name": "Cinderkite",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "small",
+    "type": "beast",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 13, "note": "natural armor" },
+    "hit_points": { "average": 7, "dice": "2d6" },
+    "speeds": { "walk": 10, "fly": 50 },
+    "abilities": { "str": 6, "dex": 16, "con": 10, "int": 2, "wis": 14, "cha": 6 },
+    "saves": {},
+    "skills": { "Perception": 4 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "passive_perception": 14 },
+    "languages": "—",
+    "challenge": { "cr": "1/8", "cr_value": 0.125, "xp": 25, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Keen Sight",
+        "text": "The cinderkite has advantage on Wisdom (Perception) checks that rely on sight."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Talons",
+        "attack": { "mode": "melee_weapon", "ability": "dex", "to_hit": 5, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d4", "bonus": 3, "type": "piercing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["grassland", "hill", "desert"],
+    "role": "skirmisher",
+    "damage_themes": [],
+    "flavor_themes": ["ember-touched"],
+    "features": ["flying"],
+    "description": "A small raptor whose rust-red feathers glow faintly at the tips, as though dipped in embers. It hunts above burnt fields and tends to nest in old campfire rings."
+  },
+  {
+    "id": "gloomcap-shambler-7c42",
+    "schema_version": 1,
+    "name": "Gloomcap Shambler",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "plant",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 11, "note": "natural armor" },
+    "hit_points": { "average": 26, "dice": "4d8+8" },
+    "speeds": { "walk": 20 },
+    "abilities": { "str": 14, "dex": 8, "con": 14, "int": 3, "wis": 10, "cha": 4 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": ["blinded", "deafened"],
+    "senses": { "blindsight": 30, "passive_perception": 10 },
+    "languages": "—",
+    "challenge": { "cr": "1/4", "cr_value": 0.25, "xp": 50, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "False Appearance",
+        "text": "While the shambler remains motionless, it is indistinguishable from a cluster of large pale mushrooms."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Slam",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 4, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d8", "bonus": 2, "type": "bludgeoning" }]
+      },
+      {
+        "kind": "save",
+        "name": "Spore Burst",
+        "recharge": { "min": 6 },
+        "save": { "ability": "con", "dc": 12 },
+        "area": { "shape": "radius", "size": 10 },
+        "on_fail": [{ "dice": "1d8", "bonus": 0, "type": "poison" }],
+        "on_success": "none",
+        "effects_text": "A creature that fails the save is also poisoned until the end of its next turn."
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["swamp", "underdark", "forest"],
+    "role": "controller",
+    "damage_themes": ["poison"],
+    "flavor_themes": ["fungal"],
+    "features": [],
+    "description": "A lumbering heap of pale caps and damp fibers that drags itself toward warmth and movement, shedding clouds of drifting spores."
+  },
+  {
+    "id": "murkmaw-lurker-b905",
+    "schema_version": 1,
+    "name": "Murkmaw Lurker",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "aberration",
+    "subtypes": [],
+    "alignment": "chaotic evil",
+    "armor_class": { "value": 12 },
+    "hit_points": { "average": 32, "dice": "5d8+10" },
+    "speeds": { "walk": 20, "swim": 40 },
+    "abilities": { "str": 15, "dex": 12, "con": 14, "int": 7, "wis": 10, "cha": 6 },
+    "saves": {},
+    "skills": { "Stealth": 3 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "darkvision": 60, "passive_perception": 10 },
+    "languages": "understands Deep Speech but can't speak",
+    "challenge": { "cr": "1/2", "cr_value": 0.5, "xp": 100, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Amphibious",
+        "text": "The lurker can breathe air and water."
+      },
+      {
+        "kind": "text",
+        "name": "Ambush Predator",
+        "text": "On the first round of combat, the lurker has advantage on attack rolls against any creature that hasn't taken a turn yet."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Bite",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 4, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "2d6", "bonus": 2, "type": "piercing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["underwater", "swamp", "coast"],
+    "role": "lurker",
+    "damage_themes": [],
+    "flavor_themes": ["tide-warped"],
+    "features": ["swimming"],
+    "description": "A pallid, wide-mouthed thing that waits just below the waterline with only its lidless eyes showing."
+  },
+  {
+    "id": "brinewrack-cutthroat-5de8",
+    "schema_version": 1,
+    "name": "Brinewrack Cutthroat",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "humanoid",
+    "subtypes": ["any race"],
+    "alignment": "any non-lawful alignment",
+    "armor_class": { "value": 14, "note": "studded leather" },
+    "hit_points": { "average": 33, "dice": "6d8+6" },
+    "speeds": { "walk": 30 },
+    "abilities": { "str": 14, "dex": 14, "con": 12, "int": 10, "wis": 10, "cha": 10 },
+    "saves": {},
+    "skills": { "Athletics": 4, "Intimidation": 2 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "passive_perception": 10 },
+    "languages": "Common",
+    "challenge": { "cr": "1/2", "cr_value": 0.5, "xp": 100, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Dirty Fighter",
+        "text": "Once on each of its turns, the cutthroat deals an extra 3 (1d6) damage when it hits a target with a weapon attack, if an ally of the cutthroat is within 5 feet of the target and isn't incapacitated."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Cutlass", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Cutlass",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 4, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d6", "bonus": 2, "type": "slashing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["coast", "urban"],
+    "role": "skirmisher",
+    "damage_themes": [],
+    "flavor_themes": ["brigand"],
+    "features": ["multiattack"],
+    "description": "A salt-stained pirate who fights dirty and always in a pack, trusting numbers and a sharp blade over honor."
+  },
+  {
+    "id": "gravewick-stalker-e13b",
+    "schema_version": 1,
+    "name": "Gravewick Stalker",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "undead",
+    "subtypes": [],
+    "alignment": "neutral evil",
+    "armor_class": { "value": 14, "note": "natural armor" },
+    "hit_points": { "average": 52, "dice": "8d8+16" },
+    "speeds": { "walk": 30 },
+    "abilities": { "str": 16, "dex": 14, "con": 15, "int": 8, "wis": 12, "cha": 6 },
+    "saves": {},
+    "skills": { "Stealth": 4 },
+    "vulnerabilities": ["radiant"],
+    "resistances": ["cold"],
+    "immunities": ["necrotic", "poison"],
+    "condition_immunities": ["exhaustion", "poisoned"],
+    "senses": { "darkvision": 60, "passive_perception": 11 },
+    "languages": "understands the languages it knew in life but can't speak",
+    "challenge": { "cr": "2", "cr_value": 2, "xp": 450, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Candle Skull",
+        "text": "A pale flame burns in the stalker's skull. It sheds dim light in a 10-foot radius, and the flame can't be extinguished by wind or water."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Claw", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Claw",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 5, "reach": 5, "targets": "one target" },
+        "damage": [
+          { "dice": "1d6", "bonus": 3, "type": "slashing" },
+          { "dice": "1d6", "bonus": 0, "type": "necrotic" }
+        ]
+      },
+      {
+        "kind": "save",
+        "name": "Lantern Glare",
+        "recharge": { "min": 5 },
+        "save": { "ability": "wis", "dc": 11 },
+        "area": { "shape": "cone", "size": 15 },
+        "on_fail": [{ "dice": "3d6", "bonus": 0, "type": "necrotic" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["dungeon", "underdark", "urban"],
+    "role": "brute",
+    "damage_themes": ["necrotic"],
+    "flavor_themes": ["cursed"],
+    "features": ["multiattack"],
+    "description": "A gaunt corpse that walks the halls of its own tomb, a cold flame burning where its eyes should be."
+  },
+  {
+    "id": "stormhide-drake-2f77",
+    "schema_version": 1,
+    "name": "Stormhide Drake",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "large",
+    "type": "dragon",
+    "subtypes": [],
+    "alignment": "neutral",
+    "armor_class": { "value": 15, "note": "natural armor" },
+    "hit_points": { "average": 85, "dice": "10d10+30" },
+    "speeds": { "walk": 40, "fly": 60 },
+    "abilities": { "str": 19, "dex": 12, "con": 17, "int": 6, "wis": 12, "cha": 8 },
+    "saves": { "dex": 3, "con": 5 },
+    "skills": { "Perception": 3, "Stealth": 3 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": ["lightning"],
+    "condition_immunities": [],
+    "senses": { "blindsight": 10, "darkvision": 60, "passive_perception": 13 },
+    "languages": "Draconic",
+    "challenge": { "cr": "4", "cr_value": 4, "xp": 1100, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Static Hide",
+        "text": "A creature that touches the drake or hits it with a melee attack while within 5 feet of it takes 2 (1d4) lightning damage."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [
+          { "action": "Bite", "count": 1 },
+          { "action": "Claw", "count": 2 }
+        ]
+      },
+      {
+        "kind": "attack",
+        "name": "Bite",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 10, "targets": "one target" },
+        "damage": [{ "dice": "2d8", "bonus": 4, "type": "piercing" }]
+      },
+      {
+        "kind": "attack",
+        "name": "Claw",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d8", "bonus": 4, "type": "slashing" }]
+      },
+      {
+        "kind": "save",
+        "name": "Stormbreath",
+        "recharge": { "min": 5 },
+        "save": { "ability": "con", "dc": 13 },
+        "area": { "shape": "line", "size": 30, "width": 5 },
+        "on_fail": [{ "dice": "6d6", "bonus": 0, "type": "lightning" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["mountain", "hill", "coast"],
+    "role": "brute",
+    "damage_themes": ["lightning"],
+    "flavor_themes": ["storm-touched"],
+    "features": ["flying", "multiattack", "breath-weapon"],
+    "description": "A lean, long-winged drake whose slate scales crackle with static whenever a storm gathers over the peaks."
+  }
+]
