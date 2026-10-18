@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from . import config
 from .models import (
@@ -363,29 +363,101 @@ def recent_sessions(campaign: Campaign, now: datetime | None = None, shown: int 
     }
 
 
+def _droppable_marks():
+    """(alias, condition) for availability rows that nothing will read again: the person has
+    answered a newer poll in the same group (so their latest answers are elsewhere), or has left
+    the group. A person's most recent answers are kept, because they pre-fill their next poll."""
+    mark = aliased(Availability)
+    later = aliased(Availability)
+    later_poll = aliased(Poll)
+    superseded = select(later.id).join(later_poll, later_poll.id == later.poll_id).where(
+        later_poll.campaign_id == Poll.campaign_id, later_poll.id > Poll.id,
+        later.user_id == mark.user_id).correlate(Poll, mark).exists()
+    still_in = select(Member.id).where(
+        Member.campaign_id == Poll.campaign_id, Member.user_id == mark.user_id,
+        Member.left_at.is_(None)).correlate(Poll, mark).exists()
+    return mark, or_(superseded, ~still_in)
+
+
 def compact_finished_polls(db: Session, now: datetime | None = None, keep_days: int | None = None,
                            max_polls: int = 200) -> int:
     """Drop the per-person availability of sessions that are decided or called off and older than
     `keep_days`. That grid is about 95-99% of what a session stores and nothing reads it once the
-    poll is closed; votes, candidates and the session itself stay. Each poll is its own small
-    transaction, and the delete re-checks the poll's status, so it cannot race a state change.
+    poll is closed; votes, candidates and the session itself stay. Each person's latest answers
+    in a group are the exception (see _droppable_marks). Each poll is its own small transaction,
+    and the delete re-checks the poll's status, so it cannot race a state change.
     Returns how many availability rows were removed."""
     now = now or now_utc()
     cutoff = now - timedelta(days=config.AVAILABILITY_KEEP_DAYS if keep_days is None else keep_days)
     terminal = ("confirmed", "cancelled")
+    mark, droppable = _droppable_marks()
     poll_ids = db.scalars(select(Poll.id).where(
         Poll.status.in_(terminal), Poll.date_end < cutoff.date(),
         or_(Poll.confirmed_start_utc.is_(None), Poll.confirmed_start_utc < cutoff),
-        select(Availability.id).where(Availability.poll_id == Poll.id).exists(),
+        select(mark.id).where(mark.poll_id == Poll.id, droppable).exists(),
     ).order_by(Poll.id).limit(max_polls)).all()
     removed = 0
     for poll_id in poll_ids:
+        mark, droppable = _droppable_marks()
         result = db.execute(delete(Availability).where(
-            Availability.poll_id == poll_id,
+            Availability.id.in_(select(mark.id).join(Poll, Poll.id == mark.poll_id).where(
+                mark.poll_id == poll_id, droppable)),
             select(Poll.id).where(Poll.id == poll_id, Poll.status.in_(terminal)).exists()))
         db.commit()
         removed += result.rowcount
     return removed
+
+
+_LEVEL_ORDER = {"no": 0, "maybe": 1, "free": 2}
+_WEEK_MINUTES = 7 * 24 * 60
+
+
+def _week_minute(slot: datetime, tz: ZoneInfo) -> int:
+    """Where a moment falls in the week on the local clock: minutes since Monday 00:00."""
+    local = slot.astimezone(tz)
+    return local.weekday() * 1440 + local.hour * 60 + local.minute
+
+
+def suggest_availability(db: Session, poll: Poll, user: User, now: datetime | None = None) -> dict | None:
+    """A draft for a new poll, copied from the person's most recent earlier poll in the same group
+    that has any of their answers. Boxes are matched by weekday and time of day on the poll's own
+    clock, so the week may start on another day and daylight saving does not shift anything. A box
+    that has already begun is skipped. Nothing is saved: the person must look it over and press
+    Save. Returns None when there is nothing to copy."""
+    now = now or now_utc()
+    source = db.scalar(select(Poll).where(
+        Poll.campaign_id == poll.campaign_id, Poll.id < poll.id,
+        select(Availability.id).where(Availability.poll_id == Poll.id,
+                                      Availability.user_id == user.id).exists(),
+    ).order_by(Poll.id.desc()).limit(1))
+    if source is None:
+        return None
+    old_tz, new_tz = ZoneInfo(source.timezone), ZoneInfo(poll.timezone)
+    old_len, new_len = source.slot_minutes, poll.slot_minutes
+    old_boxes = {_week_minute(s, old_tz) for s in poll_slots(source)}
+    old_marks = {_week_minute(r.slot_start_utc, old_tz): r.level for r in db.scalars(
+        select(Availability).where(Availability.poll_id == source.id, Availability.user_id == user.id))}
+    marks, outside = {}, 0
+    for slot in poll_slots(poll):
+        if slot <= now:
+            continue
+        start = _week_minute(slot, new_tz)
+        if new_len >= old_len:    # the same size or coarser: the old boxes that make up this one
+            covered = [(start + k) % _WEEK_MINUTES for k in range(0, new_len, old_len)]
+        else:                     # finer: the one old box that contains this one
+            covered = [(start - k) % _WEEK_MINUTES for k in range(old_len)
+                       if (start - k) % _WEEK_MINUTES in old_boxes][:1]
+        if not covered or any(m not in old_boxes for m in covered):
+            outside += 1          # that poll did not cover this time of day: nothing to copy
+            continue
+        levels = [old_marks.get(m) for m in covered]
+        if any(level is None for level in levels):
+            continue              # the person left it unmarked (or part of it): leave it blank
+        marks[slot] = min(levels, key=_LEVEL_ORDER.__getitem__)  # the most cautious answer
+    if not marks:
+        return None
+    return {"marks": marks, "from_title": source.title, "from_start": source.date_start,
+            "outside": outside}
 
 
 def current_poll(db: Session, campaign_id: int) -> Poll | None:

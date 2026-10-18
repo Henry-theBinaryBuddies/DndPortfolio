@@ -77,6 +77,15 @@ def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
     live = poll.status in ("collecting", "voting")
     responded = {row.user_id for row in rows}
     best = best_so_far(poll, rows, active) if poll.status == "collecting" else None
+    my_marks = {iso(r.slot_start_utc): r.level for r in rows if r.user_id == user.id}
+    draft = None
+    if poll.status == "collecting" and not my_marks:
+        # A draft copied from their last answers, to look over and save. It is never stored.
+        found = services.suggest_availability(db, poll, user)
+        if found:
+            draft = {"marks": {iso(s): level for s, level in found["marks"].items()},
+                     "from_title": found["from_title"], "from_start": found["from_start"].isoformat(),
+                     "outside": found["outside"]}
     return {
         "id": poll.id,
         "campaign_id": poll.campaign_id,
@@ -91,9 +100,8 @@ def poll_json(db: Session, poll: Poll, member: Member, user: User) -> dict:
         "confirmed_start": iso(poll.confirmed_start_utc) if poll.confirmed_start_utc else None,
         "my_role": member.role,
         "slots": [iso(s) for s in slots],
-        "my_availability": {
-            iso(r.slot_start_utc): r.level for r in rows if r.user_id == user.id
-        },
+        "my_availability": my_marks,
+        "suggestion": draft,
         "slot_counts": {
             s: {"free": c["free"], "maybe": c["maybe"]} for s, c in counts.items()
         },

@@ -204,6 +204,13 @@ window.AvailabilityGrid = function (container, poll, onChange) {
     marks: () => Object.entries(mine).map(([start, level]) => ({ start, level })),
     marksObject: () => ({ ...mine }),
     // Take in newer answers from the others (the page polls the server) without losing your marks.
+    // Replace everything you have marked (a draft copied from your last poll, or a clean slate).
+    loadMarks: (marks) => {
+      for (const iso of Object.keys(mine)) delete mine[iso];
+      Object.assign(mine, marks);
+      nodes.forEach((_, iso) => paintNode(iso));
+      onChange && onChange(mine);
+    },
     setConsensus: (fresh) => {
       poll.slot_people = fresh.slot_people;
       poll.members = fresh.members;
