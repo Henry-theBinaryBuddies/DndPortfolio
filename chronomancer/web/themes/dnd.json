@@ -70,6 +70,8 @@
   "weekStart": "Week begins",
   "botReminderTitle": "The Hour Draws Near",
   "botReminderBody": "Gather your gear! **{title}** begins {when}.",
+  "botDeclinedTitle": "Cannot attend ({n} of {total})",
+  "botDeclinedLine": "Cannot attend ({n} of {total}): {names}",
   "botSessionCancelledTitle": "The Session Is Called Off",
   "botSessionCancelled": "The gathering planned for {when} is cancelled. Await word of a new date.",
   "botRemindersAt": "The party will be reminded at: {times}.",

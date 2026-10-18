@@ -62,6 +62,8 @@ class PollSnapshot:
     campaign_url: str = ""
     reminder_times: list = field(default_factory=list)  # pending reminder send times
     reminder_offsets: list = field(default_factory=list)  # the campaign's configured timings
+    declined: list = field(default_factory=list)  # names of members who said they cannot make it
+    party_size: int = 0                           # active members
 
     @property
     def url(self) -> str:
@@ -154,4 +156,6 @@ def load_poll_snapshot(db: Session, poll_id: int) -> PollSnapshot | None:
         campaign_url=f"{config.PUBLIC_BASE_URL}/campaign.html?id={campaign.id}",
         reminder_times=services.pending_reminder_times(db, poll.id) if poll.status == "confirmed" else [],
         reminder_offsets=list(campaign.reminder_offsets_min or []),
+        declined=services.declined_names(db, poll) if poll.status == "confirmed" else [],
+        party_size=len(services.active_members(db, campaign.id)),
     )

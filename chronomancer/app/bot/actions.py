@@ -176,6 +176,12 @@ def cmd_schedule(db: Session, du: DUser, guild_id, channel_id, events_ok: bool =
     if session is not None:
         lines.append(f"{w['session']} confirmed: {_ts(session.confirmed_start_utc)} "
                      f"({_ts(session.confirmed_start_utc, 'R')})")
+        names = services.declined_names(db, session)
+        if names:
+            lines.append(wording.t(campaign.theme, "botDeclinedLine", n=len(names),
+                                   total=len(services.active_members(db, campaign.id)),
+                                   names=", ".join(esc(x) for x in names[:15])
+                                   + (f" and {len(names) - 15} more" if len(names) > 15 else "")))
         times = services.pending_reminder_times(db, session.id)
         if times:
             lines.append("Reminders: " + ", ".join(_ts(t, "f") for t in times))

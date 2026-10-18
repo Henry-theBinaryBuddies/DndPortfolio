@@ -70,6 +70,8 @@
   "weekStart": "Week starting",
   "botReminderTitle": "Reminder",
   "botReminderBody": "**{title}** begins {when}.",
+  "botDeclinedTitle": "Can't make it ({n} of {total})",
+  "botDeclinedLine": "Can't make it ({n} of {total}): {names}",
   "botSessionCancelledTitle": "Event cancelled",
   "botSessionCancelled": "The event planned for {when} is cancelled.",
   "botRemindersAt": "Reminders will go out at: {times}.",

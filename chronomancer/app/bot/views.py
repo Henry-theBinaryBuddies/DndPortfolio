@@ -71,8 +71,17 @@ def reminder_embed(s: PollSnapshot) -> discord.Embed:
                               when=_when(s.confirmed_start)),
         colour=_colour(s.theme),
     )
+    if s.declined:
+        embed.add_field(name=wording.t(s.theme, "botDeclinedTitle", n=len(s.declined), total=s.party_size),
+                        value=declined_text(s.declined), inline=False)
     embed.set_footer(text=s.campaign_name[:100])
     return embed
+
+
+def declined_text(names: list, limit: int = 15) -> str:
+    """Names of the people who cannot come, safe to show in a message."""
+    shown = ", ".join(_esc(n) for n in names[:limit])
+    return shown + (f" and {len(names) - limit} more" if len(names) > limit else "")
 
 
 def reminder_dm_embed(s: PollSnapshot) -> discord.Embed:
