@@ -1,0 +1,89 @@
+.statblock {
+  --statblock-paper: #fdf1dc;
+  --statblock-red: #7a200d;
+  font-family: "Bookman Old Style", Georgia, serif;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  background: var(--statblock-paper);
+  color: #222;
+  padding: 0.5rem 1rem 1rem;
+  border: 1px solid #ddd0b4;
+  box-shadow: 0 0 0.75rem rgba(0, 0, 0, 0.35);
+  /* never split one monster across two printed pages */
+  break-inside: avoid;
+}
+
+.statblock__rule {
+  height: 5px;
+  margin: 0 -1rem 0.5rem;
+  background: linear-gradient(to right, var(--statblock-red), #b03a1e 50%, var(--statblock-red));
+}
+
+.statblock__name {
+  margin: 0.25rem 0 0;
+  font-variant: small-caps;
+  font-size: 1.7rem;
+  letter-spacing: 0.03em;
+  color: var(--statblock-red);
+}
+
+.statblock__subtitle {
+  margin: 0 0 0.4rem;
+  font-style: italic;
+}
+
+.statblock__divider {
+  height: 2px;
+  margin: 0.4rem 0;
+  background: linear-gradient(to right, var(--statblock-red), transparent);
+}
+
+.statblock__property {
+  margin: 0.15rem 0;
+}
+
+.statblock__property strong {
+  color: var(--statblock-red);
+}
+
+.statblock__entry {
+  margin: 0.45rem 0;
+}
+
+.statblock__abilities {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  color: var(--statblock-red);
+}
+
+.statblock__abilities th {
+  font-size: 0.85rem;
+}
+
+.statblock__abilities td {
+  color: #222;
+  font-size: 0.9rem;
+}
+
+.statblock__heading {
+  margin: 0.9rem 0 0.35rem;
+  padding-bottom: 0.1rem;
+  border-bottom: 1px solid var(--statblock-red);
+  font-variant: small-caps;
+  font-weight: normal;
+  font-size: 1.3rem;
+  color: var(--statblock-red);
+}
+
+.statblock__flavor {
+  margin: 0.6rem 0 0;
+  font-style: italic;
+  color: #5a4a3a;
+}
+
+.statblock__attribution {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: #6b5a4a;
+}

@@ -13,7 +13,7 @@ body {
 }
 
 .page {
-  max-width: 48rem;
+  max-width: 64rem;
   margin: 2rem auto;
   padding: 1.5rem;
   background: var(--paper);
@@ -32,26 +32,107 @@ h2 {
   font-style: italic;
 }
 
+.layout {
+  display: grid;
+  grid-template-columns: 17rem 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
 .monster-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.monster-list li {
+.monster-button {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem 0;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 0;
   border-bottom: 1px solid #d8c9a8;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.monster-list span {
+.monster-button:hover {
+  background: #ebdcbc;
+}
+
+.monster-button.selected {
+  background: #e2cfa6;
+  border-left: 4px solid var(--accent);
+}
+
+.monster-button span {
   color: var(--muted);
+  font-size: 0.85rem;
   text-transform: capitalize;
+}
+
+.print-button {
+  margin-bottom: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--paper);
+  font: inherit;
+  cursor: pointer;
+}
+
+.print-button:hover {
+  filter: brightness(1.15);
 }
 
 .error {
   color: var(--accent);
   font-weight: bold;
+}
+
+/* Phone width: stack the list above the stat block. */
+@media (max-width: 700px) {
+  .page {
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Printing: only the stat block, on plain white, using the full page. */
+@media print {
+  :root,
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .page {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .layout {
+    display: block;
+  }
+
+  .statblock {
+    box-shadow: none;
+    border: 1px solid #999;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }
