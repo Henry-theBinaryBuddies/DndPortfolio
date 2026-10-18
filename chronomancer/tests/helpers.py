@@ -12,11 +12,11 @@ def fresh():
     return dbmod.SessionLocal()
 
 
-def make_campaign(db, *, guild=GUILD, channel=CHANNEL, theme="dnd", quorum=2, organizer_id="1"):
+def make_campaign(db, *, guild=GUILD, channel=CHANNEL, theme="dnd", organizer_id="1"):
     owner = services.upsert_user(db, organizer_id, "Dungeon Master")
     campaign, _ = services.create_campaign(
         db, owner, name="Curse of Strahd", guild_id=guild, channel_id=channel,
-        min_quorum=quorum, theme=theme,
+        theme=theme,
     )
     return campaign, owner
 

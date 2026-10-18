@@ -35,6 +35,8 @@
         <li><span class="swatch cell-no"></span> <strong>3 clicks</strong> <span data-t="no">Not available</span></li>
       </ul>
       <p class="muted"><span data-t="gridHint">Tap a box to mark it.</span> Times are in your timezone (<span id="tz"></span>).</p>
+      <p class="muted"><span data-t="consensusHint">The number in each box is how many are free.</span></p>
+      <p id="best-so-far" class="best-so-far" hidden></p>
       <p class="muted" id="tz-note"></p>
       <form id="hours-form" class="row" hidden>
         <label>Earliest start <input id="hours-start" type="time" required></label>
@@ -71,7 +73,7 @@
   <footer class="site"><a href="/privacy.html">Privacy</a> <span aria-hidden="true">&middot;</span> <a href="/terms.html">Terms</a></footer>
   <script src="/js/theme.js"></script>
   <script src="/js/api.js"></script>
-  <script src="/js/grid.js?v=2"></script>
+  <script src="/js/grid.js?v=3"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const id = new URLSearchParams(location.search).get("id");
@@ -91,11 +93,23 @@
       $("candidates").replaceChildren(...poll.candidates.map((c) =>
         el("div", { class: "candidate" + (poll.my_vote === c.id ? " mine" : "") },
           el("span", { class: "when" }, fmtDateTime(c.start)),
-          el("span", { class: "muted" }, `${c.free_count} free, ${c.maybe_count} maybe`),
+          el("span", { class: "muted" }, `${c.free_count} of ${poll.party_size} free` + (c.maybe_count ? `, ${c.maybe_count} maybe` : "")),
           el("span", { class: "badge" }, `${c.votes} vote${c.votes === 1 ? "" : "s"}`),
           open ? el("button", { onclick: () => vote(c.id) }, Theme.t("vote")) : null,
           open && poll.my_role === "organizer"
             ? el("button", { class: "secondary", onclick: () => confirmPoll(c.id) }, Theme.t("confirm")) : null)));
+    }
+
+    // The best time the group could be offered right now, so people can see how close they are.
+    function renderBestSoFar() {
+      const line = $("best-so-far");
+      line.hidden = poll.status !== "collecting";
+      if (line.hidden) return;
+      const b = poll.best_so_far;
+      line.textContent = b
+        ? `Best time so far: ${fmtDateTime(b.start)} (${b.free_count} of ${poll.party_size} free` +
+          (b.maybe_count ? `, ${b.maybe_count} maybe` : "") + `).`
+        : `No time yet where someone is free for a whole ${poll.duration_min}-minute session.`;
     }
 
     // keepMarks: a theme switch re-renders the page, and must not throw away unsaved painting.
@@ -104,7 +118,7 @@
       if (grid) grid.destroy();
       document.title = (poll.title || "Poll") + " - Chronomancer";
       $("title").textContent = poll.title || "Poll " + poll.id;
-      $("meta").textContent = `${poll.duration_min} min sessions, at least ${poll.min_quorum} ${Theme.t(poll.min_quorum === 1 ? "freeOne" : "freeMany")}. Status: ${poll.status}.`;
+      $("meta").textContent = `${poll.duration_min} min sessions. Status: ${poll.status}.`;
       $("back").href = "/campaign.html?id=" + poll.campaign_id;
       const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
       $("tz").textContent = here;
@@ -124,6 +138,7 @@
       document.querySelector(".legend").hidden = !collecting;
       grid = AvailabilityGrid($("grid"), poll, () => { $("save-msg").textContent = ""; });
       $("vote-panel").hidden = !poll.candidates.length;
+      renderBestSoFar();
       renderCandidates();
       renderMembers();
       const organizer = poll.my_role === "organizer";
@@ -150,6 +165,24 @@
       $("load-error").textContent = "";
       render(false);
     }
+
+    // While people are marking times, pick up their answers every 30 seconds. Only the other
+    // people's marks are redrawn: what you have painted but not saved is left alone.
+    async function refreshConsensus() {
+      if (!poll || !grid || poll.status !== "collecting" || document.hidden) return;
+      let fresh;
+      try { fresh = await Api.get("/api/polls/" + encodeURIComponent(id)); }
+      catch (e) { return; }
+      if (fresh.status !== "collecting") { poll = fresh; render(false); return; }
+      poll.best_so_far = fresh.best_so_far;
+      poll.members = fresh.members;
+      poll.party_size = fresh.party_size;
+      grid.setConsensus(fresh);
+      renderBestSoFar();
+      renderMembers();
+    }
+    setInterval(refreshConsensus, 30000);
+    document.addEventListener("visibilitychange", refreshConsensus);
 
     async function act(fn) {
       $("action-error").textContent = "";

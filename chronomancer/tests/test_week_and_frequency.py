@@ -66,25 +66,25 @@ def test_add_cadence(cadence, start, expected):
 def test_update_campaign_changes_only_what_is_given(db):
     campaign, _ = make_campaign(db)
     services.update_campaign(db, campaign, cadence="monthly")
-    assert (campaign.cadence, campaign.min_quorum, campaign.default_duration_min) == ("monthly", 2, 180)
-    services.update_campaign(db, campaign, min_quorum=1, name="  Renamed  ")
-    assert (campaign.cadence, campaign.min_quorum, campaign.name) == ("monthly", 1, "Renamed")
+    assert (campaign.cadence, campaign.default_duration_min) == ("monthly", 180)
+    services.update_campaign(db, campaign, default_duration_min=60, name="  Renamed  ")
+    assert (campaign.cadence, campaign.default_duration_min, campaign.name) == ("monthly", 60, "Renamed")
 
 
 @pytest.mark.parametrize("bad", [
-    dict(cadence="hourly"), dict(min_quorum=0), dict(min_quorum=51), dict(default_duration_min=14),
+    dict(cadence="hourly"), dict(default_duration_min=14),
     dict(name=" "), dict(name="x" * 121),
     dict(reminder_offsets_min=[0]), dict(reminder_offsets_min=[1] * 6),
     dict(reminder_offsets_min=[60 * 24 * 31]),
 ])
 def test_one_bad_setting_rejects_the_whole_update(db, bad):
     campaign, _ = make_campaign(db)
-    before = (campaign.name, campaign.cadence, campaign.min_quorum)
-    valid_change = {"cadence": "weekly"} if "cadence" not in bad else {"min_quorum": 1}
+    before = (campaign.name, campaign.cadence, campaign.default_duration_min)
+    valid_change = {"cadence": "weekly"} if "cadence" not in bad else {"default_duration_min": 60}
     with pytest.raises(ServiceError) as exc:
         services.update_campaign(db, campaign, **valid_change, **bad)  # a good value plus a bad one
     assert exc.value.status == 422
-    assert (campaign.name, campaign.cadence, campaign.min_quorum) == before
+    assert (campaign.name, campaign.cadence, campaign.default_duration_min) == before
 
 
 def test_create_campaign_validates_before_writing(db):
@@ -102,16 +102,17 @@ def test_patch_endpoint_changes_any_subset(client):
     r = client.patch(f"/api/campaigns/{camp['id']}", json={"cadence": "weekly", "reminder_offsets_min": [30, 2880]})
     body = r.json()
     assert r.status_code == 200 and body["cadence"] == "weekly"
-    assert body["reminder_offsets_min"] == [2880, 30] and body["min_quorum"] == 2  # untouched
-    r = client.patch(f"/api/campaigns/{camp['id']}", json={"min_quorum": 1, "default_duration_min": 90})
-    assert (r.json()["min_quorum"], r.json()["default_duration_min"], r.json()["cadence"]) == (1, 90, "weekly")
+    assert body["reminder_offsets_min"] == [2880, 30] and body["default_duration_min"] == 180  # untouched
+    assert "min_quorum" not in body
+    r = client.patch(f"/api/campaigns/{camp['id']}", json={"default_duration_min": 90})
+    assert (r.json()["default_duration_min"], r.json()["cadence"]) == (90, "weekly")
 
 
 def test_patch_endpoint_validation_and_permissions(client):
     login(client, "1", "DM")
     camp = client.post("/api/campaigns", json={"name": "x"}).json()
     url = f"/api/campaigns/{camp['id']}"
-    for bad in ({"cadence": "daily"}, {"min_quorum": 0},
+    for bad in ({"cadence": "daily"},
                 {"reminder_offsets_min": [0]}, {"reminder_offsets_min": [1] * 6}, {"theme": "klingon"},
                 {"default_duration_min": 5}):
         assert client.patch(url, json=bad).status_code == 422, bad
@@ -155,13 +156,13 @@ def test_exactly_the_six_documented_commands_are_registered():
     assert set(sub) == {"setup", "poll", "advance", "cancel", "unlink"}
 
     setup = {p.name: p for p in sub["setup"].parameters}
-    assert set(setup) == {"name", "code", "frequency", "quorum", "length", "reminders", "theme", "events"}
+    assert set(setup) == {"name", "code", "frequency", "length", "reminders", "theme", "events"}
     assert not any(p.required for p in setup.values())  # every option is optional
     assert {c.value for c in setup["frequency"].choices} == {
         "none", "weekly", "biweekly", "monthly", "annually"}
 
     poll = {p.name: p for p in sub["poll"].parameters}
-    assert set(poll) == {"week_start", "start", "end", "title"}  # length/quorum/timezone live in setup
+    assert set(poll) == {"week_start", "start", "end", "title"}  # length/timezone live in setup
     assert not poll["week_start"].required
 
 # ------------------------------------------------ timezones: stored in UTC, shown in the viewer's zone

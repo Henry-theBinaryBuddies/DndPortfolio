@@ -34,7 +34,7 @@ def decided(db, campaign, start, *, duration=180, tz="America/Los_Angeles", recu
         campaign_id=campaign.id, title="Saturday game", timezone=tz,
         date_start=start.date(), date_end=start.date() + timedelta(days=6),
         window_start=time(10), window_end=time(15), slot_minutes=30, duration_min=duration,
-        min_quorum=1, vote_top_n=3, status="confirmed",
+        vote_top_n=3, status="confirmed",
         confirmed_start_utc=start.astimezone(UTC), recurred_from=recurred_from)
     db.add(poll)
     db.commit()
@@ -187,9 +187,9 @@ def test_the_new_session_copies_the_old_ones_shape(db):
     first = decided(db, campaign, local(2026, 10, 17, 11), duration=150)
     services.roll_recurrences(db, now=local(2026, 10, 17, 15).astimezone(UTC))
     nxt = all_polls(db)[-1]
-    assert (nxt.title, nxt.timezone, nxt.duration_min, nxt.window_start, nxt.window_end, nxt.min_quorum,
+    assert (nxt.title, nxt.timezone, nxt.duration_min, nxt.window_start, nxt.window_end,
             nxt.slot_minutes) == (first.title, first.timezone, 150, first.window_start, first.window_end,
-                                  first.min_quorum, first.slot_minutes)
+                                  first.slot_minutes)
     assert nxt.anchor_day == 17 and nxt.date_start == date(2026, 10, 24)
 
 
@@ -353,7 +353,7 @@ def test_saving_the_same_frequency_changes_nothing(db):
     decided(db, campaign, local(2030, 3, 2, 11))
     services.roll_recurrences(db, now=local(2030, 3, 2, 15).astimezone(UTC))
     before = [(p.id, p.status) for p in all_polls(db)]
-    services.update_campaign(db, campaign, cadence="weekly", min_quorum=1)
+    services.update_campaign(db, campaign, cadence="weekly")
     assert [(p.id, p.status) for p in all_polls(db)] == before
 
 

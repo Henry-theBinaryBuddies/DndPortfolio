@@ -14,9 +14,6 @@
   "member": "Member",
   "membersCap": "Members",
   "membersLower": "members",
-  "minFreeLabel": "Minimum free members",
-  "freeOne": "free member",
-  "freeMany": "free members",
   "hoursChosenBy": "The group manager chose these hours in",
   "cancelPollConfirm": "Cancel this poll? Members will no longer be able to respond.",
   "party": "Group",
@@ -94,5 +91,6 @@
   "botRescheduleBody": "More than half the group cannot make **{title}**{when}, so it is cancelled. Mark when you are free for the coming week: {url}",
   "events": "Create a Discord event for each session",
   "no": "Not available",
+  "consensusHint": "The number in each box is how many of the group are free or maybe, and it updates as people answer. Hover over a box to see who. Boxes that have already begun are greyed out.",
   "gridHint": "Click (or tap) a box once for available, twice for maybe, three times for not available. One more click clears it. Click a day or a time to fill a whole column or row."
 }

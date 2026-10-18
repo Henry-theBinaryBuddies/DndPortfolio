@@ -56,7 +56,7 @@ def test_the_home_page_themes_the_member_badge_and_follows_theme_switches():
 
 
 def test_the_pages_no_longer_hard_code_players():
-    assert 'data-t="minFreeLabel"' in PAGES["campaign.html"] and 'data-t="membersCap"' in PAGES["campaign.html"]
+    assert 'data-t="membersCap"' in PAGES["campaign.html"]
     assert not re.search(r"free player", PAGES["poll.html"])
     assert "Players will no longer" not in PAGES["poll.html"] and 'Theme.t("cancelPollConfirm")' in PAGES["poll.html"]
     assert 'Theme.t("hoursChosenBy")' in PAGES["poll.html"] and "poll.timezone === here" in PAGES["poll.html"]
@@ -122,5 +122,5 @@ def test_the_server_refuses_non_managers_in_neutral_words(client):
 
 def test_slash_command_text_uses_neutral_wording():
     source = (WEB.parent / "app" / "bot" / "commands.py").read_text(encoding="utf-8")
-    assert "Minimum people who must be free" in source and "the group's manager" in source
+    assert "the group's manager" in source and "quorum" not in source
     assert "Dungeon Master" not in source

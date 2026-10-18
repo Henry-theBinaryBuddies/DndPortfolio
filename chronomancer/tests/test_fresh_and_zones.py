@@ -111,4 +111,4 @@ def test_the_poll_page_asks_for_a_new_grid_script_so_old_cached_copies_are_not_r
     """Browsers that cached grid.js before it was served no-cache never re-ask for it. A new URL
     forces one fetch. Bump the number whenever grid.js changes in a way old copies must not keep."""
     page = (ROOT / "web" / "poll.html").read_text(encoding="utf-8")
-    assert '<script src="/js/grid.js?v=2"></script>' in page
+    assert '<script src="/js/grid.js?v=3"></script>' in page

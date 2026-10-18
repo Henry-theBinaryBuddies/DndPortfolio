@@ -63,11 +63,7 @@ def error_text(exc: ServiceError) -> str:
     d = exc.detail
     if not isinstance(d, dict):
         return str(d)
-    extra = ""
-    if "considered" in d:
-        extra = (f" ({d['considered']} start times considered; {d.get('dropped_required', 0)} "
-                 f"lost a required person, {d.get('dropped_quorum', 0)} had too few free people)")
-    return str(d.get("message", "request failed")) + extra
+    return str(d.get("message", "request failed"))
 
 
 # ---------------------------------------------------------------- helpers
@@ -158,7 +154,7 @@ def settings_summary(campaign) -> str:
     w = wording.words(campaign.theme)
     return (f"{w.get('freq_' + campaign.cadence, campaign.cadence)} · "
             f"{describe_minutes(campaign.default_duration_min)} · "
-            f"at least {campaign.min_quorum} free · reminders: "
+            f"reminders: "
             + (", ".join(describe_minutes(m) for m in campaign.reminder_offsets_min) + " before"
                if campaign.reminder_offsets_min else "off")
             + f" · Discord events: {'on' if campaign.events_enabled else 'off'}")
@@ -219,12 +215,12 @@ def cmd_schedule(db: Session, du: DUser, guild_id, channel_id, events_ok: bool =
 
 
 def cmd_setup(db: Session, du: DUser, guild_id, channel_id, *, name=None, code=None,
-              frequency=None, quorum=None, length=None, reminders=None,
+              frequency=None, length=None, reminders=None,
               theme=None, events=None, events_ok=True) -> Reply:
     """Create the campaign for this channel, or change its settings if it already exists.
     With `code`, bind a campaign made on the website instead of creating a new one."""
     _in_channel(guild_id, channel_id)
-    changes = {"cadence": frequency, "min_quorum": quorum, "default_duration_min": length,
+    changes = {"cadence": frequency, "default_duration_min": length,
                "theme": theme, "events_enabled": events,
                "reminder_offsets_min": parse_offsets(reminders) if reminders is not None else None}
     changes = {k: v for k, v in changes.items() if v is not None}

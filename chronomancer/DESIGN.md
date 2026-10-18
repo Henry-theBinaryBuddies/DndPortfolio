@@ -57,9 +57,9 @@ chronomancer/
 ## Data model
 All times are stored in UTC; a poll also remembers the organizer's timezone so recurrence keeps wall-clock time. SQLite does not enforce foreign keys here, so the code deletes children explicitly.
 - **users**: discord_id (unique), display_name, avatar_url, timezone.
-- **campaigns** (a group): name, owner_id, guild_id and channel_id (unique together; null for a web-only group until linked in Discord), invite_code, cadence (none / weekly / biweekly / monthly / annually), default_duration_min, min_quorum, vote_top_n, reminder_offsets_min (JSON, default 1 day and 1 hour), theme, events_enabled, series_event_id / series_event_sig / events_guild_id (the one repeating Discord event and where it lives).
+- **campaigns** (a group): name, owner_id, guild_id and channel_id (unique together; null for a web-only group until linked in Discord), invite_code, cadence (none / weekly / biweekly / monthly / annually), default_duration_min, vote_top_n, reminder_offsets_min (JSON, default 1 day and 1 hour), theme, events_enabled, series_event_id / series_event_sig / events_guild_id (the one repeating Discord event and where it lives).
 - **members**: campaign_id, user_id, role (organizer / player), required, left_at (set when the person leaves the Discord server).
-- **polls** (one session): campaign_id, title, timezone, date_start and date_end (always a seven-day week), window_start and window_end (daily hours; an end of 00:00 means midnight), slot_minutes, duration_min, min_quorum, vote_top_n, status (collecting / voting / confirmed / cancelled), vote_deadline, confirmed_start_utc, and the recurrence links recurrence_handled, recurred_from, anchor_day, rescheduled_from, plus discord_event_id for one-off groups.
+- **polls** (one session): campaign_id, title, timezone, date_start and date_end (always a seven-day week), window_start and window_end (daily hours; an end of 00:00 means midnight), slot_minutes, duration_min, vote_top_n, status (collecting / voting / confirmed / cancelled), vote_deadline, confirmed_start_utc, and the recurrence links recurrence_handled, recurred_from, anchor_day, rescheduled_from, plus discord_event_id for one-off groups.
 - **availability**: poll_id, user_id, slot_start_utc, level (free / maybe / no). Unmarked means no answer; `no` counts as answered but unavailable. Dropped 14 days after a session is decided or called off.
 - **candidates**: the ranked times of a poll (start_utc, score, free_count, maybe_count, rank). **votes**: one per person per poll, changeable until the session is confirmed.
 - **reminders**: one row per reminder offset of a confirmed session (send_at, sent_at, retry state). **attendance**: a member's "in" or "out" answer to a reminder.
@@ -67,12 +67,13 @@ All times are stored in UTC; a poll also remembers the organizer's timezone so r
 - **web_sessions**: the server side of a login (the cookie holds only a random id).
 
 ## Ranking (`scheduling.py`)
-Input: availability for a poll, the members, the duration and the quorum. Output: the best start times.
+Input: availability for a poll, the members, the duration and the current time. Output: the best start times.
 1. Every start from which a session of `duration_min` fits entirely inside the offered slots is a candidate.
 2. A person is **free** for a candidate if every slot of it is marked free, **maybe** if every slot is free or maybe with at least one maybe, and unavailable otherwise (a gap, an unmarked slot, or a red one).
-3. A candidate is dropped if any **required** person is unavailable, or if fewer than `min_quorum` people are free.
+3. A candidate that has already begun is skipped. A candidate is dropped if any **required** person is unavailable (nobody is required by default, including the organizer; the organizer ticks Required per person), or if nobody at all can attend. There is no minimum number of people: the best times are always offered, as "N of M free".
 4. Score is `free * 2 + maybe`. Sort by score, highest first, then earliest start; keep the top `vote_top_n` (default 3, at most 5).
-5. If nothing qualifies, the organizer is told why (how many times were considered, how many lost a required person, how many had too few free people) so they can wait for more answers.
+5. If nothing qualifies, `services.no_time_message` tells the organizer the actual reason and what to do: every time has passed; nobody has answered; a named required person is never free for a whole session; or nobody is free for a whole session (then `scheduling.best_overlap` reports the biggest group that is free together, and for how long, so they can shorten the session). The poll stays open.
+6. The grid is also the consensus view (like When2Meet): the poll JSON carries `slot_people` (the other members' marks per slot; the viewer's own are added live by the page), `party_size` and `best_so_far`. Departed members are not counted. The poll page re-fetches every 30 seconds while collecting and redraws only the others' marks, so unsaved painting is kept. `web/privacy.html` states that members can see each other's marks.
 
 ## Discord flows
 - **Login:** OAuth2 authorization-code flow, `identify` scope only, a checked single-use `state`, and a signed, HttpOnly, SameSite cookie that holds only a random session id.
@@ -104,7 +105,7 @@ The notes below describe how each part really behaves, including the reasons, an
 - **OAuth**: `identify` scope only; random per-attempt `state` checked in constant time and single-use; session reset on login; `next` limited to same-site paths (server and client side); the Discord access token is used once and never stored. Bad or expired attempts return to the login page with a message.
 - **Supervision**: the bot runs under a supervisor that retries failed starts with backoff; a rejected token stops cleanly with a message while the website keeps running. A failed command sync does not stop the bot.
 - **Background loop** also auto-confirms polls whose vote deadline has passed, independent of the bot.
-- **One week per poll:** a poll takes a single start date and always covers that day plus the next six (the service derives the end date; clients cannot ask for a range). `/chronomancer poll` takes `week_start` (blank means the week suggested by the campaign's frequency) and an optional `quorum`, because the campaign default of 2 players blocks a one-person test.
+- **One week per poll:** a poll takes a single start date and always covers that day plus the next six (the service derives the end date; clients cannot ask for a range). `/chronomancer poll` takes `week_start` (blank means the week suggested by the campaign's frequency).
 - **Meeting frequency** (`one-off, weekly, biweekly, monthly, annually`) is set on `/chronomancer setup` or the campaign page's Settings panel and drives automatic recurrence (next section). These are exactly what Discord can repeat an event at, so the app and the Discord event always agree: monthly means the same Nth weekday (the 4th Saturday stays the 4th Saturday; a 5th weekday counts as the 4th), annual keeps the date. Quarterly was removed (migration `0008` turns existing quarterly groups into one-off).
 - **Reminders:**
   - Confirming a session creates one `reminders` row per offset in the campaign's `reminder_offsets_min` (default 1 day and 1 hour before; set with `/chronomancer setup reminders:1d, 1h` or the Settings panel; both go through `PATCH /api/campaigns/{id}`; up to five, 1 minute to 30 days). Offsets already in the past are skipped rather than sent late.

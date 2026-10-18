@@ -35,7 +35,7 @@ def called_off(db, campaign, n):
 def open_poll_row(db, campaign):
     poll = Poll(campaign_id=campaign.id, title="x", timezone="UTC", date_start=date(2030, 1, 1),
                 date_end=date(2030, 1, 7), window_start=time(10), window_end=time(15), slot_minutes=30,
-                duration_min=60, min_quorum=1, vote_top_n=3, status="collecting")
+                duration_min=60, vote_top_n=3, status="collecting")
     db.add(poll)
     db.commit()
     return poll
@@ -248,7 +248,7 @@ def test_the_delete_only_touches_polls_that_are_still_finished(db):
 
 def test_a_closed_poll_does_not_report_who_answered(client):
     login(client, "1", "DM")
-    cid = client.post("/api/campaigns", json={"name": "x", "min_quorum": 1}).json()["id"]
+    cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     poll = client.post(f"/api/campaigns/{cid}/polls", json={
         "date_start": "2030-03-01", "window_start": "10:00:00", "window_end": "14:00:00", "duration_min": 60}).json()
     marks = [{"start": s, "level": "free"} for s in poll["slots"][:4]]
