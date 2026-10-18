@@ -5,7 +5,14 @@ Made some ambitious choices with this one.
 I had no experience with Python, the discord api,
 hosting a bot, or building something at this scale where live testing required
 hosting local servers. In addition, this was my first time using a fully
-agentic workflow, using Claude, using Claude code, and prompt engineering.
+agentic workflow, using Claude code, and engineering via prompts.
+
+The first day was really frustrating, as the coding agent worked faster than I could possibly
+review everything. I left the AI on manual approval mode so I could watch everything it was doing
+but after about two hours of it asking me if it could run a change directory command, I finally pushed it to auto
+for expedience. The second day I spent having the AI explain the architectural choices and codebase to me, and once
+I finally had a good grasp of it I was able to effectively prompt changes I wanted.
+
 Ended up resulting in an application I'm happy with given the time constraints.
 It will require further tuning as I get more experience with it to find bugs
-and pain points.
+and pain points, but so far it is working as expected.

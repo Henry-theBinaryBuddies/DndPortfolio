@@ -751,6 +751,14 @@ def declined_count(db: Session, poll: Poll) -> tuple:
     return sum(1 for uid in out if uid in ids), len(ids)
 
 
+def declined_names(db: Session, poll: Poll) -> list:
+    """Display names of the active members who said they cannot make it, in the order they
+    joined, so the group can be told who is not coming."""
+    out = set(db.scalars(select(Attendance.user_id).where(
+        Attendance.poll_id == poll.id, Attendance.answer == "out")).all())
+    return [m.user.display_name for m in active_members(db, poll.campaign_id) if m.user_id in out]
+
+
 def record_attendance(db: Session, poll: Poll, user: User, answer: str) -> RsvpResult:
     """A member answers the reminder: 'in' or 'out'. They may change their mind until the
     session starts. When more than half of the active members cannot make it, the session is
