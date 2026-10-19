@@ -13,7 +13,7 @@ body {
 }
 
 .page {
-  max-width: 64rem;
+  max-width: 80rem;
   margin: 2rem auto;
   padding: 1.5rem;
   background: var(--paper);
@@ -34,9 +34,132 @@ h2 {
 
 .layout {
   display: grid;
-  grid-template-columns: 17rem 1fr;
+  grid-template-columns: 14rem 16rem minmax(0, 1fr);
+  grid-template-areas: "filters results detail";
   gap: 1.5rem;
   align-items: start;
+}
+
+.filters-area {
+  grid-area: filters;
+}
+
+.results-area {
+  grid-area: results;
+}
+
+.detail-area {
+  grid-area: detail;
+}
+
+.filter-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.search-box {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #c9b88f;
+  border-radius: 4px;
+  background: #fffaf0;
+  font: inherit;
+}
+
+.filter-group {
+  border-bottom: 1px solid #d8c9a8;
+  padding: 0.3rem 0;
+}
+
+.filter-group summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.filter-count {
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--paper);
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+
+.filter-options {
+  list-style: none;
+  margin: 0.3rem 0 0.2rem;
+  padding: 0;
+}
+
+.filter-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.cr-range {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.4rem 0;
+}
+
+.cr-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.cr-select select,
+.sort-controls select {
+  padding: 0.2rem;
+  border: 1px solid #c9b88f;
+  border-radius: 4px;
+  background: #fffaf0;
+  font: inherit;
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:disabled {
+  color: var(--muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+.result-count {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: normal;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .monster-list {
@@ -95,7 +218,17 @@ h2 {
   font-weight: bold;
 }
 
-/* Phone width: stack the list above the stat block. */
+/* Medium screens: filters and results stack on the left, stat block on the right. */
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: 16rem minmax(0, 1fr);
+    grid-template-areas:
+      "filters detail"
+      "results detail";
+  }
+}
+
+/* Phone width: everything stacks. */
 @media (max-width: 700px) {
   .page {
     margin: 0;
@@ -103,7 +236,11 @@ h2 {
   }
 
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "filters"
+      "results"
+      "detail";
   }
 }
 

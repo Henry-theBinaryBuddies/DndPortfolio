@@ -33,7 +33,7 @@ Let a DM filter a large library of original or openly licensed monsters, build e
 | ID | Requirement | Priority |
 |---|---|---|
 | F-1 | Browse and search a library of monsters loaded from static JSON. | Must |
-| F-2 | Filter by creature type (2014 types), CR (single value or range), size, environment, role, damage theme, features, and flavor theme. Filters combine with AND; multi-value filters use OR within the filter. | Must |
+| F-2 | Filter by creature type (2014 types), CR (single value or range), size, environment, role, damage theme, features, and flavor theme. Filters combine with AND; multi-value filters use OR within the filter, except features, which use AND (a monster must have every picked feature). | Must |
 | F-3 | Sort results by name, CR, and type. | Should |
 | F-4 | Show a source badge on each monster (SRD, curated, AI, reskin) and a validated/unvalidated badge. | Must |
 | F-5 | Library target: **1,000+ monsters** at launch. | Should |
