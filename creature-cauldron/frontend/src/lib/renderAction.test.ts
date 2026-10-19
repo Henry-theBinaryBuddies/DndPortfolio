@@ -53,7 +53,21 @@ describe("renderAction: attacks", () => {
   });
 });
 
+describe("renderAction: spell attacks", () => {
+  it("shows a single range when normal and long ranges match", () => {
+    expect(text(byName("Voidbloom Seer"), "Mind Lash")).toBe(
+      "Ranged Spell Attack: +8 to hit, range 60 ft., one creature. Hit: 18 (3d8 + 5) psychic damage.",
+    );
+  });
+});
+
 describe("renderAction: saves", () => {
+  it("renders a save with no damage as the effect text only", () => {
+    expect(text(byName("Dustmote Sprite"), "Blinding Dust")).toBe(
+      "The target must make a DC 12 Constitution saving throw. On a failed save, the target is blinded until the end of its next turn.",
+    );
+  });
+
   it("renders a cone with half damage on a success", () => {
     expect(text(byName("Gravewick Stalker"), "Lantern Glare")).toBe(
       "Each creature in a 15-foot cone must make a DC 11 Wisdom saving throw, taking 10 (3d6) necrotic damage on a failed save, or half as much damage on a successful one.",
@@ -114,6 +128,20 @@ describe("sample monster data", () => {
     const { count, bonus } = parseDice(m.hit_points.dice);
     expect(bonus).toBe(count * abilityModifier(m.abilities.con));
     expect(m.hit_points.average).toBe(averageDice(m.hit_points.dice));
+  });
+
+  it("gives every monster a unique id", () => {
+    expect(new Set(monsters.map((m) => m.id)).size).toBe(monsters.length);
+  });
+
+  it.each(monsters.map((m) => [m.name, m] as const))("%s has the XP and proficiency bonus for its CR", (_name, m) => {
+    const xpByCr: Record<string, number> = {
+      "0": 10, "1/8": 25, "1/4": 50, "1/2": 100, "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800,
+      "6": 2300, "7": 2900, "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400,
+    };
+    const proficiency = m.challenge.cr_value <= 4 ? 2 : m.challenge.cr_value <= 8 ? 3 : 4;
+    expect(m.challenge.xp).toBe(xpByCr[m.challenge.cr]);
+    expect(m.challenge.proficiency_bonus).toBe(proficiency);
   });
 
   it.each(monsters.map((m) => [m.name, m] as const))("%s attack bonuses equal proficiency plus ability modifier", (_name, m) => {

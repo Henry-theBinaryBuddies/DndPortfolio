@@ -69,7 +69,10 @@ function renderAttack(action: AttackAction): Segment[] {
   const sign = to_hit >= 0 ? "+" : "-";
   const distances: string[] = [];
   if (reach !== undefined) distances.push(`reach ${reach} ft.`);
-  if (range) distances.push(`range ${range.normal}/${range.long} ft.`);
+  if (range) {
+    // Spells have one range ("range 60 ft."); thrown and ammunition weapons have two.
+    distances.push(range.normal === range.long ? `range ${range.normal} ft.` : `range ${range.normal}/${range.long} ft.`);
+  }
 
   const lead = ` ${sign}${Math.abs(to_hit)} to hit, ${distances.join(" or ")}, ${targets}. `;
   return [
