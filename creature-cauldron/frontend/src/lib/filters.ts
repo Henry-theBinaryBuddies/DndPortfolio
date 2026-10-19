@@ -55,11 +55,22 @@ function matchesAll<T>(picked: readonly T[], tags: readonly T[]): boolean {
   return picked.every((p) => tags.includes(p));
 }
 
-/** All active filters must pass (AND between groups). Features use AND inside their group; the rest use OR. */
-export function matchesFilters(monster: Monster, filters: FilterState): boolean {
+/** A band of monster XP: `min` is inclusive, `max` is exclusive, and null means no upper limit. */
+export interface XpRange {
+  min: number;
+  max: number | null;
+}
+
+/**
+ * All active filters must pass (AND between groups). Features use AND inside their group; the rest use OR.
+ * `xpRange` is optional and comes from the party's difficulty pick rather than from FilterState.
+ */
+export function matchesFilters(monster: Monster, filters: FilterState, xpRange: XpRange | null = null): boolean {
   const search = filters.search.trim().toLowerCase();
   const cr = monster.challenge.cr_value;
+  const xp = monster.challenge.xp;
   return (
+    (xpRange === null || (xp >= xpRange.min && (xpRange.max === null || xp < xpRange.max))) &&
     (search === "" || monster.name.toLowerCase().includes(search)) &&
     matchesOne(filters.types, monster.type) &&
     matchesOne(filters.sizes, monster.size) &&
@@ -73,8 +84,8 @@ export function matchesFilters(monster: Monster, filters: FilterState): boolean 
   );
 }
 
-export function filterMonsters(monsters: Monster[], filters: FilterState): Monster[] {
-  return monsters.filter((m) => matchesFilters(m, filters));
+export function filterMonsters(monsters: Monster[], filters: FilterState, xpRange: XpRange | null = null): Monster[] {
+  return monsters.filter((m) => matchesFilters(m, filters, xpRange));
 }
 
 /** How many groups are narrowing the list (the search box and CR range each count once). */
