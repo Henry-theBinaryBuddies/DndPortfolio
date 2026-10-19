@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import FilterPanel from "./components/FilterPanel";
+import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
 import StatBlock from "./components/StatBlock";
 import {
@@ -12,6 +13,9 @@ import {
   type SortKey,
 } from "./lib/filters";
 import { loadMonsters } from "./lib/loadMonsters";
+import { soloBand, type Difficulty } from "./lib/party";
+import { PARTY_STORAGE_KEY, parseParty } from "./lib/storage";
+import { usePersistentState } from "./lib/usePersistentState";
 import type { Monster } from "./types/monster";
 
 export default function App() {
@@ -22,6 +26,9 @@ export default function App() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The party is remembered between visits; the difficulty pick is not.
+  const [party, setParty] = usePersistentState(PARTY_STORAGE_KEY, parseParty);
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
 
   useEffect(() => {
     loadMonsters()
@@ -31,9 +38,10 @@ export default function App() {
 
   // The visible list is derived from state on every render, never stored.
   // useMemo skips the work when none of its inputs changed; it matters once the library is large.
+  const band = useMemo(() => (difficulty === null ? null : soloBand(party, difficulty)), [party, difficulty]);
   const visible = useMemo(
-    () => sortMonsters(filterMonsters(monsters, filters), sortKey, sortDirection),
-    [monsters, filters, sortKey, sortDirection],
+    () => sortMonsters(filterMonsters(monsters, filters, band), sortKey, sortDirection),
+    [monsters, filters, band, sortKey, sortDirection],
   );
 
   // Show the picked monster if it is still in the results, otherwise the first result.
@@ -50,6 +58,13 @@ export default function App() {
 
       <div className="layout">
         <div className="filters-area no-print">
+          <PartyPanel
+            party={party}
+            difficulty={difficulty}
+            band={band}
+            onPartyChange={setParty}
+            onDifficultyChange={setDifficulty}
+          />
           <FilterPanel
             filters={filters}
             activeCount={countActiveFilters(filters)}
