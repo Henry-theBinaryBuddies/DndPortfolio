@@ -1,77 +1,24 @@
+import type {
+  CreatureType,
+  DamageTheme,
+  DamageType,
+  Environment,
+  Feature,
+  FlavorTheme,
+  Role,
+  Size,
+} from "../lib/options";
+
+// The option lists live in lib/options.ts; re-exported so the schema reads in one place.
+export type { CreatureType, DamageTheme, DamageType, Environment, Feature, FlavorTheme, Role, Size };
+
 // Monster schema (2014 rules). Mirrors the design in docs/REQUIREMENTS.md.
 // Once the Python back end exists these types will be generated from its
 // OpenAPI spec; until then they are the source of truth.
 
-export type Size = "tiny" | "small" | "medium" | "large" | "huge" | "gargantuan";
-
-export type CreatureType =
-  | "aberration"
-  | "beast"
-  | "celestial"
-  | "construct"
-  | "dragon"
-  | "elemental"
-  | "fey"
-  | "fiend"
-  | "giant"
-  | "humanoid"
-  | "monstrosity"
-  | "ooze"
-  | "plant"
-  | "undead";
-
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
-export type DamageType =
-  | "acid"
-  | "bludgeoning"
-  | "cold"
-  | "fire"
-  | "force"
-  | "lightning"
-  | "necrotic"
-  | "piercing"
-  | "poison"
-  | "psychic"
-  | "radiant"
-  | "slashing"
-  | "thunder";
-
 export type Source = "srd" | "curated" | "ai" | "reskin";
-
-export type Role =
-  | "brute"
-  | "skirmisher"
-  | "controller"
-  | "artillery"
-  | "lurker"
-  | "leader"
-  | "solo";
-
-export type Environment =
-  | "arctic"
-  | "coast"
-  | "desert"
-  | "forest"
-  | "grassland"
-  | "hill"
-  | "mountain"
-  | "swamp"
-  | "underdark"
-  | "underwater"
-  | "urban"
-  | "dungeon"
-  | "planar";
-
-/** Derived by code from the stat block, never trusted from the AI. */
-export type Feature =
-  | "flying"
-  | "swimming"
-  | "multiattack"
-  | "breath-weapon"
-  | "legendary"
-  | "spellcasting"
-  | "regeneration";
 
 export interface DamageRoll {
   dice: string; // e.g. "2d6"
@@ -188,8 +135,8 @@ export interface Monster {
   // discovery tags
   environments: Environment[];
   role: Role;
-  damage_themes: DamageType[];
-  flavor_themes: string[];
+  damage_themes: DamageTheme[];
+  flavor_themes: FlavorTheme[];
   features: Feature[];
 
   // presentation
