@@ -58,7 +58,7 @@ that the forge cannot be reached. Never commit a key; `.env` files are git-ignor
 | `CAULDRON_CACHE_PER_MINUTE` | 30 | Requests per address answered from the cache |
 | `CAULDRON_MAX_RETRIES` | 2 | Extra attempts after a monster fails the checks |
 | `CAULDRON_MAX_CR` | 17 | Highest challenge rating that may be generated |
-| `CAULDRON_ALLOWED_ORIGINS` | http://localhost:5199 | Exact web page addresses allowed by CORS, comma separated |
+| `CAULDRON_ALLOWED_ORIGINS` | http://localhost:5199, http://localhost:5173 | Exact web page addresses allowed by CORS, comma separated |
 | `CAULDRON_TRUSTED_PROXY_HEADER` | none | For example `CF-Connecting-IP` behind a tunnel; ignored unless set |
 | `CAULDRON_DATABASE` | backend/data/cauldron.sqlite3 | The SQLite file |
 | `CAULDRON_MODEL` | claude-haiku-5-5 | The model |

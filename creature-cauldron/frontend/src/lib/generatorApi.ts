@@ -52,6 +52,8 @@ export interface Generator {
 }
 
 export const OFFLINE_MESSAGE = "Generator offline: the library still works.";
+/** A server address IS configured but it did not answer: a different situation from having no server at all. */
+export const UNREACHABLE_MESSAGE = "Can't reach the generator server just now. The library still works.";
 export const RESTING_MESSAGE = "The forge is resting, back tomorrow. The library still works.";
 
 /** The generator used when no server exists. It never makes a network call. */
@@ -65,7 +67,7 @@ export const offlineGenerator: Generator = {
 export function failureMessage(reason: GeneratorFailure, message: string): string {
   switch (reason) {
     case "offline":
-      return OFFLINE_MESSAGE;
+      return message || OFFLINE_MESSAGE;
     case "resting":
       return RESTING_MESSAGE;
     case "rate-limited":

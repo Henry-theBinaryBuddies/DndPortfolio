@@ -1,7 +1,7 @@
 import type { Monster } from "../types/monster";
 import { looksLikeMonster } from "./generatedStore";
 import {
-  OFFLINE_MESSAGE,
+  UNREACHABLE_MESSAGE,
   type ForgeStatus,
   type GenerateRequest,
   type Generator,
@@ -87,8 +87,9 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
         options,
       );
     } catch {
-      // The page could not reach the server at all, or it took too long: the same "offline" state as having no server.
-      return failure("offline", OFFLINE_MESSAGE);
+      // The page could not reach the server at all, or it took too long. The reason is still "offline", but the message says
+      // that a server is configured and is not answering, so it is not mistaken for a page with no server.
+      return failure("offline", UNREACHABLE_MESSAGE);
     }
     let data: unknown = null;
     try {

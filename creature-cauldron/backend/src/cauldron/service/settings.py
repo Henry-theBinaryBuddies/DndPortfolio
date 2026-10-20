@@ -35,7 +35,8 @@ def _integer(env: Mapping[str, str], name: str, default: int, low: int, high: in
 def _origins(env: Mapping[str, str]) -> tuple[str, ...]:
     raw = env.get("CAULDRON_ALLOWED_ORIGINS")
     if raw is None:
-        return ("http://localhost:5199",)
+        # The two local development addresses: this project's pinned port and Vite's own default.
+        return ("http://localhost:5199", "http://localhost:5173")
     origins = tuple(part.strip() for part in raw.split(",") if part.strip())
     if not origins:
         raise SettingsError("CAULDRON_ALLOWED_ORIGINS needs at least one origin")

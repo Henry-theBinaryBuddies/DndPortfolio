@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import sample from "../../public/data/sample-monsters.json";
 import type { Monster } from "../types/monster";
-import { OFFLINE_MESSAGE, type GenerateRequest, type ReskinRequest } from "./generatorApi";
+import { UNREACHABLE_MESSAGE, type GenerateRequest, type ReskinRequest } from "./generatorApi";
 import { apiUrl, createLiveGenerator, retryAfterMessage } from "./liveGenerator";
 
 const drake = (sample as unknown as Monster[]).find((m) => m.name === "Stormhide Drake")!;
@@ -133,7 +133,7 @@ describe("the live generator: generating", () => {
     const fn: typeof fetch = async () => {
       throw new TypeError("Failed to fetch");
     };
-    expect(await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST)).toEqual({ ok: false, reason: "offline", message: OFFLINE_MESSAGE });
+    expect(await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST)).toEqual({ ok: false, reason: "offline", message: UNREACHABLE_MESSAGE });
   });
 
   it("gives up and says offline when the server takes too long", async () => {

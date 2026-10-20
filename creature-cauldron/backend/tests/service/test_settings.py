@@ -14,7 +14,7 @@ def test_defaults_are_the_agreed_numbers() -> None:
     assert s.max_retries == 2
     assert s.max_cr == "17"
     assert s.trusted_proxy_header is None
-    assert s.allowed_origins == ("http://localhost:5199",)
+    assert s.allowed_origins == ("http://localhost:5199", "http://localhost:5173")
 
 
 def test_values_are_read_from_the_environment() -> None:

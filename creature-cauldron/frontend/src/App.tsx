@@ -250,6 +250,7 @@ export default function App() {
                 problem={built.problem}
                 mode={generator.mode}
                 resting={forgeStatus === "resting"}
+                unreachable={generator.mode === "live" && forgeStatus === "offline"}
                 note={libraryNote}
                 busy={generating}
                 message={generateMessage}
