@@ -1,8 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
+import EncounterPanel from "./components/EncounterPanel";
 import FilterPanel from "./components/FilterPanel";
 import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
+import SavedEncounters from "./components/SavedEncounters";
 import StatBlock from "./components/StatBlock";
+import {
+  MAX_COUNT,
+  MAX_ENTRIES,
+  addMonster,
+  canAddMonster,
+  countOf,
+  removeMonster,
+  setCount,
+  summarizeEncounter,
+} from "./lib/encounter";
 import { countAvailableFavorites, onlyFavorites } from "./lib/favorites";
 import {
   EMPTY_FILTERS,
@@ -16,7 +28,16 @@ import {
 } from "./lib/filters";
 import { loadMonsters } from "./lib/loadMonsters";
 import { soloBand, type Difficulty } from "./lib/party";
-import { FAVORITES_STORAGE_KEY, PARTY_STORAGE_KEY, parseFavorites, parseParty } from "./lib/storage";
+import {
+  ENCOUNTER_STORAGE_KEY,
+  FAVORITES_STORAGE_KEY,
+  PARTY_STORAGE_KEY,
+  SAVED_ENCOUNTERS_STORAGE_KEY,
+  parseEntries,
+  parseFavorites,
+  parseParty,
+  parseSavedEncounters,
+} from "./lib/storage";
 import { usePersistentState } from "./lib/usePersistentState";
 import type { Monster } from "./types/monster";
 
@@ -34,6 +55,14 @@ export default function App() {
   // Favorites are a remembered list of monster ids. Whether to show only favorites is a view choice, so it is not saved.
   const [favorites, setFavorites] = usePersistentState(FAVORITES_STORAGE_KEY, parseFavorites);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  // The working encounter and the saved ones are remembered too. Both hold ids and counts, plus a
+  // remembered display name that is used only if the library loses that monster. XP and ratings
+  // are worked out fresh from the library on every render.
+  const [entries, setEntries] = usePersistentState(ENCOUNTER_STORAGE_KEY, parseEntries);
+  const [savedEncounters, setSavedEncounters] = usePersistentState(
+    SAVED_ENCOUNTERS_STORAGE_KEY,
+    parseSavedEncounters,
+  );
   // monsters.length === 0 can't tell "still loading" from "loaded but empty", so track loading explicitly.
   const [libraryReady, setLibraryReady] = useState(false);
 
@@ -64,6 +93,18 @@ export default function App() {
   const selected = shown.find((m) => m.id === selectedId) ?? shown[0];
   const selectedIsFavorite = selected !== undefined && favoriteSet.has(selected.id);
 
+  // Also derived each render: the rating changes the moment the party or the rows change.
+  const summary = summarizeEncounter(entries, monsters, party);
+  const inEncounter = selected ? countOf(entries, selected.id) : 0;
+  const canAdd = selected ? canAddMonster(entries, selected.id) : false;
+  const addNote = !canAdd
+    ? inEncounter >= MAX_COUNT
+      ? `Already ${MAX_COUNT} of this monster`
+      : `Encounter is full (${MAX_ENTRIES} different monsters)`
+    : inEncounter > 0
+      ? `${inEncounter} in encounter`
+      : "";
+
   return (
     <main className="page">
       <header className="no-print">
@@ -81,6 +122,21 @@ export default function App() {
             band={band}
             onPartyChange={setParty}
             onDifficultyChange={setDifficulty}
+          />
+          <EncounterPanel
+            entries={entries}
+            summary={summary}
+            party={party}
+            libraryReady={libraryReady}
+            onCountChange={(id, count) => setEntries(setCount(entries, id, count))}
+            onRemove={(id) => setEntries(removeMonster(entries, id))}
+            onClear={() => setEntries([])}
+          />
+          <SavedEncounters
+            saved={savedEncounters}
+            entries={entries}
+            onSavedChange={setSavedEncounters}
+            onLoad={setEntries}
           />
           <FilterPanel
             filters={filters}
@@ -124,6 +180,21 @@ export default function App() {
                 >
                   <span aria-hidden="true">{selectedIsFavorite ? "★" : "☆"}</span> Favorite
                 </button>
+                {/* aria-disabled, not disabled: a button that is pressed and then disables itself would lose
+                    keyboard focus. Pressing it when full does nothing, because addMonster refuses. */}
+                <button
+                  type="button"
+                  className="action-button"
+                  aria-disabled={!canAdd}
+                  aria-describedby={addNote ? "add-note" : undefined}
+                  onClick={() => setEntries(addMonster(entries, selected))}
+                >
+                  Add to encounter
+                </button>
+                {/* Always on the page (empty when idle), so a screen reader announces changes to its text. */}
+                <span id="add-note" role="status" className="detail-note">
+                  {addNote}
+                </span>
               </div>
               <StatBlock monster={selected} />
             </>

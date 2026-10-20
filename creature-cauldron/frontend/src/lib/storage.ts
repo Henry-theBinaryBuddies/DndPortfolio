@@ -1,3 +1,12 @@
+import {
+  MAX_ENTRIES,
+  MAX_SAVED,
+  cleanName,
+  clampCount,
+  sameName,
+  type EncounterEntry,
+  type SavedEncounter,
+} from "./encounter";
 import { DEFAULT_PARTY, MAX_LEVEL, MAX_PARTY_SIZE, MIN_LEVEL, type Party } from "./party";
 
 // Anything read back from localStorage is untrusted: it may be stale, hand-edited,
@@ -6,6 +15,8 @@ import { DEFAULT_PARTY, MAX_LEVEL, MAX_PARTY_SIZE, MIN_LEVEL, type Party } from 
 
 export const PARTY_STORAGE_KEY = "creature-cauldron:party";
 export const FAVORITES_STORAGE_KEY = "creature-cauldron:favorites";
+export const ENCOUNTER_STORAGE_KEY = "creature-cauldron:encounter";
+export const SAVED_ENCOUNTERS_STORAGE_KEY = "creature-cauldron:saved-encounters";
 
 /** Loose on purpose: ids of future AI-generated monsters may look different from today's. */
 export const MAX_ID_LENGTH = 100;
@@ -67,4 +78,58 @@ export function parseFavorites(value: unknown): string[] {
     }
   }
   return [...ids];
+}
+
+/**
+ * Turns whatever was stored into encounter rows. Checks item by item, so a bad row
+ * never costs the good ones. A count must be a finite number (JSON like 1e999 gives
+ * Infinity, which typeof still calls a number), then it is rounded and clamped.
+ * Repeated monsters are merged. Never throws.
+ */
+export function parseEntries(value: unknown): EncounterEntry[] {
+  if (!Array.isArray(value)) return [];
+
+  // A Map, not a plain object: an id like "__proto__" is an ordinary Map key but misbehaves as an object key.
+  const merged = new Map<string, EncounterEntry>();
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const { monsterId, count, name } = item as Record<string, unknown>;
+    if (typeof monsterId !== "string" || monsterId.length < 1 || monsterId.length > MAX_ID_LENGTH) continue;
+    if (typeof count !== "number" || !Number.isFinite(count)) continue;
+
+    const existing = merged.get(monsterId);
+    if (existing) {
+      existing.count = clampCount(existing.count + clampCount(count)); // our own fresh object, safe to update
+      continue;
+    }
+    if (merged.size >= MAX_ENTRIES) continue;
+
+    const entry: EncounterEntry = { monsterId, count: clampCount(count) };
+    if (typeof name === "string") {
+      const cleaned = cleanName(name);
+      if (cleaned !== "") entry.name = cleaned;
+    }
+    merged.set(monsterId, entry);
+  }
+  return [...merged.values()];
+}
+
+/** Turns whatever was stored into saved encounters. One bad item never costs the others. Never throws. */
+export function parseSavedEncounters(value: unknown): SavedEncounter[] {
+  if (!Array.isArray(value)) return [];
+
+  const saved: SavedEncounter[] = [];
+  for (const item of value) {
+    if (saved.length >= MAX_SAVED) break;
+    if (typeof item !== "object" || item === null) continue;
+    const { name, entries } = item as Record<string, unknown>;
+    if (typeof name !== "string") continue;
+
+    const cleaned = cleanName(name);
+    if (cleaned === "" || saved.some((s) => sameName(s.name, cleaned))) continue;
+    const rows = parseEntries(entries);
+    if (rows.length === 0) continue;
+    saved.push({ name: cleaned, entries: rows });
+  }
+  return saved;
 }

@@ -1,6 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PARTY } from "./party";
-import { MAX_FAVORITES, MAX_ID_LENGTH, parseFavorites, parseParty, readStoredJson, writeStoredJson } from "./storage";
+import { MAX_ENTRIES, MAX_NAME_LENGTH, MAX_SAVED } from "./encounter";
+import {
+  MAX_FAVORITES,
+  MAX_ID_LENGTH,
+  parseEntries,
+  parseFavorites,
+  parseParty,
+  parseSavedEncounters,
+  readStoredJson,
+  writeStoredJson,
+} from "./storage";
 
 describe("parseParty", () => {
   it("accepts a valid party", () => {
@@ -69,6 +79,172 @@ describe("parseFavorites", () => {
     const result = parseFavorites([...many, ...many]);
     expect(result).toHaveLength(MAX_FAVORITES);
     expect(result[0]).toBe("monster-0");
+  });
+});
+
+describe("parseEntries", () => {
+  it("accepts valid rows and keeps their order and names", () => {
+    const stored = [
+      { monsterId: "b", count: 2, name: "Bee" },
+      { monsterId: "a", count: 1 },
+    ];
+    expect(parseEntries(stored)).toEqual([
+      { monsterId: "b", count: 2, name: "Bee" },
+      { monsterId: "a", count: 1 },
+    ]);
+  });
+
+  it.each([
+    ["undefined", undefined],
+    ["null", null],
+    ["a string", "abc"],
+    ["an object", { monsterId: "a", count: 1 }],
+  ])("gives an empty list for %s", (_label, value) => {
+    expect(parseEntries(value)).toEqual([]);
+  });
+
+  it("drops bad rows but keeps the good ones", () => {
+    const stored = [
+      null,
+      "text",
+      ["nested"],
+      {},
+      { monsterId: "", count: 1 },
+      { monsterId: 7, count: 1 },
+      { monsterId: "no-count" },
+      { monsterId: "string-count", count: "3" },
+      { monsterId: "x".repeat(MAX_ID_LENGTH + 1), count: 1 },
+      { monsterId: "good", count: 2 },
+    ];
+    expect(parseEntries(stored)).toEqual([{ monsterId: "good", count: 2 }]);
+  });
+
+  it("accepts an id exactly at the length limit", () => {
+    const id = "x".repeat(MAX_ID_LENGTH);
+    expect(parseEntries([{ monsterId: id, count: 1 }])).toEqual([{ monsterId: id, count: 1 }]);
+  });
+
+  it("drops a count that is not a finite number, including 1e999 which JSON turns into Infinity", () => {
+    const stored = JSON.parse('[{"monsterId":"huge","count":1e999},{"monsterId":"ok","count":2}]');
+    expect(parseEntries(stored)).toEqual([{ monsterId: "ok", count: 2 }]);
+    expect(parseEntries([{ monsterId: "nan", count: Number.NaN }])).toEqual([]);
+  });
+
+  it("rounds and clamps counts to 1-99", () => {
+    const stored = [
+      { monsterId: "zero", count: 0 },
+      { monsterId: "big", count: 500 },
+      { monsterId: "frac", count: 2.6 },
+      { monsterId: "neg", count: -4 },
+    ];
+    expect(parseEntries(stored).map((e) => e.count)).toEqual([1, 99, 3, 1]);
+  });
+
+  it("merges repeated monsters, adding the counts and clamping the total", () => {
+    const stored = [
+      { monsterId: "a", count: 2, name: "First" },
+      { monsterId: "b", count: 1 },
+      { monsterId: "a", count: 3, name: "Second" },
+      { monsterId: "c", count: 60 },
+      { monsterId: "c", count: 60 },
+    ];
+    expect(parseEntries(stored)).toEqual([
+      { monsterId: "a", count: 5, name: "First" },
+      { monsterId: "b", count: 1 },
+      { monsterId: "c", count: 99 },
+    ]);
+  });
+
+  it("treats ids that look like object keys as ordinary ids", () => {
+    const result = parseEntries([
+      { monsterId: "__proto__", count: 2 },
+      { monsterId: "constructor", count: 1 },
+    ]);
+    expect(result.map((e) => e.monsterId)).toEqual(["__proto__", "constructor"]);
+  });
+
+  it("cleans names and omits blank or non-text ones", () => {
+    const stored = [
+      { monsterId: "a", count: 1, name: "  Spaced  " },
+      { monsterId: "b", count: 1, name: "   " },
+      { monsterId: "c", count: 1, name: 42 },
+      { monsterId: "d", count: 1, name: "n".repeat(MAX_NAME_LENGTH + 30) },
+    ];
+    const result = parseEntries(stored);
+    expect(result[0].name).toBe("Spaced");
+    expect("name" in result[1]).toBe(false);
+    expect("name" in result[2]).toBe(false);
+    expect(result[3].name).toHaveLength(MAX_NAME_LENGTH);
+  });
+
+  it("keeps only the first rows when there are too many different monsters", () => {
+    const stored = Array.from({ length: MAX_ENTRIES + 10 }, (_, i) => ({ monsterId: `m-${i}`, count: 1 }));
+    const result = parseEntries(stored);
+    expect(result).toHaveLength(MAX_ENTRIES);
+    expect(result[0].monsterId).toBe("m-0");
+    expect(result[MAX_ENTRIES - 1].monsterId).toBe(`m-${MAX_ENTRIES - 1}`);
+  });
+
+  it("drops unknown fields and builds fresh objects", () => {
+    const stored = [{ monsterId: "a", count: 1, extra: "ignored", __proto__: { evil: true } }];
+    const [entry] = parseEntries(stored);
+    expect(Object.keys(entry)).toEqual(["monsterId", "count"]);
+    expect(entry).not.toBe(stored[0]);
+  });
+});
+
+describe("parseSavedEncounters", () => {
+  const rows = [{ monsterId: "a", count: 2 }];
+
+  it("accepts valid saved encounters", () => {
+    const stored = [
+      { name: "Crypt ambush", entries: rows },
+      { name: "Boss", entries: [{ monsterId: "b", count: 1, name: "Big" }] },
+    ];
+    expect(parseSavedEncounters(stored)).toEqual(stored);
+  });
+
+  it.each([
+    ["undefined", undefined],
+    ["null", null],
+    ["a string", "Crypt"],
+    ["an object", { name: "Crypt", entries: rows }],
+  ])("gives an empty list for %s", (_label, value) => {
+    expect(parseSavedEncounters(value)).toEqual([]);
+  });
+
+  it("drops bad items but keeps the good ones", () => {
+    const stored = [
+      null,
+      "text",
+      { entries: rows },
+      { name: 5, entries: rows },
+      { name: "   ", entries: rows },
+      { name: "No rows" },
+      { name: "Bad rows", entries: [{ monsterId: "", count: 1 }] },
+      { name: "Good", entries: rows },
+    ];
+    expect(parseSavedEncounters(stored)).toEqual([{ name: "Good", entries: rows }]);
+  });
+
+  it("keeps the first of two names that match ignoring capitals", () => {
+    const stored = [
+      { name: "Crypt", entries: [{ monsterId: "a", count: 1 }] },
+      { name: " crypt ", entries: [{ monsterId: "b", count: 1 }] },
+    ];
+    expect(parseSavedEncounters(stored)).toEqual([{ name: "Crypt", entries: [{ monsterId: "a", count: 1 }] }]);
+  });
+
+  it("cleans names and the rows inside", () => {
+    const stored = [{ name: "  Spaced  ", entries: [{ monsterId: "a", count: 500 }] }];
+    expect(parseSavedEncounters(stored)).toEqual([{ name: "Spaced", entries: [{ monsterId: "a", count: 99 }] }]);
+  });
+
+  it("keeps at most the maximum number of saves", () => {
+    const stored = Array.from({ length: MAX_SAVED + 20 }, (_, i) => ({ name: `Save ${i}`, entries: rows }));
+    const result = parseSavedEncounters(stored);
+    expect(result).toHaveLength(MAX_SAVED);
+    expect(result[0].name).toBe("Save 0");
   });
 });
 

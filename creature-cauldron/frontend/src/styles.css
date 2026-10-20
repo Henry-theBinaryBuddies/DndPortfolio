@@ -320,7 +320,7 @@ h2 {
   font-weight: bold;
 }
 
-/* Stat block toolbar: Print, Favorite (and later Add to encounter). */
+/* Stat block toolbar: Print, Favorite, Add to encounter (and its note). */
 .detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -343,7 +343,7 @@ h2 {
   cursor: pointer;
 }
 
-.action-button:hover:not(:disabled) {
+.action-button:hover:not(:disabled):not([aria-disabled="true"]) {
   background: #ebdcbc;
 }
 
@@ -352,7 +352,9 @@ h2 {
   font-weight: bold;
 }
 
-.action-button:disabled {
+/* aria-disabled buttons stay focusable (see App.tsx) but look and act disabled. */
+.action-button:disabled,
+.action-button[aria-disabled="true"] {
   border-color: var(--muted);
   color: var(--muted);
   cursor: default;
@@ -361,6 +363,142 @@ h2 {
 .detail-note {
   color: var(--muted);
   font-size: 0.85rem;
+  /* A long name with no spaces would otherwise spill out of its panel. */
+  overflow-wrap: anywhere;
+}
+
+/* Encounter panel and saved encounters (they reuse the .party-panel box). */
+.encounter-list,
+.saved-list {
+  list-style: none;
+  margin: 0.4rem 0;
+  padding: 0;
+}
+
+.encounter-row,
+.saved-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #d8c9a8;
+}
+
+.encounter-name,
+.saved-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.encounter-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.encounter-meta.unavailable {
+  font-style: italic;
+}
+
+.encounter-controls,
+.saved-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.count-button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: #fffaf0;
+  color: var(--accent);
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.count-button:disabled,
+.count-button[aria-disabled="true"] {
+  border-color: var(--muted);
+  color: var(--muted);
+  cursor: default;
+}
+
+.count {
+  min-width: 1.5rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* The rating is always written as a word; weight and these colours only reinforce it. */
+.encounter-rating {
+  min-height: 1.3rem;
+  margin: 0.5rem 0 0.25rem;
+  font-weight: bold;
+  color: var(--ink);
+}
+
+.rating-trivial {
+  color: var(--muted);
+}
+
+.rating-hard,
+.rating-deadly {
+  color: var(--accent);
+}
+
+.encounter-totals {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+/* A long value (the multiplier note) wraps under its label instead of squeezing beside it. */
+.encounter-totals div {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.5rem;
+}
+
+.encounter-totals dt {
+  min-width: 5.5rem;
+  color: var(--muted);
+}
+
+.encounter-totals dd {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.saved-encounters summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.saved-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.85rem;
+}
+
+.saved-form input {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #c9b88f;
+  border-radius: 4px;
+  background: #fffaf0;
+  font: inherit;
+  /* iOS Safari zooms the page when a text box smaller than 16px gets focus. */
+  font-size: 1rem;
 }
 
 /* Medium screens: filters and results stack on the left, stat block on the right. */
