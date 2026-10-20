@@ -57,3 +57,10 @@ def format_damage_roll(dice: str, bonus: int) -> str:
         return f"{average} ({dice})"
     sign = "+" if bonus > 0 else "-"
     return f"{average} ({dice} {sign} {abs(bonus)})"
+
+
+def format_dice(count: int, sides: int, bonus: int) -> str:
+    """The reverse of parse_dice, written the way stat blocks print it: "4d8+8", "2d6", "3d4-3"."""
+    if bonus == 0:
+        return f"{count}d{sides}"
+    return f"{count}d{sides}{'+' if bonus > 0 else '-'}{abs(bonus)}"
