@@ -78,8 +78,8 @@ export default function PartyPanel({ party, difficulty, band, onPartyChange, onD
     onPartyChange({ levels: levels.map((current, i) => (i === index ? level : current)) });
 
   return (
-    <section className="party-panel" aria-label="Party and difficulty">
-      <h2>Party</h2>
+    <section className="party-bar" aria-label="Party and difficulty">
+      <h2 className="sr-only">Party</h2>
 
       <div className="party-row">
         <label className="party-field" htmlFor="party-size">

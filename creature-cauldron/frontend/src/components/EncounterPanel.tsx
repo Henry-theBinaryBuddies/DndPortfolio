@@ -86,7 +86,7 @@ export default function EncounterPanel({
   };
 
   return (
-    <section className="party-panel encounter-panel" aria-label="Encounter">
+    <section className="panel encounter-panel" aria-label="Encounter">
       <h2 ref={headingRef} tabIndex={-1}>
         Encounter
       </h2>

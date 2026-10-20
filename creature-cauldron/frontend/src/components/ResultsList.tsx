@@ -4,7 +4,6 @@ import type { Monster } from "../types/monster";
 interface ResultsListProps {
   monsters: Monster[];
   totalCount: number;
-  selectedId: string | undefined;
   sortKey: SortKey;
   sortDirection: SortDirection;
   favorites: ReadonlySet<string>;
@@ -13,7 +12,8 @@ interface ResultsListProps {
   favoritesOnly: boolean;
   /** False until the library has finished loading, so "no results" isn't shown too early. */
   libraryReady: boolean;
-  onSelect: (id: string) => void;
+  /** Open this monster's stat block. */
+  onOpen: (id: string) => void;
   onSortKeyChange: (key: SortKey) => void;
   onSortDirectionChange: (direction: SortDirection) => void;
   onFavoritesOnlyChange: (value: boolean) => void;
@@ -23,7 +23,7 @@ interface ResultsListProps {
 function emptyMessage(libraryReady: boolean, favoritesOnly: boolean, favoriteCount: number): string {
   if (!libraryReady) return "The monster library has not loaded.";
   if (favoritesOnly && favoriteCount === 0) {
-    return "No favorites yet. Untick Favorites only, select a monster and press Favorite.";
+    return "No favorites yet. Untick Favorites only, open a monster and press Favorite.";
   }
   if (favoritesOnly) return "None of your favorites match these filters.";
   return "No monsters match these filters. Try removing one.";
@@ -32,28 +32,28 @@ function emptyMessage(libraryReady: boolean, favoritesOnly: boolean, favoriteCou
 export default function ResultsList({
   monsters,
   totalCount,
-  selectedId,
   sortKey,
   sortDirection,
   favorites,
   favoriteCount,
   favoritesOnly,
   libraryReady,
-  onSelect,
+  onOpen,
   onSortKeyChange,
   onSortDirectionChange,
   onFavoritesOnlyChange,
 }: ResultsListProps) {
   return (
-    <section className="results" aria-label="Results">
-      <h2>
+    <section className="panel results" aria-label="Results">
+      {/* tabIndex={-1} and data-focus-fallback: where focus goes if the opener of a stat block disappears. */}
+      <h2 tabIndex={-1} data-focus-fallback>
         Results{" "}
         <span className="result-count">
           {monsters.length === totalCount ? totalCount : `${monsters.length} of ${totalCount}`}
         </span>
       </h2>
 
-      <div className="sort-controls">
+      <div className="results-controls">
         <label>
           Sort by{" "}
           <select value={sortKey} onChange={(e) => onSortKeyChange(e.target.value as SortKey)}>
@@ -70,9 +70,6 @@ export default function ResultsList({
         >
           {sortDirection === "asc" ? "↑ Asc" : "↓ Desc"}
         </button>
-      </div>
-
-      <div className="sort-controls">
         <label>
           <input
             type="checkbox"
@@ -89,12 +86,7 @@ export default function ResultsList({
         <ul className="monster-list">
           {monsters.map((m) => (
             <li key={m.id}>
-              <button
-                type="button"
-                className={m.id === selectedId ? "monster-button selected" : "monster-button"}
-                aria-pressed={m.id === selectedId}
-                onClick={() => onSelect(m.id)}
-              >
+              <button type="button" className="monster-button" aria-haspopup="dialog" onClick={() => onOpen(m.id)}>
                 {/* The star is plain text inside <strong> on purpose: the CSS rule for
                     ".monster-button span" would restyle a span as small grey text. */}
                 <strong>

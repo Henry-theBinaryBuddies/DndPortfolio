@@ -21,7 +21,7 @@ export default function SavedEncounters({
   onDelete,
   onToggleFavorite,
 }: SavedEncountersProps) {
-  const summaryRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Un-starring moves a row down the list, and a browser drops keyboard focus from a button whose
   // row was moved. So remember which star was pressed and focus it again once the list has re-drawn.
@@ -42,67 +42,66 @@ export default function SavedEncounters({
     if (!window.confirm(`Delete "${item.name}"?`)) return;
     onDelete(item.id);
     // The row is gone, so send focus somewhere that still exists.
-    summaryRef.current?.focus();
+    headingRef.current?.focus();
   };
 
   return (
-    <section className="party-panel saved-encounters" aria-label="Saved encounters">
-      {/* <details> is the browser's own collapsible section; closed unless `open` is set. */}
-      <details>
-        <summary ref={summaryRef}>Saved encounters ({saved.length})</summary>
+    <section className="panel saved-encounters" aria-label="Saved encounters">
+      <h2 ref={headingRef} tabIndex={-1}>
+        Saved encounters <span className="result-count">{saved.length}</span>
+      </h2>
 
-        {saved.length === 0 ? (
-          <p className="empty-state">Nothing saved yet. Build an encounter and press Save on its card.</p>
-        ) : (
-          <ul className="saved-list">
-            {orderForList(saved).map((item) => {
-              const count = totalMonsters(item.entries);
-              return (
-                <li key={item.id}>
+      {saved.length === 0 ? (
+        <p className="empty-state">Nothing saved yet. Build an encounter and press Save on its card.</p>
+      ) : (
+        <ul className="saved-list">
+          {orderForList(saved).map((item) => {
+            const count = totalMonsters(item.entries);
+            return (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  id={`saved-star-${item.id}`}
+                  className="star-button"
+                  aria-pressed={item.favorite}
+                  aria-label={`Favorite ${item.name}`}
+                  onClick={() => {
+                    refocusId.current = item.id;
+                    onToggleFavorite(item.id);
+                  }}
+                >
+                  <span aria-hidden="true">{item.favorite ? "★" : "☆"}</span>
+                </button>
+                <span className="saved-name">
+                  <strong>{item.name}</strong>
+                  <span className="encounter-meta">
+                    {count} {count === 1 ? "monster" : "monsters"}
+                    {item.id === loadedId ? ", on the card" : ""}
+                  </span>
+                </span>
+                <span className="saved-actions">
                   <button
                     type="button"
-                    id={`saved-star-${item.id}`}
-                    className="star-button"
-                    aria-pressed={item.favorite}
-                    aria-label={`Favorite ${item.name}`}
-                    onClick={() => {
-                      refocusId.current = item.id;
-                      onToggleFavorite(item.id);
-                    }}
+                    className="link-button"
+                    aria-label={`Load ${item.name}`}
+                    onClick={() => handleLoad(item)}
                   >
-                    <span aria-hidden="true">{item.favorite ? "★" : "☆"}</span>
+                    Load
                   </button>
-                  <span className="saved-name">
-                    <strong>{item.name}</strong>
-                    <span className="encounter-meta">
-                      {count} {count === 1 ? "monster" : "monsters"}
-                      {item.id === loadedId ? ", on the card" : ""}
-                    </span>
-                  </span>
-                  <span className="saved-actions">
-                    <button
-                      type="button"
-                      className="link-button"
-                      aria-label={`Load ${item.name}`}
-                      onClick={() => handleLoad(item)}
-                    >
-                      Load
-                    </button>
-                    <button
-                      type="button"
-                      className="link-button"
-                      aria-label={`Delete ${item.name}`}
-                      onClick={() => handleDelete(item)}
-                    >
-                      Delete
-                    </button>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </details>
+                  <button
+                    type="button"
+                    className="link-button"
+                    aria-label={`Delete ${item.name}`}
+                    onClick={() => handleDelete(item)}
+                  >
+                    Delete
+                  </button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }

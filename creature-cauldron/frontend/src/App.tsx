@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import EncounterPanel from "./components/EncounterPanel";
-import FilterPanel from "./components/FilterPanel";
+import FilterBar from "./components/FilterBar";
 import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
 import SavedEncounters from "./components/SavedEncounters";
-import StatBlock from "./components/StatBlock";
+import StatBlockDialog from "./components/StatBlockDialog";
 import {
   MAX_COUNT,
   MAX_ENTRIES,
@@ -56,16 +56,9 @@ export default function App() {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  // A monster opened by clicking its name in the encounter. It is shown even if the filters hide it,
-  // and is forgotten as soon as the user picks from the list or changes the list.
-  const [viewedId, setViewedId] = useState<string | null>(null);
-  const leaveViewed =
-    <T,>(setter: (value: T) => void) =>
-    (value: T) => {
-      setViewedId(null);
-      setter(value);
-    };
+  // Which monster's stat block is open in the pop-out, if any. Opening one is always an explicit
+  // click (on the list or on a name in the encounter), so there is no "selected" fallback.
+  const [openId, setOpenId] = useState<string | null>(null);
   // The party is remembered between visits; the difficulty pick is not.
   const [party, setParty] = usePersistentState(PARTY_STORAGE_KEY, parseParty);
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
@@ -110,16 +103,14 @@ export default function App() {
   const favoriteCount = countAvailableFavorites(monsters, favoriteSet);
   const shown = favoritesOnly ? onlyFavorites(visible, favoriteSet) : visible;
 
-  // Show the monster opened from the encounter if there is one, otherwise the picked monster if it
-  // is still in the results, otherwise the first result.
-  const viewed = viewedId === null ? undefined : monsters.find((m) => m.id === viewedId);
-  const selected = viewed ?? shown.find((m) => m.id === selectedId) ?? shown[0];
-  const selectedIsFavorite = selected !== undefined && favoriteSet.has(selected.id);
+  // The monster in the pop-out. If its id is no longer in the library, the pop-out simply stays closed.
+  const opened = openId === null ? null : (monsters.find((m) => m.id === openId) ?? null);
+  const openedIsFavorite = opened !== null && favoriteSet.has(opened.id);
 
   // Also derived each render: the rating changes the moment the party or the rows change.
   const summary = summarizeEncounter(entries, monsters, party);
-  const inEncounter = selected ? countOf(entries, selected.id) : 0;
-  const canAdd = selected ? canAddMonster(entries, selected.id) : false;
+  const inEncounter = opened ? countOf(entries, opened.id) : 0;
+  const canAdd = opened ? canAddMonster(entries, opened.id) : false;
   const addNote = !canAdd
     ? inEncounter >= MAX_COUNT
       ? `Already ${MAX_COUNT} of this monster`
@@ -129,22 +120,42 @@ export default function App() {
       : "";
 
   return (
-    <main className="page">
-      <header className="no-print">
-        <h1>Creature Cauldron</h1>
-        <p className="tagline">Brew a monster for your table.</p>
-      </header>
-
-      {error && <p className="error no-print">{error}</p>}
-
-      <div className="layout">
-        <div className="filters-area no-print">
+    <>
+      <main className="app no-print">
+        <header className="topbar">
+          <h1>Creature Cauldron</h1>
           <PartyPanel
             party={party}
             difficulty={difficulty}
             band={band}
             onPartyChange={setParty}
-            onDifficultyChange={leaveViewed(setDifficulty)}
+            onDifficultyChange={setDifficulty}
+          />
+        </header>
+
+        {error && <p className="error">{error}</p>}
+
+        <FilterBar
+          filters={filters}
+          activeCount={countActiveFilters(filters)}
+          onChange={setFilters}
+          onClear={() => setFilters(EMPTY_FILTERS)}
+        />
+
+        <div className="board">
+          <ResultsList
+            monsters={shown}
+            totalCount={monsters.length}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            favorites={favoriteSet}
+            favoriteCount={favoriteCount}
+            favoritesOnly={favoritesOnly}
+            libraryReady={libraryReady}
+            onOpen={setOpenId}
+            onSortKeyChange={setSortKey}
+            onSortDirectionChange={setSortDirection}
+            onFavoritesOnlyChange={setFavoritesOnly}
           />
           <EncounterPanel
             working={working}
@@ -158,7 +169,7 @@ export default function App() {
             onNew={() => apply(startNewEncounter(encounterState))}
             onCountChange={(id, count) => setWorking({ ...working, entries: setCount(entries, id, count) })}
             onRemove={(id) => setWorking({ ...working, entries: removeMonster(entries, id) })}
-            onView={setViewedId}
+            onView={setOpenId}
           />
           <SavedEncounters
             saved={saved}
@@ -168,71 +179,22 @@ export default function App() {
             onDelete={(id) => apply(deleteSaved(encounterState, id))}
             onToggleFavorite={(id) => apply(toggleSavedFavorite(encounterState, id))}
           />
-          <FilterPanel
-            filters={filters}
-            activeCount={countActiveFilters(filters)}
-            onChange={leaveViewed(setFilters)}
-            onClear={() => leaveViewed(setFilters)(EMPTY_FILTERS)}
-          />
         </div>
+      </main>
 
-        <div className="results-area no-print">
-          <ResultsList
-            monsters={shown}
-            totalCount={monsters.length}
-            selectedId={selected?.id}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            favorites={favoriteSet}
-            favoriteCount={favoriteCount}
-            favoritesOnly={favoritesOnly}
-            libraryReady={libraryReady}
-            onSelect={leaveViewed(setSelectedId)}
-            onSortKeyChange={leaveViewed(setSortKey)}
-            onSortDirectionChange={leaveViewed(setSortDirection)}
-            onFavoritesOnlyChange={leaveViewed(setFavoritesOnly)}
-          />
-        </div>
-
-        <section className="detail-area">
-          {selected ? (
-            <>
-              <div className="detail-actions no-print">
-                <button type="button" className="print-button no-print" onClick={() => window.print()}>
-                  Print stat block
-                </button>
-                {/* The label stays "Favorite"; aria-pressed tells screen readers whether it is on. */}
-                <button
-                  type="button"
-                  className="action-button"
-                  aria-pressed={selectedIsFavorite}
-                  onClick={() => setFavorites(toggle(favorites, selected.id))}
-                >
-                  <span aria-hidden="true">{selectedIsFavorite ? "★" : "☆"}</span> Favorite
-                </button>
-                {/* aria-disabled, not disabled: a button that is pressed and then disables itself would lose
-                    keyboard focus. Pressing it when full does nothing, because addMonster refuses. */}
-                <button
-                  type="button"
-                  className="action-button"
-                  aria-disabled={!canAdd}
-                  aria-describedby={addNote ? "add-note" : undefined}
-                  onClick={() => setWorking({ ...working, entries: addMonster(entries, selected) })}
-                >
-                  Add to encounter
-                </button>
-                {/* Always on the page (empty when idle), so a screen reader announces changes to its text. */}
-                <span id="add-note" role="status" className="detail-note">
-                  {addNote}
-                </span>
-              </div>
-              <StatBlock monster={selected} />
-            </>
-          ) : (
-            <p className="empty-state no-print">Nothing to show yet.</p>
-          )}
-        </section>
-      </div>
-    </main>
+      <StatBlockDialog
+        monster={opened}
+        isFavorite={openedIsFavorite}
+        canAdd={canAdd}
+        addNote={addNote}
+        onClose={() => setOpenId(null)}
+        onToggleFavorite={() => {
+          if (opened) setFavorites(toggle(favorites, opened.id));
+        }}
+        onAdd={() => {
+          if (opened) setWorking({ ...working, entries: addMonster(entries, opened) });
+        }}
+      />
+    </>
   );
 }

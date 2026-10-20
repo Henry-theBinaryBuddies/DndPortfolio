@@ -127,7 +127,7 @@ The full schema lives in `docs/` once the front-end types exist. Key points:
 
 1. Scaffold the Vite + React + TypeScript app; define types; load ~15 original sample monsters.
 2. Stat block component and print CSS.
-3. Filter panel and results list.
+3. Filter bar and results list.
 4. Party and difficulty selection (CR band).
 5. Encounter builder, favorites, local persistence.
 6. JSON and Foundry export.

@@ -1,4 +1,4 @@
-// The fixed option lists. They drive the filter panel, the TypeScript types,
+// The fixed option lists. They drive the filter bar, the TypeScript types,
 // and (later) the generator API, so there is exactly one copy of each list.
 //
 // `as const` makes each array a read-only list of exact values. TypeScript can
