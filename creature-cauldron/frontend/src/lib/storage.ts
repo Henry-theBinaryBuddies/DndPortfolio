@@ -4,8 +4,10 @@ import {
   cleanName,
   clampCount,
   sameName,
+  emptyWorking,
   type EncounterEntry,
   type SavedEncounter,
+  type WorkingEncounter,
 } from "./encounter";
 import { DEFAULT_PARTY, MAX_LEVEL, MAX_PARTY_SIZE, MIN_LEVEL, type Party } from "./party";
 
@@ -114,22 +116,56 @@ export function parseEntries(value: unknown): EncounterEntry[] {
   return [...merged.values()];
 }
 
-/** Turns whatever was stored into saved encounters. One bad item never costs the others. Never throws. */
+/**
+ * Turns whatever was stored into saved encounters. One bad item never costs the others.
+ * An item with no usable id (older saves, or a missing, over-long or duplicate id) gets
+ * "legacy-N", where N counts the saved encounters kept so far (skipped items are not
+ * counted). The same stored data always gives the same ids, and they become permanent
+ * once usePersistentState writes the parsed list back on first load. Duplicate names
+ * are dropped (the first wins), since names are unique. Never throws.
+ */
 export function parseSavedEncounters(value: unknown): SavedEncounter[] {
   if (!Array.isArray(value)) return [];
 
   const saved: SavedEncounter[] = [];
+  const usedIds = new Set<string>();
   for (const item of value) {
     if (saved.length >= MAX_SAVED) break;
     if (typeof item !== "object" || item === null) continue;
-    const { name, entries } = item as Record<string, unknown>;
+    const { id, name, favorite, entries } = item as Record<string, unknown>;
     if (typeof name !== "string") continue;
 
     const cleaned = cleanName(name);
     if (cleaned === "" || saved.some((s) => sameName(s.name, cleaned))) continue;
     const rows = parseEntries(entries);
     if (rows.length === 0) continue;
-    saved.push({ name: cleaned, entries: rows });
+
+    let finalId = typeof id === "string" && id.length >= 1 && id.length <= MAX_ID_LENGTH ? id : "";
+    if (finalId === "" || usedIds.has(finalId)) {
+      let n = saved.length;
+      while (usedIds.has(`legacy-${n}`)) n++;
+      finalId = `legacy-${n}`;
+    }
+    usedIds.add(finalId);
+    saved.push({ id: finalId, name: cleaned, favorite: favorite === true, entries: rows });
   }
   return saved;
+}
+
+/**
+ * Turns whatever was stored into the encounter on the card. Before the card had a name
+ * the stored value was just a list of rows, so a bare list is accepted and becomes an
+ * unsaved encounter with no name. Never throws.
+ */
+export function parseWorkingEncounter(value: unknown): WorkingEncounter {
+  if (Array.isArray(value)) return { ...emptyWorking(), entries: parseEntries(value) };
+  if (typeof value !== "object" || value === null) return emptyWorking();
+
+  const { id, name, favorite, entries } = value as Record<string, unknown>;
+  return {
+    id: typeof id === "string" && id.length >= 1 && id.length <= MAX_ID_LENGTH ? id : null,
+    name: typeof name === "string" ? cleanName(name) : "",
+    favorite: favorite === true,
+    entries: parseEntries(entries),
+  };
 }

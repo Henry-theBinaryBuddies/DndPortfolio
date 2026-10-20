@@ -11,9 +11,17 @@ import {
   addMonster,
   canAddMonster,
   countOf,
+  deleteSaved,
+  isDirty,
+  loadSaved,
   removeMonster,
+  saveWorking,
   setCount,
+  startNewEncounter,
   summarizeEncounter,
+  toggleSavedFavorite,
+  toggleWorkingFavorite,
+  type EncounterState,
 } from "./lib/encounter";
 import { countAvailableFavorites, onlyFavorites } from "./lib/favorites";
 import {
@@ -33,10 +41,10 @@ import {
   FAVORITES_STORAGE_KEY,
   PARTY_STORAGE_KEY,
   SAVED_ENCOUNTERS_STORAGE_KEY,
-  parseEntries,
   parseFavorites,
   parseParty,
   parseSavedEncounters,
+  parseWorkingEncounter,
 } from "./lib/storage";
 import { usePersistentState } from "./lib/usePersistentState";
 import type { Monster } from "./types/monster";
@@ -49,20 +57,33 @@ export default function App() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // A monster opened by clicking its name in the encounter. It is shown even if the filters hide it,
+  // and is forgotten as soon as the user picks from the list or changes the list.
+  const [viewedId, setViewedId] = useState<string | null>(null);
+  const leaveViewed =
+    <T,>(setter: (value: T) => void) =>
+    (value: T) => {
+      setViewedId(null);
+      setter(value);
+    };
   // The party is remembered between visits; the difficulty pick is not.
   const [party, setParty] = usePersistentState(PARTY_STORAGE_KEY, parseParty);
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   // Favorites are a remembered list of monster ids. Whether to show only favorites is a view choice, so it is not saved.
   const [favorites, setFavorites] = usePersistentState(FAVORITES_STORAGE_KEY, parseFavorites);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  // The working encounter and the saved ones are remembered too. Both hold ids and counts, plus a
-  // remembered display name that is used only if the library loses that monster. XP and ratings
-  // are worked out fresh from the library on every render.
-  const [entries, setEntries] = usePersistentState(ENCOUNTER_STORAGE_KEY, parseEntries);
-  const [savedEncounters, setSavedEncounters] = usePersistentState(
-    SAVED_ENCOUNTERS_STORAGE_KEY,
-    parseSavedEncounters,
-  );
+  // The encounter on the card ("working") and the saved ones are remembered too. They hold ids and
+  // counts, plus a remembered display name that is used only if the library loses that monster.
+  // XP and ratings are worked out fresh from the library on every render.
+  const [working, setWorking] = usePersistentState(ENCOUNTER_STORAGE_KEY, parseWorkingEncounter);
+  const [saved, setSaved] = usePersistentState(SAVED_ENCOUNTERS_STORAGE_KEY, parseSavedEncounters);
+  const entries = working.entries;
+  // Saving, deleting and starring change both pieces together, so the lib functions take and return both.
+  const apply = (next: EncounterState) => {
+    setSaved(next.saved);
+    setWorking(next.working);
+  };
+  const encounterState: EncounterState = { saved, working };
   // monsters.length === 0 can't tell "still loading" from "loaded but empty", so track loading explicitly.
   const [libraryReady, setLibraryReady] = useState(false);
 
@@ -89,8 +110,10 @@ export default function App() {
   const favoriteCount = countAvailableFavorites(monsters, favoriteSet);
   const shown = favoritesOnly ? onlyFavorites(visible, favoriteSet) : visible;
 
-  // Show the picked monster if it is still in the results, otherwise the first result.
-  const selected = shown.find((m) => m.id === selectedId) ?? shown[0];
+  // Show the monster opened from the encounter if there is one, otherwise the picked monster if it
+  // is still in the results, otherwise the first result.
+  const viewed = viewedId === null ? undefined : monsters.find((m) => m.id === viewedId);
+  const selected = viewed ?? shown.find((m) => m.id === selectedId) ?? shown[0];
   const selectedIsFavorite = selected !== undefined && favoriteSet.has(selected.id);
 
   // Also derived each render: the rating changes the moment the party or the rows change.
@@ -121,28 +144,35 @@ export default function App() {
             difficulty={difficulty}
             band={band}
             onPartyChange={setParty}
-            onDifficultyChange={setDifficulty}
+            onDifficultyChange={leaveViewed(setDifficulty)}
           />
           <EncounterPanel
-            entries={entries}
+            working={working}
+            saved={saved}
             summary={summary}
             party={party}
             libraryReady={libraryReady}
-            onCountChange={(id, count) => setEntries(setCount(entries, id, count))}
-            onRemove={(id) => setEntries(removeMonster(entries, id))}
-            onClear={() => setEntries([])}
+            onNameChange={(name) => setWorking({ ...working, name })}
+            onToggleFavorite={() => apply(toggleWorkingFavorite(encounterState))}
+            onSave={() => apply(saveWorking(encounterState))}
+            onNew={() => apply(startNewEncounter(encounterState))}
+            onCountChange={(id, count) => setWorking({ ...working, entries: setCount(entries, id, count) })}
+            onRemove={(id) => setWorking({ ...working, entries: removeMonster(entries, id) })}
+            onView={setViewedId}
           />
           <SavedEncounters
-            saved={savedEncounters}
-            entries={entries}
-            onSavedChange={setSavedEncounters}
-            onLoad={setEntries}
+            saved={saved}
+            loadedId={working.id}
+            dirty={isDirty(saved, working)}
+            onLoad={(id) => apply(loadSaved(encounterState, id))}
+            onDelete={(id) => apply(deleteSaved(encounterState, id))}
+            onToggleFavorite={(id) => apply(toggleSavedFavorite(encounterState, id))}
           />
           <FilterPanel
             filters={filters}
             activeCount={countActiveFilters(filters)}
-            onChange={setFilters}
-            onClear={() => setFilters(EMPTY_FILTERS)}
+            onChange={leaveViewed(setFilters)}
+            onClear={() => leaveViewed(setFilters)(EMPTY_FILTERS)}
           />
         </div>
 
@@ -157,10 +187,10 @@ export default function App() {
             favoriteCount={favoriteCount}
             favoritesOnly={favoritesOnly}
             libraryReady={libraryReady}
-            onSelect={setSelectedId}
-            onSortKeyChange={setSortKey}
-            onSortDirectionChange={setSortDirection}
-            onFavoritesOnlyChange={setFavoritesOnly}
+            onSelect={leaveViewed(setSelectedId)}
+            onSortKeyChange={leaveViewed(setSortKey)}
+            onSortDirectionChange={leaveViewed(setSortDirection)}
+            onFavoritesOnlyChange={leaveViewed(setFavoritesOnly)}
           />
         </div>
 
@@ -187,7 +217,7 @@ export default function App() {
                   className="action-button"
                   aria-disabled={!canAdd}
                   aria-describedby={addNote ? "add-note" : undefined}
-                  onClick={() => setEntries(addMonster(entries, selected))}
+                  onClick={() => setWorking({ ...working, entries: addMonster(entries, selected) })}
                 >
                   Add to encounter
                 </button>

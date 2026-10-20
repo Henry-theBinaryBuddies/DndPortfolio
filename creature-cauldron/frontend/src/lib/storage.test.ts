@@ -8,6 +8,7 @@ import {
   parseFavorites,
   parseParty,
   parseSavedEncounters,
+  parseWorkingEncounter,
   readStoredJson,
   writeStoredJson,
 } from "./storage";
@@ -196,10 +197,10 @@ describe("parseEntries", () => {
 describe("parseSavedEncounters", () => {
   const rows = [{ monsterId: "a", count: 2 }];
 
-  it("accepts valid saved encounters", () => {
+  it("accepts valid saved encounters, including ids and stars", () => {
     const stored = [
-      { name: "Crypt ambush", entries: rows },
-      { name: "Boss", entries: [{ monsterId: "b", count: 1, name: "Big" }] },
+      { id: "id-1", name: "Crypt ambush", favorite: true, entries: rows },
+      { id: "id-2", name: "Boss", favorite: false, entries: [{ monsterId: "b", count: 1, name: "Big" }] },
     ];
     expect(parseSavedEncounters(stored)).toEqual(stored);
   });
@@ -208,9 +209,42 @@ describe("parseSavedEncounters", () => {
     ["undefined", undefined],
     ["null", null],
     ["a string", "Crypt"],
-    ["an object", { name: "Crypt", entries: rows }],
+    ["an object", { id: "x", name: "Crypt", entries: rows }],
   ])("gives an empty list for %s", (_label, value) => {
     expect(parseSavedEncounters(value)).toEqual([]);
+  });
+
+  it("gives older saves, which had no id or star, a stable id from their position", () => {
+    const stored = [
+      { name: "Old one", entries: rows },
+      { name: "Old two", entries: rows },
+    ];
+    const result = parseSavedEncounters(stored);
+    expect(result.map((s) => s.id)).toEqual(["legacy-0", "legacy-1"]);
+    expect(result.every((s) => s.favorite === false)).toBe(true);
+    expect(parseSavedEncounters(stored)).toEqual(result); // same input, same ids
+  });
+
+  it("gives a replacement id to a duplicate or unusable id", () => {
+    const stored = [
+      { id: "same", name: "First", entries: rows },
+      { id: "same", name: "Second", entries: rows },
+      { id: "", name: "Third", entries: rows },
+      { id: 7, name: "Fourth", entries: rows },
+      { id: "x".repeat(MAX_ID_LENGTH + 1), name: "Fifth", entries: rows },
+    ];
+    const ids = parseSavedEncounters(stored).map((s) => s.id);
+    expect(new Set(ids).size).toBe(5);
+    expect(ids[0]).toBe("same");
+  });
+
+  it("only treats a real true as starred", () => {
+    const stored = [
+      { id: "a", name: "A", favorite: true, entries: rows },
+      { id: "b", name: "B", favorite: "yes", entries: rows },
+      { id: "c", name: "C", favorite: 1, entries: rows },
+    ];
+    expect(parseSavedEncounters(stored).map((s) => s.favorite)).toEqual([true, false, false]);
   });
 
   it("drops bad items but keeps the good ones", () => {
@@ -222,29 +256,91 @@ describe("parseSavedEncounters", () => {
       { name: "   ", entries: rows },
       { name: "No rows" },
       { name: "Bad rows", entries: [{ monsterId: "", count: 1 }] },
-      { name: "Good", entries: rows },
+      { id: "good", name: "Good", entries: rows },
     ];
-    expect(parseSavedEncounters(stored)).toEqual([{ name: "Good", entries: rows }]);
+    expect(parseSavedEncounters(stored)).toEqual([{ id: "good", name: "Good", favorite: false, entries: rows }]);
   });
 
-  it("keeps the first of two names that match ignoring capitals", () => {
+  it("keeps the first of two names that match ignoring capitals, since names are unique", () => {
     const stored = [
-      { name: "Crypt", entries: [{ monsterId: "a", count: 1 }] },
-      { name: " crypt ", entries: [{ monsterId: "b", count: 1 }] },
+      { id: "1", name: "Crypt", entries: [{ monsterId: "a", count: 1 }] },
+      { id: "2", name: " crypt ", entries: [{ monsterId: "b", count: 1 }] },
     ];
-    expect(parseSavedEncounters(stored)).toEqual([{ name: "Crypt", entries: [{ monsterId: "a", count: 1 }] }]);
+    const result = parseSavedEncounters(stored);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("1");
+  });
+
+  it("counts names that differ only in inner spacing as duplicates", () => {
+    const stored = [
+      { id: "1", name: "Boss fight", entries: rows },
+      { id: "2", name: "Boss   Fight", entries: rows },
+    ];
+    expect(parseSavedEncounters(stored).map((s) => s.id)).toEqual(["1"]);
+  });
+
+  it("numbers legacy ids by the items kept, so a dropped item does not use up a number", () => {
+    const stored = [{ name: "", entries: rows }, { name: "First kept", entries: rows }];
+    expect(parseSavedEncounters(stored).map((s) => s.id)).toEqual(["legacy-0"]);
   });
 
   it("cleans names and the rows inside", () => {
-    const stored = [{ name: "  Spaced  ", entries: [{ monsterId: "a", count: 500 }] }];
-    expect(parseSavedEncounters(stored)).toEqual([{ name: "Spaced", entries: [{ monsterId: "a", count: 99 }] }]);
+    const stored = [{ id: "1", name: "  Spaced  ", entries: [{ monsterId: "a", count: 500 }] }];
+    expect(parseSavedEncounters(stored)).toEqual([
+      { id: "1", name: "Spaced", favorite: false, entries: [{ monsterId: "a", count: 99 }] },
+    ]);
   });
 
   it("keeps at most the maximum number of saves", () => {
-    const stored = Array.from({ length: MAX_SAVED + 20 }, (_, i) => ({ name: `Save ${i}`, entries: rows }));
+    const stored = Array.from({ length: MAX_SAVED + 20 }, (_, i) => ({ id: `id-${i}`, name: `Save ${i}`, entries: rows }));
     const result = parseSavedEncounters(stored);
     expect(result).toHaveLength(MAX_SAVED);
     expect(result[0].name).toBe("Save 0");
+  });
+});
+
+describe("parseWorkingEncounter", () => {
+  it("accepts a valid working encounter", () => {
+    const stored = { id: "id-1", name: "Crypt ambush", favorite: true, entries: [{ monsterId: "a", count: 2 }] };
+    expect(parseWorkingEncounter(stored)).toEqual(stored);
+  });
+
+  it("accepts the older format, a bare list of rows, as an unsaved encounter with no name", () => {
+    expect(parseWorkingEncounter([{ monsterId: "a", count: 2 }, { monsterId: "", count: 1 }])).toEqual({
+      id: null,
+      name: "",
+      favorite: false,
+      entries: [{ monsterId: "a", count: 2 }],
+    });
+  });
+
+  it.each([
+    ["undefined", undefined],
+    ["null", null],
+    ["a string", "hello"],
+    ["a number", 4],
+  ])("gives an empty encounter for %s", (_label, value) => {
+    expect(parseWorkingEncounter(value)).toEqual({ id: null, name: "", favorite: false, entries: [] });
+  });
+
+  it("repairs each field on its own", () => {
+    const stored = { id: 99, name: ["x"], favorite: "true", entries: [{ monsterId: "a", count: 500 }, 5] };
+    expect(parseWorkingEncounter(stored)).toEqual({
+      id: null,
+      name: "",
+      favorite: false,
+      entries: [{ monsterId: "a", count: 99 }],
+    });
+  });
+
+  it("cleans the name", () => {
+    expect(parseWorkingEncounter({ name: "  Spaced  ", entries: [] }).name).toBe("Spaced");
+  });
+
+  it("gives back a fresh object each time, never a shared one", () => {
+    const first = parseWorkingEncounter(undefined);
+    first.entries.push({ monsterId: "a", count: 1 });
+    expect(parseWorkingEncounter(undefined).entries).toEqual([]);
   });
 });
 

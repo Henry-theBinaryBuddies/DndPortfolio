@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import sample from "../../public/data/sample-monsters.json";
 import type { Monster } from "../types/monster";
 import {
@@ -15,16 +15,26 @@ import {
   defaultEncounterName,
   deleteSaved,
   describeRating,
-  hasSavedName,
+  emptyWorking,
+  generateId,
+  isDirty,
+  loadSaved,
+  nameConflict,
+  orderForList,
   removeMonster,
-  resolveSaveName,
+  resolvedName,
   sameName,
-  saveEncounter,
+  saveWorking,
   setCount,
+  startNewEncounter,
   summarizeEncounter,
+  toggleSavedFavorite,
+  toggleWorkingFavorite,
   totalMonsters,
   type EncounterEntry,
+  type EncounterState,
   type SavedEncounter,
+  type WorkingEncounter,
 } from "./encounter";
 import { DIFFICULTIES, adjustedXp, soloBand, type Party } from "./party";
 
@@ -79,6 +89,12 @@ describe("cleanName and sameName", () => {
   it("compares names ignoring capitals and surrounding spaces", () => {
     expect(sameName(" Crypt Ambush", "crypt ambush ")).toBe(true);
     expect(sameName("Crypt", "Crypts")).toBe(false);
+  });
+
+  it("turns runs of spaces and other whitespace into one space, since a page shows them the same", () => {
+    expect(cleanName("Boss   Fight")).toBe("Boss Fight");
+    expect(cleanName("Boss\t  Fight")).toBe("Boss Fight");
+    expect(sameName("Boss  fight", "boss fight")).toBe(true);
   });
 });
 
@@ -340,87 +356,305 @@ describe("describeRating", () => {
   });
 });
 
-describe("default names", () => {
-  const saved = (...names: string[]): SavedEncounter[] => names.map((name) => ({ name, entries: [row(GLOOMCAP, 1)] }));
+const rec = (id: string, name: string, favorite = false, entries: EncounterEntry[] = [row(GLOOMCAP, 1)]): SavedEncounter => ({
+  id,
+  name,
+  favorite,
+  entries,
+});
+const card = (changes: Partial<WorkingEncounter> = {}): WorkingEncounter => ({ ...emptyWorking(), ...changes });
+const stateOf = (saved: SavedEncounter[], working: WorkingEncounter): EncounterState => ({ saved, working });
+/** A predictable id source, so tests can name the id a new save gets. */
+const idMaker = () => {
+  let n = 0;
+  return () => `new-${++n}`;
+};
 
+describe("default names", () => {
   it("starts at Encounter 1 and follows the number saved", () => {
     expect(defaultEncounterName([])).toBe("Encounter 1");
-    expect(defaultEncounterName(saved("Encounter 1", "Encounter 2"))).toBe("Encounter 3");
+    expect(defaultEncounterName([rec("a", "Encounter 1"), rec("b", "Encounter 2")])).toBe("Encounter 3");
   });
 
   it("skips numbers that are already taken, ignoring capitals", () => {
-    expect(defaultEncounterName(saved("Encounter 1", "encounter 3"))).toBe("Encounter 4");
-    expect(defaultEncounterName(saved("Crypt ambush"))).toBe("Encounter 2");
-  });
-
-  it("uses what was typed, or the default when the box is blank", () => {
-    expect(resolveSaveName(saved("Encounter 1"), "  Boss fight ")).toBe("Boss fight");
-    expect(resolveSaveName(saved("Encounter 1"), "   ")).toBe("Encounter 2");
+    expect(defaultEncounterName([rec("a", "Encounter 1"), rec("b", "encounter 3")])).toBe("Encounter 4");
+    expect(defaultEncounterName([rec("a", "Crypt ambush")])).toBe("Encounter 2");
   });
 });
 
-describe("saving, replacing and deleting", () => {
-  const entries = [row(STALKER, 2, "Gravewick Stalker")];
-  const existing: SavedEncounter[] = [
-    { name: "Crypt ambush", entries: [row(GLOOMCAP, 1)] },
-    { name: "Boss", entries: [row(BRIGHTWING, 1)] },
-  ];
+describe("resolvedName and nameConflict", () => {
+  const saved = [rec("a", "Crypt ambush"), rec("b", "Boss")];
 
-  it("adds a new save under the typed name", () => {
-    const result = saveEncounter(existing, "Dragon lair", entries);
-    expect(result.map((s) => s.name)).toEqual(["Crypt ambush", "Boss", "Dragon lair"]);
-    expect(result[2].entries).toEqual(entries);
+  it("uses what was typed, or the next default when the box is blank", () => {
+    expect(resolvedName(saved, card({ name: "  Dragon lair " }))).toBe("Dragon lair");
+    expect(resolvedName(saved, card({ name: "   " }))).toBe("Encounter 3");
   });
 
-  it("uses a default name when none is typed", () => {
-    expect(saveEncounter([], "", entries)[0].name).toBe("Encounter 1");
-    expect(saveEncounter(existing, "  ", entries)[2].name).toBe("Encounter 3");
+  it("flags a name another saved encounter uses, ignoring capitals and spaces", () => {
+    expect(nameConflict(saved, card({ name: " crypt AMBUSH " }))).toBe(true);
+    expect(nameConflict(saved, card({ name: "Something new" }))).toBe(false);
   });
 
-  it("replaces a save with the same name (any capitals) in place, taking the new spelling", () => {
-    const result = saveEncounter(existing, "crypt AMBUSH", entries);
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ name: "crypt AMBUSH", entries });
-    expect(result[1]).toBe(existing[1]);
+  it("lets an encounter keep its own name, even with different capitals", () => {
+    expect(nameConflict(saved, card({ id: "a", name: "CRYPT ambush" }))).toBe(false);
+    expect(nameConflict(saved, card({ id: "a", name: "Boss" }))).toBe(true);
   });
 
-  it("does not save an empty encounter", () => {
-    expect(saveEncounter(existing, "Nothing", [])).toBe(existing);
-    expect(canSave(existing, "Nothing", [])).toBe(false);
+  it("never flags a blank name, because the default is always free", () => {
+    expect(nameConflict(saved, card({ name: "" }))).toBe(false);
   });
 
-  it("copies the rows, so later edits to the working encounter cannot alter the save", () => {
-    const working = [row(STALKER, 2)];
-    const result = saveEncounter([], "Copy test", working);
-    working[0].count = 50;
-    expect(result[0].entries[0].count).toBe(2);
+  it("treats a name that differs only in inner spacing as taken", () => {
+    expect(nameConflict([rec("a", "Boss fight")], card({ name: "Boss   Fight" }))).toBe(true);
   });
 
-  it("stops adding new saves at the limit, but still allows replacing", () => {
-    const full: SavedEncounter[] = Array.from({ length: MAX_SAVED }, (_, i) => ({
-      name: `Save ${i}`,
-      entries: [row(GLOOMCAP, 1)],
-    }));
-    expect(canSave(full, "Brand new", entries)).toBe(false);
-    expect(saveEncounter(full, "Brand new", entries)).toBe(full);
-    expect(canSave(full, "save 5", entries)).toBe(true);
-    expect(saveEncounter(full, "save 5", entries)).toHaveLength(MAX_SAVED);
+  it("keeps the saved name when the box of a loaded encounter is blank", () => {
+    expect(resolvedName(saved, card({ id: "a", name: "" }))).toBe("Crypt ambush");
+    expect(resolvedName(saved, card({ id: "a", name: "   " }))).toBe("Crypt ambush");
   });
 
-  it("knows whether a typed name already exists (never for a blank box)", () => {
-    expect(hasSavedName(existing, "BOSS")).toBe(true);
-    expect(hasSavedName(existing, "Other")).toBe(false);
-    expect(hasSavedName(existing, "   ")).toBe(false);
+  it("uses the next default for a card whose saved copy no longer exists", () => {
+    expect(resolvedName(saved, card({ id: "gone", name: "" }))).toBe("Encounter 3");
+  });
+});
+
+describe("isDirty", () => {
+  const saved = [rec("a", "Crypt ambush", false, [row(STALKER, 2, "Gravewick Stalker")])];
+  const loaded = card({ id: "a", name: "Crypt ambush", entries: [row(STALKER, 2, "Gravewick Stalker")] });
+
+  it("is false for an empty, unsaved card and true once it has rows", () => {
+    expect(isDirty(saved, card())).toBe(false);
+    expect(isDirty(saved, card({ entries: [row(GLOOMCAP, 1)] }))).toBe(true);
   });
 
-  it("deletes by name, ignoring capitals; an unknown name changes nothing", () => {
-    expect(deleteSaved(existing, "boss").map((s) => s.name)).toEqual(["Crypt ambush"]);
-    expect(deleteSaved(existing, "nope")).toBe(existing);
+  it("is false for a loaded encounter that has not been changed", () => {
+    expect(isDirty(saved, loaded)).toBe(false);
   });
 
-  it("never changes the list it was given", () => {
-    expectNoMutation(existing, (s) => saveEncounter(s, "New", entries));
-    expectNoMutation(existing, (s) => saveEncounter(s, "boss", entries));
-    expectNoMutation(existing, (s) => deleteSaved(s, "boss"));
+  it("is true after a count change, an added monster, a removal or a rename", () => {
+    expect(isDirty(saved, { ...loaded, entries: [row(STALKER, 3)] })).toBe(true);
+    expect(isDirty(saved, { ...loaded, entries: [...loaded.entries, row(GLOOMCAP, 1)] })).toBe(true);
+    expect(isDirty(saved, { ...loaded, entries: [] })).toBe(true);
+    expect(isDirty(saved, { ...loaded, name: "Renamed" })).toBe(true);
+  });
+
+  it("does not count starring, a changed display name, or extra spaces around the name", () => {
+    expect(isDirty(saved, { ...loaded, favorite: true })).toBe(false);
+    expect(isDirty(saved, { ...loaded, entries: [row(STALKER, 2, "Old name")] })).toBe(false);
+    expect(isDirty(saved, { ...loaded, name: "  Crypt ambush  " })).toBe(false);
+  });
+
+  it("does not count a blank name box on a loaded encounter, which keeps its name", () => {
+    expect(isDirty(saved, { ...loaded, name: "" })).toBe(false);
+  });
+
+  it("treats a card whose saved copy no longer exists as unsaved work", () => {
+    expect(isDirty([], loaded)).toBe(true);
+    expect(isDirty([], { ...loaded, entries: [] })).toBe(false);
+  });
+});
+
+describe("canSave", () => {
+  const rows = [row(GLOOMCAP, 1)];
+
+  it("needs at least one row", () => {
+    expect(canSave([], card())).toBe(false);
+    expect(canSave([], card({ entries: rows }))).toBe(true);
+  });
+
+  it("is blocked by a name another saved encounter uses", () => {
+    expect(canSave([rec("a", "Boss")], card({ name: "boss", entries: rows }))).toBe(false);
+    expect(canSave([rec("a", "Boss")], card({ id: "a", name: "BOSS", entries: rows }))).toBe(true);
+  });
+
+  it("stops new saves at the limit but still allows updating a loaded one", () => {
+    const full = Array.from({ length: MAX_SAVED }, (_, i) => rec(`id-${i}`, `Save ${i}`));
+    expect(canSave(full, card({ name: "Brand new", entries: rows }))).toBe(false);
+    expect(canSave(full, card({ id: "id-5", name: "Save 5", entries: rows }))).toBe(true);
+  });
+});
+
+describe("saveWorking", () => {
+  const rows = [row(STALKER, 2, "Gravewick Stalker")];
+
+  it("adds a new encounter with a fresh id, the typed name and the star", () => {
+    const next = saveWorking(stateOf([], card({ name: "Crypt ambush", favorite: true, entries: rows })), idMaker());
+    expect(next.saved).toEqual([{ id: "new-1", name: "Crypt ambush", favorite: true, entries: rows }]);
+    expect(next.working).toMatchObject({ id: "new-1", name: "Crypt ambush", favorite: true });
+  });
+
+  it("gives a blank name the next default and shows it on the card", () => {
+    const next = saveWorking(stateOf([rec("a", "Boss")], card({ entries: rows })), idMaker());
+    expect(next.saved[1].name).toBe("Encounter 2");
+    expect(next.working.name).toBe("Encounter 2");
+  });
+
+  it("updates a loaded encounter in place, so renaming renames it", () => {
+    const saved = [rec("a", "Crypt ambush"), rec("b", "Boss")];
+    const working = card({ id: "a", name: "Crypt ambush II", entries: rows });
+    const next = saveWorking(stateOf(saved, working), idMaker());
+    expect(next.saved.map((s) => [s.id, s.name])).toEqual([
+      ["a", "Crypt ambush II"],
+      ["b", "Boss"],
+    ]);
+    expect(next.saved[0].entries).toEqual(rows);
+    expect(next.saved[1]).toBe(saved[1]);
+    expect(next.working.id).toBe("a");
+  });
+
+  it("keeps a loaded encounter's name when its name box was cleared", () => {
+    const saved = [rec("a", "Crypt ambush"), rec("b", "Boss")];
+    const next = saveWorking(stateOf(saved, card({ id: "a", name: "", entries: rows })), idMaker());
+    expect(next.saved[0]).toMatchObject({ id: "a", name: "Crypt ambush" });
+    expect(next.working.name).toBe("Crypt ambush");
+  });
+
+  it("changes nothing when the name is taken, the card is empty, or the list is full", () => {
+    const taken = stateOf([rec("a", "Boss")], card({ name: "boss", entries: rows }));
+    expect(saveWorking(taken)).toBe(taken);
+    const empty = stateOf([], card({ name: "Anything" }));
+    expect(saveWorking(empty)).toBe(empty);
+    const full = Array.from({ length: MAX_SAVED }, (_, i) => rec(`id-${i}`, `Save ${i}`));
+    const overflow = stateOf(full, card({ name: "One more", entries: rows }));
+    expect(saveWorking(overflow)).toBe(overflow);
+  });
+
+  it("copies the rows, so later changes on the card cannot alter the saved copy", () => {
+    const working = card({ name: "Copy test", entries: [row(STALKER, 2)] });
+    const next = saveWorking(stateOf([], working), idMaker());
+    working.entries[0].count = 50;
+    expect(next.saved[0].entries[0].count).toBe(2);
+  });
+
+  it("creates a new encounter when the saved copy it was loaded from has been deleted", () => {
+    const next = saveWorking(stateOf([], card({ id: "gone", name: "Orphan", entries: rows })), idMaker());
+    expect(next.saved).toHaveLength(1);
+    expect(next.saved[0].id).toBe("new-1");
+    expect(next.working.id).toBe("new-1");
+  });
+
+  it("makes a real id when none is supplied", () => {
+    const next = saveWorking(stateOf([], card({ name: "Auto id", entries: rows })));
+    expect(typeof next.saved[0].id).toBe("string");
+    expect(next.saved[0].id.length).toBeGreaterThan(0);
+  });
+
+  it("does not change the state it was given", () => {
+    expectNoMutation(stateOf([rec("a", "Boss")], card({ name: "New", entries: rows })), (s) => saveWorking(s, idMaker()));
+    expectNoMutation(stateOf([rec("a", "Boss")], card({ id: "a", name: "Boss 2", entries: rows })), (s) =>
+      saveWorking(s, idMaker()),
+    );
+  });
+});
+
+describe("loadSaved, deleteSaved and startNewEncounter", () => {
+  const saved = [rec("a", "Crypt ambush", true, [row(STALKER, 2, "Gravewick Stalker")]), rec("b", "Boss")];
+
+  it("puts a saved encounter on the card as copies", () => {
+    const next = loadSaved(stateOf(saved, card({ entries: [row(GLOOMCAP, 5)] })), "a");
+    expect(next.working).toEqual({
+      id: "a",
+      name: "Crypt ambush",
+      favorite: true,
+      entries: [row(STALKER, 2, "Gravewick Stalker")],
+    });
+    next.working.entries[0].count = 99;
+    expect(saved[0].entries[0].count).toBe(2);
+  });
+
+  it("changes nothing for an unknown id", () => {
+    const state = stateOf(saved, card());
+    expect(loadSaved(state, "nope")).toBe(state);
+    expect(deleteSaved(state, "nope")).toBe(state);
+  });
+
+  it("deletes a saved encounter and leaves an unrelated card alone", () => {
+    const working = card({ id: "b", name: "Boss", entries: [row(GLOOMCAP, 1)] });
+    const next = deleteSaved(stateOf(saved, working), "a");
+    expect(next.saved.map((s) => s.id)).toEqual(["b"]);
+    expect(next.working).toBe(working);
+  });
+
+  it("unlinks the card, keeping its rows, when its saved copy is deleted", () => {
+    const working = card({ id: "a", name: "Crypt ambush", entries: [row(STALKER, 2)] });
+    const next = deleteSaved(stateOf(saved, working), "a");
+    expect(next.working).toEqual({ ...working, id: null });
+    expect(isDirty(next.saved, next.working)).toBe(true);
+  });
+
+  it("starts a fresh encounter without touching the saved list", () => {
+    const state = stateOf(saved, card({ id: "a", name: "Crypt ambush", entries: [row(STALKER, 2)] }));
+    const next = startNewEncounter(state);
+    expect(next.working).toEqual(emptyWorking());
+    expect(next.saved).toBe(saved);
+  });
+
+  it("does not change the state it was given", () => {
+    const state = stateOf(saved, card({ id: "a", name: "Crypt ambush", entries: [row(STALKER, 2)] }));
+    expectNoMutation(state, (s) => loadSaved(s, "b"));
+    expectNoMutation(state, (s) => deleteSaved(s, "a"));
+    expectNoMutation(state, (s) => startNewEncounter(s));
+  });
+});
+
+describe("favorites on encounters", () => {
+  const saved = [rec("a", "Crypt ambush"), rec("b", "Boss", true)];
+
+  it("stars and unstars a saved encounter", () => {
+    const starred = toggleSavedFavorite(stateOf(saved, card()), "a");
+    expect(starred.saved.map((s) => s.favorite)).toEqual([true, true]);
+    const unstarred = toggleSavedFavorite(starred, "b");
+    expect(unstarred.saved.map((s) => s.favorite)).toEqual([true, false]);
+  });
+
+  it("keeps the card's star in step when the card shows that encounter", () => {
+    const state = stateOf(saved, card({ id: "a", name: "Crypt ambush", entries: [row(GLOOMCAP, 1)] }));
+    expect(toggleSavedFavorite(state, "a").working.favorite).toBe(true);
+    expect(toggleSavedFavorite(state, "b").working.favorite).toBe(false);
+  });
+
+  it("changes nothing for an unknown id", () => {
+    const state = stateOf(saved, card());
+    expect(toggleSavedFavorite(state, "nope")).toBe(state);
+  });
+
+  it("stars an unsaved card without saving anything", () => {
+    const state = stateOf(saved, card({ entries: [row(GLOOMCAP, 1)] }));
+    const next = toggleWorkingFavorite(state);
+    expect(next.working.favorite).toBe(true);
+    expect(next.saved).toBe(saved);
+  });
+
+  it("saves a loaded card's star at once, without making it dirty", () => {
+    const state = loadSaved(stateOf(saved, card()), "a");
+    const next = toggleWorkingFavorite(state);
+    expect(next.working.favorite).toBe(true);
+    expect(next.saved[0].favorite).toBe(true);
+    expect(isDirty(next.saved, next.working)).toBe(false);
+  });
+
+  it("lists starred encounters first, keeping the saved order otherwise", () => {
+    const list = [rec("a", "A"), rec("b", "B", true), rec("c", "C"), rec("d", "D", true)];
+    expect(orderForList(list).map((s) => s.id)).toEqual(["b", "d", "a", "c"]);
+    expectNoMutation(list, (l) => orderForList(l));
+  });
+});
+
+describe("generateId", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("makes different, non-empty ids", () => {
+    const first = generateId();
+    expect(first.length).toBeGreaterThan(0);
+    expect(generateId()).not.toBe(first);
+  });
+
+  it("falls back when crypto.randomUUID is not available (plain http pages)", () => {
+    vi.stubGlobal("crypto", {});
+    const first = generateId();
+    expect(first.startsWith("enc-")).toBe(true);
+    expect(generateId()).not.toBe(first);
   });
 });
