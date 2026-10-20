@@ -39,6 +39,25 @@ describe("createGenerator", () => {
     expect(createGenerator("?x=1&generator=demo", library).mode).toBe("demo");
   });
 
+  it("gives the live generator when a server address is configured", () => {
+    expect(createGenerator("", library, "http://localhost:8000").mode).toBe("live");
+    expect(createGenerator("", library, "  https://forge.example.com  ").mode).toBe("live");
+  });
+
+  it("lets the demo switch win over a configured server", () => {
+    expect(createGenerator("?generator=demo", library, "http://localhost:8000").mode).toBe("demo");
+  });
+
+  it("ignores a server address that is not a web address", () => {
+    for (const bad of ["", "   ", "localhost:8000", "javascript:alert(1)", "ftp://x.test"]) {
+      expect(createGenerator("", library, bad)).toBe(offlineGenerator);
+    }
+  });
+
+  it("never takes the server address from the page address", () => {
+    expect(createGenerator("?api=http://evil.test&server=http://evil.test", library)).toBe(offlineGenerator);
+  });
+
   it("falls back to offline otherwise", () => {
     for (const search of ["", "?generator=live", "?generator=", "?demo=1"]) {
       expect(createGenerator(search, library)).toBe(offlineGenerator);

@@ -1,19 +1,21 @@
 import { useState } from "react";
 import { damageTypesIn } from "../lib/demoGenerator";
-import { OFFLINE_MESSAGE, type Generator, type ReskinRequest } from "../lib/generatorApi";
+import { OFFLINE_MESSAGE, RESTING_MESSAGE, type Generator, type ReskinRequest } from "../lib/generatorApi";
 import { DAMAGE_TYPES, label, type DamageType } from "../lib/options";
 import type { Monster } from "../types/monster";
 
 interface ReskinPanelProps {
   monster: Monster;
   mode: Generator["mode"];
+  /** True when the server says its daily allowance is used up. */
+  resting?: boolean;
   /** Makes the reskin. Resolves to null on success, or to the message to show when it failed. */
   onReskin: (request: ReskinRequest) => Promise<string | null>;
 }
 
 // The Reskin button plus its small panel. Both sit in the stat block's button row; the panel takes a full row.
 // The parent gives this component a key of the monster's id, so its choices reset when another monster opens.
-export default function ReskinPanel({ monster, mode, onReskin }: ReskinPanelProps) {
+export default function ReskinPanel({ monster, mode, resting = false, onReskin }: ReskinPanelProps) {
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState<DamageType | "">("");
   const [to, setTo] = useState<DamageType | "">("");
@@ -23,7 +25,7 @@ export default function ReskinPanel({ monster, mode, onReskin }: ReskinPanelProp
 
   const offline = mode === "offline";
   const hasSwap = from !== "" && to !== "";
-  const blocked = offline || busy || !(hasSwap || elite);
+  const blocked = offline || resting || busy || !(hasSwap || elite);
 
   async function make() {
     if (blocked) return;
@@ -82,7 +84,7 @@ export default function ReskinPanel({ monster, mode, onReskin }: ReskinPanelProp
             Make reskin
           </button>
           <p id="reskin-status" role="status" className="detail-note">
-            {busy ? "Reskinning…" : offline ? OFFLINE_MESSAGE : message || (!(hasSwap || elite) ? "Pick a damage swap, the elite version, or both." : "")}
+            {busy ? "Reskinning…" : offline ? OFFLINE_MESSAGE : resting ? RESTING_MESSAGE : message || (!(hasSwap || elite) ? "Pick a damage swap, the elite version, or both." : "")}
           </p>
         </div>
       )}

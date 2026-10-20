@@ -16,6 +16,8 @@ export interface GenerateRequest {
   roles: Role[];
   damageThemes: DamageTheme[];
   features: Feature[];
+  /** Ids of generated monsters the page already has, so a monster the server hands back from its cache is always a new one. */
+  excludeIds?: string[];
 }
 
 /** Templates that code (not the AI) applies to a monster's numbers. */
@@ -37,14 +39,20 @@ export type GeneratorResult =
   | { ok: true; monster: Monster; notes: string[] }
   | { ok: false; reason: GeneratorFailure; message: string };
 
+/** What a server says about itself: ready, out of daily allowance, or not answering. */
+export type ForgeStatus = "ok" | "resting" | "offline";
+
 export interface Generator {
   /** "offline" means no server is configured, so the buttons explain themselves instead of trying. */
   readonly mode: "offline" | "demo" | "live";
   generate(request: GenerateRequest): Promise<GeneratorResult>;
   reskin(request: ReskinRequest): Promise<GeneratorResult>;
+  /** Only a live generator can ask a server how it is. The others leave this out. */
+  status?(): Promise<ForgeStatus>;
 }
 
 export const OFFLINE_MESSAGE = "Generator offline: the library still works.";
+export const RESTING_MESSAGE = "The forge is resting, back tomorrow. The library still works.";
 
 /** The generator used when no server exists. It never makes a network call. */
 export const offlineGenerator: Generator = {
@@ -59,9 +67,9 @@ export function failureMessage(reason: GeneratorFailure, message: string): strin
     case "offline":
       return OFFLINE_MESSAGE;
     case "resting":
-      return "The forge is resting, back tomorrow. The library still works.";
+      return RESTING_MESSAGE;
     case "rate-limited":
-      return "Slow down a little: try again in a minute.";
+      return message || "Slow down a little: try again in a minute.";
     case "invalid":
       return message || "That request couldn't be made. Try different filters.";
     case "error":

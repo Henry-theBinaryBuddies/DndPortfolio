@@ -36,9 +36,10 @@ import {
   type SortKey,
 } from "./lib/filters";
 import { createGenerator } from "./lib/demoGenerator";
+import { SHARED_LIBRARY_NOTE, fetchSharedLibrary, mergeLibrary } from "./lib/sharedLibrary";
 import { GENERATED_STORAGE_KEY, MAX_GENERATED, looksLikeMonster, parseGenerated } from "./lib/generatedStore";
 import { buildGenerateRequest, describeRequest, fewResultsPrompt } from "./lib/generateRequest";
-import { failureMessage, type GeneratorResult, type ReskinRequest } from "./lib/generatorApi";
+import { failureMessage, type ForgeStatus, type GeneratorResult, type ReskinRequest } from "./lib/generatorApi";
 import { loadMonsters } from "./lib/loadMonsters";
 import { soloBand, type Difficulty } from "./lib/party";
 import {
@@ -54,6 +55,12 @@ import {
 import { SRD_ATTRIBUTION } from "./lib/attribution";
 import { usePersistentState } from "./lib/usePersistentState";
 import type { Monster } from "./types/monster";
+
+// The server address is fixed when the page is built (VITE_API_URL), never taken from the page address.
+const API_URL = import.meta.env.VITE_API_URL as string | undefined;
+
+// The most generated-monster ids sent with a request (the server accepts this many).
+const MAX_EXCLUDED = 500;
 
 export default function App() {
   const [monsters, setMonsters] = useState<Monster[]>([]);
@@ -88,6 +95,10 @@ export default function App() {
   const [generated, setGenerated] = usePersistentState(GENERATED_STORAGE_KEY, parseGenerated);
   const [generating, setGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState("");
+  // Monsters other visitors' requests made, fetched from the server on load. Not saved in this browser.
+  const [shared, setShared] = useState<Monster[]>([]);
+  const [libraryNote, setLibraryNote] = useState("");
+  const [forgeStatus, setForgeStatus] = useState<ForgeStatus>("ok");
   // monsters.length === 0 can't tell "still loading" from "loaded but empty", so track loading explicitly.
   const [libraryReady, setLibraryReady] = useState(false);
 
@@ -102,9 +113,31 @@ export default function App() {
   }, []);
 
   // The curated library plus anything generated. Everything below works from this one list.
-  const library = useMemo(() => [...monsters, ...generated], [monsters, generated]);
-  // Which generator to use comes from the page address: the offline one, or the demo one (?generator=demo).
-  const generator = useMemo(() => createGenerator(window.location.search, monsters), [monsters]);
+  const library = useMemo(() => mergeLibrary(monsters, shared, generated), [monsters, shared, generated]);
+  // Which generator to use: the demo one (?generator=demo), the live one if a server was configured, else the offline one.
+  const generator = useMemo(() => createGenerator(window.location.search, monsters, API_URL), [monsters]);
+
+  // With a live generator, ask the server once for the shared library and for how it is doing. A server that does not
+  // answer is not an error: the built-in monsters still work, and a small note says so.
+  useEffect(() => {
+    if (generator.mode !== "live" || !API_URL) return;
+    let cancelled = false;
+    fetchSharedLibrary(API_URL).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setShared(result.monsters);
+        setLibraryNote("");
+      } else {
+        setLibraryNote(SHARED_LIBRARY_NOTE);
+      }
+    });
+    generator.status?.().then((status) => {
+      if (!cancelled) setForgeStatus(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [generator]);
 
   // The visible list is derived from state on every render, never stored.
   // useMemo skips the work when none of its inputs changed; it matters once the library is large.
@@ -132,7 +165,10 @@ export default function App() {
   // Turns a generator's answer into a stored, opened monster, or into a message when it failed.
   // Returns null on success, or the message to show.
   const accept = (result: GeneratorResult): string | null => {
-    if (!result.ok) return failureMessage(result.reason, result.message);
+    if (!result.ok) {
+      if (result.reason === "resting") setForgeStatus("resting");
+      return failureMessage(result.reason, result.message);
+    }
     // The answer is untrusted (a server will send it), so it is checked before it can reach the stat block.
     if (!looksLikeMonster(result.monster)) return "The generator sent back something that couldn't be shown.";
     const monster = result.monster;
@@ -146,7 +182,9 @@ export default function App() {
     if (generating || built.request === null) return;
     setGenerating(true);
     setGenerateMessage("");
-    const failure = accept(await generator.generate(built.request));
+    // Tell the server which generated monsters this page already has, so a cached answer is always new to it.
+    const excludeIds = [...generated, ...shared].map((m) => m.id).slice(0, MAX_EXCLUDED);
+    const failure = accept(await generator.generate({ ...built.request, excludeIds }));
     setGenerating(false);
     if (failure) setGenerateMessage(failure);
   };
@@ -211,6 +249,8 @@ export default function App() {
                 summary={built.request ? describeRequest(built.request) : null}
                 problem={built.problem}
                 mode={generator.mode}
+                resting={forgeStatus === "resting"}
+                note={libraryNote}
                 busy={generating}
                 message={generateMessage}
                 hasResult={generated.length > 0}
@@ -252,6 +292,7 @@ export default function App() {
         canAdd={canAdd}
         addNote={addNote}
         generatorMode={generator.mode}
+        resting={forgeStatus === "resting"}
         onReskin={runReskin}
         onClose={() => setOpenId(null)}
         onToggleFavorite={() => {

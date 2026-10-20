@@ -1,5 +1,6 @@
 import type { Action, DamageRoll, DamageType, Monster } from "../types/monster";
 import { matchesFilters, EMPTY_FILTERS } from "./filters";
+import { createLiveGenerator } from "./liveGenerator";
 import { offlineGenerator, type GenerateRequest, type Generator, type GeneratorResult, type ReskinRequest } from "./generatorApi";
 import { slugify } from "./exportCommon";
 import { DAMAGE_THEMES } from "./options";
@@ -86,10 +87,15 @@ export function createDemoGenerator(library: Monster[]): Generator {
 }
 
 /**
- * Picks the generator from the page address. "?generator=demo" gives the demo one; anything else is the
- * offline one. (The real server's address will be added here when it exists.)
+ * Picks the generator. "?generator=demo" in the page address gives the demo one. Otherwise, if a server address was
+ * configured when the page was built (VITE_API_URL), the live one. Otherwise the offline one.
+ *
+ * The server address deliberately does NOT come from the page address: a crafted link could point the page at someone
+ * else's server.
  */
-export function createGenerator(search: string, library: Monster[]): Generator {
-  const mode = new URLSearchParams(search).get("generator");
-  return mode === "demo" ? createDemoGenerator(library) : offlineGenerator;
+export function createGenerator(search: string, library: Monster[], serverUrl?: string): Generator {
+  if (new URLSearchParams(search).get("generator") === "demo") return createDemoGenerator(library);
+  const url = serverUrl?.trim();
+  if (url && /^https?:\/\//.test(url)) return createLiveGenerator(url);
+  return offlineGenerator;
 }

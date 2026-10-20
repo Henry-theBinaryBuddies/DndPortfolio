@@ -14,6 +14,8 @@ interface StatBlockDialogProps {
   /** A short note about the encounter, such as "2 in encounter" or why Add is unavailable. */
   addNote: string;
   generatorMode: Generator["mode"];
+  /** True when the server says its daily allowance is used up. */
+  resting: boolean;
   /** Makes a reskin of the open monster. Resolves to null on success, or to a message when it failed. */
   onReskin: (request: ReskinRequest) => Promise<string | null>;
   onClose: () => void;
@@ -30,6 +32,7 @@ export default function StatBlockDialog({
   canAdd,
   addNote,
   generatorMode,
+  resting,
   onReskin,
   onClose,
   onToggleFavorite,
@@ -98,7 +101,7 @@ export default function StatBlockDialog({
             <span id="add-note" role="status" className="detail-note">
               {addNote}
             </span>
-            <ReskinPanel key={`reskin-${monster.id}`} monster={monster} mode={generatorMode} onReskin={onReskin} />
+            <ReskinPanel key={`reskin-${monster.id}`} monster={monster} mode={generatorMode} resting={resting} onReskin={onReskin} />
             <ExportButtons key={monster.id} monster={monster} />
             <button type="button" className="close-button" aria-label="Close stat block" onClick={onClose}>
               <span aria-hidden="true">×</span>

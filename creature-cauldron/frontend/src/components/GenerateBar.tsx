@@ -1,4 +1,4 @@
-import { OFFLINE_MESSAGE, type Generator } from "../lib/generatorApi";
+import { OFFLINE_MESSAGE, RESTING_MESSAGE, type Generator } from "../lib/generatorApi";
 
 interface GenerateBarProps {
   /** A prompt about a short list ("Only 1 match."), or null when the list is long enough. */
@@ -8,6 +8,10 @@ interface GenerateBarProps {
   /** Why the choices cannot be requested, when they can't. */
   problem: string | null;
   mode: Generator["mode"];
+  /** True when the server says its daily allowance is used up. */
+  resting: boolean;
+  /** A small note about the shared library (for example that it could not be fetched), or an empty string. */
+  note: string;
   busy: boolean;
   /** The outcome of the last attempt. */
   message: string;
@@ -16,11 +20,11 @@ interface GenerateBarProps {
   onGenerate: () => void;
 }
 
-export default function GenerateBar({ prompt, summary, problem, mode, busy, message, hasResult, onGenerate }: GenerateBarProps) {
+export default function GenerateBar({ prompt, summary, problem, mode, resting, note, busy, message, hasResult, onGenerate }: GenerateBarProps) {
   const offline = mode === "offline";
-  const blocked = offline || busy || problem !== null;
+  const blocked = offline || resting || busy || problem !== null;
   // Always rendered, so a screen reader notices when its text changes.
-  const status = busy ? "Generating…" : offline ? OFFLINE_MESSAGE : message;
+  const status = busy ? "Generating…" : offline ? OFFLINE_MESSAGE : resting ? RESTING_MESSAGE : message;
 
   return (
     <div className="generate-bar">
@@ -41,6 +45,11 @@ export default function GenerateBar({ prompt, summary, problem, mode, busy, mess
       <p id="generate-status" role="status" className="detail-note">
         {status}
       </p>
+      {note && (
+        <p role="status" className="detail-note">
+          {note}
+        </p>
+      )}
     </div>
   );
 }
