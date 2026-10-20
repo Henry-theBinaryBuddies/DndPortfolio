@@ -12,6 +12,7 @@ import spy from "./fixtures/foundry-dnd5e-5.3.3/spy.json";
 import type { JsonObject } from "./foundryJson";
 import { FOUNDRY_TARGET, STATS_STAMP, foundryProficiency, skillFor } from "./foundryMaps";
 import { FOUNDRY_ID, findUndefined, keyPaths } from "./testing/foundryChecks";
+import { redDragon } from "./testing/srdMonsters";
 
 const monsters = sample as unknown as Monster[];
 const fixtures = [dragonFixture, hillGiant, giantSpider, banditCaptain, spy, mage] as unknown as JsonObject[];
@@ -104,68 +105,7 @@ describe("the shape matches real SRD actors", () => {
 describe("a dragon written in our format reproduces the real SRD dragon", () => {
   const real = dragonFixture as unknown as JsonObject;
   const realSystem = obj(real.system);
-  const text = (name: string, t: string) => ({ kind: "text" as const, name, text: t });
-  const melee = (name: string, reach: number, dice: string, type: "piercing" | "slashing" | "bludgeoning", extra = false) => ({
-    kind: "attack" as const,
-    name,
-    attack: { mode: "melee_weapon" as const, ability: "str" as const, to_hit: 14, reach, targets: "one target" },
-    damage: [
-      { dice, bonus: 8, type },
-      ...(extra ? [{ dice: "2d6", bonus: 0, type: "fire" as const }] : []),
-    ],
-  });
-  const dragon: Monster = {
-    ...byName("Stormhide Drake"),
-    id: "adult-red-dragon-test",
-    name: "Adult Red Dragon",
-    source: "srd",
-    size: "huge",
-    type: "dragon",
-    subtypes: [],
-    alignment: "Chaotic Evil",
-    armor_class: { value: 19, note: "natural armor" },
-    hit_points: { average: 256, dice: "19d12+133" },
-    speeds: { walk: 40, climb: 40, fly: 80 },
-    abilities: { str: 27, dex: 10, con: 25, int: 16, wis: 13, cha: 21 },
-    saves: { dex: 6, con: 13, wis: 7, cha: 11 },
-    skills: { Perception: 13, Stealth: 6 },
-    vulnerabilities: [],
-    resistances: [],
-    immunities: ["fire"],
-    condition_immunities: [],
-    senses: { blindsight: 60, darkvision: 120, passive_perception: 23 },
-    languages: "Common, Draconic",
-    challenge: { cr: "17", cr_value: 17, xp: 18000, proficiency_bonus: 6 },
-    traits: [text("Legendary Resistance (3/Day)", "If the dragon fails a saving throw, it can choose to succeed instead.")],
-    actions: [
-      text("Multiattack", "The dragon can use its Frightful Presence. It then makes three attacks."),
-      melee("Bite", 10, "2d10", "piercing", true),
-      melee("Claw", 5, "2d6", "slashing"),
-      melee("Tail", 15, "2d8", "bludgeoning"),
-      {
-        kind: "save",
-        name: "Fire Breath",
-        recharge: { min: 5 },
-        save: { ability: "dex", dc: 21 },
-        area: { shape: "cone", size: 60 },
-        on_fail: [{ dice: "18d6", bonus: 0, type: "fire" }],
-        on_success: "half",
-      },
-    ],
-    bonus_actions: [],
-    reactions: [],
-    legendary_actions: {
-      per_round: 3,
-      options: [
-        { name: "Detect", cost: 1, text: "The dragon makes a Wisdom (Perception) check." },
-        { name: "Tail Attack", cost: 1, text: "The dragon makes a tail attack." },
-        { name: "Wing Attack", cost: 2, text: "The dragon beats its wings." },
-      ],
-    },
-    spellcasting: null,
-    environments: ["mountain"],
-    attribution: null,
-  };
+  const dragon = redDragon;
   const { actor } = exportFoundryActor(dragon);
   const ours = obj(actor.system);
 
