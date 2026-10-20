@@ -13,8 +13,22 @@
   --pressed: #e2cfa6;
   --divider: #d8c9a8;
   --note: #f3e8cf;
+  /* Pictures */
+  --silhouette: #3a2a48;
+  --silhouette-edge: transparent;
+  --iron: #3a3a3f;
+  --iron-rim: #55555c;
+  --brew: #6fae5a;
+  --brew-glow: rgba(111, 174, 90, 0.35);
+  --moon: #c79a45;
+  --font-body: "Alegreya", Georgia, "Times New Roman", serif;
+  --font-display: "Cinzel", Georgia, serif; /* headings, buttons, labels */
+  --font-title: "Cinzel Decorative", "Cinzel", Georgia, serif; /* the page title only */
+  --font-flourish: "MedievalSharp", "Cinzel", Georgia, serif; /* small touches: counts, notes */
   color-scheme: light;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-body);
+  /* Alegreya sets a little smaller than Georgia did, so everything (written in rem) grows with it. */
+  font-size: 106.25%;
   color: var(--ink);
   background: var(--paper);
 }
@@ -34,6 +48,13 @@
   --pressed: #40301f;
   --divider: #3a2d22;
   --note: #2d2218;
+  --silhouette: #54396b;
+  --silhouette-edge: #a98ad0;
+  --iron: #26262b;
+  --iron-rim: #4a4a52;
+  --brew: #8ee07a;
+  --brew-glow: rgba(142, 224, 122, 0.4);
+  --moon: #e8c26a;
   color-scheme: dark;
 }
 
@@ -44,16 +65,31 @@ body {
 h1,
 h2 {
   color: var(--accent);
+  font-family: var(--font-display);
   margin: 0 0 0.4rem;
 }
 
 h1 {
-  font-size: 1.5rem;
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
 h2 {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+}
+
+/* Buttons and small labels speak in the display face; running text stays in the readable one. */
+.action-button,
+.print-button,
+.menu-button,
+.pill,
+.difficulty legend,
+.theme-toggle {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
 }
 
 /* Hidden on screen but still read aloud by screen readers. */
@@ -197,8 +233,276 @@ select {
 }
 
 .theme-toggle {
-  margin-left: auto;
   white-space: nowrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand h1 {
+  margin: 0;
+}
+
+.brand__mark {
+  width: 2.8rem;
+  height: auto;
+}
+
+/* The witch banner uses spare room in the top bar and steps aside when there is none. */
+.topbar__scene {
+  width: 13rem;
+  height: auto;
+  margin-left: auto;
+}
+
+@media (max-width: 1100px) {
+  .topbar__scene {
+    display: none;
+  }
+
+  .theme-toggle {
+    margin-left: auto;
+  }
+}
+
+.empty-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.empty-scene__art {
+  width: 6rem;
+  height: auto;
+  opacity: 0.85;
+}
+
+/* ---- Pictures: the cauldron and the witch (components/Illustrations.tsx) ---- */
+
+.cauldron {
+  overflow: visible;
+}
+
+.cauldron__iron {
+  fill: var(--iron);
+  color: var(--iron);
+}
+
+.cauldron__rim {
+  fill: var(--iron-rim);
+}
+
+.cauldron__brew {
+  fill: var(--brew);
+}
+
+.cauldron__glow {
+  fill: var(--brew-glow);
+  filter: blur(6px);
+}
+
+.cauldron__shine {
+  stroke: var(--iron-rim);
+}
+
+.bubble {
+  fill: var(--brew);
+  stroke: var(--paper);
+  stroke-width: 0.8;
+  opacity: 0.85;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.witch__figure {
+  fill: var(--silhouette);
+  stroke: var(--silhouette-edge);
+  stroke-width: 1.2;
+}
+
+.witch__stick {
+  stroke: var(--silhouette);
+}
+
+.witch__band {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.witch__moon {
+  fill: var(--moon);
+}
+
+.witch__star {
+  fill: var(--moon);
+}
+
+/* Animation: bubbles rise and fade, the brew glows. Off when the visitor's device asks for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .is-bubbling .bubble {
+    animation: bubble-rise 3.2s ease-in infinite;
+  }
+
+  .is-bubbling .b2 {
+    animation-delay: 0.8s;
+  }
+
+  .is-bubbling .b3 {
+    animation-delay: 1.6s;
+  }
+
+  .is-bubbling .b4 {
+    animation-delay: 2.3s;
+  }
+
+  .is-bubbling .cauldron__glow {
+    animation: brew-pulse 2.6s ease-in-out infinite;
+  }
+
+  .witch__star {
+    animation: twinkle 3s ease-in-out infinite;
+  }
+}
+
+/* ---- The brewing overlay ---- */
+
+.brew-overlay {
+  /* a popover starts with a margin, a border and a background of its own; none of that is wanted here */
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.brew-overlay:not(:popover-open) {
+  display: none;
+}
+
+.brew-overlay__pot {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 9rem;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 1.2rem var(--brew-glow));
+}
+
+.brew-overlay__pot p {
+  margin: 0;
+  padding: 0.1rem 0.8rem;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--accent);
+  font-family: var(--font-flourish);
+}
+
+.brew-bubble {
+  position: absolute;
+  bottom: 4rem;
+  border-radius: 50%;
+  border: 2px solid var(--brew);
+  background: var(--brew-glow);
+  opacity: 0;
+}
+
+/* Reduced motion: no moving bubbles, but the cauldron and its label still say that something is happening. */
+@media (prefers-reduced-motion: no-preference) {
+  .brew-bubble {
+    animation-name: brew-rise;
+    animation-timing-function: ease-in;
+    animation-iteration-count: infinite;
+  }
+
+  .brew-overlay.is-popping .brew-bubble {
+    animation: brew-pop 0.6s ease-out forwards;
+  }
+
+  .brew-overlay.is-popping .brew-overlay__pot {
+    animation: brew-fade 0.7s ease-in forwards;
+  }
+}
+
+@keyframes brew-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0) scale(0.6);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(-45vh) translateX(1.2rem) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-95vh) translateX(-1rem) scale(1.25);
+  }
+}
+
+@keyframes brew-pop {
+  0% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@keyframes brew-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.5);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(1.15);
+  }
+}
+
+@keyframes brew-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .topbar {

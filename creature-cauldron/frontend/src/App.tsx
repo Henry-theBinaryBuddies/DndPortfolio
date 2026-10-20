@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import EncounterPanel from "./components/EncounterPanel";
 import FilterBar from "./components/FilterBar";
 import GenerateBar from "./components/GenerateBar";
+import BrewingOverlay from "./components/BrewingOverlay";
+import { Cauldron, WitchScene } from "./components/Illustrations";
 import ThemeToggle from "./components/ThemeToggle";
 import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
@@ -211,7 +213,10 @@ export default function App() {
     <>
       <main className="app no-print">
         <header className="topbar">
-          <h1>Creature Cauldron</h1>
+          <div className="brand">
+            <Cauldron className="brand__mark" />
+            <h1>Creature Cauldron</h1>
+          </div>
           <PartyPanel
             party={party}
             difficulty={difficulty}
@@ -219,8 +224,10 @@ export default function App() {
             onPartyChange={setParty}
             onDifficultyChange={setDifficulty}
           />
+          <WitchScene className="topbar__scene" />
           <ThemeToggle />
         </header>
+        <BrewingOverlay active={generating} />
 
         {error && <p className="error">{error}</p>}
 
