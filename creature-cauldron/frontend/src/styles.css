@@ -1203,68 +1203,6 @@ select {
   font-size: 0.85rem;
 }
 
-/* ---- The spread: list on the left page, stat block on the right, encounter in a tray below (wide screens) ---- */
-
-@media (min-width: 1000px) and (min-height: 600px) {
-  .board--spread {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
-    grid-template-rows: minmax(0, 1fr) 12.5rem;
-  }
-
-  .board--spread.board--tray-closed {
-    grid-template-rows: minmax(0, 1fr) auto;
-  }
-
-  .tray {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    min-height: 0;
-  }
-
-  .tray__toggle {
-    align-self: flex-start;
-  }
-
-  .tray__body {
-    display: grid;
-    flex: 1 1 auto;
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    gap: 0.75rem;
-    min-height: 0;
-  }
-
-  /* The detail page holds a stat block that scrolls inside it. Its header stays in view and takes the page's own colour. */
-  .detail-panel .dialog-body {
-    padding: 0;
-  }
-
-  .detail-panel .dialog-header {
-    background: var(--panel);
-  }
-
-  /* There is no pop-out to close here, and choosing another monster replaces this one. */
-  .detail-panel .close-button {
-    display: none;
-  }
-
-  .detail-empty {
-    margin: auto;
-  }
-
-  /* In the tray the empty-encounter picture sits beside its words instead of above them. */
-  .tray .empty-scene {
-    flex-direction: row;
-    gap: 1rem;
-    text-align: left;
-  }
-
-  .tray .empty-scene__art {
-    width: 5rem;
-  }
-}
-
 /* ---- Attribution footer ---- */
 .attribution {
   flex: none;

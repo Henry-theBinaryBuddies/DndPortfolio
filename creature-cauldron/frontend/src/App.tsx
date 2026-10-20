@@ -9,7 +9,6 @@ import ThemeToggle from "./components/ThemeToggle";
 import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
 import SavedEncounters from "./components/SavedEncounters";
-import DetailPanel from "./components/DetailPanel";
 import StatBlockDialog from "./components/StatBlockDialog";
 import {
   MAX_COUNT,
@@ -59,7 +58,6 @@ import {
 } from "./lib/storage";
 import { SRD_ATTRIBUTION } from "./lib/attribution";
 import { usePersistentState } from "./lib/usePersistentState";
-import { useMediaQuery } from "./lib/useMediaQuery";
 import type { Monster } from "./types/monster";
 
 // The server address is fixed when the page is built (VITE_API_URL), never taken from the page address.
@@ -100,11 +98,6 @@ export default function App() {
   // and join the library, so they filter, sort, favorite and go into encounters like any other.
   const [generated, setGenerated] = usePersistentState(GENERATED_STORAGE_KEY, parseGenerated);
   const [generating, setGenerating] = useState(false);
-  // Wide screens show the list and the chosen stat block side by side, with the encounter in a tray underneath. Narrower
-  // ones keep the three stacked boxes and the pop-out. (The same test is in styles.css, which lays the boxes out.)
-  const wide = useMediaQuery("(min-width: 1000px) and (min-height: 600px)");
-  // The tray starts open on tall windows and folded away on short ones, where the list and stat block need the room.
-  const [trayOpen, setTrayOpen] = useState(() => window.innerHeight >= 900);
   const [generateMessage, setGenerateMessage] = useState("");
   // Monsters other visitors' requests made, fetched from the server on load. Not saved in this browser.
   const [shared, setShared] = useState<Monster[]>([]);
@@ -217,49 +210,6 @@ export default function App() {
       ? `${inEncounter} in encounter`
       : "";
 
-  const statBlockProps = {
-    isFavorite: openedIsFavorite,
-    canAdd,
-    addNote,
-    generatorMode: generator.mode,
-    resting: forgeStatus === "resting",
-    onReskin: runReskin,
-    onClose: () => setOpenId(null),
-    onToggleFavorite: () => {
-      if (opened) setFavorites(toggle(favorites, opened.id));
-    },
-    onAdd: () => {
-      if (opened) setWorking({ ...working, entries: addMonster(entries, opened) });
-    },
-  };
-
-  const encounterPanel = (
-    <EncounterPanel
-      working={working}
-      saved={saved}
-      summary={summary}
-      party={party}
-      libraryReady={libraryReady}
-      onNameChange={(name) => setWorking({ ...working, name })}
-      onToggleFavorite={() => apply(toggleWorkingFavorite(encounterState))}
-      onSave={() => apply(saveWorking(encounterState))}
-      onNew={() => apply(startNewEncounter(encounterState))}
-      onCountChange={(id, count) => setWorking({ ...working, entries: setCount(entries, id, count) })}
-      onRemove={(id) => setWorking({ ...working, entries: removeMonster(entries, id) })}
-      onView={setOpenId}
-    />
-  );
-  const savedPanel = (
-    <SavedEncounters
-      saved={saved}
-      loadedId={working.id}
-      dirty={isDirty(saved, working)}
-      onLoad={(id) => apply(loadSaved(encounterState, id))}
-      onDelete={(id) => apply(deleteSaved(encounterState, id))}
-      onToggleFavorite={(id) => apply(toggleSavedFavorite(encounterState, id))}
-    />
-  );
-
   return (
     <>
       <SmolderFilter />
@@ -291,7 +241,7 @@ export default function App() {
           onClear={() => setFilters(EMPTY_FILTERS)}
         />
 
-        <div className={`board ${wide ? "board--spread" : ""} ${wide && !trayOpen ? "board--tray-closed" : ""}`}>
+        <div className="board">
           <ResultsList
             monsters={shown}
             totalCount={library.length}
@@ -321,34 +271,50 @@ export default function App() {
               />
             }
           />
-          {wide ? (
-            <>
-              <DetailPanel monster={opened} {...statBlockProps} />
-              <div className="tray">
-                <button type="button" className="tray__toggle action-button" aria-expanded={trayOpen} onClick={() => setTrayOpen(!trayOpen)}>
-                  Encounter and saved encounters ({entries.length} {entries.length === 1 ? "monster" : "monsters"}) <span aria-hidden="true">{trayOpen ? "▾" : "▴"}</span>
-                </button>
-                {trayOpen && (
-                  <div className="tray__body">
-                    {encounterPanel}
-                    {savedPanel}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              {encounterPanel}
-              {savedPanel}
-            </>
-          )}
+          <EncounterPanel
+            working={working}
+            saved={saved}
+            summary={summary}
+            party={party}
+            libraryReady={libraryReady}
+            onNameChange={(name) => setWorking({ ...working, name })}
+            onToggleFavorite={() => apply(toggleWorkingFavorite(encounterState))}
+            onSave={() => apply(saveWorking(encounterState))}
+            onNew={() => apply(startNewEncounter(encounterState))}
+            onCountChange={(id, count) => setWorking({ ...working, entries: setCount(entries, id, count) })}
+            onRemove={(id) => setWorking({ ...working, entries: removeMonster(entries, id) })}
+            onView={setOpenId}
+          />
+          <SavedEncounters
+            saved={saved}
+            loadedId={working.id}
+            dirty={isDirty(saved, working)}
+            onLoad={(id) => apply(loadSaved(encounterState, id))}
+            onDelete={(id) => apply(deleteSaved(encounterState, id))}
+            onToggleFavorite={(id) => apply(toggleSavedFavorite(encounterState, id))}
+          />
         </div>
 
         {/* The SRD's required credit. It must be quoted exactly as Wizards of the Coast gives it. */}
         <footer className="attribution">{SRD_ATTRIBUTION}</footer>
       </main>
 
-      <StatBlockDialog monster={wide ? null : opened} {...statBlockProps} />
+      <StatBlockDialog
+        monster={opened}
+        isFavorite={openedIsFavorite}
+        canAdd={canAdd}
+        addNote={addNote}
+        generatorMode={generator.mode}
+        resting={forgeStatus === "resting"}
+        onReskin={runReskin}
+        onClose={() => setOpenId(null)}
+        onToggleFavorite={() => {
+          if (opened) setFavorites(toggle(favorites, opened.id));
+        }}
+        onAdd={() => {
+          if (opened) setWorking({ ...working, entries: addMonster(entries, opened) });
+        }}
+      />
     </>
   );
 }
