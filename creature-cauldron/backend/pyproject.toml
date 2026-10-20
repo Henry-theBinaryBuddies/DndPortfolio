@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "creature-cauldron-backend"
+version = "0.1.0"
+description = "Creature Cauldron back end: monster models, rules engine, validator and generator API."
+requires-python = ">=3.12"
+# Minimums are the versions tested on Python 3.15.
+dependencies = [
+  "fastapi>=0.150",
+  "uvicorn>=0.54",
+  "pydantic>=2.14",
+  "httpx>=0.28",
+  "anthropic>=1.15",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
