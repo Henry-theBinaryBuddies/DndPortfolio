@@ -180,6 +180,15 @@ class Challenge(CauldronModel):
     proficiency_bonus: int = Field(ge=2, le=9)
 
 
+class DamageText(CauldronModel):
+    """The exact printed wording of a damage line, when the plain list of types cannot express it, for example
+    "bludgeoning, piercing, and slashing from nonmagical weapons". The type lists still hold the types."""
+
+    vulnerabilities: Annotated[str, Field(max_length=300)] | None = None
+    resistances: Annotated[str, Field(max_length=300)] | None = None
+    immunities: Annotated[str, Field(max_length=300)] | None = None
+
+
 # --- the monster ----------------------------------------------------------------------------------------
 
 
@@ -208,6 +217,7 @@ class Monster(CauldronModel):
     vulnerabilities: list[DamageType]
     resistances: list[DamageType]
     immunities: list[DamageType]
+    damage_text: DamageText | None = None
     condition_immunities: list[Short]
     senses: Senses
     languages: Annotated[str, Field(max_length=200)]

@@ -7,9 +7,10 @@ Template is an abstract base class (like Action and Check): it fixes what every 
 and each subclass says how. Adding "swarm" later means writing one more subclass and registering it.
 """
 
+import re
 from abc import ABC, abstractmethod
 
-from cauldron.actions import Action, AttackAction, DamageRoll, SaveAction
+from cauldron.actions import Action, AttackAction, DamageRoll, MultiattackAction, SaveAction, TextAction
 from cauldron.dice import ability_modifier, format_dice, parse_dice
 from cauldron.monster import Monster
 from cauldron.options import Ability, DamageTheme, DamageType, Source
@@ -23,17 +24,34 @@ _THEMES = {theme.value for theme in DamageTheme}
 
 def swap_damage_type(monster: Monster, old: DamageType, new: DamageType) -> Monster:
     """A copy with every use of `old` replaced by `new` in attacks, saves, resistances, immunities,
-    vulnerabilities and damage themes. Prose inside text actions is not rewritten."""
+    vulnerabilities and damage themes. The words "<type> damage" are also replaced inside action and trait text,
+    so text-only actions (most SRD breath weapons) stay consistent; other wording is left for the renamer."""
+
+    phrase = re.compile(r"\b" + re.escape(old.value) + r" damage\b")
+
+    def words(text: str | None) -> str | None:
+        return None if text is None else phrase.sub(f"{new.value} damage", text)
 
     def roll(r: DamageRoll) -> DamageRoll:
         return r.model_copy(update={"type": new}) if r.type == old else r
 
     def action(a: Action) -> Action:
         if isinstance(a, AttackAction):
-            return a.model_copy(update={"damage": [roll(r) for r in a.damage]})
+            return a.model_copy(update={"damage": [roll(r) for r in a.damage], "effects_text": words(a.effects_text)})
         if isinstance(a, SaveAction):
-            return a.model_copy(update={"on_fail": [roll(r) for r in a.on_fail]})
+            return a.model_copy(update={"on_fail": [roll(r) for r in a.on_fail], "effects_text": words(a.effects_text)})
+        if isinstance(a, MultiattackAction):
+            return a.model_copy(update={"text": words(a.text)})
+        if isinstance(a, TextAction):
+            return a.model_copy(update={"text": words(a.text)})
         return a
+
+    def trait(t: TextAction) -> TextAction:
+        return t.model_copy(update={"text": words(t.text)})
+
+    legendary = monster.legendary_actions
+    if legendary is not None:
+        legendary = legendary.model_copy(update={"options": [o.model_copy(update={"text": words(o.text)}) for o in legendary.options]})
 
     def types(items: list[DamageType]) -> list[DamageType]:
         # dict.fromkeys drops repeats but keeps the order.
@@ -46,6 +64,8 @@ def swap_damage_type(monster: Monster, old: DamageType, new: DamageType) -> Mons
             "actions": [action(a) for a in monster.actions],
             "bonus_actions": [action(a) for a in monster.bonus_actions],
             "reactions": [action(a) for a in monster.reactions],
+            "traits": [trait(t) for t in monster.traits],
+            "legendary_actions": legendary,
             "resistances": types(monster.resistances),
             "immunities": types(monster.immunities),
             "vulnerabilities": types(monster.vulnerabilities),

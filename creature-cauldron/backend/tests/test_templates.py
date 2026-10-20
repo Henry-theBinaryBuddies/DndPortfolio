@@ -69,6 +69,16 @@ def test_swap_moves_the_damage_theme_or_drops_it_for_a_weapon_type() -> None:
     assert swap_damage_type(base, DamageType.FIRE, DamageType.SLASHING).damage_themes == []
 
 
+def test_swap_also_rewrites_the_damage_words_inside_text_actions() -> None:
+    from cauldron.actions import TextAction
+
+    breath = TextAction(name="Fire Breath", text="The dragon exhales fire. Each creature takes 63 (18d6) fire damage on a failed save.")
+    base = sample("Cinderkite").model_copy(update={"actions": [breath]})
+    swapped = swap_damage_type(base, DamageType.FIRE, DamageType.COLD)
+    assert isinstance(swapped.actions[0], TextAction)
+    assert swapped.actions[0].text == "The dragon exhales fire. Each creature takes 63 (18d6) cold damage on a failed save."
+
+
 def test_swapping_a_type_for_itself_changes_nothing() -> None:
     base = sample("Stormhide Drake")
     assert swap_damage_type(base, DamageType.FIRE, DamageType.FIRE) == base

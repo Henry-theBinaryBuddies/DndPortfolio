@@ -1,16 +1,16 @@
 """Discovery tags that code derives from the stat block. The AI's own claims about these are never trusted."""
 
-from cauldron.actions import MultiattackAction, SaveAction
+from cauldron.actions import Action, MultiattackAction, SaveAction
 from cauldron.monster import Monster
 from cauldron.options import AreaShape, CreatureType, Feature
 
 
-def _is_breath_weapon(monster: Monster, action: object) -> bool:
-    """A save with "breath" in its name, or a dragon's recharging cone or line."""
-    if not isinstance(action, SaveAction):
-        return False
+def _is_breath_weapon(monster: Monster, action: Action) -> bool:
+    """Any action with "breath" in its name, or a dragon's recharging cone or line."""
     if "breath" in action.name.lower():
         return True
+    if not isinstance(action, SaveAction):
+        return False
     shaped = action.area is not None and action.area.shape in (AreaShape.CONE, AreaShape.LINE)
     return monster.type is CreatureType.DRAGON and shaped and action.recharge is not None
 

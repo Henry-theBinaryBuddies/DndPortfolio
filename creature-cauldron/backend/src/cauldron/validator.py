@@ -23,7 +23,7 @@ from enum import StrEnum
 
 from cauldron.actions import AttackAction, SaveAction
 from cauldron.blocklist import blocked_term
-from cauldron.dice import ability_modifier, format_dice, parse_dice
+from cauldron.dice import ability_modifier, format_dice, format_signed, parse_dice
 from cauldron.features import derive_features
 from cauldron.monster import Monster
 from cauldron.options import Ability, Source
@@ -190,7 +190,7 @@ class AttackBonusCheck(Check):
             extra = action.attack.to_hit - expected
             if 0 <= extra <= BONUS_TOLERANCE:
                 return action
-            findings.append(self._finding(Outcome.CORRECTED, f'"{action.name}" had +{action.attack.to_hit} to hit and should have +{expected}.'))
+            findings.append(self._finding(Outcome.CORRECTED, f'"{action.name}" had {format_signed(action.attack.to_hit)} to hit and should have {format_signed(expected)}.'))
             return action.model_copy(update={"attack": action.attack.model_copy(update={"to_hit": expected})})
 
         def fix_all(actions: list) -> list:
