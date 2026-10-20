@@ -25,7 +25,7 @@ def test_without_a_key_generation_says_the_forge_cannot_be_reached(tmp_path) -> 
 
 def test_reskinning_a_known_srd_monster_reaches_the_ai_step_and_fails_the_same_way(tmp_path) -> None:
     client = TestClient(create_default_app(env(tmp_path)))
-    response = client.post("/api/v1/reskin", json={"baseId": "srd-goblin", "template": "elite"})
+    response = client.post("/api/v1/reskin", json={"baseId": "srd-goblin", "template": "level_up"})
     assert response.status_code == 502  # the base was found in the static library; only the naming step is unavailable
 
 

@@ -98,10 +98,10 @@ export function createDemoGenerator(library: Monster[]): Generator {
       const { base, damageSwap, template } = request;
       let monster: Monster = base;
       if (damageSwap) monster = swapDamageType(monster, damageSwap.from, damageSwap.to);
-      const label = [damageSwap ? `${damageSwap.to}` : null, template === "elite" ? "elite" : null].filter(Boolean).join(" ");
+      const label = [damageSwap ? `${damageSwap.to}` : null, template === "level_up" ? "level up" : null].filter(Boolean).join(" ");
       const name = `${base.name} (${label || "reskin"})`;
       const id = `demo-${unique()}-${slugify(name)}`;
-      const notes = ["Demo mode: only the damage type was swapped. Numbers and the elite template are not applied."];
+      const notes = ["Demo mode: only the damage type was swapped. Numbers and the level-up template are not applied."];
       return Promise.resolve(
         ok({ ...monster, id, name, source: "reskin", validated: false, parent_id: base.id, generator: "demo", attribution: null }, notes),
       );

@@ -21,7 +21,7 @@ export interface GenerateRequest {
 }
 
 /** Templates that code (not the AI) applies to a monster's numbers. */
-export const RESKIN_TEMPLATES = ["elite"] as const;
+export const RESKIN_TEMPLATES = ["level_up"] as const;
 export type ReskinTemplate = (typeof RESKIN_TEMPLATES)[number];
 
 export interface ReskinRequest {

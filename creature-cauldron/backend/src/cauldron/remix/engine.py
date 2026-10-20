@@ -15,7 +15,7 @@ from cauldron.monster import Monster
 from cauldron.options import CreatureType, DamageTheme
 from cauldron.remix.moves import MOVES, Move, available_moves, make_context
 from cauldron.remix.theme import apply_theme, primary_damage
-from cauldron.templates import EliteTemplate
+from cauldron.templates import LevelUpTemplate
 
 SURPRISE = "surprise"
 
@@ -114,7 +114,7 @@ def remix(monster: Monster, theme: DamageTheme | None, move_key: str | None, mov
 
     if level_up:
         old_cr = shaped.challenge.cr
-        leveled = EliteTemplate().apply(shaped)
+        leveled = LevelUpTemplate().apply(shaped)
         # The template renames and re-identifies the monster; a remix keeps its identity (the service names it afterwards).
         shaped = leveled.model_copy(
             update={"id": shaped.id, "name": shaped.name, "source": shaped.source, "validated": shaped.validated, "parent_id": shaped.parent_id, "generator": shaped.generator}

@@ -19,13 +19,13 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState<DamageType | "">("");
   const [to, setTo] = useState<DamageType | "">("");
-  const [elite, setElite] = useState(false);
+  const [levelUp, setLevelUp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
   const offline = mode === "offline";
   const hasSwap = from !== "" && to !== "";
-  const blocked = offline || resting || busy || !(hasSwap || elite);
+  const blocked = offline || resting || busy || !(hasSwap || levelUp);
 
   async function make() {
     if (blocked) return;
@@ -34,7 +34,7 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
     const failure = await onReskin({
       base: monster,
       damageSwap: from !== "" && to !== "" ? { from, to } : null,
-      template: elite ? "elite" : null,
+      template: levelUp ? "level_up" : null,
     });
     setBusy(false);
     if (failure) setMessage(failure);
@@ -78,13 +78,13 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
             </label>
           )}
           <label>
-            <input type="checkbox" checked={elite} onChange={(e) => setElite(e.target.checked)} /> Elite version
+            <input type="checkbox" checked={levelUp} onChange={(e) => setLevelUp(e.target.checked)} /> Level up (about +1 CR)
           </label>
           <button type="button" className="action-button" aria-disabled={blocked} aria-describedby="reskin-status" onClick={make}>
             Make reskin
           </button>
           <p id="reskin-status" role="status" className="detail-note">
-            {busy ? "Reskinning…" : offline ? OFFLINE_MESSAGE : resting ? RESTING_MESSAGE : message || (!(hasSwap || elite) ? "Pick a damage swap, the elite version, or both." : "")}
+            {busy ? "Reskinning…" : offline ? OFFLINE_MESSAGE : resting ? RESTING_MESSAGE : message || (!(hasSwap || levelUp) ? "Pick a damage swap, level up, or both." : "")}
           </p>
         </div>
       )}

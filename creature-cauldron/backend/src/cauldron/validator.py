@@ -32,7 +32,7 @@ from cauldron.options import Ability, Source
 from cauldron.rules import CR_LABELS, SRD_ATTRIBUTION, cr_value, hit_die, proficiency_bonus, xp_for_cr
 
 # Attack bonuses and save DCs may sit up to this far above the plain rule (proficiency + ability). Magic
-# weapons, expertise and the elite template all add a little, so only larger gaps are treated as mistakes.
+# weapons, expertise and the level-up template all add a little, so only larger gaps are treated as mistakes.
 BONUS_TOLERANCE = 3
 MAX_LEGENDARY_PER_ROUND = 3
 

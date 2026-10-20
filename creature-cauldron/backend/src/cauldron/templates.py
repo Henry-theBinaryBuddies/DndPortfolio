@@ -1,4 +1,4 @@
-"""Reskin helpers: a damage-type swap and monster templates such as "elite".
+"""Reskin helpers: a damage-type swap and monster templates such as "level up".
 
 The AI may only rename and re-describe a monster. Every change to its numbers is made here, by code, so a
 reskin can never invent statistics. The result is a new, unvalidated monster; run it through the Validator.
@@ -177,18 +177,18 @@ class Template(ABC):
         """A new monster built from this one. The original is never changed."""
 
 
-class EliteTemplate(Template):
-    """A tougher version: about 1.5x hit points, +1 armor class, +1 to every attack, save DC and damage roll,
+class LevelUpTemplate(Template):
+    """A level-up, about one challenge rating stronger:  about 1.5x hit points, +1 armor class, +1 to every attack, save DC and damage roll,
     and one step higher challenge rating. When the higher rating raises the proficiency bonus, saves, skills
     and every attack and DC rise with it."""
 
-    name = "elite"
+    name = "level_up"
 
     def apply(self, monster: Monster) -> Monster:
         old_cr = monster.challenge.cr
         new_cr = step_cr(old_cr, 1)
         pb_gain = proficiency_bonus(new_cr) - monster.challenge.proficiency_bonus
-        boost = 1 + pb_gain  # +1 for being elite, plus whatever the new proficiency bonus adds
+        boost = 1 + pb_gain  # +1 for leveling up, plus whatever the new proficiency bonus adds
 
         def damage(rolls: list[DamageRoll]) -> list[DamageRoll]:
             return [r.model_copy(update={"bonus": r.bonus + 1}) for r in rolls]
@@ -208,12 +208,12 @@ class EliteTemplate(Template):
 
         return monster.model_copy(
             update={
-                "id": f"{monster.id}-elite",
-                "name": f"Elite {monster.name}",
+                "id": f"{monster.id}-level-up",
+                "name": f"Leveled {monster.name}",
                 "source": Source.RESKIN,
                 "validated": False,
                 "parent_id": monster.id,
-                "generator": "template:elite",
+                "generator": "template:level_up",
                 # attribution is deliberately kept: a derived work keeps the credit of its source
                 "armor_class": monster.armor_class.model_copy(update={"value": monster.armor_class.value + 1}),
                 "hit_points": self._hit_points(monster),
@@ -248,7 +248,7 @@ class EliteTemplate(Template):
         return monster.hit_points.model_copy(update={"dice": format_dice(count, sides, bonus), "average": average})
 
 
-_TEMPLATES: dict[str, Template] = {template.name: template for template in [EliteTemplate()]}
+_TEMPLATES: dict[str, Template] = {template.name: template for template in [LevelUpTemplate()]}
 
 
 def get_template(name: str) -> Template:

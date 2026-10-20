@@ -128,10 +128,10 @@ describe("damage swaps", () => {
 describe("demo reskin", () => {
   it("makes a new unvalidated reskin that names its parent", async () => {
     const base = library.find((m) => damageDealtBy(m).includes("fire"))!;
-    const result = await createDemoGenerator(library).reskin({ base, damageSwap: { from: "fire", to: "cold" }, template: "elite" });
+    const result = await createDemoGenerator(library).reskin({ base, damageSwap: { from: "fire", to: "cold" }, template: "level_up" });
     if (!result.ok) throw new Error("expected success");
     expect(result.monster).toMatchObject({ source: "reskin", validated: false, parent_id: base.id });
-    expect(result.monster.name).toBe(`${base.name} (cold elite)`);
+    expect(result.monster.name).toBe(`${base.name} (cold level up)`);
     expect(damageDealtBy(result.monster)).not.toContain("fire");
     expect(result.notes.join(" ")).toMatch(/not applied/);
   });

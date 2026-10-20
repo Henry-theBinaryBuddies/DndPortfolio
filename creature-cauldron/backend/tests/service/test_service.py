@@ -285,25 +285,25 @@ def test_a_damage_swap_is_done_by_code_and_the_ai_only_names_it(make, sample) ->
 def test_the_ai_is_told_what_changed_but_never_given_numbers_to_change(make, sample) -> None:
     drake = sample("Stormhide Drake")
     rig = make(names=[named("Rimestorm Drake")], library=[drake])
-    rig.service.create_reskin(swap(drake.id, template="elite"))
+    rig.service.create_reskin(swap(drake.id, template="level_up"))
     context, feedback = rig.generator.rename_calls[0]
     assert context.base_name == "Stormhide Drake" and context.base_description == drake.description
     assert any("lightning" in c and "cold" in c for c in context.changes)
-    assert any("elite" in c for c in context.changes)
+    assert any("leveled-up" in c for c in context.changes)
     assert feedback == []
 
 
-def test_an_elite_reskin_raises_the_challenge_rating_by_one_step(make, sample) -> None:
+def test_a_level_up_reskin_raises_the_challenge_rating_by_one_step(make, sample) -> None:
     drake = sample("Stormhide Drake")  # CR 4
-    rig = make(names=[named("Elite Name")], library=[drake])
-    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": drake.id, "template": "elite"}))
+    rig = make(names=[named("Level Name")], library=[drake])
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": drake.id, "template": "level_up"}))
     assert isinstance(result, GenerateSuccess) and result.monster.challenge.cr == "5"
 
 
 def test_a_reskin_of_an_srd_monster_keeps_the_srd_credit(make) -> None:
     goblin = import_monster(RAW["goblin"]).monster
     rig = make(names=[named("Ember Raider")], library=[goblin])
-    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": goblin.id, "template": "elite"}))
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": goblin.id, "template": "level_up"}))
     assert isinstance(result, GenerateSuccess) and result.monster.attribution == SRD_ATTRIBUTION
 
 
@@ -321,7 +321,7 @@ def test_a_reskin_speaks_of_itself_by_its_new_name(make, sample) -> None:
     fortitude = TextAction(name="Fortitude", text="If damage reduces the stormhide drake to 0 hit points, the stormhide drake drops to 1 hit point instead.")
     library_monster = base.model_copy(update={"traits": [fortitude]})
     rig = make(names=[named("Ironbound Revenant")], library=[library_monster])
-    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": base.id, "template": "elite"}))
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": base.id, "template": "level_up"}))
     assert isinstance(result, GenerateSuccess)
     text = result.monster.traits[0].text
     assert "stormhide drake" not in text and text.count("ironbound revenant") == 2
@@ -369,7 +369,7 @@ def test_a_reskin_needs_the_daily_cap_but_a_repeat_does_not(make, sample) -> Non
     drake = sample("Stormhide Drake")
     rig = make(names=[named("Rimestorm Drake")], library=[drake], cap=1)
     assert isinstance(rig.service.create_reskin(swap(drake.id)), GenerateSuccess)
-    other = ReskinRequest.model_validate({"baseId": drake.id, "template": "elite"})
+    other = ReskinRequest.model_validate({"baseId": drake.id, "template": "level_up"})
     result = rig.service.create_reskin(other)
     assert isinstance(result, GenerateFailure) and result.reason is FailureReason.RESTING
     assert rig.service.lookup_reskin(swap(drake.id)) is not None

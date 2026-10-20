@@ -73,7 +73,7 @@ def test_a_reskin_request_names_a_base_and_at_least_one_change() -> None:
     r = ReskinRequest.model_validate({"baseId": "srd-goblin", "damageSwap": {"from": "fire", "to": "cold"}, "template": None})
     assert r.base_id == "srd-goblin"
     assert r.damage_swap is not None and r.damage_swap.from_ is DamageType.FIRE and r.damage_swap.to is DamageType.COLD
-    assert ReskinRequest.model_validate({"baseId": "a", "template": "elite"}).template == "elite"
+    assert ReskinRequest.model_validate({"baseId": "a", "template": "level_up"}).template == "level_up"
 
 
 def test_a_reskin_with_no_change_is_refused() -> None:
@@ -93,13 +93,13 @@ def test_an_unknown_template_is_refused() -> None:
 
 def test_a_reskin_cannot_carry_a_monster_only_an_id() -> None:
     with pytest.raises(ValidationError):
-        ReskinRequest.model_validate({"baseId": "a", "template": "elite", "base": {"name": "evil text"}})
+        ReskinRequest.model_validate({"baseId": "a", "template": "level_up", "base": {"name": "evil text"}})
 
 
 def test_a_reskin_has_a_stable_cache_key() -> None:
-    one = ReskinRequest.model_validate({"baseId": "a", "damageSwap": {"from": "fire", "to": "cold"}, "template": "elite"})
-    two = ReskinRequest.model_validate({"baseId": "a", "damageSwap": {"from": "fire", "to": "cold"}, "template": "elite"})
-    other = ReskinRequest.model_validate({"baseId": "a", "template": "elite"})
+    one = ReskinRequest.model_validate({"baseId": "a", "damageSwap": {"from": "fire", "to": "cold"}, "template": "level_up"})
+    two = ReskinRequest.model_validate({"baseId": "a", "damageSwap": {"from": "fire", "to": "cold"}, "template": "level_up"})
+    other = ReskinRequest.model_validate({"baseId": "a", "template": "level_up"})
     assert one.cache_key == two.cache_key != other.cache_key
 
 

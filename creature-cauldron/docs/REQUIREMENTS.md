@@ -70,7 +70,7 @@ Let a DM filter a large library of original or openly licensed monsters, build e
 |---|---|---|
 | F-17 | When a filter set returns too few results, offer to generate a monster. Users can also request "generate another." | Must |
 | F-18 | Generation takes only the structured filters; the server fills unspecified dimensions randomly for variety. | Must |
-| F-19 | Reskin: pick a base monster and a theme from fixed options, optionally a damage-type swap or template (elite, swarm). Code adjusts the numbers; AI writes only names and flavor text. | Must |
+| F-19 | Reskin: pick a base monster and a theme from fixed options, optionally a damage-type swap or template (level up, swarm). Code adjusts the numbers; AI writes only names and flavor text. | Must |
 | F-20 | Every generated monster passes a deterministic validator before it is stored or shown as valid (section 6). | Must |
 | F-21 | Generated monsters are cached server-side and appear in the library for all users. | Must |
 | F-22 | A reviewed export of good cached monsters can be promoted into the seed data in the repo. | Should |
@@ -116,7 +116,7 @@ Let a DM filter a large library of original or openly licensed monsters, build e
 
 Notes on how these are built (backend/src/cauldron/validator.py):
 
-- Attack bonuses, save DCs and spell numbers may sit 0 to 3 above the plain rule, because magic and the elite template add a little. Only larger gaps are corrected. A save DC does not say which ability it uses, so any ability that reaches it is accepted.
+- Attack bonuses, save DCs and spell numbers may sit 0 to 3 above the plain rule, because magic and the level-up template add a little. Only larger gaps are corrected. A save DC does not say which ability it uses, so any ability that reaches it is accepted.
 - Official SRD monsters are never "corrected". Differences are reported as notes and the printed numbers stay.
 - **CR consistency uses an estimator calibrated from the SRD monsters** (backend/src/cauldron/cr). The usual method uses the Dungeon Master's Guide's "Monster Statistics by Challenge Rating" table, which is not in the SRD 5.1 (checked), so it is not used. Instead the 333 SRD monsters are measured (effective hit points, armor class, damage per round, best attack bonus or save DC), a never-decreasing curve is fitted for each across the CR ladder, and a monster's numbers are read back against those curves.
 - It is a rough sanity check, and its accuracy was measured by leave-one-out testing (each SRD monster estimated from curves built without it): 83% within 1 step, 92% within 2. It is sharp at low levels (97% within 1 step up to CR 4) and weak in the middle (only 55% within 1 step for CR 5 to 17). So the tolerance is per band, chosen so 90% of SRD monsters fall inside it: 1 step up to CR 4, 4 steps for CR 5 to 17. It ignores spells, flight, auras and other traits that change real CR.
@@ -143,7 +143,7 @@ The full schema lives in `docs/` once the front-end types exist. Key points:
 4. Party and difficulty selection (CR band).
 5. Encounter builder, favorites, local persistence.
 6. JSON and Foundry export.
-7. Generate and Reskin controls wired to a stub that shows the offline state. (Done. A `?generator=demo` switch returns made-up monsters so the flow can be clicked through; the reskin offers a damage swap and an elite template.)
+7. Generate and Reskin controls wired to a stub that shows the offline state. (Done. A `?generator=demo` switch returns made-up monsters so the flow can be clicked through; the reskin offers a damage swap and a level-up template.)
 
 **Phase 2: Back end (test-first).**
 

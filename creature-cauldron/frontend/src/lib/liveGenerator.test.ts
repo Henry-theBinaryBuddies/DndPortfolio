@@ -147,20 +147,20 @@ describe("the live generator: generating", () => {
 });
 
 describe("the live generator: reskinning", () => {
-  const reskin: ReskinRequest = { base: drake, damageSwap: { from: "lightning", to: "cold" }, template: "elite" };
+  const reskin: ReskinRequest = { base: drake, damageSwap: { from: "lightning", to: "cold" }, template: "level_up" };
 
   it("sends only the id of the monster, never the monster", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
     await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin(reskin);
     expect(calls[0].url).toBe("http://x.test/api/v1/reskin");
-    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: { from: "lightning", to: "cold" }, template: "elite" });
+    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: { from: "lightning", to: "cold" }, template: "level_up" });
     expect(JSON.stringify(calls[0].body)).not.toContain(drake.name);
   });
 
   it("sends null for the parts that were not chosen", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
-    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, damageSwap: null, template: "elite" });
-    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, template: "elite" });
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, damageSwap: null, template: "level_up" });
+    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, template: "level_up" });
   });
 
   it("maps answers the same way as generating", async () => {

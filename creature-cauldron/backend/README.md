@@ -17,7 +17,7 @@ Parts 1 to 3 of phase 2 are done (the domain models, the rules tables, the valid
 | `cauldron/validator.py` | Abstract `Check` with nine rule subclasses (name, derived fields, hit points, attack bonus, save DC, spellcasting, legendary actions, features, attribution) and the `Validator` that runs them over a copy |
 | `cauldron/blocklist.py` | Cautious list of names that are not ours to use |
 | `cauldron/features.py` | Derives the feature tags from the stat block |
-| `cauldron/templates.py` | Abstract `Template` with `EliteTemplate`, plus the damage-type swap |
+| `cauldron/templates.py` | Abstract `Template` with `LevelUpTemplate`, plus the damage-type swap |
 
 | `cauldron/seed/` | The SRD importer (`python -m cauldron.seed`): action and spell parsers, damage lines, rule-based tagger, known corrections and the import report |
 

@@ -206,7 +206,7 @@ def test_attack_bonus_below_the_rule_is_corrected() -> None:
 
 
 def test_a_small_magic_bonus_above_the_rule_is_allowed() -> None:
-    # +1 to +3 above is what magic weapons and the elite template add.
+    # +1 to +3 above is what magic weapons and the level-up template add.
     base = sample("Stormhide Drake")
     for extra in (0, 1, 3):
         assert outcomes(AttackBonusCheck(), set_first_attack_bonus(base, expected_to_hit(base) + extra)) == []

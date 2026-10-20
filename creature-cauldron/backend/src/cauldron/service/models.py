@@ -79,7 +79,7 @@ class ReskinRequest(ApiModel):
 
     base_id: Id
     damage_swap: DamageSwap | None = None
-    template: Literal["elite"] | None = None
+    template: Literal["level_up"] | None = None
 
     @model_validator(mode="after")
     def _something_to_do(self) -> "ReskinRequest":

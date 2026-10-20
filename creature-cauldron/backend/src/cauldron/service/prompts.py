@@ -53,7 +53,7 @@ class RenameContext:
     creature_type: str
     size: str
     cr: str
-    changes: tuple[str, ...]  # for example "its fire damage became cold damage" or "it is a stronger, elite version"
+    changes: tuple[str, ...]  # for example "its fire damage became cold damage" or "it is a stronger, leveled-up version"
 
 
 def clean_feedback(feedback: Sequence[str]) -> list[str]:

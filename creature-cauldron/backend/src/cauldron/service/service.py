@@ -6,7 +6,7 @@ Order of events, cheapest first:
 2. ``create``: otherwise ask the AI. Every attempt takes one call from the daily cap *before* it is made. The monster
    the AI returns goes through the validator and a check that it really fits the request; if either complains, the complaints
    are sent back to the AI and it tries again, up to ``max_retries`` more times. A monster that never passes is thrown away.
-3. ``lookup_reskin`` / ``create_reskin``: the same idea for reskins. Code changes the numbers (damage swap, elite template);
+3. ``lookup_reskin`` / ``create_reskin``: the same idea for reskins. Code changes the numbers (damage swap, level-up template);
    the AI only writes a new name and description.
 
 The rate limit per visitor is applied by the web layer (it needs the visitor's address); this class owns everything else.
@@ -160,7 +160,7 @@ class GenerationService:
             changes.append(f"its {swap.from_.value} damage became {swap.to.value} damage")
         if request.template is not None:
             shaped = get_template(request.template).apply(shaped)
-            changes.append("it is a stronger, elite version")
+            changes.append("it is a stronger, leveled-up version")
         context = RenameContext(
             base_name=base.name,
             base_description=base.description,
