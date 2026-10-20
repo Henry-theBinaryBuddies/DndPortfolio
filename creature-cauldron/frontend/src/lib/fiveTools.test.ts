@@ -127,6 +127,14 @@ describe("the shape matches real SRD monsters in the 5etools data", () => {
     "monster[].speed.swim",
     "monster[].speed.burrow",
     "monster[].speed.climb",
+    // Spellcasting blocks: the Mage and Djinni show the common fields; the rest are in the schema.
+    "monster[].spellcasting[].footerEntries",
+    ...["6", "7", "8", "9"].flatMap((level) => [
+      `monster[].spellcasting[].spells.${level}`,
+      `monster[].spellcasting[].spells.${level}.slots`,
+      `monster[].spellcasting[].spells.${level}.spells`,
+    ]),
+    ...["1", "2", "3", "2e"].map((key) => `monster[].spellcasting[].daily.${key}`),
     // All eighteen skills, lower case, as 5etools spells them.
     ...SKILLS.map((skill) => `monster[].skill.${skill.name.toLowerCase()}`),
   ]);
@@ -237,11 +245,14 @@ describe("conversions", () => {
     expect(String((glare.entries as string[])[0])).toContain("{@dc 11} Wisdom saving throw, taking 10 ({@damage 3d6}) necrotic damage");
   });
 
-  it("keeps spellcasting as a plain trait for now, with its numbers tagged", () => {
+  it("turns spellcasting into structured spell lists instead of a plain trait", () => {
     const hexer = convert(byName("Hollowvale Hexer"));
-    const trait = (hexer.trait as JsonObject[]).find((t) => t.name === "Spellcasting")!;
-    expect(String((trait.entries as string[])[0])).toContain("{@dc 13}");
-    expect(String((trait.entries as string[])[0])).toContain("{@hit 5} to hit with spell attacks");
+    expect((hexer.trait as JsonObject[] | undefined)?.some((t) => t.name === "Spellcasting") ?? false).toBe(false);
+    const [block] = hexer.spellcasting as JsonObject[];
+    expect(block.type).toBe("spellcasting");
+    expect(block.ability).toBe("cha");
+    expect(String((block.headerEntries as string[])[0])).toContain("{@dc 13}");
+    expect(String((block.headerEntries as string[])[0])).toContain("{@hit 5} to hit with spell attacks");
   });
 
   it("maps environments and says what it dropped", () => {

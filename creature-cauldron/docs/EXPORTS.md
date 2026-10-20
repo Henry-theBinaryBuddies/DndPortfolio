@@ -82,11 +82,11 @@ Attacks, saves, recharge and legendary costs are written with 5etools' inline ta
 | Legendary actions | `legendary` with the cost in the name ("(Costs 2 Actions)"), and the per-round count |
 | Environments | `environment` (coast becomes coastal; dungeon has no 5etools name and is dropped with a note) |
 | Description | Not exported (5etools keeps lore in a separate list) |
-| Spellcasting | **For now a plain trait** with the numbers tagged. A later step will turn it into 5etools' structured spell lists, which Plutonium can link to real spells |
+| Spellcasting | Structured spell lists (slots per level, at will, per day), each spell tagged `{@spell name}` so Plutonium can link it. Our wording is read by a small parser; if the text is not recognised it stays a plain trait and the download says so |
 
 **Status:** checked against four real SRD entries from the 5etools data, and the import in Plutonium (Foundry) has been confirmed working.
 
-A dragon, goblin and giant written in our format reproduce the real entries' attack and save text exactly. The real entries came from the 5etools data, used as test fixtures (`src/lib/fixtures/5etools-mm`, SRD creatures, CC-BY-4.0).
+A dragon, goblin and giant written in our format reproduce the real entries' attack and save text exactly, and a mage and a djinni written in our wording reproduce the real spellcasting blocks. The real entries came from the 5etools data, used as test fixtures (`src/lib/fixtures/5etools-mm`, SRD creatures, CC-BY-4.0).
 
 ## Roll20
 

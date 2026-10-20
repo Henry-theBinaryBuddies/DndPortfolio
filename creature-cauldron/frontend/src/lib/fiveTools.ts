@@ -3,6 +3,8 @@ import { formatSigned } from "./dice";
 import type { JsonObject } from "./foundryJson";
 import { normalizeHpFormula, skillFor } from "./foundryMaps";
 import type { Size } from "./options";
+import { parseSpellcasting } from "./fiveToolsSpells";
+import { tagProse } from "./fiveToolsTags";
 import { renderAction, segmentsToText } from "./renderAction";
 
 // Exports monsters as a "5etools homebrew" file: a `_meta` block plus a `monster` list, using the
@@ -23,6 +25,9 @@ export const FIVETOOLS_SOURCE = {
   version: "1.0.0",
   authors: ["The Binary Buddies"],
 } as const;
+
+// Re-exported so callers and tests can keep importing it from here.
+export { tagProse };
 
 const SIZE_LETTERS: Record<Size, string> = {
   tiny: "T",
@@ -65,14 +70,6 @@ export function alignmentLetters(text: string): (string | { special: string })[]
   const letters = words.map((w) => ALIGNMENT_WORDS[w]);
   const known = words.length >= 1 && words.length <= 2 && letters.every((l) => l !== undefined);
   return known ? letters : [{ special: text.trim() }];
-}
-
-/** Turns plain stat block prose into 5etools tagged text: "DC 13", "+5 to hit", and "(2d6 + 3)". */
-export function tagProse(text: string): string {
-  return text
-    .replace(/\bDC (\d+)\b/g, "{@dc $1}")
-    .replace(/([+-])(\d+) to hit\b/g, (_match, sign: string, n: string) => `{@hit ${sign === "-" ? "-" : ""}${n}} to hit`)
-    .replace(/\((\d+d\d+(?: [+-] \d+)?)\)/g, "({@damage $1})");
 }
 
 const ATTACK_TAGS: [RegExp, string][] = [
@@ -171,8 +168,16 @@ function convertMonster(monster: Monster, notes: string[]): JsonObject {
   out.cr = monster.challenge.cr;
 
   const traits: JsonObject[] = monster.traits.map((t) => ({ name: t.name, entries: [tagProse(t.text)] }));
-  // Step one of the export keeps spellcasting as a plain trait so nothing is lost.
-  if (monster.spellcasting) traits.push({ name: "Spellcasting", entries: [tagProse(monster.spellcasting.text)] });
+  if (monster.spellcasting) {
+    const block = parseSpellcasting(monster.spellcasting);
+    if (block) {
+      out.spellcasting = [block];
+    } else {
+      // The wording was not recognised as spell lists, so keep it as a plain trait: nothing is lost.
+      traits.push({ name: "Spellcasting", entries: [tagProse(monster.spellcasting.text)] });
+      notes.push("Spellcasting is a plain trait: its wording was not recognised as spell lists, so tools cannot link the spells.");
+    }
+  }
   if (traits.length > 0) out.trait = traits;
 
   if (monster.actions.length > 0) out.action = monster.actions.map((a) => convertAction(monster, a));

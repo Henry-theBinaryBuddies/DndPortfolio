@@ -210,12 +210,36 @@
         "Sylvan"
       ],
       "cr": "2",
-      "trait": [
+      "spellcasting": [
         {
           "name": "Spellcasting",
-          "entries": [
-            "The hexer is a 4th-level spellcaster. Its spellcasting ability is Charisma (spell save {@dc 13}, {@hit 5} to hit with spell attacks). Cantrips (at will): minor illusion, poison spray. 1st level (4 slots): charm person, ray of sickness. 2nd level (3 slots): hold person, misty step."
-          ]
+          "type": "spellcasting",
+          "headerEntries": [
+            "The hexer is a 4th-level spellcaster. Its spellcasting ability is Charisma (spell save {@dc 13}, {@hit 5} to hit with spell attacks)."
+          ],
+          "spells": {
+            "0": {
+              "spells": [
+                "{@spell minor illusion}",
+                "{@spell poison spray}"
+              ]
+            },
+            "1": {
+              "spells": [
+                "{@spell charm person}",
+                "{@spell ray of sickness}"
+              ],
+              "slots": 4
+            },
+            "2": {
+              "spells": [
+                "{@spell hold person}",
+                "{@spell misty step}"
+              ],
+              "slots": 3
+            }
+          },
+          "ability": "cha"
         }
       ],
       "action": [
