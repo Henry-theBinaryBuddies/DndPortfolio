@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Ability, Action, Monster } from "../types/monster";
 import { abilityModifier, formatSigned } from "../lib/dice";
-import { actionName, renderAction, type Segment } from "../lib/renderAction";
+import { actionName, legendaryIntro, renderAction, type Segment } from "../lib/renderAction";
 import "./StatBlock.css";
 
 // A component is a function that takes props and returns markup. StatBlock is
@@ -108,15 +108,10 @@ function ActionSection({ title, actions, monsterName }: { title: string; actions
 function LegendarySection({ monster }: { monster: Monster }) {
   const legendary = monster.legendary_actions;
   if (!legendary) return null;
-  const name = monster.name.toLowerCase();
   return (
     <section>
       <h3 className="statblock__heading">Legendary Actions</h3>
-      <p className="statblock__entry">
-        The {name} can take {legendary.per_round} legendary actions, choosing from the options below. Only one legendary
-        action can be used at a time and only at the end of another creature's turn. The {name} regains spent legendary
-        actions at the start of its turn.
-      </p>
+      <p className="statblock__entry">{legendaryIntro(monster.name, legendary.per_round)}</p>
       {legendary.options.map((option) => (
         <p className="statblock__entry" key={option.name}>
           <em>

@@ -140,3 +140,9 @@ export function renderAction(action: Action, monsterName: string): Segment[] {
       return [{ text: action.text }];
   }
 }
+
+/** The standard sentence that introduces a monster's legendary actions (shared by the stat block and exports). */
+export function legendaryIntro(monsterName: string, perRound: number): string {
+  const name = monsterName.toLowerCase();
+  return `The ${name} can take ${perRound} legendary actions, choosing from the options below. Only one legendary action can be used at a time and only at the end of another creature's turn. The ${name} regains spent legendary actions at the start of its turn.`;
+}
