@@ -951,7 +951,7 @@
     "hit_points": { "average": 350, "dice": "20d20+140" },
     "speeds": { "walk": 40, "burrow": 40 },
     "abilities": { "str": 26, "dex": 8, "con": 24, "int": 3, "wis": 12, "cha": 5 },
-    "saves": { "con": 11 },
+    "saves": { "con": 12 },
     "skills": {},
     "vulnerabilities": [],
     "resistances": [],
@@ -959,7 +959,7 @@
     "condition_immunities": ["blinded"],
     "senses": { "tremorsense": 120, "passive_perception": 11 },
     "languages": "—",
-    "challenge": { "cr": "12", "cr_value": 12, "xp": 8400, "proficiency_bonus": 4 },
+    "challenge": { "cr": "16", "cr_value": 16, "xp": 15000, "proficiency_bonus": 5 },
     "traits": [
       {
         "kind": "text",
@@ -979,20 +979,20 @@
       {
         "kind": "attack",
         "name": "Bite",
-        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 12, "reach": 15, "targets": "one target" },
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 13, "reach": 15, "targets": "one target" },
         "damage": [{ "dice": "3d10", "bonus": 8, "type": "piercing" }]
       },
       {
         "kind": "attack",
         "name": "Tail",
-        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 12, "reach": 20, "targets": "one target" },
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 13, "reach": 20, "targets": "one target" },
         "damage": [{ "dice": "2d8", "bonus": 8, "type": "bludgeoning" }]
       },
       {
         "kind": "save",
         "name": "Sand Geyser",
         "recharge": { "min": 5 },
-        "save": { "ability": "dex", "dc": 19 },
+        "save": { "ability": "dex", "dc": 20 },
         "area": { "shape": "line", "size": 60, "width": 10 },
         "on_fail": [{ "dice": "10d10", "bonus": 0, "type": "bludgeoning" }],
         "on_success": "half"

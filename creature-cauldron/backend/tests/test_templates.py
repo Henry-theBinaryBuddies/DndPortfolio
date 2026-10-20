@@ -192,9 +192,8 @@ def test_elite_leaves_the_original_alone() -> None:
     assert base.model_dump() == before
 
 
-@pytest.mark.parametrize("monster", [m for m in SAMPLES if m.name != "Dune Leviathan"], ids=lambda m: m.name)
+@pytest.mark.parametrize("monster", SAMPLES, ids=lambda m: m.name)
 def test_an_elite_monster_passes_the_validator_without_corrections(monster: Monster) -> None:
-    # The Dune Leviathan is left out: the CR estimator already disagrees with its claimed CR (see test_validator.py).
     report = Validator().validate(elite(monster))
     assert report.status is Status.ACCEPTED, [f.message for f in report.findings]
 

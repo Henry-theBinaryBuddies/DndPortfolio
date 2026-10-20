@@ -360,17 +360,17 @@
       {
         "section": "action",
         "display_name": "Bite",
-        "prose": "Melee Weapon Attack: +12 to hit, reach 15 ft., one target. Hit: 24 (3d10 + 8) piercing damage."
+        "prose": "Melee Weapon Attack: +13 to hit, reach 15 ft., one target. Hit: 24 (3d10 + 8) piercing damage."
       },
       {
         "section": "action",
         "display_name": "Tail",
-        "prose": "Melee Weapon Attack: +12 to hit, reach 20 ft., one target. Hit: 17 (2d8 + 8) bludgeoning damage."
+        "prose": "Melee Weapon Attack: +13 to hit, reach 20 ft., one target. Hit: 17 (2d8 + 8) bludgeoning damage."
       },
       {
         "section": "action",
         "display_name": "Sand Geyser (Recharge 5–6)",
-        "prose": "Each creature in a 60-foot line that is 10 feet wide must make a DC 19 Dexterity saving throw, taking 55 (10d10) bludgeoning damage on a failed save, or half as much damage on a successful one."
+        "prose": "Each creature in a 60-foot line that is 10 feet wide must make a DC 20 Dexterity saving throw, taking 55 (10d10) bludgeoning damage on a failed save, or half as much damage on a successful one."
       }
     ],
     "spellcasting": null,

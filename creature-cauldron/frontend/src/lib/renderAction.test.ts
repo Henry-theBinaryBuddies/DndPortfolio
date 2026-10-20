@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import sample from "../../public/data/sample-monsters.json";
 import type { Action, Monster } from "../types/monster";
 import { abilityModifier, averageDice, parseDice } from "./dice";
+import { XP_BY_CR } from "./party";
 import { actionName, renderAction, segmentsToText } from "./renderAction";
 
 const monsters = sample as unknown as Monster[];
@@ -135,12 +136,9 @@ describe("sample monster data", () => {
   });
 
   it.each(monsters.map((m) => [m.name, m] as const))("%s has the XP and proficiency bonus for its CR", (_name, m) => {
-    const xpByCr: Record<string, number> = {
-      "0": 10, "1/8": 25, "1/4": 50, "1/2": 100, "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800,
-      "6": 2300, "7": 2900, "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400,
-    };
-    const proficiency = m.challenge.cr_value <= 4 ? 2 : m.challenge.cr_value <= 8 ? 3 : 4;
-    expect(m.challenge.xp).toBe(xpByCr[m.challenge.cr]);
+    // +2 up to CR 4, then one more for every four challenge ratings (SRD 5.1, page 256).
+    const proficiency = 2 + Math.floor(Math.max(0, Math.ceil(m.challenge.cr_value) - 1) / 4);
+    expect(m.challenge.xp).toBe(XP_BY_CR[m.challenge.cr]);
     expect(m.challenge.proficiency_bonus).toBe(proficiency);
   });
 

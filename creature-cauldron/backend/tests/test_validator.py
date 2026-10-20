@@ -335,12 +335,7 @@ def test_other_sources_need_no_attribution() -> None:
 # --- the validator --------------------------------------------------------------------------------------
 
 
-# Hand-written samples whose numbers the CR estimator disagrees with. The Dune Leviathan has 350 hit points, which is
-# typical of a CR 17 or higher monster, but is rated CR 12. Left as written; the check is doing what it should.
-FLAGGED_BY_ESTIMATOR = {"Dune Leviathan"}
-
-
-@pytest.mark.parametrize("monster", [m for m in SAMPLES if m.name not in FLAGGED_BY_ESTIMATOR], ids=lambda m: m.name)
+@pytest.mark.parametrize("monster", SAMPLES, ids=lambda m: m.name)
 def test_every_sample_is_accepted_without_changes(monster: Monster) -> None:
     report = Validator().validate(monster)
     assert report.findings == []
@@ -348,8 +343,11 @@ def test_every_sample_is_accepted_without_changes(monster: Monster) -> None:
     assert report.monster.validated is True
 
 
-def test_a_sample_the_estimator_disagrees_with_is_sent_back_for_a_retry() -> None:
-    report = Validator().validate(sample("Dune Leviathan"))
+def test_a_monster_rated_far_below_its_numbers_is_sent_back_for_a_retry() -> None:
+    # The Dune Leviathan was once written as CR 12 with 350 hit points, which the estimator read as CR 17. It is
+    # now rated CR 16; this keeps the old claim as the example of a retry.
+    old_claim = edit(sample("Dune Leviathan"), lambda d: d["challenge"].update(cr="12", cr_value=12, xp=8400, proficiency_bonus=4))
+    report = Validator().validate(old_claim)
     assert report.status is Status.RETRY
     assert report.monster.validated is False
     assert [f.check for f in report.retries] == ["CR consistency"]
