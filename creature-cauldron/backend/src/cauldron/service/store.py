@@ -148,6 +148,16 @@ class MonsterStore:
             row = self._conn.execute("SELECT calls, input_tokens, output_tokens FROM ai_usage WHERE day = ?", (day,)).fetchone()
         return Usage(*row) if row else Usage(0, 0, 0)
 
+    def try_reserve_call(self, day: str, limit: int) -> bool:
+        """Takes one call from the day's allowance, all in one step. False when the day already has `limit` calls.
+
+        Doing the check and the add in a single UPDATE means two requests arriving at the same moment cannot both
+        take the last place."""
+        with self._lock, self._conn:
+            self._conn.execute("INSERT OR IGNORE INTO ai_usage (day) VALUES (?)", (day,))
+            taken = self._conn.execute("UPDATE ai_usage SET calls = calls + 1 WHERE day = ? AND calls < ?", (day, limit))
+            return taken.rowcount == 1
+
     def record_usage(self, day: str, calls: int = 0, input_tokens: int = 0, output_tokens: int = 0) -> None:
         with self._lock, self._conn:
             self._conn.execute(
