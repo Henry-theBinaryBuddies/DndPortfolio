@@ -242,8 +242,84 @@ select {
   padding: 0.75rem 1rem;
 }
 
-.theme-toggle {
-  white-space: nowrap;
+/* The light / dark switch, under the title. */
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 0.4rem var(--paper);
+  cursor: pointer;
+}
+
+.theme-switch__track {
+  position: relative;
+  width: 3rem;
+  height: 1.55rem;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: var(--field);
+  box-shadow: inset 0 0 0.4rem var(--char);
+}
+
+.theme-switch__thumb {
+  position: absolute;
+  top: 0.12rem;
+  left: 0.15rem;
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.theme-switch__thumb::before {
+  content: "\2600";
+}
+
+.theme-switch[aria-checked="true"] .theme-switch__thumb {
+  transform: translateX(1.4rem);
+}
+
+.theme-switch[aria-checked="true"] .theme-switch__thumb::before {
+  content: "\263e";
+}
+
+.theme-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch__thumb {
+    transition: none;
+  }
+}
+
+/* Text over the witch stays readable: a soft halo in the page colour. */
+.party-bar,
+.budgets {
+  text-shadow: 0 0 0.5rem var(--paper), 0 0 0.15rem var(--paper);
 }
 
 .brand {
@@ -272,10 +348,6 @@ select {
   .topbar__scene {
     display: none;
   }
-
-  .theme-toggle {
-    margin-left: auto;
-  }
 }
 
 /* The painted witch sits behind the whole top section, dimmed, so text and controls flow over her and she never pushes
@@ -300,14 +372,16 @@ select {
 /* Wide screens: the top section is made tall enough to show her properly, and she stands in the empty space left of the
    Theme button instead of under it. */
 @media (min-width: 1100px) {
+  /* Room is kept on the right for her, so no text or control ever sits under the picture. */
   .topbar {
     min-height: 8.5rem;
     align-items: center;
+    padding-right: 14rem;
   }
 
   .witch-art {
-    right: 12rem;
-    opacity: 0.75;
+    right: 0.5rem;
+    opacity: 0.85;
   }
 }
 

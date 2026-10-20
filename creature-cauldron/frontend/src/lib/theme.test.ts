@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { THEME_KEY, loadChoice, nextChoice, resolveTheme, saveChoice, type ThemeStorage } from "./theme";
+import { THEME_KEY, loadChoice, resolveTheme, saveChoice, type ThemeStorage } from "./theme";
 
 function memory(initial: Record<string, string> = {}): ThemeStorage & { data: Record<string, string> } {
   const data = { ...initial };
@@ -24,14 +24,6 @@ describe("resolveTheme", () => {
   it("ignores the device when a theme is chosen", () => {
     expect(resolveTheme("light", true)).toBe("light");
     expect(resolveTheme("dark", false)).toBe("dark");
-  });
-});
-
-describe("nextChoice", () => {
-  it("cycles auto, light, dark and back", () => {
-    expect(nextChoice("auto")).toBe("light");
-    expect(nextChoice("light")).toBe("dark");
-    expect(nextChoice("dark")).toBe("auto");
   });
 });
 

@@ -216,9 +216,12 @@ export default function App() {
       <Embers />
       <main className="app no-print">
         <header className="topbar">
-          <div className="brand">
-            <Cauldron className="brand__mark" />
-            <h1>Creature Cauldron</h1>
+          <div className="brand-block">
+            <div className="brand">
+              <Cauldron className="brand__mark" />
+              <h1>Creature Cauldron</h1>
+            </div>
+            <ThemeToggle />
           </div>
           <PartyPanel
             party={party}
@@ -228,7 +231,6 @@ export default function App() {
             onDifficultyChange={setDifficulty}
           />
           <WitchArt className="topbar__scene" />
-          <ThemeToggle />
         </header>
         <BrewingOverlay active={generating} />
 

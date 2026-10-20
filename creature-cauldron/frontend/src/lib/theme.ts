@@ -1,4 +1,4 @@
-// The colour theme: light, dark, or "auto" (follow the device). The visitor's choice is remembered in the browser. Every
+// The colour theme: light or dark. Until the visitor flips the switch the choice is "auto", which follows the device. The visitor's choice is remembered in the browser. Every
 // function here is plain and takes what it needs, so it can be tested without a browser.
 
 export type ThemeChoice = "auto" | "light" | "dark";
@@ -17,11 +17,6 @@ export interface ThemeStorage {
 export function resolveTheme(choice: ThemeChoice, deviceIsDark: boolean): Theme {
   if (choice === "auto") return deviceIsDark ? "dark" : "light";
   return choice;
-}
-
-/** The next choice when the button is pressed: auto, then light, then dark, then back to auto. */
-export function nextChoice(choice: ThemeChoice): ThemeChoice {
-  return CHOICES[(CHOICES.indexOf(choice) + 1) % CHOICES.length];
 }
 
 /** The remembered choice, or "auto" when there is none, it is not one of ours, or storage is unavailable (private windows). */
