@@ -5,7 +5,7 @@ Python models, rules engine, validator and (later) the generator API. Built test
 
 ## Status
 
-Parts 1 to 3 of phase 2 are done: the domain models, the rules tables, the validator, the reskin templates and the SRD seed pipeline.
+Parts 1 to 3 of phase 2 are done (the domain models, the rules tables, the validator, the reskin templates and the SRD seed pipeline), and part 4 is built except for the real AI: the web service works end to end with a scripted stand-in for Haiku.
 
 | Module | What it holds |
 |---|---|
@@ -24,6 +24,10 @@ Parts 1 to 3 of phase 2 are done: the domain models, the rules tables, the valid
 Raw data and its provenance are in `data/srd-2014/` (see `SOURCE.md` there); the last import report is `data/srd-import-report.md`. The import writes `../frontend/public/data/srd-monsters.json`.
 
 | `cauldron/cr/` | The CR estimator: `measure.py` (effective hit points, armor class, damage per round, offensive bonus), `curves.py` (never-decreasing fit), `calibrate.py` (`python -m cauldron.cr.calibrate`, builds `calibration_table.py` with leave-one-out accuracy), `estimator.py` |
+
+| `cauldron/service/` | The web service. `settings.py` (environment variables), `models.py` (request and response messages), `matching.py`, `store.py` (SQLite: monsters, daily usage, remembered reskins), `limits.py` (rate limiter, daily cap, visitor address), `brief.py` (fills the gaps in a request), `draft.py` and `prompts.py` (what the AI is asked and what it may fill in), `generators.py` (abstract `MonsterGenerator` plus the scripted test one), `service.py` (cache first, then the AI with a retry loop), `app.py` (FastAPI endpoints, CORS) |
+
+The service's endpoints are `GET /api/v1/health`, `GET /api/v1/library`, `POST /api/v1/generate` and `POST /api/v1/reskin`. All settings are environment variables named `CAULDRON_...` (see `settings.py`); the Anthropic key is read only by the Haiku generator from `ANTHROPIC_API_KEY`.
 
 The validator's CR consistency check uses the estimator. The Dungeon Master's Guide table is not in the SRD 5.1, so the estimator is calibrated from the SRD monsters themselves. It is a rough sanity check (see `docs/REQUIREMENTS.md`).
 

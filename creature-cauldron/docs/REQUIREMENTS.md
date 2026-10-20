@@ -150,7 +150,7 @@ The full schema lives in `docs/` once the front-end types exist. Key points:
 1. Python domain models and the action class hierarchy.
 2. Rules engine: CR calculator, encounter budget, validator.
 3. Seed pipeline: SRD import, tagging, validation. (Done: 333 SRD 5.1 monsters from a community copy of the data, cross-checked against the official document, with the exact CC-BY attribution on each. Environments and roles are rule-based guesses. Most SRD saving throws and many attack riders stay as word-for-word text because the typed forms cannot reproduce the SRD's wording exactly.)
-4. FastAPI service, SQLite cache, Haiku generator, rate limiting and daily cap.
+4. FastAPI service, SQLite cache, Haiku generator, rate limiting and daily cap. (Built and tested with a scripted stand-in generator: endpoints, cache-first lookup, retry loop, per-address rate limit, daily cap, CORS. The real Haiku generator is the remaining piece.)
 5. Replace the front-end stub with the real API.
 
 **Phase 3: Launch.**
