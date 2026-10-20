@@ -111,6 +111,15 @@ Let a DM filter a large library of original or openly licensed monsters, build e
 | Save DC | 8 + proficiency + ability modifier | Auto-correct |
 | CR consistency | Recomputed CR within 1 step of claimed CR | Retry model (max 2), then discard |
 | Legendary actions | Sensible count and costs | Auto-correct or reject |
+| Features | Feature tags derived from the stat block | Auto-correct |
+| Attribution | SRD monsters carry the exact CC-BY statement | Reject |
+
+Notes on how these are built (backend/src/cauldron/validator.py):
+
+- Attack bonuses, save DCs and spell numbers may sit 0 to 3 above the plain rule, because magic and the elite template add a little. Only larger gaps are corrected. A save DC does not say which ability it uses, so any ability that reaches it is accepted.
+- Official SRD monsters are never "corrected". Differences are reported as notes and the printed numbers stay.
+- **CR consistency is not built yet.** The usual way to estimate CR uses the Dungeon Master's Guide's "Monster Statistics by Challenge Rating" table, which is not in the SRD 5.1 (checked), so it is not used. The estimator will be calibrated from SRD monsters during the seed pipeline instead.
+- Names are checked against a deliberately cautious blocklist (backend/src/cauldron/blocklist.py): Wizards product-identity monsters, iconic named characters and settings.
 
 ## 7. Data model summary
 

@@ -80,6 +80,13 @@ class Spellcasting(CauldronModel):
         match = re.search(r"(\d+)(?:st|nd|rd|th)-level spellcaster", self.intro, re.IGNORECASE)
         return int(match.group(1)) if match else None
 
+    def with_numbers(self, dc: int, attack_bonus: int) -> "Spellcasting":
+        """A copy with a new save DC and spell attack bonus, also rewritten in the intro sentence that quotes them."""
+        intro = re.sub(r"spell save DC \d+", f"spell save DC {dc}", self.intro)
+        sign = "+" if attack_bonus >= 0 else "-"
+        intro = re.sub(r"[+-]\d+ to hit with spell attacks", f"{sign}{abs(attack_bonus)} to hit with spell attacks", intro)
+        return self.model_copy(update={"dc": dc, "attack_bonus": attack_bonus, "intro": intro})
+
     def to_text(self) -> str:
         lines: list[str] = []
         if self.cantrips:

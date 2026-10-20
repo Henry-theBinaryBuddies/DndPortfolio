@@ -16,7 +16,6 @@ Dungeon Master's Guide table that such a calculator is normally built on is not 
 later from SRD monsters themselves.
 """
 
-import re
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -26,7 +25,7 @@ from cauldron.actions import AttackAction, SaveAction
 from cauldron.blocklist import blocked_term
 from cauldron.dice import ability_modifier, format_dice, parse_dice
 from cauldron.features import derive_features
-from cauldron.monster import Monster, Spellcasting
+from cauldron.monster import Monster
 from cauldron.options import Ability, Source
 from cauldron.rules import SRD_ATTRIBUTION, cr_value, hit_die, proficiency_bonus, xp_for_cr
 
@@ -239,13 +238,6 @@ class SaveDcCheck(Check):
         return self._result(updated if findings else monster, *findings)
 
 
-def patch_spellcasting_intro(spellcasting: Spellcasting, dc: int, attack_bonus: int) -> str:
-    """The intro sentence mentions the DC and attack bonus, so it must change with them."""
-    intro = re.sub(r"spell save DC \d+", f"spell save DC {dc}", spellcasting.intro)
-    sign = "+" if attack_bonus >= 0 else "-"
-    return re.sub(r"[+-]\d+ to hit with spell attacks", f"{sign}{abs(attack_bonus)} to hit with spell attacks", intro)
-
-
 class SpellcastingCheck(Check):
     """Spell save DC is 8 + proficiency + casting ability modifier, and the attack bonus is proficiency + it."""
 
@@ -271,9 +263,7 @@ class SpellcastingCheck(Check):
         if not findings:
             return self._result(monster)
 
-        fixed = spellcasting.model_copy(
-            update={"dc": dc, "attack_bonus": attack, "intro": patch_spellcasting_intro(spellcasting, dc, attack)}
-        )
+        fixed = spellcasting.with_numbers(dc, attack)
         return self._result(monster.model_copy(update={"spellcasting": fixed}), *findings)
 
 

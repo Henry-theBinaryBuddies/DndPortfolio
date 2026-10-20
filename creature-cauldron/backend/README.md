@@ -5,7 +5,7 @@ Python models, rules engine, validator and (later) the generator API. Built test
 
 ## Status
 
-Part 1 of phase 2 is done: the domain models.
+Parts 1 and 2 of phase 2 are done: the domain models, the rules tables, the validator and the reskin templates.
 
 | Module | What it holds |
 |---|---|
@@ -13,6 +13,13 @@ Part 1 of phase 2 is done: the domain models.
 | `cauldron/dice.py` | Dice parsing, averages and ability modifiers |
 | `cauldron/actions.py` | The action class hierarchy: abstract `Action`, then `AttackAction`, `SaveAction`, `MultiattackAction`, `TextAction`, each writing its own stat block prose |
 | `cauldron/monster.py` | `Monster` and its parts, including structured `Spellcasting` and `LegendaryActions` |
+| `cauldron/rules.py` | SRD 5.1 tables only: XP and proficiency bonus by CR, hit die by size, and the exact SRD attribution text |
+| `cauldron/validator.py` | Abstract `Check` with nine rule subclasses (name, derived fields, hit points, attack bonus, save DC, spellcasting, legendary actions, features, attribution) and the `Validator` that runs them over a copy |
+| `cauldron/blocklist.py` | Cautious list of names that are not ours to use |
+| `cauldron/features.py` | Derives the feature tags from the stat block |
+| `cauldron/templates.py` | Abstract `Template` with `EliteTemplate`, plus the damage-type swap |
+
+Not built yet: the CR consistency check. The Dungeon Master's Guide table it would use is not in the SRD 5.1, so the estimator will be calibrated from SRD monsters during the seed pipeline.
 
 The tests prove two things beyond the unit tests: all 20 sample monsters from the front end load and
 round-trip through the Python model, and the Python prose is identical to what the web page prints
