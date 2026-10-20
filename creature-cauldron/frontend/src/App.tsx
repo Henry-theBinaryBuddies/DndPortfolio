@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import EncounterPanel from "./components/EncounterPanel";
 import FilterBar from "./components/FilterBar";
 import GenerateBar from "./components/GenerateBar";
+import ThemeToggle from "./components/ThemeToggle";
 import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
 import SavedEncounters from "./components/SavedEncounters";
@@ -218,6 +219,7 @@ export default function App() {
             onPartyChange={setParty}
             onDifficultyChange={setDifficulty}
           />
+          <ThemeToggle />
         </header>
 
         {error && <p className="error">{error}</p>}

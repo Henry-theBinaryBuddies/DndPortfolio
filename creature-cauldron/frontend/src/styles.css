@@ -1,11 +1,40 @@
 :root {
+  /* Light theme: parchment. Every colour the page uses is one of these, so a theme is just a different set. */
   --paper: #f4ead5;
   --ink: #2b1d14;
   --accent: #7a1f1f;
+  --on-accent: #f4ead5; /* text on an accent-coloured button */
   --muted: #6b5a4a;
+  --panel: #efe2c4;
+  --panel-border: #c9b88f;
+  --field: #fffaf0; /* inputs, menus, small buttons */
+  --field-border: #b9a577;
+  --hover: #ebdcbc;
+  --pressed: #e2cfa6;
+  --divider: #d8c9a8;
+  --note: #f3e8cf;
+  color-scheme: light;
   font-family: Georgia, "Times New Roman", serif;
   color: var(--ink);
   background: var(--paper);
+}
+
+/* Dark theme: a candlelit desk. The stat block keeps its parchment (see StatBlock.css), like a page lying on the desk. */
+:root[data-theme="dark"] {
+  --paper: #17110d;
+  --ink: #eadfc9;
+  --accent: #e2a85a;
+  --on-accent: #1b130e;
+  --muted: #a8977f;
+  --panel: #241a14;
+  --panel-border: #4a3a2c;
+  --field: #1d1510;
+  --field-border: #5a4836;
+  --hover: #33261d;
+  --pressed: #40301f;
+  --divider: #3a2d22;
+  --note: #2d2218;
+  color-scheme: dark;
 }
 
 body {
@@ -82,7 +111,7 @@ h2 {
   border: 1px solid var(--accent);
   border-radius: 4px;
   background: var(--accent);
-  color: var(--paper);
+  color: var(--on-accent);
   font: inherit;
   cursor: pointer;
 }
@@ -102,11 +131,11 @@ h2 {
 }
 
 .action-button:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: #ebdcbc;
+  background: var(--hover);
 }
 
 .action-button[aria-pressed="true"] {
-  background: #e2cfa6;
+  background: var(--pressed);
   font-weight: bold;
 }
 
@@ -123,7 +152,7 @@ h2 {
   height: 2rem;
   border: 1px solid var(--accent);
   border-radius: 4px;
-  background: #fffaf0;
+  background: var(--field);
   color: var(--accent);
   font: inherit;
   font-size: 1.1rem;
@@ -132,15 +161,15 @@ h2 {
 }
 
 .star-button[aria-pressed="true"] {
-  background: #e2cfa6;
+  background: var(--pressed);
 }
 
 select,
 .search-box,
 .encounter-name-input {
-  border: 1px solid #c9b88f;
+  border: 1px solid var(--panel-border);
   border-radius: 4px;
-  background: #fffaf0;
+  background: var(--field);
   font: inherit;
 }
 
@@ -153,9 +182,9 @@ select {
   box-sizing: border-box;
   min-width: 0;
   padding: 0.6rem 0.75rem;
-  border: 1px solid #c9b88f;
+  border: 1px solid var(--panel-border);
   border-radius: 6px;
-  background: #efe2c4;
+  background: var(--panel);
 }
 
 /* ---- Page layout ---- */
@@ -165,6 +194,11 @@ select {
   flex-direction: column;
   gap: 0.6rem;
   padding: 0.75rem 1rem;
+}
+
+.theme-toggle {
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .topbar {
@@ -269,9 +303,9 @@ select {
 .pill {
   position: relative;
   padding: 0.15rem 0.55rem;
-  border: 1px solid #b9a577;
+  border: 1px solid var(--field-border);
   border-radius: 999px;
-  background: #fffaf0;
+  background: var(--field);
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -285,7 +319,7 @@ select {
 .pill.selected {
   border-color: var(--accent);
   background: var(--accent);
-  color: var(--paper);
+  color: var(--on-accent);
 }
 
 .pill:has(input:focus-visible) {
@@ -321,9 +355,9 @@ select {
   align-items: center;
   gap: 0.4rem 0.6rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #c9b88f;
+  border: 1px solid var(--panel-border);
   border-radius: 6px;
-  background: #efe2c4;
+  background: var(--panel);
 }
 
 .search-box {
@@ -345,9 +379,9 @@ select {
 
 .menu-button {
   padding: 0.3rem 0.6rem;
-  border: 1px solid #b9a577;
+  border: 1px solid var(--field-border);
   border-radius: 4px;
-  background: #fffaf0;
+  background: var(--field);
   color: var(--ink);
   font: inherit;
   font-size: 0.9rem;
@@ -355,7 +389,7 @@ select {
 }
 
 .menu-button[aria-expanded="true"] {
-  background: #e2cfa6;
+  background: var(--pressed);
 }
 
 .menu-panel {
@@ -367,9 +401,9 @@ select {
   max-height: 60vh;
   overflow-y: auto;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #c9b88f;
+  border: 1px solid var(--panel-border);
   border-radius: 6px;
-  background: #fffaf0;
+  background: var(--field);
   /* A functional shadow: it separates the open menu from what it covers. */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
@@ -385,7 +419,7 @@ select {
   padding: 0 0.4rem;
   border-radius: 999px;
   background: var(--accent);
-  color: var(--paper);
+  color: var(--on-accent);
   font-size: 0.75rem;
   font-weight: normal;
 }
@@ -448,7 +482,7 @@ select {
   width: 100%;
   padding: 0.45rem 0.5rem;
   border: 0;
-  border-bottom: 1px solid #d8c9a8;
+  border-bottom: 1px solid var(--divider);
   background: transparent;
   font: inherit;
   color: inherit;
@@ -457,7 +491,7 @@ select {
 }
 
 .monster-button:hover {
-  background: #ebdcbc;
+  background: var(--hover);
 }
 
 .monster-button span {
@@ -499,7 +533,7 @@ select {
   justify-content: space-between;
   gap: 0.4rem;
   padding: 0.35rem 0;
-  border-bottom: 1px solid #d8c9a8;
+  border-bottom: 1px solid var(--divider);
 }
 
 .encounter-name,
@@ -544,7 +578,7 @@ select {
   height: 2rem;
   border: 1px solid var(--accent);
   border-radius: 4px;
-  background: #fffaf0;
+  background: var(--field);
   color: var(--accent);
   font: inherit;
   font-weight: bold;
@@ -789,7 +823,7 @@ select {
   margin: 0 0 0.5rem;
   padding: 0.3rem 0.5rem;
   border-left: 3px solid var(--accent);
-  background: #f3e8cf;
+  background: var(--note);
   font-size: 0.85rem;
 }
 
@@ -807,7 +841,7 @@ select {
   margin: 0 0 0.5rem;
   padding: 0.3rem 0.5rem;
   border-left: 3px solid var(--accent);
-  background: #f3e8cf;
+  background: var(--note);
   font-size: 0.85rem;
 }
 
