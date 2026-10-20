@@ -80,8 +80,15 @@ export default function StatBlockDialog({
               Print
             </button>
             {/* The label stays "Favorite"; aria-pressed tells screen readers whether it is on. */}
-            <button type="button" className="action-button" aria-pressed={isFavorite} onClick={onToggleFavorite}>
-              <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span> Favorite
+            <button
+              type="button"
+              className="action-button star-only"
+              aria-pressed={isFavorite}
+              aria-label="Favorite"
+              title="Favorite"
+              onClick={onToggleFavorite}
+            >
+              <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
             </button>
             {/* aria-disabled, not disabled: a button that is pressed and then disables itself would lose
                 keyboard focus. Pressing it when full does nothing, because addMonster refuses. */}

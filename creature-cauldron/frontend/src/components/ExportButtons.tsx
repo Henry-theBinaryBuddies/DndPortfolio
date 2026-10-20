@@ -6,9 +6,10 @@ import { buildFiveToolsFile } from "../lib/fiveTools";
 import { exportFoundryActor } from "../lib/foundry";
 import { FOUNDRY_TARGET } from "../lib/foundryMaps";
 import type { Monster } from "../types/monster";
+import DropMenu from "./DropMenu";
 
-// The export buttons for one monster. The handlers only build a file with the pure functions in
-// lib/ and hand it to the browser; the decisions about what goes in a file live (and are tested) there.
+// The export menu for one monster, and the help for importing what it makes. The handlers only build a file with the pure
+// functions in lib/ and hand it to the browser; the decisions about what goes in a file live (and are tested) there.
 // The parent gives this component key={monster.id}, so its status text starts fresh for each monster.
 export default function ExportButtons({ monster }: { monster: Monster }) {
   const [status, setStatus] = useState("");
@@ -37,21 +38,37 @@ export default function ExportButtons({ monster }: { monster: Monster }) {
 
   return (
     <>
-      <button type="button" className="action-button" onClick={exportJson}>
-        Export JSON
-      </button>
-      <button type="button" className="action-button" onClick={exportFiveTools}>
-        Export 5etools
-      </button>
-      <button type="button" className="action-button" onClick={exportFoundry}>
-        Export for Foundry
-      </button>
-      {/* Always on the page (empty when idle), so a screen reader announces the text when it changes. */}
-      <span role="status" className="detail-note export-status">
-        {status}
-      </span>
-      <details className="export-help">
-        <summary>Importing into Foundry</summary>
+      <DropMenu label={<>Export <span aria-hidden="true">▾</span></>} ariaLabel="Export" align="right">
+        {(close) => (
+          <ul className="dropmenu__items">
+            {[
+              ["JSON", exportJson],
+              ["5etools", exportFiveTools],
+              ["Foundry", exportFoundry],
+            ].map(([name, run]) => (
+              <li key={name as string}>
+                <button
+                  type="button"
+                  className="dropmenu__item"
+                  onClick={() => {
+                    (run as () => void)();
+                    close();
+                  }}
+                >
+                  {name as string}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DropMenu>
+      <DropMenu
+        label={<span aria-hidden="true">ⓘ</span>}
+        ariaLabel="Importing into Foundry"
+        buttonClassName="info-button"
+        align="right"
+        panelClassName="export-help"
+      >
         <p>
           <strong>Foundry, from the Foundry file:</strong> the actor's own Import Data, not Plutonium's importer.
         </p>
@@ -66,7 +83,11 @@ export default function ExportButtons({ monster }: { monster: Monster }) {
           <strong>5etools file:</strong> a homebrew file for Plutonium's importer in Foundry (Choose Importer, then the
           creature importer).
         </p>
-      </details>
+      </DropMenu>
+      {/* Always on the page (empty when idle), so a screen reader announces the text when it changes. */}
+      <span role="status" className="detail-note export-status">
+        {status}
+      </span>
     </>
   );
 }

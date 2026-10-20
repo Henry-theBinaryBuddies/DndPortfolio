@@ -1,3 +1,4 @@
+import DropMenu from "./DropMenu";
 import { useState } from "react";
 import type { XpRange } from "../lib/filters";
 import { label } from "../lib/options";
@@ -145,16 +146,21 @@ export default function PartyPanel({ party, difficulty, band, onPartyChange, onD
         </p>
       )}
 
-      <details className="budgets">
-        <summary>XP budgets</summary>
-        <ul>
+      {/* An overlay, not an expanding block: it opens over the page instead of pushing the controls (and the filter bar) around. */}
+      <DropMenu
+        label={<>XP budgets <span aria-hidden="true">▾</span></>}
+        ariaLabel="XP budgets"
+        buttonClassName="link-button budgets-button"
+        panelClassName="budgets"
+      >
+        <ul className="dropmenu__items">
           {DIFFICULTIES.map((d) => (
             <li key={d}>
               {label(d)}: {thresholds[d].toLocaleString("en-US")} XP
             </li>
           ))}
         </ul>
-      </details>
+      </DropMenu>
     </section>
   );
 }

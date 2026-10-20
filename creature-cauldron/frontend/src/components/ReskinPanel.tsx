@@ -3,6 +3,7 @@ import { damageDealtBy } from "../lib/demoGenerator";
 import { OFFLINE_MESSAGE, RESTING_MESSAGE, type Generator, type ReskinRequest } from "../lib/generatorApi";
 import { DAMAGE_THEMES, DAMAGE_TYPES, label, type DamageTheme, type DamageType } from "../lib/options";
 import { MOVE_GROUPS, SURPRISE, movesFor } from "../lib/remixMoves";
+import DropMenu from "./DropMenu";
 import type { Monster } from "../types/monster";
 
 interface ReskinPanelProps {
@@ -21,7 +22,6 @@ type Kind = "quick" | "remix";
 // the server with "Surprise me". Both can also level the monster up. The parent gives this component a key of the monster's
 // id, so its choices reset when another monster opens.
 export default function ReskinPanel({ monster, mode, resting = false, onReskin }: ReskinPanelProps) {
-  const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<Kind>("quick");
   const [from, setFrom] = useState<DamageType | "">("");
   const [to, setTo] = useState<DamageType | "">("");
@@ -56,12 +56,7 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
   const surprising = theme === SURPRISE || move === SURPRISE;
 
   return (
-    <>
-      <button type="button" className="action-button" aria-expanded={open} aria-controls="reskin-panel" onClick={() => setOpen(!open)}>
-        Reskin
-      </button>
-      {open && (
-        <div id="reskin-panel" className="reskin-panel">
+    <DropMenu label="Reskin" ariaLabel="Reskin" align="right" keepMounted panelClassName="reskin-panel">
           <fieldset className="reskin-kind">
             <legend className="sr-only">Kind of reskin</legend>
             <label>
@@ -157,8 +152,6 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
                   ? RESTING_MESSAGE
                   : message || (!hasChange ? hint : surprising ? "Surprise choices are made fresh each time, so they are not reused." : "")}
           </p>
-        </div>
-      )}
-    </>
+    </DropMenu>
   );
 }

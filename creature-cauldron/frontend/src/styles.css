@@ -635,8 +635,7 @@ select {
 }
 
 .topbar {
-  position: relative;
-  isolation: isolate;
+  position: relative; /* no isolation: the XP overlay must be able to rise above the filter bar below */
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -1094,6 +1093,7 @@ select {
 /* ---- Stat block pop-out ---- */
 
 .statblock-dialog {
+  overflow-x: hidden; /* an overlay near the edge must never add a sideways scroll bar */
   box-sizing: border-box;
   width: min(44rem, 96vw);
   max-height: 92vh;
@@ -1140,24 +1140,109 @@ select {
   cursor: pointer;
 }
 
-/* Export status and the "Importing into Foundry" help sit on their own full-width rows. */
-.dialog-header .export-status,
-.dialog-header .export-help {
-  flex-basis: 100%;
+/* Menus and overlays that open under a button in the stat block's button row (components/DropMenu.tsx). */
+.dropmenu {
+  position: relative;
+}
+
+.dropmenu__panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  z-index: 30;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(26rem, 92vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  /* A functional shadow: it separates the overlay from the stat block it covers. */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.dropmenu__panel[hidden] {
+  display: none;
+}
+
+.dropmenu__panel--left {
+  left: 0;
+}
+
+.dropmenu__panel--right {
+  right: 0;
+}
+
+.dropmenu__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dropmenu__item {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 1.2rem 0.35rem 0.4rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropmenu__item:hover,
+.dropmenu__item:focus-visible {
+  background: var(--hover);
+}
+
+/* The Favorite button is a star and nothing else. */
+.star-only {
+  min-width: 2.4rem;
+  padding-inline: 0.5rem;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* A small round "i": the help for importing what the Export menu makes. */
+.info-button {
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.info-button:hover,
+.info-button[aria-expanded="true"] {
+  background: var(--hover);
 }
 
 .export-help {
+  width: min(22rem, 86vw);
   font-size: 0.85rem;
-}
-
-.export-help summary {
-  cursor: pointer;
-  color: var(--muted);
 }
 
 .export-help ol {
   margin: 0.25rem 0 0;
   padding-left: 1.2rem;
+}
+
+/* The download notice takes no room until it has something to say (it stays on the page so it is still announced). */
+.export-status:empty {
+  position: absolute;
+}
+
+.export-status:not(:empty) {
+  flex-basis: 100%;
 }
 
 /* Phones: the pop-out fills the screen. */
@@ -1232,13 +1317,17 @@ select {
   flex-basis: 100%;
 }
 
-.reskin-panel {
+.dropmenu__panel.reskin-panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 0.8rem;
-  flex-basis: 100%;
+  width: min(26rem, 92vw);
   font-size: 0.9rem;
+}
+
+.dropmenu__panel.reskin-panel[hidden] {
+  display: none;
 }
 
 .reskin-panel p {
