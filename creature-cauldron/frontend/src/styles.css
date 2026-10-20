@@ -278,14 +278,34 @@ select {
   }
 }
 
-/* A painted witch fades into the page on its left edge instead of ending in a hard line. */
+/* The painted witch sits behind the whole top section, dimmed, so text and controls flow over her and she never pushes
+   anything around (she is out of the layout: absolutely placed, behind, and she takes no clicks). */
 .witch-art {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0.5rem;
   display: block;
   width: auto;
-  height: 7.5rem;
-  margin-block: -0.4rem;
+  height: 100%;
+  margin: 0;
   object-fit: contain;
-  filter: drop-shadow(0 0 0.8rem var(--brew-glow));
+  opacity: 0.38;
+  pointer-events: none;
+  filter: saturate(0.85) brightness(0.85) drop-shadow(0 0 0.8rem var(--brew-glow));
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+/* Phones: she fills the section behind the title and controls. */
+@media (max-width: 700px) {
+  .witch-art {
+    right: 0;
+    width: 100%;
+    object-fit: cover;
+    object-position: 50% 70%;
+    opacity: 0.3;
+  }
 }
 
 .empty-scene {
@@ -526,6 +546,8 @@ select {
 }
 
 .topbar {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
