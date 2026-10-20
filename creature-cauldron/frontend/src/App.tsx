@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import EncounterPanel from "./components/EncounterPanel";
 import FilterBar from "./components/FilterBar";
 import GenerateBar from "./components/GenerateBar";
+import Embers, { SmolderFilter } from "./components/Embers";
 import BrewingOverlay from "./components/BrewingOverlay";
-import { Cauldron, WitchScene } from "./components/Illustrations";
+import { Cauldron, WitchArt } from "./components/Illustrations";
 import ThemeToggle from "./components/ThemeToggle";
 import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
@@ -211,6 +212,8 @@ export default function App() {
 
   return (
     <>
+      <SmolderFilter />
+      <Embers />
       <main className="app no-print">
         <header className="topbar">
           <div className="brand">
@@ -224,7 +227,7 @@ export default function App() {
             onPartyChange={setParty}
             onDifficultyChange={setDifficulty}
           />
-          <WitchScene className="topbar__scene" />
+          <WitchArt className="topbar__scene" />
           <ThemeToggle />
         </header>
         <BrewingOverlay active={generating} />

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 // Small hand-drawn SVG pictures that give the page its theme. They are decorative (hidden from screen readers) and take
 // their colours from the theme tokens in styles.css, so they follow light and dark. Their motion is plain CSS and is switched
 // off for visitors whose device asks for reduced motion.
@@ -32,7 +34,23 @@ export function Cauldron({
   );
 }
 
-/** A witch in profile, stirring a cauldron under a crescent moon. The banner for the top of the page. */
+/**
+ * The witch banner. If there is a painted picture at public/images/witch.webp (or witch.png) the page shows that, faded into
+ * the page; if there is none, or it cannot be loaded, it shows the drawn witch below instead. See docs/ART.md.
+ */
+export function WitchArt({ className = "" }: { className?: string }) {
+  const [missing, setMissing] = useState(false);
+  if (missing) return <WitchScene className={className} />;
+  const base = import.meta.env.BASE_URL;
+  return (
+    <picture>
+      <source srcSet={`${base}images/witch.webp`} type="image/webp" />
+      <img className={`witch-art ${className}`} src={`${base}images/witch.png`} alt="" onError={() => setMissing(true)} />
+    </picture>
+  );
+}
+
+/** A witch in profile, stirring a cauldron under a crescent moon. The drawn stand-in for the painted banner. */
 export function WitchScene({ className = "" }: { className?: string }) {
   return (
     <svg className={`witch-scene ${className}`} viewBox="0 0 330 150" aria-hidden="true" focusable="false">

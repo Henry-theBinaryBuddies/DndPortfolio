@@ -1,11 +1,15 @@
 :root {
   /* Light theme: parchment. Every colour the page uses is one of these, so a theme is just a different set. */
-  --paper: #f4ead5;
+  --paper: #e3d2aa;
+  --paper-glow: #f1e4c4;
   --ink: #2b1d14;
   --accent: #7a1f1f;
   --on-accent: #f4ead5; /* text on an accent-coloured button */
+  --panel-deep: #cdb98f; /* the scorched rim of a paper panel */
+  --ember: #d9541e;
+  --char: rgba(70, 30, 8, 0.7);
   --muted: #6b5a4a;
-  --panel: #efe2c4;
+  --panel: #f0e2c0;
   --panel-border: #c9b88f;
   --field: #fffaf0; /* inputs, menus, small buttons */
   --field-border: #b9a577;
@@ -35,26 +39,30 @@
 
 /* Dark theme: a candlelit desk. The stat block keeps its parchment (see StatBlock.css), like a page lying on the desk. */
 :root[data-theme="dark"] {
-  --paper: #17110d;
-  --ink: #eadfc9;
-  --accent: #e2a85a;
-  --on-accent: #1b130e;
-  --muted: #a8977f;
-  --panel: #241a14;
-  --panel-border: #4a3a2c;
-  --field: #1d1510;
-  --field-border: #5a4836;
-  --hover: #33261d;
-  --pressed: #40301f;
-  --divider: #3a2d22;
-  --note: #2d2218;
+  --paper: #0b0706;
+  --paper-glow: #1c120c;
+  --ink: #dccfb8;
+  --accent: #e0702e;
+  --on-accent: #140c08;
+  --muted: #a39178;
+  --panel: #2b1e16;
+  --panel-deep: #120c09;
+  --panel-border: #4a3425;
+  --field: #170f0a;
+  --field-border: #5b4230;
+  --hover: #3a281c;
+  --pressed: #4a321f;
+  --divider: #3d2c20;
+  --note: #2a1d14;
+  --ember: #ff6a1a;
+  --char: rgba(0, 0, 0, 0.88);
   --silhouette: #54396b;
   --silhouette-edge: #a98ad0;
   --iron: #26262b;
   --iron-rim: #4a4a52;
-  --brew: #8ee07a;
-  --brew-glow: rgba(142, 224, 122, 0.4);
-  --moon: #e8c26a;
+  --brew: #7fd96a;
+  --brew-glow: rgba(127, 217, 106, 0.35);
+  --moon: #d9b36a;
   color-scheme: dark;
 }
 
@@ -266,6 +274,17 @@ select {
   .theme-toggle {
     margin-left: auto;
   }
+}
+
+/* A painted witch fades into the page on its left edge instead of ending in a hard line. */
+.witch-art {
+  display: block;
+  width: 17rem;
+  height: auto;
+  max-height: 9rem;
+  object-fit: contain;
+  mask-image: linear-gradient(to right, transparent 0%, #000 22%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 22%);
 }
 
 .empty-scene {
@@ -1156,4 +1175,147 @@ select {
   color: var(--muted);
   font-size: 0.7rem;
   line-height: 1.3;
+}
+
+
+/* ---- Grim dark: scorched paper, embers ---- */
+
+/* The paper texture is a speck pattern made by the browser itself (an SVG noise filter), so there is no image to download. */
+:root {
+  --paper-tex: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 -.12'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+@media screen {
+  body {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 25%, var(--paper-glow) 0%, var(--paper) 72%) fixed;
+  }
+}
+
+/* Panels and the filter bar are sheets of burnt paper. The picture of the paper is two layers drawn behind the content:
+   one with the sheet and its charred rim, one that glows like an ember and flickers. Both are run through a filter that
+   roughens the outline, so the edge looks burnt rather than cut. The text sits on top, untouched. */
+.panel,
+.filter-bar {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  background: transparent;
+  padding: 0.8rem 1rem;
+}
+
+.panel::before,
+.panel::after,
+.filter-bar::before,
+.filter-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 3px;
+  pointer-events: none;
+  filter: url(#smolder-edge);
+}
+
+.panel::before,
+.filter-bar::before {
+  background:
+    var(--paper-tex),
+    radial-gradient(ellipse at 50% 40%, var(--panel) 50%, var(--panel-deep) 100%);
+  box-shadow:
+    inset 0 0 0.2rem 0.05rem var(--ember),
+    inset 0 0 1.3rem 0.35rem var(--char);
+}
+
+.panel::after,
+.filter-bar::after {
+  box-shadow: inset 0 0 0.9rem 0.1rem var(--ember);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel::after,
+  .filter-bar::after {
+    animation: smolder 5s ease-in-out infinite alternate;
+  }
+
+  .filter-bar::after {
+    animation-duration: 6.5s;
+    animation-delay: -2s;
+  }
+
+  .panel:nth-child(2)::after {
+    animation-delay: -1.5s;
+  }
+
+  .panel:nth-child(3)::after {
+    animation-delay: -3.2s;
+  }
+}
+
+@keyframes smolder {
+  0% {
+    opacity: 0.25;
+  }
+  35% {
+    opacity: 0.7;
+  }
+  60% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+
+/* Embers drift up the whole page, behind everything. */
+.ember-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ember {
+  position: absolute;
+  bottom: -1rem;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 0.5rem 0.1rem var(--ember);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ember {
+    animation-name: ember-rise;
+    animation-timing-function: ease-out;
+    animation-iteration-count: infinite;
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+  10% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(2.5rem, -105vh) scale(0.3);
+  }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+}
+
+@media print {
+  .ember-field {
+    display: none;
+  }
 }
