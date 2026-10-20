@@ -25,7 +25,7 @@ def test_without_a_key_generation_says_the_forge_cannot_be_reached(tmp_path) -> 
 
 def test_reskinning_a_known_srd_monster_reaches_the_ai_step_and_fails_the_same_way(tmp_path) -> None:
     client = TestClient(create_default_app(env(tmp_path)))
-    response = client.post("/api/v1/reskin", json={"baseId": "srd-goblin", "template": "level_up"})
+    response = client.post("/api/v1/reskin", json={"baseId": "srd-goblin", "levelUp": True})
     assert response.status_code == 502  # the base was found in the static library; only the naming step is unavailable
 
 
@@ -51,3 +51,7 @@ def test_the_smoke_tool_refuses_to_spend_money_without_yes(capsys) -> None:
 def test_the_smoke_tool_needs_a_key(capsys) -> None:
     assert smoke(["--yes"], {}) == 1
     assert "ANTHROPIC_API_KEY" in capsys.readouterr().out
+
+
+def test_the_remix_smoke_tool_also_refuses_without_yes(capsys) -> None:
+    assert smoke(["--remix"], {"ANTHROPIC_API_KEY": "sk-ant-test"}) == 2
