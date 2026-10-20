@@ -9,6 +9,7 @@ import "@fontsource/cinzel/600.css";
 import "@fontsource/cinzel/700.css";
 import "@fontsource/cinzel-decorative/700.css";
 import "@fontsource/medievalsharp/400.css";
+import "@fontsource/pirata-one/400.css";
 import "./styles.css";
 import { applyTheme, browserStorage, loadChoice } from "./lib/theme";
 

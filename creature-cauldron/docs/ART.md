@@ -1,7 +1,8 @@
 # The witch picture
 
-The banner at the top right of the page (shown when the window is at least 1100 pixels wide) can be a painted picture. Until
-one is added, the page shows a small drawn witch instead, so nothing is broken without it.
+The banner at the top right of the page (shown when the window is at least 1100 pixels wide) can be a painted picture. The
+current one is `witch.webp` (about 400 KB). If the file is ever missing, the page shows a small drawn witch instead, so
+nothing is broken without it.
 
 ## Adding it
 

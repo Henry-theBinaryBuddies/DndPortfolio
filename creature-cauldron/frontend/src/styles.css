@@ -1,22 +1,22 @@
 :root {
   /* Light theme: parchment. Every colour the page uses is one of these, so a theme is just a different set. */
-  --paper: #e3d2aa;
-  --paper-glow: #f1e4c4;
-  --ink: #2b1d14;
-  --accent: #7a1f1f;
-  --on-accent: #f4ead5; /* text on an accent-coloured button */
-  --panel-deep: #cdb98f; /* the scorched rim of a paper panel */
-  --ember: #d9541e;
-  --char: rgba(70, 30, 8, 0.7);
-  --muted: #6b5a4a;
-  --panel: #f0e2c0;
-  --panel-border: #c9b88f;
-  --field: #fffaf0; /* inputs, menus, small buttons */
-  --field-border: #b9a577;
-  --hover: #ebdcbc;
-  --pressed: #e2cfa6;
-  --divider: #d8c9a8;
-  --note: #f3e8cf;
+  --paper: #a99468;
+  --paper-glow: #c2ae82;
+  --ink: #1e1710;
+  --accent: #2d5a1c;
+  --on-accent: #eee4c8; /* text on an accent-coloured button */
+  --panel-deep: #9c8453; /* the scorched rim of a paper panel */
+  --ember: #5f9a2e; /* the glow along a burnt edge: witchfire green */
+  --char: rgba(35, 25, 8, 0.78);
+  --muted: #4f4430;
+  --panel: #cfba88;
+  --panel-border: #8c7548;
+  --field: #e2d3a6; /* inputs, menus, small buttons */
+  --field-border: #8c7548;
+  --hover: #c3ad79;
+  --pressed: #b49d68;
+  --divider: #a99262;
+  --note: #d6c394;
   /* Pictures */
   --silhouette: #3a2a48;
   --silhouette-edge: transparent;
@@ -27,7 +27,7 @@
   --moon: #c79a45;
   --font-body: "Alegreya", Georgia, "Times New Roman", serif;
   --font-display: "Cinzel", Georgia, serif; /* headings, buttons, labels */
-  --font-title: "Cinzel Decorative", "Cinzel", Georgia, serif; /* the page title only */
+  --font-title: "Pirata One", "Cinzel Decorative", Georgia, serif; /* the page title and panel headings */
   --font-flourish: "MedievalSharp", "Cinzel", Georgia, serif; /* small touches: counts, notes */
   color-scheme: light;
   font-family: var(--font-body);
@@ -39,29 +39,29 @@
 
 /* Dark theme: a candlelit desk. The stat block keeps its parchment (see StatBlock.css), like a page lying on the desk. */
 :root[data-theme="dark"] {
-  --paper: #0b0706;
-  --paper-glow: #1c120c;
-  --ink: #dccfb8;
-  --accent: #e0702e;
-  --on-accent: #140c08;
-  --muted: #a39178;
-  --panel: #2b1e16;
-  --panel-deep: #120c09;
-  --panel-border: #4a3425;
-  --field: #170f0a;
-  --field-border: #5b4230;
-  --hover: #3a281c;
-  --pressed: #4a321f;
-  --divider: #3d2c20;
-  --note: #2a1d14;
-  --ember: #ff6a1a;
-  --char: rgba(0, 0, 0, 0.88);
+  --paper: #080a07;
+  --paper-glow: #151b10;
+  --ink: #e2dcc6;
+  --accent: #86e05a;
+  --on-accent: #0b1006;
+  --muted: #a5a38a;
+  --panel: #1e2117;
+  --panel-deep: #0b0d08;
+  --panel-border: #5e4326;
+  --field: #11140c;
+  --field-border: #7a5a32;
+  --hover: #2c3121;
+  --pressed: #39422b;
+  --divider: #343824;
+  --note: #1f2417;
+  --ember: #6fe04a;
+  --char: rgba(0, 0, 0, 0.9);
   --silhouette: #54396b;
   --silhouette-edge: #a98ad0;
   --iron: #26262b;
   --iron-rim: #4a4a52;
-  --brew: #7fd96a;
-  --brew-glow: rgba(127, 217, 106, 0.35);
+  --brew: #7fe05a;
+  --brew-glow: rgba(127, 224, 90, 0.4);
   --moon: #d9b36a;
   color-scheme: dark;
 }
@@ -73,19 +73,21 @@ body {
 h1,
 h2 {
   color: var(--accent);
-  font-family: var(--font-display);
+  /* Pirata One has one weight, so the browser must not fake a bold one. */
+  font-family: var(--font-title);
+  font-weight: 400;
   margin: 0 0 0.4rem;
 }
 
 h1 {
-  font-family: var(--font-title);
-  font-size: 1.6rem;
+  font-size: 2.3rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  text-shadow: 0 0 0.9rem var(--ember);
 }
 
 h2 {
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   letter-spacing: 0.03em;
 }
 
@@ -279,12 +281,11 @@ select {
 /* A painted witch fades into the page on its left edge instead of ending in a hard line. */
 .witch-art {
   display: block;
-  width: 17rem;
-  height: auto;
-  max-height: 9rem;
+  width: auto;
+  height: 7.5rem;
+  margin-block: -0.4rem;
   object-fit: contain;
-  mask-image: linear-gradient(to right, transparent 0%, #000 22%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 22%);
+  filter: drop-shadow(0 0 0.8rem var(--brew-glow));
 }
 
 .empty-scene {
@@ -1182,6 +1183,8 @@ select {
 
 /* The paper texture is a speck pattern made by the browser itself (an SVG noise filter), so there is no image to download. */
 :root {
+  /* Crumpled paper: the browser lights a fractal noise surface from one side, giving creases and folds. Tiles seamlessly. */
+  --crumple: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'><filter id='c' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.011 .016' numOctaves='5' seed='11' stitchTiles='stitch' result='t'/><feDiffuseLighting in='t' surfaceScale='5' diffuseConstant='1.05' lighting-color='%23ffffff'><feDistantLight azimuth='225' elevation='50'/></feDiffuseLighting></filter><rect width='100%' height='100%' filter='url(%23c)'/></svg>");
   --paper-tex: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 -.12'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
@@ -1220,8 +1223,11 @@ select {
 .panel::before,
 .filter-bar::before {
   background:
+    var(--crumple),
     var(--paper-tex),
     radial-gradient(ellipse at 50% 40%, var(--panel) 50%, var(--panel-deep) 100%);
+  background-size: 520px 520px, 220px 220px, auto;
+  background-blend-mode: soft-light, normal, normal;
   box-shadow:
     inset 0 0 0.2rem 0.05rem var(--ember),
     inset 0 0 1.3rem 0.35rem var(--char);
