@@ -2,6 +2,7 @@ import { useState } from "react";
 import { downloadTextFile } from "../lib/download";
 import { exportFileName, toJsonText } from "../lib/exportCommon";
 import { buildMonsterFile } from "../lib/exportJson";
+import { buildFiveToolsFile } from "../lib/fiveTools";
 import { exportFoundryActor } from "../lib/foundry";
 import { FOUNDRY_TARGET } from "../lib/foundryMaps";
 import type { Monster } from "../types/monster";
@@ -27,30 +28,44 @@ export default function ExportButtons({ monster }: { monster: Monster }) {
     setStatus(`Download started: ${filename}${notes.length > 0 ? ` Notes: ${notes.join(" ")}` : ""}`);
   };
 
+  const exportFiveTools = () => {
+    const { file, notes } = buildFiveToolsFile([monster], new Date().toISOString());
+    const filename = exportFileName("5etools", monster.name);
+    downloadTextFile(filename, toJsonText(file));
+    setStatus(`Download started: ${filename}${notes.length > 0 ? ` Notes: ${notes.join(" ")}` : ""}`);
+  };
+
   return (
     <>
       <button type="button" className="action-button" onClick={exportJson}>
         Export JSON
       </button>
+      <button type="button" className="action-button" onClick={exportFiveTools}>
+        Export 5etools
+      </button>
       <button type="button" className="action-button" onClick={exportFoundry}>
-        Export for Foundry (experimental)
+        Export for Foundry
       </button>
       {/* Always on the page (empty when idle), so a screen reader announces the text when it changes. */}
       <span role="status" className="detail-note export-status">
         {status}
       </span>
       <details className="export-help">
-        <summary>Importing into Foundry</summary>
+        <summary>Importing into Foundry and Roll20</summary>
+        <p>
+          <strong>Foundry, from the Foundry file:</strong> the actor's own Import Data, not Plutonium's importer.
+        </p>
         <ol>
           <li>In Foundry, create a blank NPC actor (Actors tab, Create Actor, type NPC).</li>
           <li>Right-click that actor in the Actors tab, choose Import Data, and pick the downloaded file.</li>
           <li>In the D&amp;D 5e system settings, set Rules Version to Legacy (2014).</li>
           <li>Spellcasting, Multiattack and Legendary Resistance come across as text only.</li>
-          <li>
-            Written for {FOUNDRY_TARGET.label} and checked against real SRD files, but not yet confirmed in a live
-            game, so it is marked experimental.
-          </li>
+          <li>Written for {FOUNDRY_TARGET.label}. The import has been confirmed in a live Foundry.</li>
         </ol>
+        <p>
+          <strong>5etools file:</strong> a homebrew file for Plutonium's importer in Foundry and the 5etools script in
+          Roll20. Not yet confirmed in either, so try one monster first.
+        </p>
       </details>
     </>
   );

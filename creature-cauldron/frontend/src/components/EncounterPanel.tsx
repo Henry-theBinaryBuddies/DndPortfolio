@@ -18,6 +18,7 @@ import {
 } from "../lib/encounter";
 import { downloadTextFile } from "../lib/download";
 import { exportFileName, toJsonText } from "../lib/exportCommon";
+import { buildFiveToolsFile } from "../lib/fiveTools";
 import { buildEncounterFile } from "../lib/exportJson";
 import { describeParty, type Party } from "../lib/party";
 
@@ -112,6 +113,20 @@ export default function EncounterPanel({
     if (dirty && !window.confirm("Discard the unsaved changes on this encounter?")) return;
     onNew();
     headingRef.current?.focus();
+  };
+
+  const handleExportFiveTools = () => {
+    const typed = cleanName(working.name);
+    const known = summary.lines.flatMap((line) => (line.monster ? [line.monster] : []));
+    const { file, notes } = buildFiveToolsFile(known, new Date().toISOString());
+    const filename = exportFileName("5etools-encounter", typed);
+    downloadTextFile(filename, toJsonText(file));
+    const skipped = summary.lines.length - known.length;
+    setExportStatus(
+      `Download started: ${filename} (${known.length} ${known.length === 1 ? "monster" : "monsters"}${
+        skipped > 0 ? `; ${skipped} unavailable left out` : ""
+      })${notes.length > 0 ? ` Notes: ${notes.join(" ")}` : ""}`,
+    );
   };
 
   return (
@@ -269,6 +284,11 @@ export default function EncounterPanel({
         {canExport && (
           <button type="button" className="link-button" onClick={handleExport}>
             Export JSON
+          </button>
+        )}
+        {canExport && (
+          <button type="button" className="link-button" onClick={handleExportFiveTools}>
+            Export 5etools
           </button>
         )}
       </div>
