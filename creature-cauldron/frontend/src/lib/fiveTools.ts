@@ -7,7 +7,7 @@ import { renderAction, segmentsToText } from "./renderAction";
 
 // Exports monsters as a "5etools homebrew" file: a `_meta` block plus a `monster` list, using the
 // 5etools inline tags ({@atk mw}, {@hit 6}, {@damage 2d6 + 3}, {@dc 13}, {@recharge 5}). Plutonium
-// (Foundry) and the 5etools Roll20 userscript read this format. Everything is a pure function.
+// (Foundry) reads this format. Everything is a pure function.
 //
 // The shapes follow the real 5etools schema and the SRD monsters in its data files (see
 // src/lib/fixtures/5etools-mm). We only write fields that exist there, because the schema forbids unknown ones.

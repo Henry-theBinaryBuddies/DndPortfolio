@@ -12,7 +12,7 @@ Phase 1 (front end, no back end) is in progress. Steps 1 to 6 are done:
 - The library can be filtered and sorted. A saved party plus an easy/medium/hard/deadly pick narrows the list to monsters of that difficulty (rated as a lone monster, per the 2014 DMG).
 - Monsters can be favorited and added to an encounter, which shows a live difficulty rating. The encounter card has an editable name, a star and a Save button; saved encounters (unique names) are loaded from their own box.
 
-Monsters and encounters can be exported as JSON, a monster as an NPC actor for Foundry VTT (D&D 5e system 5.3.3, confirmed working), and monsters or whole encounters as 5etools homebrew files (for Plutonium and the 5etools Roll20 script, not yet confirmed). See [docs/EXPORTS.md](docs/EXPORTS.md).
+Monsters and encounters can be exported as JSON, a monster as an NPC actor for Foundry VTT (D&D 5e system 5.3.3, confirmed working), and monsters or whole encounters as 5etools homebrew files (imported with Plutonium in Foundry, confirmed working). See [docs/EXPORTS.md](docs/EXPORTS.md).
 
 The party, favorites, working encounter and saved encounters live in the browser's localStorage. There is no server and no sign-in, so they stay on one browser on one device.
 

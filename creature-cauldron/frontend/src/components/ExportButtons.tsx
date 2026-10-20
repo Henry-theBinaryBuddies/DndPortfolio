@@ -51,7 +51,7 @@ export default function ExportButtons({ monster }: { monster: Monster }) {
         {status}
       </span>
       <details className="export-help">
-        <summary>Importing into Foundry and Roll20</summary>
+        <summary>Importing into Foundry</summary>
         <p>
           <strong>Foundry, from the Foundry file:</strong> the actor's own Import Data, not Plutonium's importer.
         </p>
@@ -63,8 +63,8 @@ export default function ExportButtons({ monster }: { monster: Monster }) {
           <li>Written for {FOUNDRY_TARGET.label}. The import has been confirmed in a live Foundry.</li>
         </ol>
         <p>
-          <strong>5etools file:</strong> a homebrew file for Plutonium's importer in Foundry and the 5etools script in
-          Roll20. Not yet confirmed in either, so try one monster first.
+          <strong>5etools file:</strong> a homebrew file for Plutonium's importer in Foundry (Choose Importer, then the
+          creature importer).
         </p>
       </details>
     </>

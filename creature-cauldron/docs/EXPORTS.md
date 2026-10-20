@@ -8,7 +8,7 @@ Everything is built in the browser and saved with the browser's download. There 
 |---|---|---|
 | Export JSON | stat block pop-out | `monster-<name>.json`: the monster exactly as stored, in a small wrapper |
 | Export for Foundry | stat block pop-out | `fvtt-Actor-<name>.json`: an NPC actor for Foundry VTT's D&D 5e system |
-| Export 5etools | stat block pop-out | `5etools-<name>.json`: a 5etools homebrew file, read by Plutonium's importer (Foundry) and the 5etools script (Roll20) |
+| Export 5etools | stat block pop-out | `5etools-<name>.json`: a 5etools homebrew file, read by Plutonium's importer (Foundry) |
 | Export JSON | encounter card | `encounter-<name>.json`: name, party, rows, the XP math and rating, and every monster's full stat block |
 | Export 5etools | encounter card | `5etools-encounter-<name>.json`: one homebrew file holding every monster in the encounter |
 
@@ -65,9 +65,9 @@ When something cannot be converted, the app tells you after the download ("Notes
 
 The test fixtures in `src/lib/fixtures/foundry-dnd5e-5.3.3/` are trimmed copies of six SRD monsters from the Foundry dnd5e system (tag `release-5.3.3`, CC-BY-4.0). Each file records its source URL, tag, and what was trimmed in a `_provenance` key. The generated files in `src/lib/goldens/` are our own exported actors for three monsters; a test rewrites them, so any change to the format shows up in review.
 
-## 5etools homebrew (Plutonium for Foundry, and the 5etools script for Roll20)
+## 5etools homebrew (Plutonium for Foundry)
 
-One file format for both tools. It is a homebrew file: a `_meta` block, then a `monster` list. Everything is marked as the 2014 rules (`"edition": "classic"`) and belongs to one homebrew source, `CreatureCauldronHB`, by The Binary Buddies. Importers file it as homebrew by that source id, so it must stay unique.
+A homebrew file for Plutonium's importer, which can build richer actors than Foundry's own import (for example, linking real spells). It is a homebrew file: a `_meta` block, then a `monster` list. Everything is marked as the 2014 rules (`"edition": "classic"`) and belongs to one homebrew source, `CreatureCauldronHB`, by The Binary Buddies. Importers file it as homebrew by that source id, so it must stay unique.
 
 Attacks, saves, recharge and legendary costs are written with 5etools' inline tags, for example
 `{@atk mw} {@hit 6} to hit, reach 5 ft., one target. {@h}8 ({@damage 1d8 + 4}) slashing damage.`, `Fire Breath {@recharge 5}`, and `{@dc 13}`. The wording is the same as the stat block, with tags added.
@@ -84,10 +84,10 @@ Attacks, saves, recharge and legendary costs are written with 5etools' inline ta
 | Description | Not exported (5etools keeps lore in a separate list) |
 | Spellcasting | **For now a plain trait** with the numbers tagged. A later step will turn it into 5etools' structured spell lists, which Plutonium can link to real spells |
 
-**Status:** checked against four real SRD entries from the 5etools data, but **not yet confirmed in Plutonium or the Roll20 script.** Try one monster first (Goblin-like and simple is best) and tell us what each tool does with attacks and abilities.
+**Status:** checked against four real SRD entries from the 5etools data, and the import in Plutonium (Foundry) has been confirmed working.
 
 A dragon, goblin and giant written in our format reproduce the real entries' attack and save text exactly. The real entries came from the 5etools data, used as test fixtures (`src/lib/fixtures/5etools-mm`, SRD creatures, CC-BY-4.0).
 
 ## Roll20
 
-The 5etools file above is the Roll20 route (with the 5etools userscript). A separate, simpler importer exists (ByteBard97's "5e NPC JSON Importer", for the official 2014 sheet, needing a Pro subscription), but it is a single-author project that has been dormant since mid-2025, so it is not built.
+**Not supported, on purpose.** Every route into Roll20 we found depends on a third-party script or a browser extension, and running those can put a user's Roll20 account at risk. We do not want to carry that liability, even indirectly, so there is no Roll20 export and none is planned.

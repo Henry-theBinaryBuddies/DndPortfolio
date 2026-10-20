@@ -82,7 +82,7 @@ Let a DM filter a large library of original or openly licensed monsters, build e
 |---|---|---|
 | F-24 | Export a monster or encounter as JSON. | Must |
 | F-25 | Export a monster as Foundry VTT dnd5e actor JSON, targeting one specific system version (to be chosen). | Must |
-| F-26 | Roll20 export, best effort (likely a text block for the 5e sheet; format to be researched). | Could |
+| F-26 | ~~Roll20 export~~ Dropped: the available import routes need third-party scripts or browser extensions that can put a user's Roll20 account at risk, and we do not want to carry that. | Won't |
 
 ## 5. Non-functional requirements
 
