@@ -287,7 +287,9 @@ select {
   right: 0.5rem;
   display: block;
   width: auto;
-  height: 100%;
+  /* Taller than the section: her lower edge runs on under the filter bar below, which paints over it, so the picture never
+     ends in a visible line above the bar. */
+  height: calc(100% + 1.4rem);
   margin: 0;
   object-fit: contain;
   opacity: 0.6;
@@ -299,7 +301,8 @@ select {
    Theme button instead of under it. */
 @media (min-width: 1100px) {
   .topbar {
-    min-height: 9.5rem;
+    min-height: 8.5rem;
+    align-items: center;
   }
 
   .witch-art {
