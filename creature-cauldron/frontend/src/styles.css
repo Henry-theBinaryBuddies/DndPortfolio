@@ -317,9 +317,10 @@ select {
 }
 
 .empty-scene__art {
-  width: 6rem;
+  width: 10rem;
   height: auto;
-  opacity: 0.85;
+  opacity: 0.92;
+  filter: drop-shadow(0 0 1rem var(--brew-glow));
 }
 
 /* ---- Pictures: the cauldron and the witch (components/Illustrations.tsx) ---- */

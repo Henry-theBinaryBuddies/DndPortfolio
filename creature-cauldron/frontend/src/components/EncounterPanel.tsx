@@ -1,4 +1,4 @@
-import { Cauldron } from "./Illustrations";
+import { CauldronArt } from "./Illustrations";
 import { useEffect, useRef, useState } from "react";
 import {
   MAX_COUNT,
@@ -178,7 +178,7 @@ export default function EncounterPanel({
         <p className="empty-state">Monster library not loaded.</p>
       ) : entries.length === 0 ? (
         <div className="empty-scene">
-          <Cauldron className="empty-scene__art" bubbling={false} />
+          <CauldronArt className="empty-scene__art" />
           <p className="empty-state">Add a monster from its stat block, or load a saved encounter.</p>
         </div>
       ) : (

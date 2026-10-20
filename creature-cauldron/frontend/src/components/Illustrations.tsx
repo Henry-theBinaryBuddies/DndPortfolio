@@ -50,6 +50,13 @@ export function WitchArt({ className = "" }: { className?: string }) {
   );
 }
 
+/** The painted cauldron (public/images/cauldron.webp), or the drawn one if the picture cannot be loaded. */
+export function CauldronArt({ className = "" }: { className?: string }) {
+  const [missing, setMissing] = useState(false);
+  if (missing) return <Cauldron className={className} bubbling={false} />;
+  return <img className={`cauldron-art ${className}`} src={`${import.meta.env.BASE_URL}images/cauldron.webp`} alt="" onError={() => setMissing(true)} />;
+}
+
 /** A witch in profile, stirring a cauldron under a crescent moon. The drawn stand-in for the painted banner. */
 export function WitchScene({ className = "" }: { className?: string }) {
   return (
