@@ -47,7 +47,6 @@
     "environments": ["grassland", "hill", "desert"],
     "role": "skirmisher",
     "damage_themes": [],
-    "flavor_themes": ["ember-touched"],
     "features": ["flying"],
     "description": "A small raptor whose rust-red feathers glow faintly at the tips, as though dipped in embers. It hunts above burnt fields and tends to nest in old campfire rings."
   },
@@ -109,7 +108,6 @@
     "environments": ["swamp", "underdark", "forest"],
     "role": "controller",
     "damage_themes": ["poison"],
-    "flavor_themes": ["fungal"],
     "features": [],
     "description": "A lumbering heap of pale caps and damp fibers that drags itself toward warmth and movement, shedding clouds of drifting spores."
   },
@@ -166,7 +164,6 @@
     "environments": ["underwater", "swamp", "coast"],
     "role": "lurker",
     "damage_themes": [],
-    "flavor_themes": ["tide-warped"],
     "features": ["swimming"],
     "description": "A pallid, wide-mouthed thing that waits just below the waterline with only its lidless eyes showing."
   },
@@ -223,7 +220,6 @@
     "environments": ["coast", "urban"],
     "role": "skirmisher",
     "damage_themes": [],
-    "flavor_themes": ["brigand"],
     "features": ["multiattack"],
     "description": "A salt-stained pirate who fights dirty and always in a pack, trusting numbers and a sharp blade over honor."
   },
@@ -292,7 +288,6 @@
     "environments": ["dungeon", "underdark", "urban"],
     "role": "brute",
     "damage_themes": ["necrotic"],
-    "flavor_themes": ["cursed"],
     "features": ["multiattack"],
     "description": "A gaunt corpse that walks the halls of its own tomb, a cold flame burning where its eyes should be."
   },
@@ -367,7 +362,6 @@
     "environments": ["mountain", "hill", "coast"],
     "role": "brute",
     "damage_themes": ["lightning"],
-    "flavor_themes": ["storm-touched"],
     "features": ["flying", "multiattack", "breath-weapon"],
     "description": "A lean, long-winged drake whose slate scales crackle with static whenever a storm gathers over the peaks."
   },
@@ -428,7 +422,6 @@
     "environments": ["forest", "grassland", "urban"],
     "role": "artillery",
     "damage_themes": [],
-    "flavor_themes": ["dusk-touched"],
     "features": ["flying"],
     "description": "A palm-sized trickster in a cloak of cobweb who pelts travelers with thorn darts and flings blinding dust before slipping away."
   },
@@ -485,7 +478,6 @@
     "environments": ["urban", "dungeon"],
     "role": "brute",
     "damage_themes": [],
-    "flavor_themes": ["clockwork"],
     "features": ["multiattack"],
     "description": "A brass-plated sentry of gears and counterweights that patrols the same corridor long after its makers are gone."
   },
@@ -554,7 +546,6 @@
     "environments": ["arctic", "mountain"],
     "role": "skirmisher",
     "damage_themes": ["cold"],
-    "flavor_themes": ["frost-touched"],
     "features": ["multiattack"],
     "description": "A shaggy, six-limbed hunter whose frost-caked hide blends into drifts until it is already upon its prey."
   },
@@ -609,7 +600,6 @@
     "environments": ["planar", "dungeon", "urban"],
     "role": "skirmisher",
     "damage_themes": ["fire"],
-    "flavor_themes": ["infernal"],
     "features": ["flying"],
     "description": "A bat-winged little devil streaked with ash, always trailing a thin thread of smoke from its claws."
   },
@@ -672,7 +662,6 @@
     "environments": ["mountain", "hill"],
     "role": "brute",
     "damage_themes": [],
-    "flavor_themes": ["stone-skinned"],
     "features": ["multiattack"],
     "description": "A stooped giant who piles a burial cairn's worth of rock on its back and hurls the stones at anything that climbs too near."
   },
@@ -731,7 +720,6 @@
     "environments": ["planar", "mountain"],
     "role": "leader",
     "damage_themes": ["radiant"],
-    "flavor_themes": ["radiant"],
     "features": ["flying", "multiattack", "spellcasting"],
     "description": "A winged warden wreathed in steady golden light, sworn to guard a threshold no one remembers building."
   },
@@ -791,7 +779,6 @@
     "environments": ["dungeon", "underdark", "swamp"],
     "role": "lurker",
     "damage_themes": ["acid"],
-    "flavor_themes": ["acidic"],
     "features": ["regeneration"],
     "description": "A glistening black slick that pools on ceilings and drips onto anything warm, leaving bare bone and scorched stone behind."
   },
@@ -857,7 +844,6 @@
     "environments": ["planar", "desert"],
     "role": "skirmisher",
     "damage_themes": ["fire"],
-    "flavor_themes": ["ember-touched"],
     "features": ["flying", "multiattack"],
     "description": "A knee-high spinning column of sparks and hot ash that drifts across scorched ground, lashing out with whips of flame."
   },
@@ -933,7 +919,6 @@
     "environments": ["underdark", "planar"],
     "role": "solo",
     "damage_themes": ["psychic"],
-    "flavor_themes": ["void-touched"],
     "features": ["flying", "multiattack", "legendary", "spellcasting"],
     "description": "A drifting mass of petal-like flesh around a single unblinking eye, humming a tune only the dying can hear."
   },
@@ -1008,7 +993,6 @@
     "environments": ["desert"],
     "role": "solo",
     "damage_themes": [],
-    "flavor_themes": ["sand-sworn"],
     "features": ["multiattack"],
     "description": "A vast, armored worm that surfaces without warning, swallowing caravans in a rolling wave of sand."
   },
@@ -1060,7 +1044,6 @@
     "environments": ["urban", "dungeon"],
     "role": "lurker",
     "damage_themes": [],
-    "flavor_themes": ["verminous"],
     "features": [],
     "description": "A mouse-sized, long-fingered scavenger that rustles through grain stores and pockets small shiny things."
   },
@@ -1117,7 +1100,6 @@
     "environments": ["swamp", "forest"],
     "role": "controller",
     "damage_themes": ["force"],
-    "flavor_themes": ["hexed"],
     "features": ["spellcasting"],
     "description": "A hermit in a coat of knotted charms who trades curses for favors and favors for worse curses."
   },
@@ -1172,7 +1154,6 @@
     "environments": ["arctic", "mountain"],
     "role": "artillery",
     "damage_themes": ["cold"],
-    "flavor_themes": ["frost-touched"],
     "features": ["flying", "breath-weapon"],
     "description": "A fox-sized dragonet with pale blue scales that exhales needles of frost whenever it is startled."
   },
@@ -1239,7 +1220,6 @@
     "environments": ["forest", "hill", "swamp"],
     "role": "controller",
     "damage_themes": [],
-    "flavor_themes": ["overgrown"],
     "features": ["multiattack"],
     "description": "A hedge of living briars grown into a rough giant's shape, guarding a grove it has long since outlived."
   }

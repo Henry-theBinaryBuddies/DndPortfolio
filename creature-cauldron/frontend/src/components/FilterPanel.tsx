@@ -5,7 +5,6 @@ import {
   ENVIRONMENTS,
   FEATURES,
   FEATURE_LABELS,
-  FLAVOR_THEMES,
   ROLES,
   SIZES,
   label,
@@ -168,12 +167,6 @@ export default function FilterPanel({ filters, activeCount, onChange, onClear }:
         selected={filters.features}
         onToggle={(v) => update({ features: toggle(filters.features, v) })}
         getLabel={(feature) => FEATURE_LABELS[feature]}
-      />
-      <CheckboxGroup
-        title="Flavor theme"
-        options={FLAVOR_THEMES}
-        selected={filters.flavorThemes}
-        onToggle={(v) => update({ flavorThemes: toggle(filters.flavorThemes, v) })}
       />
     </aside>
   );

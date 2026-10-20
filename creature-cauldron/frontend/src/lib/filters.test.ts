@@ -10,7 +10,7 @@ import {
   toggle,
   type FilterState,
 } from "./filters";
-import { CREATURE_TYPES, ENVIRONMENTS, FEATURES, FLAVOR_THEMES, ROLES, SIZES, DAMAGE_THEMES } from "./options";
+import { CREATURE_TYPES, ENVIRONMENTS, FEATURES, ROLES, SIZES, DAMAGE_THEMES } from "./options";
 
 const monsters = sample as unknown as Monster[];
 
@@ -52,11 +52,6 @@ describe("filterMonsters", () => {
   it("filters by role and damage theme", () => {
     expect(names(filterMonsters(monsters, withFilters({ roles: ["leader"] })))).toEqual(["Brightwing Sentinel"]);
     expect(names(filterMonsters(monsters, withFilters({ damageThemes: ["psychic"] })))).toEqual(["Voidbloom Seer"]);
-  });
-
-  it("filters by flavor theme", () => {
-    const result = filterMonsters(monsters, withFilters({ flavorThemes: ["frost-touched"] }));
-    expect(names(result).sort()).toEqual(["Hoarfrost Drakeling", "Rimehide Prowler"]);
   });
 
   it("requires every picked feature (AND within features)", () => {
@@ -155,7 +150,6 @@ describe("sample monsters and option lists", () => {
       expect(ROLES).toContain(m.role);
       m.environments.forEach((e) => expect(ENVIRONMENTS).toContain(e));
       m.damage_themes.forEach((d) => expect(DAMAGE_THEMES).toContain(d));
-      m.flavor_themes.forEach((f) => expect(FLAVOR_THEMES).toContain(f));
       m.features.forEach((f) => expect(FEATURES).toContain(f));
     }
   });

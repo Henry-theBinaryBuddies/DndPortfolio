@@ -1,16 +1,7 @@
-import type {
-  CreatureType,
-  DamageTheme,
-  DamageType,
-  Environment,
-  Feature,
-  FlavorTheme,
-  Role,
-  Size,
-} from "../lib/options";
+import type { CreatureType, DamageTheme, DamageType, Environment, Feature, Role, Size } from "../lib/options";
 
 // The option lists live in lib/options.ts; re-exported so the schema reads in one place.
-export type { CreatureType, DamageTheme, DamageType, Environment, Feature, FlavorTheme, Role, Size };
+export type { CreatureType, DamageTheme, DamageType, Environment, Feature, Role, Size };
 
 // Monster schema (2014 rules). Mirrors the design in docs/REQUIREMENTS.md.
 // Once the Python back end exists these types will be generated from its
@@ -136,7 +127,6 @@ export interface Monster {
   environments: Environment[];
   role: Role;
   damage_themes: DamageTheme[];
-  flavor_themes: FlavorTheme[];
   features: Feature[];
 
   // presentation

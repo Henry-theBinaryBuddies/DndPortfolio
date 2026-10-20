@@ -99,30 +99,7 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   regeneration: "Regeneration",
 };
 
-// Working list: to be finalised before the generator depends on it.
-export const FLAVOR_THEMES = [
-  "acidic",
-  "brigand",
-  "clockwork",
-  "cursed",
-  "dusk-touched",
-  "ember-touched",
-  "frost-touched",
-  "fungal",
-  "hexed",
-  "infernal",
-  "overgrown",
-  "radiant",
-  "sand-sworn",
-  "stone-skinned",
-  "storm-touched",
-  "tide-warped",
-  "verminous",
-  "void-touched",
-] as const;
-export type FlavorTheme = (typeof FLAVOR_THEMES)[number];
-
-/** Display text for an option value: "storm-touched" becomes "Storm-touched". */
+/** Display text for an option value: "breath-weapon" becomes "Breath-weapon". */
 export function label(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }

@@ -1,5 +1,5 @@
 import type { Monster } from "../types/monster";
-import type { CreatureType, DamageTheme, Environment, Feature, FlavorTheme, Role, Size } from "./options";
+import type { CreatureType, DamageTheme, Environment, Feature, Role, Size } from "./options";
 
 // Pure filtering and sorting. The visible list is always computed from the full
 // library plus these settings, never stored, so the two can't drift apart.
@@ -21,7 +21,6 @@ export interface FilterState {
   roles: Role[];
   damageThemes: DamageTheme[];
   features: Feature[];
-  flavorThemes: FlavorTheme[];
   /** Inclusive bounds on challenge rating; null means no bound. */
   crMin: number | null;
   crMax: number | null;
@@ -35,7 +34,6 @@ export const EMPTY_FILTERS: FilterState = {
   roles: [],
   damageThemes: [],
   features: [],
-  flavorThemes: [],
   crMin: null,
   crMax: null,
 };
@@ -77,7 +75,6 @@ export function matchesFilters(monster: Monster, filters: FilterState, xpRange: 
     matchesOne(filters.roles, monster.role) &&
     matchesAny(filters.environments, monster.environments) &&
     matchesAny(filters.damageThemes, monster.damage_themes) &&
-    matchesAny(filters.flavorThemes, monster.flavor_themes) &&
     matchesAll(filters.features, monster.features) &&
     (filters.crMin === null || cr >= filters.crMin) &&
     (filters.crMax === null || cr <= filters.crMax)
@@ -98,7 +95,6 @@ export function countActiveFilters(filters: FilterState): number {
     filters.roles.length > 0,
     filters.damageThemes.length > 0,
     filters.features.length > 0,
-    filters.flavorThemes.length > 0,
     filters.crMin !== null || filters.crMax !== null,
   ];
   return groups.filter(Boolean).length;
