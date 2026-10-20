@@ -98,6 +98,7 @@ class GenerationService:
         if bounds is None:
             return _failure(FailureReason.INVALID, f"Generating is limited to challenge rating {self._settings.max_cr} or below for now.")
         brief = build_brief(request, self._settings.max_cr, self._rng)
+        log.info("Designing: %s", brief)
         wanted = request.model_copy(update={"cr_min": bounds[0], "cr_max": bounds[1]})
 
         feedback: list[str] = []

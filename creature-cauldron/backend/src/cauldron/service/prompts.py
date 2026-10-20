@@ -26,6 +26,7 @@ Rules you must follow:
 - Use the 2014 rules and the 2014 stat block conventions. Keep the numbers sensible for the challenge rating you are given.
 - Build attacks and saving throws as typed actions where you can; use text actions for anything unusual.
 - Give the monster a short evocative description of one or two sentences, and a name that is new and not a real-world word for a species.
+- Avoid the most obvious version of the creature type. Vary the imagery, the damage types and the tactics from one monster to the next.
 - Do not add anything about the game's publisher or about licences."""
 
 _NAME_RULES = """You write names and descriptions for monsters in the 2014 fantasy tabletop role-playing game.
@@ -82,6 +83,9 @@ def generate_prompt(brief: Brief, feedback: Sequence[str]) -> Prompt:
     ]
     if brief.damage_theme is not None:
         lines.append(f"- Damage theme: {brief.damage_theme.value} (its main attacks or abilities deal {brief.damage_theme.value} damage)")
+    else:
+        # Left alone, the model reaches for fire and ember imagery almost every time (seen in the first real runs).
+        lines.append("- Damage theme: none chosen. Pick what truly suits the creature, and do not default to fire, embers or cinders.")
     if brief.features:
         lines.append(f"- It must have these features: {', '.join(f.value for f in brief.features)}")
     return Prompt(system=_RULES, user="\n".join(lines) + _feedback_block(feedback))

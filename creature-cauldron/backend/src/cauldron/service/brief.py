@@ -26,6 +26,12 @@ class Brief:
     damage_theme: DamageTheme | None
     features: tuple[Feature, ...]
 
+    def __str__(self) -> str:
+        """One line for logs: what the AI was asked to design."""
+        theme = self.damage_theme.value if self.damage_theme else "none"
+        features = ", ".join(f.value for f in self.features) or "none"
+        return f"CR {self.cr} {self.size.value} {self.type.value}, {self.environment.value}, {self.role.value}, damage theme {theme}, features {features}"
+
 
 def effective_bounds(request: GenerateRequest, max_cr: str) -> tuple[float, float] | None:
     """The challenge rating range to generate in: the request's bounds, cut off at the cap. None if nothing is left."""

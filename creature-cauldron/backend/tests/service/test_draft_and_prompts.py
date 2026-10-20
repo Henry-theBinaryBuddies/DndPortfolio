@@ -5,7 +5,7 @@ import random
 import pytest
 from pydantic import ValidationError
 
-from cauldron.options import Feature, Source
+from cauldron.options import DamageTheme, Feature, Source
 from cauldron.service.brief import Brief, build_brief
 from cauldron.service.draft import MonsterDraft, draft_json_schema, monster_from_draft
 from cauldron.service.models import GenerateRequest
@@ -84,6 +84,18 @@ def test_the_system_prompt_sets_the_rules_that_matter() -> None:
     assert "original" in system
     assert "do not" in system and "monster manual" in system
     assert "submit_monster" in system or "tool" in system
+
+
+def test_without_a_chosen_damage_theme_the_model_is_told_not_to_default_to_fire() -> None:
+    plain = Brief(cr="3", type=brief().type, size=brief().size, environment=brief().environment, role=brief().role, damage_theme=None, features=())
+    user = generate_prompt(plain, []).user
+    assert "none chosen" in user and "do not default to fire" in user
+    themed = Brief(cr="3", type=plain.type, size=plain.size, environment=plain.environment, role=plain.role, damage_theme=DamageTheme.COLD, features=())
+    assert "none chosen" not in generate_prompt(themed, []).user
+
+
+def test_the_system_prompt_asks_for_variety() -> None:
+    assert "avoid the most obvious" in generate_prompt(brief(), []).system.lower()
 
 
 def test_feedback_from_the_last_attempt_is_included() -> None:

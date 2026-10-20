@@ -170,7 +170,9 @@ def test_the_reason_for_each_rejected_attempt_is_logged_for_the_operator(make, s
     with caplog.at_level(logging.INFO, logger="cauldron"):
         rig.service.create(req(**DRAGONS))
     messages = [r.getMessage() for r in caplog.records if r.name == "cauldron"]
-    assert len(messages) == 1 and "attempt 1 of 3" in messages[0] and "Claimed CR" in messages[0]
+    assert messages[0].startswith("Designing: CR 4 ")  # what the AI was asked for is logged first
+    rejected = [m for m in messages if "was not accepted" in m]
+    assert len(rejected) == 1 and "attempt 1 of 3" in rejected[0] and "Claimed CR" in rejected[0]
 
 
 def test_a_monster_that_does_not_fit_the_request_is_retried(make, sample) -> None:

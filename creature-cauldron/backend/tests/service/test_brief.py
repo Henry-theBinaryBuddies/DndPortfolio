@@ -88,6 +88,12 @@ def test_an_empty_range_cannot_make_a_brief() -> None:
         build_brief(req(crMin=20), "17", random.Random(1))
 
 
+def test_a_brief_describes_itself_in_one_line_for_the_logs() -> None:
+    text = str(build_brief(req(types=["dragon"], sizes=["huge"], environments=["mountain"], roles=["solo"], damageThemes=["fire"], features=["flying"], crMin=8, crMax=8), "17", random.Random(1)))
+    assert text == "CR 8 huge dragon, mountain, solo, damage theme fire, features flying"
+    assert "damage theme none, features none" in str(Brief("1", CreatureType.BEAST, Size.SMALL, Environment.FOREST, Role.BRUTE, None, ()))
+
+
 def test_a_brief_is_plain_data() -> None:
     brief = build_brief(req(), "17", random.Random(1))
     assert isinstance(brief, Brief) and brief.cr in CR_LABELS

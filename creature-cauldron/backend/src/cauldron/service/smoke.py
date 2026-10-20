@@ -41,7 +41,7 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
 
     # Show why any attempt was rejected (only our own messages, so nothing from the SDK or the key can appear).
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter("  retry reason: %(message)s"))
+    handler.setFormatter(logging.Formatter("  [log] %(message)s"))
     logger = logging.getLogger("cauldron")
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
