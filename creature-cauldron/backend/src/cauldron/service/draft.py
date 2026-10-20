@@ -66,9 +66,31 @@ class MonsterDraft(CauldronModel):
         return value
 
 
+class NameDraft(CauldronModel):
+    """What the AI writes for a reskin: a new name and description, and nothing else. Never any numbers."""
+
+    name: Short
+    description: Prose
+
+
+def name_json_schema() -> dict:
+    return NameDraft.model_json_schema()
+
+
+def _without_discriminator(node):
+    """Pydantic marks each choice of a union with an OpenAPI-only "discriminator" keyword that plain JSON Schema does not
+    define. Removing it keeps the schema standard; the "kind" field still tells the choices apart (each one fixes it to a
+    single value) and our own validation is what actually checks the reply."""
+    if isinstance(node, dict):
+        return {key: _without_discriminator(value) for key, value in node.items() if key != "discriminator"}
+    if isinstance(node, list):
+        return [_without_discriminator(item) for item in node]
+    return node
+
+
 def draft_json_schema() -> dict:
     """The JSON schema the AI must follow, made from the draft model so the two can never drift apart."""
-    return MonsterDraft.model_json_schema()
+    return _without_discriminator(MonsterDraft.model_json_schema())
 
 
 def monster_from_draft(draft: MonsterDraft, generator: str, new_id: str) -> Monster:

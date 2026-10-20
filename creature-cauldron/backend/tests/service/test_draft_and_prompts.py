@@ -62,6 +62,7 @@ def test_the_json_schema_describes_the_draft_and_is_plain_json() -> None:
     import json
 
     schema = draft_json_schema()
+    assert "discriminator" not in json.dumps(schema)  # OpenAPI-only keyword, removed so the schema is standard JSON Schema
     json.dumps(schema)
     assert schema["type"] == "object"
     assert "name" in schema["properties"] and "id" not in schema["properties"]

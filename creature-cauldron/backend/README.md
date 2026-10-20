@@ -5,7 +5,7 @@ Python models, rules engine, validator and (later) the generator API. Built test
 
 ## Status
 
-Parts 1 to 3 of phase 2 are done (the domain models, the rules tables, the validator, the reskin templates and the SRD seed pipeline), and part 4 is built except for the real AI: the web service works end to end with a scripted stand-in for Haiku.
+Parts 1 to 3 of phase 2 are done (the domain models, the rules tables, the validator, the reskin templates and the SRD seed pipeline), and part 4 is built: the web service works end to end, with the real Haiku generator (tested only against a fake client so far; the first real call is the smoke test below).
 
 | Module | What it holds |
 |---|---|
@@ -34,6 +34,34 @@ The validator's CR consistency check uses the estimator. The Dungeon Master's Gu
 The tests prove two things beyond the unit tests: all 20 sample monsters from the front end load and
 round-trip through the Python model, and the Python prose is identical to what the web page prints
 (`tests/fixtures/rendered-actions.json` is written by the front end's `crossLanguage.test.ts`).
+
+## Configure and run the service
+
+All settings are environment variables (see `src/cauldron/service/settings.py`; defaults are safe). The Anthropic key is the one secret:
+it is read from `ANTHROPIC_API_KEY` by the Anthropic SDK and is never stored in a file, a setting or a log.
+
+```powershell
+# PowerShell, this terminal only (it disappears when the window closes):
+$env:ANTHROPIC_API_KEY = "paste-your-key-here"
+cd backend
+.venv\Scripts\python -m cauldron.service.smoke --yes   # ONE real generation, a fraction of a cent; refuses without --yes
+.venv\Scripts\python -m cauldron.service               # the server on http://127.0.0.1:8000
+```
+
+Without a key the server still starts: the library, the cache and reskins already made work, and anything needing the AI answers
+that the forge cannot be reached. Never commit a key; `.env` files are git-ignored as a precaution, but this project does not read them.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CAULDRON_DAILY_CAP` | 150 | Most Haiku calls per UTC day, retries included |
+| `CAULDRON_IP_PER_MINUTE` / `CAULDRON_IP_PER_HOUR` | 3 / 10 | AI generations one address may start |
+| `CAULDRON_CACHE_PER_MINUTE` | 30 | Requests per address answered from the cache |
+| `CAULDRON_MAX_RETRIES` | 2 | Extra attempts after a monster fails the checks |
+| `CAULDRON_MAX_CR` | 17 | Highest challenge rating that may be generated |
+| `CAULDRON_ALLOWED_ORIGINS` | http://localhost:5199 | Exact web page addresses allowed by CORS, comma separated |
+| `CAULDRON_TRUSTED_PROXY_HEADER` | none | For example `CF-Connecting-IP` behind a tunnel; ignored unless set |
+| `CAULDRON_DATABASE` | backend/data/cauldron.sqlite3 | The SQLite file |
+| `CAULDRON_MODEL` | claude-haiku-5-5 | The model |
 
 ## Run the SRD import
 
