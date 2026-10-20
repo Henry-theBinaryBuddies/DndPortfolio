@@ -70,7 +70,9 @@ Let a DM filter a large library of original or openly licensed monsters, build e
 |---|---|---|
 | F-17 | When a filter set returns too few results, offer to generate a monster. Users can also request "generate another." | Must |
 | F-18 | Generation takes only the structured filters; the server fills unspecified dimensions randomly for variety. | Must |
-| F-19 | Reskin: pick a base monster and a theme from fixed options, optionally a damage-type swap or template (level up, swarm). Code adjusts the numbers; AI writes only names and flavor text. | Must |
+| F-19 | Reskin: pick a base monster and either a quick damage-type swap or a remix (a new damage theme and/or a signature move from a fixed menu, or "Surprise me" for either), optionally levelled up by about one challenge rating. Code adjusts every number; AI writes only the name, the description and the move's name. See `REMIX.md`. | Must |
+| F-19a | A reskin or remix lists what changed, in plain words, in the stat block pop-out. | Should |
+| F-19b | A signature move never makes the monster stronger on its own: it is an alternative to one attack, and no move may move the estimated challenge rating by more than one step (tested on every library monster). | Must |
 | F-20 | Every generated monster passes a deterministic validator before it is stored or shown as valid (section 6). | Must |
 | F-21 | Generated monsters are cached server-side and appear in the library for all users. | Must |
 | F-22 | A reviewed export of good cached monsters can be promoted into the seed data in the repo. | Should |

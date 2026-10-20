@@ -19,6 +19,8 @@ Parts 1 to 3 of phase 2 are done (the domain models, the rules tables, the valid
 | `cauldron/features.py` | Derives the feature tags from the stat block |
 | `cauldron/templates.py` | Abstract `Template` with `LevelUpTemplate`, plus the damage-type swap |
 
+| `cauldron/remix/` | Remix: `theme.py` (new damage theme and the defences that follow), `moves.py` (the 18 signature moves, each building typed actions with numbers from the monster's own stats), `engine.py` (puts theme, move and level up together and decides "surprise"). See `../docs/REMIX.md` |
+
 | `cauldron/seed/` | The SRD importer (`python -m cauldron.seed`): action and spell parsers, damage lines, rule-based tagger, known corrections and the import report |
 
 Raw data and its provenance are in `data/srd-2014/` (see `SOURCE.md` there); the last import report is `data/srd-import-report.md`. The import writes `../frontend/public/data/srd-monsters.json`.
@@ -45,6 +47,7 @@ it is read from `ANTHROPIC_API_KEY` by the Anthropic SDK and is never stored in 
 $env:ANTHROPIC_API_KEY = "paste-your-key-here"
 cd backend
 .venv\Scripts\python -m cauldron.service.smoke --yes   # ONE real generation, a fraction of a cent; refuses without --yes
+.venv\Scripts\python -m cauldron.service.smoke --yes --remix   # ONE real remix of an SRD ogre (options --base, --theme, --move)
 .venv\Scripts\python -m cauldron.service               # the server on http://127.0.0.1:8000
 ```
 
