@@ -314,7 +314,7 @@ select {
     right: 0;
     width: 100%;
     object-fit: cover;
-    object-position: 50% 70%;
+    object-position: 50% 0%; /* anchored to the top, so the hat is never the part that gets cropped */
     opacity: 0.3;
   }
 }
