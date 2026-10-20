@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
+import type { Generator, ReskinRequest } from "../lib/generatorApi";
+import { sourceLabel } from "../lib/sourceLabel";
 import type { Monster } from "../types/monster";
 import ExportButtons from "./ExportButtons";
+import ReskinPanel from "./ReskinPanel";
 import StatBlock from "./StatBlock";
 
 interface StatBlockDialogProps {
@@ -10,6 +13,9 @@ interface StatBlockDialogProps {
   canAdd: boolean;
   /** A short note about the encounter, such as "2 in encounter" or why Add is unavailable. */
   addNote: string;
+  generatorMode: Generator["mode"];
+  /** Makes a reskin of the open monster. Resolves to null on success, or to a message when it failed. */
+  onReskin: (request: ReskinRequest) => Promise<string | null>;
   onClose: () => void;
   onToggleFavorite: () => void;
   onAdd: () => void;
@@ -23,6 +29,8 @@ export default function StatBlockDialog({
   isFavorite,
   canAdd,
   addNote,
+  generatorMode,
+  onReskin,
   onClose,
   onToggleFavorite,
   onAdd,
@@ -90,11 +98,17 @@ export default function StatBlockDialog({
             <span id="add-note" role="status" className="detail-note">
               {addNote}
             </span>
+            <ReskinPanel key={`reskin-${monster.id}`} monster={monster} mode={generatorMode} onReskin={onReskin} />
             <ExportButtons key={monster.id} monster={monster} />
             <button type="button" className="close-button" aria-label="Close stat block" onClick={onClose}>
               <span aria-hidden="true">×</span>
             </button>
           </div>
+          {sourceLabel(monster) && (
+            <p className="source-note no-print">
+              {sourceLabel(monster)}. Its numbers have not been checked against the rules, so look it over before using it.
+            </p>
+          )}
           <StatBlock monster={monster} />
         </div>
       )}

@@ -740,3 +740,47 @@ select {
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* ---- Generate and Reskin ---- */
+.generate-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.generate-bar p {
+  margin: 0;
+}
+
+.generate-prompt {
+  font-weight: bold;
+}
+
+.generate-bar .detail-note {
+  flex-basis: 100%;
+}
+
+.reskin-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  flex-basis: 100%;
+  font-size: 0.9rem;
+}
+
+.reskin-panel p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.source-note {
+  margin: 0 0 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--accent);
+  background: #f3e8cf;
+  font-size: 0.85rem;
+}

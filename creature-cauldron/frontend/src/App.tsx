@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import EncounterPanel from "./components/EncounterPanel";
 import FilterBar from "./components/FilterBar";
+import GenerateBar from "./components/GenerateBar";
 import PartyPanel from "./components/PartyPanel";
 import ResultsList from "./components/ResultsList";
 import SavedEncounters from "./components/SavedEncounters";
@@ -34,6 +35,10 @@ import {
   type SortDirection,
   type SortKey,
 } from "./lib/filters";
+import { createGenerator } from "./lib/demoGenerator";
+import { GENERATED_STORAGE_KEY, MAX_GENERATED, looksLikeMonster, parseGenerated } from "./lib/generatedStore";
+import { buildGenerateRequest, describeRequest, fewResultsPrompt } from "./lib/generateRequest";
+import { failureMessage, type GeneratorResult, type ReskinRequest } from "./lib/generatorApi";
 import { loadMonsters } from "./lib/loadMonsters";
 import { soloBand, type Difficulty } from "./lib/party";
 import {
@@ -77,6 +82,11 @@ export default function App() {
     setWorking(next.working);
   };
   const encounterState: EncounterState = { saved, working };
+  // Monsters the generator made are remembered in this browser (until the server's shared cache exists)
+  // and join the library, so they filter, sort, favorite and go into encounters like any other.
+  const [generated, setGenerated] = usePersistentState(GENERATED_STORAGE_KEY, parseGenerated);
+  const [generating, setGenerating] = useState(false);
+  const [generateMessage, setGenerateMessage] = useState("");
   // monsters.length === 0 can't tell "still loading" from "loaded but empty", so track loading explicitly.
   const [libraryReady, setLibraryReady] = useState(false);
 
@@ -90,25 +100,63 @@ export default function App() {
       .catch((e: Error) => setError(e.message));
   }, []);
 
+  // The curated library plus anything generated. Everything below works from this one list.
+  const library = useMemo(() => [...monsters, ...generated], [monsters, generated]);
+  // Which generator to use comes from the page address: the offline one, or the demo one (?generator=demo).
+  const generator = useMemo(() => createGenerator(window.location.search, monsters), [monsters]);
+
   // The visible list is derived from state on every render, never stored.
   // useMemo skips the work when none of its inputs changed; it matters once the library is large.
   const band = useMemo(() => (difficulty === null ? null : soloBand(party, difficulty)), [party, difficulty]);
   const visible = useMemo(
-    () => sortMonsters(filterMonsters(monsters, filters, band), sortKey, sortDirection),
-    [monsters, filters, band, sortKey, sortDirection],
+    () => sortMonsters(filterMonsters(library, filters, band), sortKey, sortDirection),
+    [library, filters, band, sortKey, sortDirection],
   );
 
   // Small, cheap values are simply computed each render (no useMemo needed).
   const favoriteSet = new Set(favorites);
-  const favoriteCount = countAvailableFavorites(monsters, favoriteSet);
+  const favoriteCount = countAvailableFavorites(library, favoriteSet);
   const shown = favoritesOnly ? onlyFavorites(visible, favoriteSet) : visible;
 
   // The monster in the pop-out. If its id is no longer in the library, the pop-out simply stays closed.
-  const opened = openId === null ? null : (monsters.find((m) => m.id === openId) ?? null);
+  const opened = openId === null ? null : (library.find((m) => m.id === openId) ?? null);
   const openedIsFavorite = opened !== null && favoriteSet.has(opened.id);
 
   // Also derived each render: the rating changes the moment the party or the rows change.
-  const summary = summarizeEncounter(entries, monsters, party);
+  const summary = summarizeEncounter(entries, library, party);
+
+  // What the Generate button would ask for, from the filters and the difficulty pick.
+  const built = buildGenerateRequest(filters, band);
+
+  // Turns a generator's answer into a stored, opened monster, or into a message when it failed.
+  // Returns null on success, or the message to show.
+  const accept = (result: GeneratorResult): string | null => {
+    if (!result.ok) return failureMessage(result.reason, result.message);
+    // The answer is untrusted (a server will send it), so it is checked before it can reach the stat block.
+    if (!looksLikeMonster(result.monster)) return "The generator sent back something that couldn't be shown.";
+    const monster = result.monster;
+    setGenerated([monster, ...generated.filter((g) => g.id !== monster.id)].slice(0, MAX_GENERATED));
+    setOpenId(monster.id);
+    setGenerateMessage(`Added ${monster.name} to your library. ${result.notes.join(" ")}`.trim());
+    return null;
+  };
+
+  const runGenerate = async () => {
+    if (generating || built.request === null) return;
+    setGenerating(true);
+    setGenerateMessage("");
+    const failure = accept(await generator.generate(built.request));
+    setGenerating(false);
+    if (failure) setGenerateMessage(failure);
+  };
+
+  const runReskin = async (request: ReskinRequest): Promise<string | null> => {
+    if (generating) return "Another request is still running.";
+    setGenerating(true);
+    const failure = accept(await generator.reskin(request));
+    setGenerating(false);
+    return failure;
+  };
   const inEncounter = opened ? countOf(entries, opened.id) : 0;
   const canAdd = opened ? canAddMonster(entries, opened.id) : false;
   const addNote = !canAdd
@@ -145,7 +193,7 @@ export default function App() {
         <div className="board">
           <ResultsList
             monsters={shown}
-            totalCount={monsters.length}
+            totalCount={library.length}
             sortKey={sortKey}
             sortDirection={sortDirection}
             favorites={favoriteSet}
@@ -156,6 +204,18 @@ export default function App() {
             onSortKeyChange={setSortKey}
             onSortDirectionChange={setSortDirection}
             onFavoritesOnlyChange={setFavoritesOnly}
+            generateBar={
+              <GenerateBar
+                prompt={libraryReady ? fewResultsPrompt(visible.length) : null}
+                summary={built.request ? describeRequest(built.request) : null}
+                problem={built.problem}
+                mode={generator.mode}
+                busy={generating}
+                message={generateMessage}
+                hasResult={generated.length > 0}
+                onGenerate={runGenerate}
+              />
+            }
           />
           <EncounterPanel
             working={working}
@@ -187,6 +247,8 @@ export default function App() {
         isFavorite={openedIsFavorite}
         canAdd={canAdd}
         addNote={addNote}
+        generatorMode={generator.mode}
+        onReskin={runReskin}
         onClose={() => setOpenId(null)}
         onToggleFavorite={() => {
           if (opened) setFavorites(toggle(favorites, opened.id));

@@ -6,6 +6,16 @@ import { crLabelsInBand } from "./party";
 // Turns what the user has chosen on screen into a generator request, and into a plain-English summary.
 // Pure functions: no React, no network.
 
+/** Below this many matches the page offers to generate a monster. */
+export const FEW_RESULTS = 3;
+
+/** What to say above the Generate button when the list is short, or null when it is long enough. */
+export function fewResultsPrompt(matchCount: number): string | null {
+  if (matchCount >= FEW_RESULTS) return null;
+  if (matchCount === 0) return "Nothing matches these filters.";
+  return `Only ${matchCount} ${matchCount === 1 ? "match" : "matches"}.`;
+}
+
 export interface BuiltRequest {
   /** The request, or null when the choices cannot match any monster (then `problem` says why). */
   request: GenerateRequest | null;

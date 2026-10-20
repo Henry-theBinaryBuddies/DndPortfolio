@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_FILTERS } from "./filters";
-import { buildGenerateRequest, describeRequest } from "./generateRequest";
+import { buildGenerateRequest, describeRequest, fewResultsPrompt } from "./generateRequest";
 
 describe("buildGenerateRequest", () => {
   it("copies the filters when there is no difficulty pick", () => {
@@ -59,5 +59,18 @@ describe("describeRequest", () => {
 
   it("uses a comma and 'or' for three types", () => {
     expect(describeRequest({ ...base, types: ["beast", "dragon", "undead"] })).toBe("Beast, Dragon or Undead");
+  });
+});
+
+describe("fewResultsPrompt", () => {
+  it("is silent at three or more matches", () => {
+    expect(fewResultsPrompt(3)).toBeNull();
+    expect(fewResultsPrompt(40)).toBeNull();
+  });
+
+  it("speaks up below three, with the right wording", () => {
+    expect(fewResultsPrompt(0)).toBe("Nothing matches these filters.");
+    expect(fewResultsPrompt(1)).toBe("Only 1 match.");
+    expect(fewResultsPrompt(2)).toBe("Only 2 matches.");
   });
 });

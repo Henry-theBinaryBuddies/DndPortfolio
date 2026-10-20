@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import type { SortDirection, SortKey } from "../lib/filters";
+import { sourceLabel } from "../lib/sourceLabel";
 import type { Monster } from "../types/monster";
 
 interface ResultsListProps {
@@ -17,6 +19,8 @@ interface ResultsListProps {
   onSortKeyChange: (key: SortKey) => void;
   onSortDirectionChange: (direction: SortDirection) => void;
   onFavoritesOnlyChange: (value: boolean) => void;
+  /** The Generate controls, shown under the sort row. */
+  generateBar?: ReactNode;
 }
 
 /** What to say when the list is empty, depending on why it is empty. */
@@ -42,6 +46,7 @@ export default function ResultsList({
   onSortKeyChange,
   onSortDirectionChange,
   onFavoritesOnlyChange,
+  generateBar,
 }: ResultsListProps) {
   return (
     <section className="panel results" aria-label="Results">
@@ -80,6 +85,8 @@ export default function ResultsList({
         </label>
       </div>
 
+      {generateBar}
+
       {monsters.length === 0 ? (
         <p className="empty-state">{emptyMessage(libraryReady, favoritesOnly, favoriteCount)}</p>
       ) : (
@@ -95,6 +102,7 @@ export default function ResultsList({
                 </strong>
                 <span>
                   {m.size} {m.type} · CR {m.challenge.cr}
+                  {sourceLabel(m) ? ` · ${sourceLabel(m)}` : ""}
                 </span>
               </button>
             </li>

@@ -131,7 +131,7 @@ The full schema lives in `docs/` once the front-end types exist. Key points:
 4. Party and difficulty selection (CR band).
 5. Encounter builder, favorites, local persistence.
 6. JSON and Foundry export.
-7. Generate and Reskin controls wired to a stub that shows the offline state.
+7. Generate and Reskin controls wired to a stub that shows the offline state. (Done. A `?generator=demo` switch returns made-up monsters so the flow can be clicked through; the reskin offers a damage swap and an elite template.)
 
 **Phase 2: Back end (test-first).**
 
