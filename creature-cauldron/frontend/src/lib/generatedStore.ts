@@ -65,6 +65,16 @@ function looksLikeAction(value: unknown): boolean {
   }
 }
 
+const isSpellList = (value: unknown): boolean => Array.isArray(value) && value.every((s) => isObj(s) && isStr(s.name) && (s.note === undefined || isStr(s.note)));
+
+function looksLikeSpellcasting(value: unknown): boolean {
+  if (!isObj(value)) return false;
+  if (!isStr(value.ability) || !isNum(value.dc) || !isNum(value.attack_bonus) || typeof value.innate !== "boolean") return false;
+  if (!isStr(value.intro) || !isStr(value.footer) || !isSpellList(value.cantrips) || !isSpellList(value.at_will)) return false;
+  if (!Array.isArray(value.slots) || !value.slots.every((s) => isObj(s) && isNum(s.level) && isNum(s.slots) && isSpellList(s.spells))) return false;
+  return Array.isArray(value.per_day) && value.per_day.every((d) => isObj(d) && isNum(d.uses) && typeof d.each === "boolean" && isSpellList(d.spells));
+}
+
 /** Does this look like a complete, displayable Monster? Cheap structural checks, not rules validation. */
 export function looksLikeMonster(value: unknown): value is Monster {
   if (!isObj(value)) return false;
@@ -98,7 +108,7 @@ export function looksLikeMonster(value: unknown): value is Monster {
   }
   const spellcasting = value.spellcasting;
   if (spellcasting !== null && spellcasting !== undefined) {
-    if (!isObj(spellcasting) || !isStr(spellcasting.text) || !isStr(spellcasting.ability) || !isNum(spellcasting.dc) || !isNum(spellcasting.attack_bonus)) return false;
+    if (!looksLikeSpellcasting(spellcasting)) return false;
   }
   return true;
 }

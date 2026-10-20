@@ -17,6 +17,7 @@ import {
 } from "./foundryMaps";
 import { ACTOR_SYSTEM_TEMPLATE, PROTOTYPE_TOKEN_TEMPLATE } from "./foundryTemplates";
 import { label } from "./options";
+import { casterLevel } from "./spellcastingText";
 
 // Builds a Foundry VTT (dnd5e system) NPC actor from a Monster. The result is a plain object to be
 // saved as JSON and loaded with "Import Data" on a blank NPC actor. Pure: no browser, no randomness.
@@ -166,6 +167,17 @@ export function exportFoundryActor(monster: Monster): FoundryExport {
   details.habitat = { value: [], custom: environments };
   details.biography = { value: biographyHtml(monster), public: "" };
 
+  // Spell slots and caster level are real fields on the sheet, so they are filled in. The spells themselves
+  // stay in the Spellcasting feature as text: see the note below.
+  if (monster.spellcasting) {
+    const spells = child(system, "spells");
+    for (const { level, slots } of monster.spellcasting.slots) {
+      if (level >= 1 && level <= 9) spells[`spell${level}`] = { value: slots, override: null };
+    }
+    const level = casterLevel(monster.spellcasting);
+    if (level !== null) details.spellLevel = level;
+  }
+
   const traits = child(system, "traits");
   traits.size = SIZE_KEYS[monster.size] ?? "med";
   traits.di = damageTrait(monster.immunities);
@@ -214,7 +226,11 @@ export function exportFoundryActor(monster: Monster): FoundryExport {
   sight.enabled = false;
   sight.range = monster.senses.darkvision ?? 0;
 
-  if (monster.spellcasting) notes.push("Spellcasting is text only: no spells or spell slots are created.");
+  if (monster.spellcasting) {
+    notes.push(
+      "Spell slots and caster level are set, but the spells are listed as text in the Spellcasting feature, because Foundry cannot link spells to its compendium from an imported file. Drag the spells onto the sheet from your compendium, or use the 5etools export with Plutonium.",
+    );
+  }
   const items = buildItems({ monster, pb, mods, notes, slugs: new Set() });
 
   const actor: JsonObject = {

@@ -3,16 +3,17 @@ import sample from "../../public/data/sample-monsters.json";
 import realFixture from "./fixtures/5etools-mm/monsters.json";
 import type { Monster, Spellcasting } from "../types/monster";
 import { buildFiveToolsFile } from "./fiveTools";
-import { parseSpellcasting, spellTag, splitSpellList } from "./fiveToolsSpells";
+import { buildSpellcastingBlock, spellTag } from "./fiveToolsSpells";
 import type { JsonObject } from "./foundryJson";
+import { parseSpellcastingText, spellRef, splitSpellList } from "./spellcastingText";
 
 const monsters = sample as unknown as Monster[];
 const real = (realFixture as unknown as { monster: JsonObject[] }).monster;
 const realBlock = (name: string): JsonObject => (real.find((m) => m.name === name)!.spellcasting as JsonObject[])[0];
 const NOW = "2026-10-19T12:00:00.000Z";
 
-const sc = (ability: Spellcasting["ability"], text: string): Spellcasting => ({ ability, dc: 14, attack_bonus: 6, text });
-const parse = (text: string, ability: Spellcasting["ability"] = "int"): JsonObject => parseSpellcasting(sc(ability, text))!;
+const sc = (ability: Spellcasting["ability"], text: string): Spellcasting => parseSpellcastingText(text, { ability, dc: 14, attack_bonus: 6 });
+const parse = (text: string, ability: Spellcasting["ability"] = "int"): JsonObject => buildSpellcastingBlock(sc(ability, text))!;
 
 /** Removes {@tag name} wrappers, so lists can be compared by their words alone. */
 const plain = (list: unknown): string[] => (list as string[]).map((e) => e.replace(/\{@\w+ ([^}|]+)[^}]*\}/g, "$1"));
@@ -43,8 +44,8 @@ describe("splitSpellList and spellTag", () => {
   });
 
   it("tags the spell and leaves a bracketed note as plain text", () => {
-    expect(spellTag("fireball")).toBe("{@spell fireball}");
-    expect(spellTag("create food and water (can create wine instead of water)")).toBe(
+    expect(spellTag(spellRef("fireball"))).toBe("{@spell fireball}");
+    expect(spellTag(spellRef("create food and water (can create wine instead of water)"))).toBe(
       "{@spell create food and water} (can create wine instead of water)",
     );
   });
@@ -103,7 +104,7 @@ describe("matches the real Djinni (innate casting)", () => {
 describe("our own spellcasters", () => {
   const block = (name: string): JsonObject => {
     const monster = monsters.find((m) => m.name === name)!;
-    return parseSpellcasting(monster.spellcasting!)!;
+    return buildSpellcastingBlock(monster.spellcasting!)!;
   };
 
   it("Hollowvale Hexer: cantrips and two slot levels", () => {
@@ -136,7 +137,7 @@ describe("our own spellcasters", () => {
     const casters = monsters.filter((m) => m.spellcasting);
     expect(casters.length).toBeGreaterThanOrEqual(3);
     for (const m of casters) {
-      const b = parseSpellcasting(m.spellcasting!);
+      const b = buildSpellcastingBlock(m.spellcasting!);
       expect(b, m.name).not.toBeNull();
       expect(String((b!.headerEntries as string[])[0]), m.name).toContain("{@dc ");
     }
@@ -165,15 +166,15 @@ describe("edge cases", () => {
   });
 
   it("returns null when no spell list is recognised, so the caller can keep the text", () => {
-    expect(parseSpellcasting(sc("int", "The wizard knows many spells and casts them well."))).toBeNull();
-    expect(parseSpellcasting(sc("int", ""))).toBeNull();
-    expect(parseSpellcasting(sc("int", "At will light mage hand"))).toBeNull(); // no colon
-    expect(parseSpellcasting(sc("int", "Cantrips: light."))).toBeNull(); // heading we do not know
+    expect(buildSpellcastingBlock(sc("int", "The wizard knows many spells and casts them well."))).toBeNull();
+    expect(buildSpellcastingBlock(sc("int", ""))).toBeNull();
+    expect(buildSpellcastingBlock(sc("int", "At will light mage hand"))).toBeNull(); // no colon
+    expect(buildSpellcastingBlock(sc("int", "Cantrips: light."))).toBeNull(); // heading we do not know
   });
 
   it("never throws, whatever the text", () => {
     for (const text of ["", ".", ":", "At will: .", "1st level (x slots): a.", "((((", "At will: ((a, b."]) {
-      expect(() => parseSpellcasting(sc("int", text)), JSON.stringify(text)).not.toThrow();
+      expect(() => buildSpellcastingBlock(sc("int", text)), JSON.stringify(text)).not.toThrow();
     }
   });
 });

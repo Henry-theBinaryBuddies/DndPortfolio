@@ -17,6 +17,8 @@ Monsters and encounters can be exported as JSON, a monster as an NPC actor for F
 
 The party, favorites, working encounter and saved encounters live in the browser's localStorage. There is no server and no sign-in, so they stay on one browser on one device.
 
+Spellcasting is stored as data (cantrips, slots per level, at will, per day, and the intro sentence), and the stat block sentence is built from it.
+
 The sample monsters are unvalidated (`validated: false`) until the back-end validator exists.
 
 Run the tests with `npm test` in `frontend/`.

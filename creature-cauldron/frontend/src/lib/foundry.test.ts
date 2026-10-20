@@ -341,12 +341,18 @@ describe("special cases", () => {
     ]);
   });
 
-  it("writes spellcasting as a trait, sets the casting ability, and says it is text only", () => {
+  it("writes spellcasting as a trait, sets the casting ability, spell slots and caster level, and explains the spells stay text", () => {
     const { actor, notes } = exportFoundryActor(byName("Hollowvale Hexer"));
     expect(obj(sys(actor as JsonObject).attributes).spellcasting).toBe("cha");
     const feature = itemNamed(actor, "Spellcasting");
     expect(sys(feature).properties).toEqual(["trait"]);
-    expect(notes.some((n) => n.includes("Spellcasting is text only"))).toBe(true);
+    expect(sys(actor as JsonObject).spells).toMatchObject({
+      spell1: { value: 4, override: null },
+      spell2: { value: 3, override: null },
+      spell3: { value: 0, override: null },
+    });
+    expect(obj(sys(actor as JsonObject).details).spellLevel).toBe(4);
+    expect(notes.some((n) => n.includes("spells are listed as text"))).toBe(true);
   });
 
   it("handles a save with no area and no damage (an effect only)", () => {

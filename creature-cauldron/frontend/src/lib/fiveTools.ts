@@ -3,7 +3,8 @@ import { formatSigned } from "./dice";
 import type { JsonObject } from "./foundryJson";
 import { normalizeHpFormula, skillFor } from "./foundryMaps";
 import type { Size } from "./options";
-import { parseSpellcasting } from "./fiveToolsSpells";
+import { buildSpellcastingBlock } from "./fiveToolsSpells";
+import { spellcastingToText } from "./spellcastingText";
 import { tagProse } from "./fiveToolsTags";
 import { renderAction, segmentsToText } from "./renderAction";
 
@@ -169,13 +170,13 @@ function convertMonster(monster: Monster, notes: string[]): JsonObject {
 
   const traits: JsonObject[] = monster.traits.map((t) => ({ name: t.name, entries: [tagProse(t.text)] }));
   if (monster.spellcasting) {
-    const block = parseSpellcasting(monster.spellcasting);
+    const block = buildSpellcastingBlock(monster.spellcasting);
     if (block) {
       out.spellcasting = [block];
     } else {
-      // The wording was not recognised as spell lists, so keep it as a plain trait: nothing is lost.
-      traits.push({ name: "Spellcasting", entries: [tagProse(monster.spellcasting.text)] });
-      notes.push("Spellcasting is a plain trait: its wording was not recognised as spell lists, so tools cannot link the spells.");
+      // There are no spell lists, only text, so keep it as a plain trait: nothing is lost.
+      traits.push({ name: "Spellcasting", entries: [tagProse(spellcastingToText(monster.spellcasting))] });
+      notes.push("Spellcasting is a plain trait: it has no spell lists, so tools cannot link the spells.");
     }
   }
   if (traits.length > 0) out.trait = traits;

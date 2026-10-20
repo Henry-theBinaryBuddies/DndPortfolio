@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Ability, Action, Monster } from "../types/monster";
 import { abilityModifier, formatSigned } from "../lib/dice";
+import { spellcastingToText } from "../lib/spellcastingText";
 import { actionName, legendaryIntro, renderAction, type Segment } from "../lib/renderAction";
 import "./StatBlock.css";
 
@@ -138,7 +139,11 @@ export default function StatBlock({ monster }: { monster: Monster }) {
 
   const traits: Action[] = [...monster.traits];
   if (monster.spellcasting) {
-    traits.push({ kind: "text", name: "Spellcasting", text: monster.spellcasting.text });
+    traits.push({
+      kind: "text",
+      name: monster.spellcasting.innate ? "Innate Spellcasting" : "Spellcasting",
+      text: spellcastingToText(monster.spellcasting),
+    });
   }
 
   return (

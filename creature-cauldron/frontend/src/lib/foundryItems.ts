@@ -4,6 +4,7 @@ import { escapeHtml, stableId, uniqueSlug } from "./exportCommon";
 import type { JsonObject } from "./foundryJson";
 import { STATS_STAMP, areaTemplate, atModBonus } from "./foundryMaps";
 import { legendaryIntro, renderAction, type Segment } from "./renderAction";
+import { spellcastingToText } from "./spellcastingText";
 
 // Turns a monster's traits and actions into Foundry "items" (Foundry's word for each ability on an
 // NPC sheet). The shapes are copied from real SRD monsters in the dnd5e system, so Foundry knows them.
@@ -349,7 +350,7 @@ export function buildItems(ctx: ItemContext): JsonObject[] {
 
   monster.traits.forEach((trait, i) => items.push(traitItem(ctx, "trait", i, trait.name, textHtml(trait.text))));
   if (monster.spellcasting) {
-    items.push(traitItem(ctx, "spellcasting", 0, "Spellcasting", textHtml(monster.spellcasting.text)));
+    items.push(traitItem(ctx, "spellcasting", 0, "Spellcasting", textHtml(spellcastingToText(monster.spellcasting))));
   }
   monster.actions.forEach((a, i) => items.push(actionItem(ctx, a, "action", i)));
   monster.bonus_actions.forEach((a, i) => items.push(actionItem(ctx, a, "bonus", i)));

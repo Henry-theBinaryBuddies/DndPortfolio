@@ -67,11 +67,44 @@ export interface TextAction {
 
 export type Action = AttackAction | SaveAction | MultiattackAction | TextAction;
 
+/** One spell, with an optional note such as "self only" or "can create wine instead of water". */
+export interface SpellRef {
+  name: string;
+  note?: string;
+}
+
+export interface SpellSlotLevel {
+  /** 1 to 9. Cantrips are kept in `cantrips`. */
+  level: number;
+  slots: number;
+  spells: SpellRef[];
+}
+
+export interface SpellPerDay {
+  uses: number;
+  /** True for "3/day each", false for "1/day" shared between the listed spells. */
+  each: boolean;
+  spells: SpellRef[];
+}
+
+/**
+ * Spellcasting as data. The stat block sentence is built from it (lib/spellcastingText.ts) and the
+ * exports read the spell lists directly, so a spell is never found by searching prose.
+ */
 export interface Spellcasting {
   ability: Ability;
   dc: number;
   attack_bonus: number;
-  text: string;
+  /** "Innate Spellcasting" rather than "Spellcasting". */
+  innate: boolean;
+  /** The sentence(s) before the spell lists, for example "The hexer is a 4th-level spellcaster. …". */
+  intro: string;
+  cantrips: SpellRef[];
+  slots: SpellSlotLevel[];
+  at_will: SpellRef[];
+  per_day: SpellPerDay[];
+  /** Any sentence after the lists. Usually empty. */
+  footer: string;
 }
 
 export interface LegendaryActions {

@@ -35,7 +35,7 @@ Our own JSON files carry `app`, `kind` and `format_version`, so a future import 
 | Spell attacks (for example Mind Lash) | A feature with a flat to-hit attack | Numbers exact |
 | Saving-throw abilities (breath weapons, auras) | A feature with a save: DC, damage on a failed save, half or none on a success, area, recharge | Exact |
 | Traits, Multiattack, reactions, legendary options | Features, with the same wording as the stat block. Legendary options carry their cost | Text only (Multiattack is not linked to the attacks) |
-| Spellcasting | A feature with the text, and the casting ability set | Text only: no spells or slots are created |
+| Spellcasting | A feature with the text, the casting ability, the spell slot totals and the caster level | Slots and level are set. The spells stay as text: Foundry cannot link spells to its compendium from an imported file, so drag them from your compendium, or use the 5etools export |
 | Legendary actions | The sheet's legendary action pool, set from our count | Exact |
 | Legendary Resistance | A feature with the text, and the sheet counter filled in | Text only: the counter is not linked to the feature |
 | Passive Perception, XP, proficiency bonus, spell save DC | Calculated by Foundry | Not written. If our printed value differs from what Foundry will calculate, the export says so |
@@ -82,7 +82,7 @@ Attacks, saves, recharge and legendary costs are written with 5etools' inline ta
 | Legendary actions | `legendary` with the cost in the name ("(Costs 2 Actions)"), and the per-round count |
 | Environments | `environment` (coast becomes coastal; dungeon has no 5etools name and is dropped with a note) |
 | Description | Not exported (5etools keeps lore in a separate list) |
-| Spellcasting | Structured spell lists (slots per level, at will, per day), each spell tagged `{@spell name}` so Plutonium can link it. Our wording is read by a small parser; if the text is not recognised it stays a plain trait and the download says so |
+| Spellcasting | Structured spell lists (slots per level, at will, per day), each spell tagged `{@spell name}` so Plutonium can link it. Spellcasting is stored as data (cantrips, slots, at will, per day), so the lists are written directly. A monster with only text and no lists stays a plain trait and the download says so |
 
 **Status:** checked against four real SRD entries from the 5etools data, and the import in Plutonium (Foundry) has been confirmed working.
 

@@ -715,7 +715,13 @@
       "ability": "wis",
       "dc": 14,
       "attack_bonus": 6,
-      "text": "The sentinel's spellcasting ability is Wisdom (spell save DC 14). It can innately cast the following spells, requiring no material components. At will: light, thaumaturgy. 1/day each: lesser restoration, protection from evil and good."
+      "innate": true,
+      "intro": "The sentinel's spellcasting ability is Wisdom (spell save DC 14). It can innately cast the following spells, requiring no material components.",
+      "cantrips": [],
+      "slots": [],
+      "at_will": [{"name":"light"},{"name":"thaumaturgy"}],
+      "per_day": [{"uses":1,"each":true,"spells":[{"name":"lesser restoration"},{"name":"protection from evil and good"}]}],
+      "footer": ""
     },
     "environments": ["planar", "mountain"],
     "role": "leader",
@@ -914,7 +920,13 @@
       "ability": "int",
       "dc": 16,
       "attack_bonus": 8,
-      "text": "The seer's innate spellcasting ability is Intelligence (spell save DC 16). It can innately cast the following spells, requiring no components. At will: detect thoughts, mage hand. 1/day: confusion."
+      "innate": true,
+      "intro": "The seer's innate spellcasting ability is Intelligence (spell save DC 16). It can innately cast the following spells, requiring no components.",
+      "cantrips": [],
+      "slots": [],
+      "at_will": [{"name":"detect thoughts"},{"name":"mage hand"}],
+      "per_day": [{"uses":1,"each":false,"spells":[{"name":"confusion"}]}],
+      "footer": ""
     },
     "environments": ["underdark", "planar"],
     "role": "solo",
@@ -1095,7 +1107,13 @@
       "ability": "cha",
       "dc": 13,
       "attack_bonus": 5,
-      "text": "The hexer is a 4th-level spellcaster. Its spellcasting ability is Charisma (spell save DC 13, +5 to hit with spell attacks). Cantrips (at will): minor illusion, poison spray. 1st level (4 slots): charm person, ray of sickness. 2nd level (3 slots): hold person, misty step."
+      "innate": false,
+      "intro": "The hexer is a 4th-level spellcaster. Its spellcasting ability is Charisma (spell save DC 13, +5 to hit with spell attacks).",
+      "cantrips": [{"name":"minor illusion"},{"name":"poison spray"}],
+      "slots": [{"level":1,"slots":4,"spells":[{"name":"charm person"},{"name":"ray of sickness"}]},{"level":2,"slots":3,"spells":[{"name":"hold person"},{"name":"misty step"}]}],
+      "at_will": [],
+      "per_day": [],
+      "footer": ""
     },
     "environments": ["swamp", "forest"],
     "role": "controller",
