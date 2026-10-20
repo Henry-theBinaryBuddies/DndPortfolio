@@ -4,18 +4,17 @@
   font-family: "Bookman Old Style", Georgia, serif;
   font-size: 0.95rem;
   line-height: 1.4;
-  background: var(--statblock-paper);
+  position: relative;
+  isolation: isolate;
   color: #222;
-  padding: 0.5rem 1rem 1rem;
-  border: 1px solid #ddd0b4;
-  box-shadow: 0 0 0.75rem rgba(0, 0, 0, 0.35);
+  padding: 0.9rem 1.3rem 1.3rem;
   /* never split one monster across two printed pages */
   break-inside: avoid;
 }
 
 .statblock__rule {
   height: 5px;
-  margin: 0 -1rem 0.5rem;
+  margin: 0 0 0.5rem;
   background: linear-gradient(to right, var(--statblock-red), #b03a1e 50%, var(--statblock-red));
 }
 
@@ -86,4 +85,45 @@
   margin: 0.4rem 0 0;
   font-size: 0.75rem;
   color: #6b5a4a;
+}
+
+/* The card is made of the same crumpled, scorched paper as the panels (see styles.css), but paler and with a lighter burn at
+   the edge, so the small print stays easy to read. The picture is drawn behind the text; the text itself is untouched. */
+.statblock::before,
+.statblock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  filter: url(#smolder-edge);
+}
+
+.statblock::before {
+  background:
+    var(--crumple),
+    var(--paper-tex),
+    radial-gradient(ellipse at 50% 40%, var(--statblock-paper) 60%, #dcc28a 100%);
+  background-size: 520px 520px, 220px 220px, auto;
+  background-blend-mode: soft-light, normal, normal;
+  box-shadow:
+    inset 0 0 0.2rem 0.05rem var(--ember),
+    inset 0 0 0.9rem 0.2rem rgba(70, 40, 10, 0.5);
+}
+
+.statblock::after {
+  box-shadow: inset 0 0 0.7rem 0.1rem var(--ember);
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+@media print {
+  .statblock::before,
+  .statblock::after {
+    display: none;
+  }
+
+  .statblock {
+    background: var(--statblock-paper);
+  }
 }
