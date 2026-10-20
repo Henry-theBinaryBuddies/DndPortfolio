@@ -222,3 +222,9 @@ def test_the_same_inputs_always_build_the_same_move(named) -> None:
     ogre = named("Ogre")
     for move in MOVES.values():
         assert build(move, ogre) == build(move, ogre)
+
+
+def test_a_save_dc_never_exceeds_what_the_monster_already_reaches(named) -> None:
+    deva = named("Deva")  # attacks at +8, but Wisdom would give a DC of 17
+    text = " ".join(item.describe(deva.name) for item in everything(build(MOVES["dread_presence"], deva)))
+    assert "DC 16" in text

@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 from cauldron.actions import Action, AttackAction, AttackDetails, DamageRoll, Range, Recharge, SaveAction, SaveDetails, TextAction, Area
-from cauldron.cr.measure import action_damage
+from cauldron.cr.measure import action_damage, measure
 from cauldron.dice import average_dice, ability_modifier
 from cauldron.monster import Monster
 from cauldron.options import Ability, AreaShape, AttackMode, DamageTheme, DamageType, SaveSuccess, Size
@@ -34,7 +34,7 @@ class Context:
     theme: DamageTheme
     name: str
     pb: int
-    dc: int  # 8 + proficiency + the monster's best ability modifier
+    dc: int  # 8 + proficiency + the best ability modifier, but never above what the monster's own attacks and saves reach
     attack_ability: Ability
     attack_bonus: int  # proficiency + the better of Strength and Dexterity
     best: float  # the average damage of its best single attack
@@ -67,12 +67,18 @@ def make_context(monster: Monster, theme: DamageTheme, name: str) -> Context:
     ability = Ability.DEX if mods["dex"] > mods["str"] else Ability.STR
     best = best_attack(monster)
     budget = max(2, round(best * 0.75)) if best >= 2 else 0
+    # A signature move must not make the monster hit harder than it already does: the cap keeps a monster whose best
+    # ability is a mental one (a deva) from jumping a challenge rating on the strength of one new save.
+    dc = 8 + monster.challenge.proficiency_bonus + max(mods.values())
+    own = measure(monster).offense_bonus
+    if own is not None:
+        dc = min(dc, 8 + own)
     return Context(
         monster=monster,
         theme=theme,
         name=name,
         pb=monster.challenge.proficiency_bonus,
-        dc=8 + monster.challenge.proficiency_bonus + max(mods.values()),
+        dc=dc,
         attack_ability=ability,
         attack_bonus=monster.challenge.proficiency_bonus + mods[ability.value],
         best=best,
