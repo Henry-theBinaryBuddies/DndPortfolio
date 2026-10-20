@@ -848,6 +848,23 @@ select {
   left: auto;
 }
 
+/* Phones: the buttons wrap into rows, so a menu cannot be lined up with its own button without running off the screen.
+   Instead it spans the width of the filter bar, just under the button. */
+@media (max-width: 700px) {
+  .menu {
+    position: static;
+  }
+
+  .menu-panel,
+  .menu:nth-last-child(-n + 3) .menu-panel {
+    top: auto;
+    right: 0.75rem;
+    left: 0.75rem;
+    min-width: 0;
+    margin-top: 0.3rem;
+  }
+}
+
 .filter-count {
   margin-left: 0.4rem;
   padding: 0 0.4rem;
