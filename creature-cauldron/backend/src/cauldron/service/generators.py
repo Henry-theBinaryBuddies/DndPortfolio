@@ -38,6 +38,7 @@ class GeneratedName:
     generator: str
     input_tokens: int = 0
     output_tokens: int = 0
+    move_name: str | None = None  # only for a remix that added a signature move
 
 
 class MonsterGenerator(ABC):
@@ -47,7 +48,7 @@ class MonsterGenerator(ABC):
 
     @abstractmethod
     def rename(self, context: RenameContext, feedback: Sequence[str]) -> GeneratedName:
-        """A new name and description for a reskinned monster. Numbers are never part of the answer."""
+        """A new name and description for a reskinned monster, and a name for its new move when it has one. Numbers are never part of the answer."""
 
 
 @dataclass

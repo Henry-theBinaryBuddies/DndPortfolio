@@ -14,6 +14,8 @@ from pydantic.alias_generators import to_camel
 
 from cauldron.base import CauldronModel
 from cauldron.monster import Monster
+from cauldron.remix.engine import SURPRISE
+from cauldron.remix.moves import MOVES
 from cauldron.options import CreatureType, DamageTheme, DamageType, Environment, Feature, Role, Size
 from cauldron.rules import CR_LABELS, cr_value
 
@@ -75,23 +77,52 @@ class DamageSwap(ApiModel):
 
 
 class ReskinRequest(ApiModel):
-    """A reskin names an existing monster by id. The monster itself is never sent, so none of its text can reach the model."""
+    """A reskin names an existing monster by id. The monster itself is never sent, so none of its text can reach the model.
+
+    Quick reskin is a ``damage_swap``, optionally with ``level_up``. Remix is a ``theme`` and/or a signature ``move``,
+    optionally with ``level_up``. Theme and move may each be "surprise", which the server decides (see ``settle``).
+    """
 
     base_id: Id
     damage_swap: DamageSwap | None = None
-    template: Literal["level_up"] | None = None
+    theme: str | None = None
+    move: str | None = None
+    level_up: bool = False
+
+    @field_validator("theme")
+    @classmethod
+    def _a_known_theme(cls, value: str | None) -> str | None:
+        if value is not None and value != SURPRISE and value not in {t.value for t in DamageTheme}:
+            raise ValueError("theme must be one of the damage themes, or surprise")
+        return value
+
+    @field_validator("move")
+    @classmethod
+    def _a_known_move(cls, value: str | None) -> str | None:
+        if value is not None and value != SURPRISE and value not in MOVES:
+            raise ValueError("move must be one of the signature moves, or surprise")
+        return value
 
     @model_validator(mode="after")
     def _something_to_do(self) -> "ReskinRequest":
-        if self.damage_swap is None and self.template is None:
-            raise ValueError("a reskin needs a damage swap, a template, or both")
+        if self.damage_swap is not None and (self.theme is not None or self.move is not None):
+            raise ValueError("a damage swap is a quick reskin; it cannot be combined with a theme or a move")
+        if self.damage_swap is None and self.theme is None and self.move is None and not self.level_up:
+            raise ValueError("a reskin needs a damage swap, a theme, a move or a level up")
         return self
 
     @property
+    def has_surprise(self) -> bool:
+        return SURPRISE in (self.theme, self.move)
+
+    @property
     def cache_key(self) -> str:
-        """The same request always gives the same key, so a repeated reskin is answered from the store."""
+        """The same request always gives the same key, so a repeated reskin is answered from the store.
+
+        A request that still has a "surprise" in it has no meaningful key: settle it first."""
         swap = f"{self.damage_swap.from_.value}>{self.damage_swap.to.value}" if self.damage_swap else "-"
-        return hashlib.sha256(f"{self.base_id}|{swap}|{self.template or '-'}".encode()).hexdigest()
+        parts = f"{self.base_id}|{swap}|{self.theme or '-'}|{self.move or '-'}|{'up' if self.level_up else '-'}"
+        return hashlib.sha256(parts.encode()).hexdigest()
 
 
 class FailureReason(StrEnum):

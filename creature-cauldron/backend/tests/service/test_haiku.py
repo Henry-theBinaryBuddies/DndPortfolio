@@ -216,3 +216,19 @@ def test_without_a_key_generation_is_unavailable_but_the_server_still_starts() -
 
 def test_a_blank_key_counts_as_no_key() -> None:
     assert not isinstance(build_generator(SETTINGS, {"ANTHROPIC_API_KEY": "   "}), HaikuGenerator)
+
+
+def remix_context() -> RenameContext:
+    return RenameContext("Goblin", "A small raider.", "humanoid", "small", "1/4", ("Main damage: slashing to cold",), "cold", "ranged lob", "a thrown blast")
+
+
+def test_a_remix_asks_for_a_move_name_and_returns_it() -> None:
+    client = FakeClient(reply("submit_name", {"name": "Rimeback Raider", "description": "Frosted.", "move_name": "Ice Toss"}))
+    result = generator(client).rename(remix_context(), [])
+    assert result.move_name == "Ice Toss"
+    assert set(client.requests[0]["tools"][0]["input_schema"]["properties"]) == {"name", "description", "move_name"}
+
+
+def test_a_remix_reply_without_a_move_name_is_bad_output() -> None:
+    with pytest.raises(BadOutput):
+        generator(FakeClient(reply("submit_name", {"name": "Rimeback Raider", "description": "Frosted."}))).rename(remix_context(), [])

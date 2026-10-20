@@ -33,9 +33,10 @@ _NAME_RULES = """You write names and descriptions for monsters in the 2014 fanta
 
 Rules you must follow:
 - Reply only by calling the submit_name tool. Write no other text.
-- Write ONLY a new name and a short description of one or two sentences. Do not change or mention any numbers.
-- The name must be original: not a creature, character, deity or place from any published game or fiction.
-- Keep the description consistent with what changed about the monster."""
+- Write ONLY a new name and a short description of one or two sentences, plus a name for the new move when you are asked for one.
+  Do not change or mention any numbers.
+- Names must be original: not a creature, character, deity, place, spell or ability from any published game or fiction.
+- Keep the description consistent with what changed about the monster, and with its new move if it has one."""
 
 
 @dataclass(frozen=True)
@@ -53,7 +54,10 @@ class RenameContext:
     creature_type: str
     size: str
     cr: str
-    changes: tuple[str, ...]  # for example "its fire damage became cold damage" or "it is a stronger, leveled-up version"
+    changes: tuple[str, ...]  # for example "Damage swap: fire to cold" or "Level up: CR 4 to CR 5, with more hit points"
+    theme: str | None = None  # the new damage theme of a remix, for example "cold"
+    move_label: str | None = None  # a remix's new signature move, for example "ranged lob"
+    move_blurb: str | None = None
 
 
 def clean_feedback(feedback: Sequence[str]) -> list[str]:
@@ -93,9 +97,14 @@ def generate_prompt(brief: Brief, feedback: Sequence[str]) -> Prompt:
 
 def rename_prompt(context: RenameContext, feedback: Sequence[str]) -> Prompt:
     changes = "; ".join(context.changes)
-    user = (
-        f"A monster called {context.base_name} ({context.size} {context.creature_type}, CR {context.cr}) has been changed: {changes}.\n"
-        f"Its original description: {context.base_description}\n"
-        "Write a new name and a new short description for the changed monster."
-    )
+    lines = [f"A monster called {context.base_name} ({context.size} {context.creature_type}, CR {context.cr}) has been changed: {changes}."]
+    if context.theme is not None:
+        lines.append(f"Its new damage theme is {context.theme}: its attacks and abilities now deal {context.theme} damage.")
+    if context.move_label is not None:
+        lines.append(f"It also has a new signature move, a {context.move_label} ({context.move_blurb}).")
+    lines.append(f"Its original description: {context.base_description}")
+    lines.append("Write a new name and a new short description for the changed monster.")
+    if context.move_label is not None:
+        lines.append("Also give the new move a short name of one to four words, as move_name. It should suit the new theme.")
+    user = "\n".join(lines)
     return Prompt(system=_NAME_RULES, user=user + _feedback_block(feedback))

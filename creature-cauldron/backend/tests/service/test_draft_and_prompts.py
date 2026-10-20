@@ -154,3 +154,12 @@ def test_the_rename_prompt_includes_feedback_too() -> None:
 def test_features_are_listed_in_a_brief_prompt_in_a_stable_order() -> None:
     b = Brief(cr="5", type=brief().type, size=brief().size, environment=brief().environment, role=brief().role, damage_theme=None, features=(Feature.FLYING, Feature.LEGENDARY))
     assert generate_prompt(b, []).user.index("flying") < generate_prompt(b, []).user.index("legendary")
+
+
+def test_a_remix_prompt_tells_the_ai_the_theme_and_asks_for_a_move_name() -> None:
+    prompt = rename_prompt(context(theme="cold", move_label="ranged lob", move_blurb="a thrown blast"), [])
+    assert "damage theme is cold" in prompt.user and "ranged lob" in prompt.user and "move_name" in prompt.user
+
+
+def test_a_plain_rename_prompt_does_not_mention_a_move() -> None:
+    assert "move_name" not in rename_prompt(context(), []).user

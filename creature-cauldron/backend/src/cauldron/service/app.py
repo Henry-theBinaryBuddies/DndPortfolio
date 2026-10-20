@@ -9,7 +9,7 @@ Endpoints (all under /api/v1):
 * GET  /health    {"status": "ok" | "resting"}
 * GET  /library   every monster the server has generated
 * POST /generate  filters in, a monster or a failure out
-* POST /reskin    a base monster id plus a damage swap and/or template in, a monster or a failure out
+* POST /reskin    a base monster id plus a damage swap, or a theme and/or move, and/or a level up in, a monster or a failure out
 
 Failures always have the same body, ``{"ok": false, "reason": ..., "message": ...}``, which is what the web page already
 knows how to show. The HTTP status says the same thing for anything else that reads it: 422 invalid, 429 rate-limited
@@ -169,6 +169,7 @@ def create_app(settings: Settings, service: GenerationService) -> FastAPI:
         if not decision.allowed:
             return too_many(decision.retry_after)
 
+        body = service.settle(body)  # a "surprise" is decided first, so a repeat of the same outcome is still free
         cached = service.lookup_reskin(body)
         if cached is not None:
             return _success_response(GenerateSuccess(monster=cached, notes=["A reskin made earlier for the same choices."]))

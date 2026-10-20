@@ -73,8 +73,14 @@ class NameDraft(CauldronModel):
     description: Prose
 
 
-def name_json_schema() -> dict:
-    return NameDraft.model_json_schema()
+class RemixNameDraft(NameDraft):
+    """The same, plus a name for the signature move a remix added."""
+
+    move_name: Short
+
+
+def name_json_schema(with_move: bool = False) -> dict:
+    return (RemixNameDraft if with_move else NameDraft).model_json_schema()
 
 
 def _without_discriminator(node):

@@ -6,7 +6,7 @@ Order of events, cheapest first:
 2. ``create``: otherwise ask the AI. Every attempt takes one call from the daily cap *before* it is made. The monster
    the AI returns goes through the validator and a check that it really fits the request; if either complains, the complaints
    are sent back to the AI and it tries again, up to ``max_retries`` more times. A monster that never passes is thrown away.
-3. ``lookup_reskin`` / ``create_reskin``: the same idea for reskins. Code changes the numbers (damage swap, level-up template);
+3. ``lookup_reskin`` / ``create_reskin``: the same idea for reskins. Code changes the numbers (damage swap, remix theme and move, level up);
    the AI only writes a new name and description.
 
 The rate limit per visitor is applied by the web layer (it needs the visitor's address); this class owns everything else.
@@ -21,7 +21,9 @@ from collections.abc import Mapping
 from pydantic import ValidationError
 
 from cauldron.monster import Monster
-from cauldron.options import Source
+from cauldron.options import DamageTheme, Source
+from cauldron.remix.engine import remix, resolve
+from cauldron.remix.moves import MOVES
 from cauldron.service.brief import build_brief, effective_bounds
 from cauldron.service.generators import BadOutput, GeneratorUnavailable, MonsterGenerator
 from cauldron.service.limits import DailyCap
@@ -30,13 +32,15 @@ from cauldron.service.models import FailureReason, GenerateFailure, GenerateRequ
 from cauldron.service.prompts import RenameContext
 from cauldron.service.settings import Settings
 from cauldron.service.store import DuplicateMonster, MonsterStore
-from cauldron.templates import get_template, retarget_name, swap_damage_type
+from cauldron.templates import retarget_name, swap_damage_type
 from cauldron.validator import CrConsistencyCheck, Outcome, Status, ValidationContext, Validator, default_checks
 
 Result = GenerateSuccess | GenerateFailure
 
 _RESTING = "The forge is resting, back tomorrow. The library still works."
 _COULD_NOT_REACH = "The forge could not be reached just now. Try again in a little while."
+_PLACEHOLDER_MOVE = "Signature Move"
+ARROW = chr(0x2192)
 _GAVE_UP = "The forge could not make a monster that passed its checks. Try again, or try different filters."
 
 
@@ -143,31 +147,59 @@ class GenerationService:
 
     # --- reskinning -------------------------------------------------------------------------------------
 
-    def lookup_reskin(self, request: ReskinRequest) -> Monster | None:
-        """A reskin made earlier for exactly this request. Free."""
-        return self._store.reskin(request.cache_key)
+    def settle(self, request: ReskinRequest) -> ReskinRequest:
+        """The request with any "surprise" decided, so that it can be looked up (and cached) like any other.
 
-    def create_reskin(self, request: ReskinRequest) -> Result:
+        An unknown base is left alone: ``create_reskin`` refuses it."""
+        if not request.has_surprise:
+            return request
         base = self._library.get(request.base_id) or self._store.get(request.base_id)
         if base is None:
-            return _failure(FailureReason.INVALID, "That monster is not known to the forge.")
+            return request
+        theme, move = resolve(base, request.theme, request.move, self._rng)
+        return request.model_copy(update={"theme": theme.value if theme else None, "move": move.key if move else None})
 
-        shaped = base
-        changes: list[str] = []
+    def lookup_reskin(self, request: ReskinRequest) -> Monster | None:
+        """A reskin made earlier for exactly this request. Free. A request with a surprise in it has no earlier answer."""
+        return None if request.has_surprise else self._store.reskin(request.cache_key)
+
+    @staticmethod
+    def _shape(base: Monster, request: ReskinRequest, move_name: str) -> tuple[Monster, list[str]]:
+        """The numbers of a reskin, all by code: the damage swap or remix, then the level up. Returns the monster and what changed."""
+        shaped, changes = base, []
         if request.damage_swap is not None:
             swap = request.damage_swap
             shaped = swap_damage_type(shaped, swap.from_, swap.to)
-            changes.append(f"its {swap.from_.value} damage became {swap.to.value} damage")
-        if request.template is not None:
-            shaped = get_template(request.template).apply(shaped)
-            changes.append("it is a stronger, leveled-up version")
+            changes.append(f"Damage swap: {swap.from_.value} {ARROW} {swap.to.value}")
+        theme = DamageTheme(request.theme) if request.theme else None
+        if theme is not None or request.move is not None or request.level_up:
+            remixed = remix(shaped, theme, request.move, move_name, request.level_up)
+            shaped, changes = remixed.monster, changes + remixed.changes
+        return shaped, changes
+
+    def create_reskin(self, request: ReskinRequest) -> Result:
+        request = self.settle(request)
+        base = self._library.get(request.base_id) or self._store.get(request.base_id)
+        if base is None:
+            return _failure(FailureReason.INVALID, "That monster is not known to the forge.")
+        if request.damage_swap is None and request.theme is None and request.move is None and not request.level_up:
+            return _failure(FailureReason.INVALID, "Nothing could be changed for that monster. Try a different theme or move.")
+        move = MOVES[request.move] if request.move is not None else None
+        if move is not None and not move.applies_to(base):
+            return _failure(FailureReason.INVALID, f"The move {move.label} does not fit that monster.")
+
+        # A first pass with a stand-in move name gives the challenge rating and the list of changes for the AI to read.
+        preview, changes = self._shape(base, request, _PLACEHOLDER_MOVE)
         context = RenameContext(
             base_name=base.name,
             base_description=base.description,
             creature_type=base.type.value,
             size=base.size.value,
-            cr=shaped.challenge.cr,
-            changes=tuple(changes),
+            cr=preview.challenge.cr,
+            changes=tuple(c for c in changes if not c.startswith("New move")),
+            theme=request.theme,
+            move_label=move.label.lower() if move else None,
+            move_blurb=move.blurb if move else None,
         )
 
         feedback: list[str] = []
@@ -184,7 +216,12 @@ class GenerationService:
                 _log_failed_attempt("reskin", attempt, attempts, feedback)
                 continue
             self._cap.record_tokens(named.input_tokens, named.output_tokens)
+            if move is not None and not named.move_name:
+                feedback = ["The new move needs a name: give move_name."]
+                _log_failed_attempt("reskin", attempt, attempts, feedback)
+                continue
 
+            shaped, changes = self._shape(base, request, named.move_name or _PLACEHOLDER_MOVE)
             outcome = self._accept_reskin(shaped, base, named.name, named.description, named.generator, changes)
             if isinstance(outcome, GenerateSuccess):
                 self._store.remember_reskin(request.cache_key, outcome.monster.id)
@@ -211,7 +248,7 @@ class GenerationService:
             self._store.add(report.monster)
         except DuplicateMonster:
             return ["That name is already taken. Choose a different one."]
-        notes = [change[0].upper() + change[1:] + "." for change in changes] + [f.message for f in report.corrections]
+        notes = [*changes, *(f.message for f in report.corrections)]
         return GenerateSuccess(monster=report.monster, notes=notes)
 
     @staticmethod
