@@ -1547,3 +1547,22 @@ select {
     display: none;
   }
 }
+
+/* Phones: an overlay opened from a button in the stat block's row spans the width of that row, just under the button, so it
+   can never run off either edge. (Placed last so it wins over the wider-screen widths above.) */
+@media (max-width: 700px) {
+  .dropmenu {
+    position: static;
+  }
+
+  .dropmenu__panel,
+  .dropmenu__panel.reskin-panel,
+  .dropmenu__panel.export-help {
+    top: auto;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+    margin-top: 0.35rem;
+  }
+}
