@@ -1407,6 +1407,11 @@ select {
   padding: 0.8rem 1rem;
 }
 
+/* The filter bar sits above the boxes below it, so its open menus are not hidden behind the results and encounter cards. */
+.filter-bar {
+  z-index: 5;
+}
+
 .panel::before,
 .panel::after,
 .filter-bar::before,
