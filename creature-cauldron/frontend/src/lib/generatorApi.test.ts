@@ -13,7 +13,7 @@ const anyRequest = buildGenerateRequest(EMPTY_FILTERS, null).request!;
 describe("offlineGenerator", () => {
   it("fails every call with the offline message and no network", async () => {
     const generated = await offlineGenerator.generate(anyRequest);
-    const reskinned = await offlineGenerator.reskin({ base: library[0], damageSwap: null, template: null });
+    const reskinned = await offlineGenerator.reskin({ base: library[0], damageSwap: null });
     for (const result of [generated, reskinned]) {
       expect(result).toEqual({ ok: false, reason: "offline", message: OFFLINE_MESSAGE });
     }
@@ -128,11 +128,21 @@ describe("damage swaps", () => {
 describe("demo reskin", () => {
   it("makes a new unvalidated reskin that names its parent", async () => {
     const base = library.find((m) => damageDealtBy(m).includes("fire"))!;
-    const result = await createDemoGenerator(library).reskin({ base, damageSwap: { from: "fire", to: "cold" }, template: "level_up" });
+    const result = await createDemoGenerator(library).reskin({ base, damageSwap: { from: "fire", to: "cold" }, levelUp: true });
     if (!result.ok) throw new Error("expected success");
     expect(result.monster).toMatchObject({ source: "reskin", validated: false, parent_id: base.id });
     expect(result.monster.name).toBe(`${base.name} (cold level up)`);
     expect(damageDealtBy(result.monster)).not.toContain("fire");
     expect(result.notes.join(" ")).toMatch(/not applied/);
+    expect(result.monster.changes).toEqual(["Damage swap: fire → cold"]);
+  });
+
+  it("applies a remix theme to the main damage and lists the change", async () => {
+    const base = library.find((m) => damageDealtBy(m).includes("fire"))!;
+    const result = await createDemoGenerator(library).reskin({ base, damageSwap: null, theme: "acid", move: "lob" });
+    if (!result.ok) throw new Error("expected success");
+    expect(damageDealtBy(result.monster)).toContain("acid");
+    expect(result.monster.changes?.[0]).toMatch(/^Main damage: .* → acid$/);
+    expect(result.monster.changes?.join(" ")).toMatch(/signature moves are not added/);
   });
 });

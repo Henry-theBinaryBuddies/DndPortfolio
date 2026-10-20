@@ -95,15 +95,30 @@ export function createDemoGenerator(library: Monster[]): Generator {
     },
 
     reskin(request: ReskinRequest): Promise<GeneratorResult> {
-      const { base, damageSwap, template } = request;
+      const { base, damageSwap, theme, move, levelUp } = request;
       let monster: Monster = base;
-      if (damageSwap) monster = swapDamageType(monster, damageSwap.from, damageSwap.to);
-      const label = [damageSwap ? `${damageSwap.to}` : null, template === "level_up" ? "level up" : null].filter(Boolean).join(" ");
+      const changes: string[] = [];
+      if (damageSwap) {
+        monster = swapDamageType(monster, damageSwap.from, damageSwap.to);
+        changes.push(`Damage swap: ${damageSwap.from} → ${damageSwap.to}`);
+      }
+      // A remix theme swaps the monster's first damage type. The real server also trades defences and adds a move.
+      const themeChosen = theme && theme !== "surprise" ? theme : null;
+      const main = damageDealtBy(base)[0];
+      if (themeChosen && main && main !== themeChosen) {
+        monster = swapDamageType(monster, main, themeChosen);
+        changes.push(`Main damage: ${main} → ${themeChosen}`);
+      }
+      const label = [damageSwap?.to ?? themeChosen, levelUp ? "level up" : null].filter(Boolean).join(" ");
       const name = `${base.name} (${label || "reskin"})`;
       const id = `demo-${unique()}-${slugify(name)}`;
-      const notes = ["Demo mode: only the damage type was swapped. Numbers and the level-up template are not applied."];
+      const notes = ["Demo mode: only the damage type was swapped. Numbers, signature moves and level-ups are not applied."];
+      if (move) changes.push("Demo mode: signature moves are not added.");
       return Promise.resolve(
-        ok({ ...monster, id, name, source: "reskin", validated: false, parent_id: base.id, generator: "demo", attribution: null }, notes),
+        ok(
+          { ...monster, id, name, source: "reskin", validated: false, parent_id: base.id, generator: "demo", attribution: null, changes },
+          notes,
+        ),
       );
     },
   };

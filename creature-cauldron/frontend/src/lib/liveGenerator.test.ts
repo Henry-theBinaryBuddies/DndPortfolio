@@ -147,20 +147,35 @@ describe("the live generator: generating", () => {
 });
 
 describe("the live generator: reskinning", () => {
-  const reskin: ReskinRequest = { base: drake, damageSwap: { from: "lightning", to: "cold" }, template: "level_up" };
+  const reskin: ReskinRequest = { base: drake, damageSwap: { from: "lightning", to: "cold" }, levelUp: true };
 
   it("sends only the id of the monster, never the monster", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
     await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin(reskin);
     expect(calls[0].url).toBe("http://x.test/api/v1/reskin");
-    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: { from: "lightning", to: "cold" }, template: "level_up" });
+    expect(calls[0].body).toEqual({
+      baseId: drake.id,
+      damageSwap: { from: "lightning", to: "cold" },
+      theme: null,
+      move: null,
+      levelUp: true,
+    });
     expect(JSON.stringify(calls[0].body)).not.toContain(drake.name);
   });
 
   it("sends null for the parts that were not chosen", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
-    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, damageSwap: null, template: "level_up" });
-    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, template: "level_up" });
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, damageSwap: null, levelUp: true });
+    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, theme: null, move: null, levelUp: true });
+  });
+
+  it("sends a remix as a theme and a move, and passes surprise through for the server to decide", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    const live = createLiveGenerator("http://x.test", { fetchFn: fn });
+    await live.reskin({ base: drake, damageSwap: null, theme: "cold", move: "lob" });
+    await live.reskin({ base: drake, damageSwap: null, theme: "surprise", move: "surprise", levelUp: false });
+    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, theme: "cold", move: "lob", levelUp: false });
+    expect(calls[1].body).toEqual({ baseId: drake.id, damageSwap: null, theme: "surprise", move: "surprise", levelUp: false });
   });
 
   it("maps answers the same way as generating", async () => {

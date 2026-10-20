@@ -110,7 +110,9 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
       post("/reskin", {
         baseId: request.base.id,
         damageSwap: request.damageSwap ? { from: request.damageSwap.from, to: request.damageSwap.to } : null,
-        template: request.template,
+        theme: request.theme ?? null,
+        move: request.move ?? null,
+        levelUp: request.levelUp ?? false,
       }),
 
     async status(): Promise<ForgeStatus> {

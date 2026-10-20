@@ -20,16 +20,17 @@ export interface GenerateRequest {
   excludeIds?: string[];
 }
 
-/** Templates that code (not the AI) applies to a monster's numbers. */
-export const RESKIN_TEMPLATES = ["level_up"] as const;
-export type ReskinTemplate = (typeof RESKIN_TEMPLATES)[number];
-
 export interface ReskinRequest {
   /** The whole monster, so the request stands alone (it may be a generated one the server has never seen). */
   base: Monster;
   /** Change every use of one damage type into another, with resistances and immunities following. */
   damageSwap: { from: DamageType; to: DamageType } | null;
-  template: ReskinTemplate | null;
+  /** Remix: a new damage theme, or "surprise" to let the server pick. Never combined with a damage swap. */
+  theme?: DamageTheme | "surprise" | null;
+  /** Remix: the key of a signature move (see remixMoves.ts), or "surprise". Never combined with a damage swap. */
+  move?: string | null;
+  /** About one challenge rating stronger, worked out by the server. */
+  levelUp?: boolean;
 }
 
 /** Why a request did not produce a monster. */

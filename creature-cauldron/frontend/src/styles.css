@@ -777,6 +777,32 @@ select {
   margin: 0;
 }
 
+.reskin-kind {
+  display: flex;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.changes-note {
+  margin: 0 0 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--accent);
+  background: #f3e8cf;
+  font-size: 0.85rem;
+}
+
+.changes-note h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.9rem;
+}
+
+.changes-note ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
 .source-note {
   margin: 0 0 0.5rem;
   padding: 0.3rem 0.5rem;

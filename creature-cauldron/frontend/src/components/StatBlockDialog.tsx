@@ -112,6 +112,16 @@ export default function StatBlockDialog({
               {sourceLabel(monster)}. Its numbers have not been checked against the rules, so look it over before using it.
             </p>
           )}
+          {monster.changes && monster.changes.length > 0 && (
+            <section className="changes-note no-print" aria-label="What changed">
+              <h3>What changed</h3>
+              <ul>
+                {monster.changes.map((change) => (
+                  <li key={change}>{change}</li>
+                ))}
+              </ul>
+            </section>
+          )}
           <StatBlock monster={monster} />
         </div>
       )}
