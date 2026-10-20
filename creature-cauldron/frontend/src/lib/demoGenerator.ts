@@ -3,7 +3,7 @@ import { matchesFilters, EMPTY_FILTERS } from "./filters";
 import { createLiveGenerator } from "./liveGenerator";
 import { offlineGenerator, type GenerateRequest, type Generator, type GeneratorResult, type ReskinRequest } from "./generatorApi";
 import { slugify } from "./exportCommon";
-import { DAMAGE_THEMES } from "./options";
+import { DAMAGE_THEMES, DAMAGE_TYPES } from "./options";
 
 // A stand-in generator for trying the Generate and Reskin buttons before the real server exists. It makes
 // no network calls and no AI calls: it copies and lightly renames monsters from the library. Its numbers are
@@ -34,15 +34,38 @@ export function swapDamageType(monster: Monster, from: DamageType, to: DamageTyp
   };
 }
 
-/** The damage types a monster uses or resists, which are the ones a reskin can swap. */
-export function damageTypesIn(monster: Monster): DamageType[] {
-  const found = new Set<DamageType>();
-  const fromRolls = (rolls: DamageRoll[]) => rolls.forEach((r) => found.add(r.type));
-  for (const action of [...monster.actions, ...monster.bonus_actions, ...monster.reactions]) {
-    if (action.kind === "attack") fromRolls(action.damage);
-    if (action.kind === "save") fromRolls(action.on_fail);
+const DAMAGE_WORD = /([a-z]+) damage/g;
+
+/** The damage types written as "<type> damage" in some text. */
+function typesNamedIn(text: string | null | undefined): DamageType[] {
+  const found: DamageType[] = [];
+  for (const match of (text ?? "").toLowerCase().matchAll(DAMAGE_WORD)) {
+    if ((DAMAGE_TYPES as readonly string[]).includes(match[1])) found.push(match[1] as DamageType);
   }
-  [...monster.resistances, ...monster.immunities, ...monster.vulnerabilities].forEach((t) => found.add(t));
+  return found;
+}
+
+/**
+ * The damage types a monster DEALS, sorted: those are the ones a reskin can swap. It counts attack and save damage and the
+ * damage named in the text of actions, bonus actions, reactions and legendary options (most SRD breath weapons are text).
+ * It does not count what the monster resists, is immune to or is vulnerable to, nor damage mentioned in a trait (usually
+ * damage the monster takes). A zombie is immune to poison but deals only bludgeoning, so only bludgeoning is offered.
+ */
+export function damageDealtBy(monster: Monster): DamageType[] {
+  const found = new Set<DamageType>();
+  const add = (types: DamageType[]) => types.forEach((t) => found.add(t));
+  for (const action of [...monster.actions, ...monster.bonus_actions, ...monster.reactions]) {
+    if (action.kind === "attack") {
+      add(action.damage.map((r) => r.type));
+      add(typesNamedIn(action.effects_text));
+    } else if (action.kind === "save") {
+      add(action.on_fail.map((r) => r.type));
+      add(typesNamedIn(action.effects_text));
+    } else {
+      add(typesNamedIn(action.text)); // a multiattack or a text action
+    }
+  }
+  for (const option of monster.legendary_actions?.options ?? []) add(typesNamedIn(option.text));
   return [...found].sort();
 }
 

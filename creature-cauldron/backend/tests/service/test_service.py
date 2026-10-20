@@ -314,6 +314,20 @@ def test_an_unknown_base_is_refused_without_calling_the_ai(make) -> None:
     assert rig.generator.rename_calls == [] and rig.cap.remaining() == 100
 
 
+def test_a_reskin_speaks_of_itself_by_its_new_name(make, sample) -> None:
+    from cauldron.actions import TextAction
+
+    base = sample("Stormhide Drake")
+    fortitude = TextAction(name="Fortitude", text="If damage reduces the stormhide drake to 0 hit points, the stormhide drake drops to 1 hit point instead.")
+    library_monster = base.model_copy(update={"traits": [fortitude]})
+    rig = make(names=[named("Ironbound Revenant")], library=[library_monster])
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": base.id, "template": "elite"}))
+    assert isinstance(result, GenerateSuccess)
+    text = result.monster.traits[0].text
+    assert "stormhide drake" not in text and text.count("ironbound revenant") == 2
+    assert result.monster.name == "Ironbound Revenant"
+
+
 def test_a_generated_monster_can_be_reskinned_too(make, sample) -> None:
     drake = sample("Stormhide Drake")
     rig = make(monsters=[made(drake, "Gale Drake")], names=[named("Rimestorm Drake")])

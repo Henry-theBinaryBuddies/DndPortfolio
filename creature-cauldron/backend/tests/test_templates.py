@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from cauldron.actions import AttackAction, SaveAction
+from cauldron.actions import AttackAction, SaveAction, TextAction
 from cauldron.dice import ability_modifier
 from cauldron.monster import Monster
 from cauldron.options import DamageTheme, DamageType, Source
 from cauldron.rules import SRD_ATTRIBUTION, proficiency_bonus, step_cr, xp_for_cr
-from cauldron.templates import EliteTemplate, Template, damage_types_in, get_template, swap_damage_type
+from cauldron.templates import EliteTemplate, Template, damage_dealt_by, get_template, retarget_name, swap_damage_type
 from cauldron.validator import Status, Validator
 
 SAMPLES_PATH = Path(__file__).parents[2] / "frontend" / "public" / "data" / "sample-monsters.json"
@@ -37,17 +37,51 @@ def rolls(monster: Monster) -> list:
 # --- the damage-type swap -------------------------------------------------------------------------------
 
 
-def test_damage_types_in_lists_what_a_monster_deals_and_resists_sorted() -> None:
-    types = damage_types_in(sample("Stormhide Drake"))
+def test_damage_dealt_by_lists_what_a_monster_deals_sorted() -> None:
+    types = damage_dealt_by(sample("Stormhide Drake"))
     assert types == sorted(types)
     assert DamageType.LIGHTNING in types
+
+
+def test_what_a_monster_resists_or_is_immune_to_is_not_damage_it_deals() -> None:
+    # The SRD zombie deals only bludgeoning but is immune to poison. Swapping "its damage" must not offer poison.
+    zombie = sample("Cinderkite").model_copy(
+        update={"immunities": [DamageType.POISON], "resistances": [DamageType.COLD], "vulnerabilities": [DamageType.RADIANT]}
+    )
+    dealt = damage_dealt_by(zombie)
+    assert DamageType.POISON not in dealt and DamageType.COLD not in dealt and DamageType.RADIANT not in dealt
+    assert dealt  # it still lists the damage its attacks do
+
+
+def test_damage_named_in_text_actions_counts_as_dealt() -> None:
+    from cauldron.actions import MultiattackAction
+
+    breath = TextAction(name="Fire Breath", text="Each creature takes 63 (18d6) fire damage. It then takes 5 (1d10) cold damage from the frost.")
+    multi = MultiattackAction(name="Multiattack", sequence=[{"action": "Bite", "count": 1}], text="It makes one bite attack dealing extra necrotic damage.")
+    base = sample("Cinderkite").model_copy(update={"actions": [breath, multi], "bonus_actions": [], "reactions": []})
+    assert damage_dealt_by(base) == [DamageType.COLD, DamageType.FIRE, DamageType.NECROTIC]
+
+
+def test_damage_in_a_trait_is_damage_the_monster_takes_not_deals() -> None:
+    trait = TextAction(name="Sunlight Sensitivity", text="While in sunlight, the creature takes 5 (1d10) radiant damage at the start of its turn.")
+    base = sample("Cinderkite").model_copy(update={"traits": [trait], "actions": [], "bonus_actions": [], "reactions": []})
+    assert damage_dealt_by(base) == []
+
+
+def test_legendary_options_and_reactions_count_as_dealt() -> None:
+    from cauldron.monster import LegendaryActions
+
+    legendary = LegendaryActions.model_validate({"per_round": 3, "options": [{"name": "Gaze", "cost": 1, "text": "A creature takes 9 (2d8) psychic damage."}]})
+    reaction = TextAction(name="Backlash", text="The attacker takes 4 (1d8) thunder damage.")
+    base = sample("Cinderkite").model_copy(update={"actions": [], "bonus_actions": [], "reactions": [reaction], "legendary_actions": legendary})
+    assert damage_dealt_by(base) == [DamageType.PSYCHIC, DamageType.THUNDER]
 
 
 def test_swap_replaces_every_use_of_the_type() -> None:
     base = sample("Stormhide Drake")
     swapped = swap_damage_type(base, DamageType.LIGHTNING, DamageType.COLD)
-    assert DamageType.LIGHTNING not in damage_types_in(swapped)
-    assert DamageType.COLD in damage_types_in(swapped)
+    assert DamageType.LIGHTNING not in damage_dealt_by(swapped)
+    assert DamageType.COLD in damage_dealt_by(swapped)
     assert {r.type for r in rolls(swapped)} <= {r.type for r in rolls(base)} - {DamageType.LIGHTNING} | {DamageType.COLD}
 
 
@@ -205,3 +239,88 @@ def test_two_elites_of_different_monsters_get_different_ids() -> None:
 def test_the_cr_after_elite_is_one_step_up_for_every_sample() -> None:
     for monster in SAMPLES:
         assert elite(monster).challenge.cr == step_cr(monster.challenge.cr, 1)
+
+
+# --- naming the monster in its own text -----------------------------------------------------------------
+
+
+def with_text(monster: Monster, name: str, trait: str, action: str) -> Monster:
+    return monster.model_copy(
+        update={
+            "name": name,
+            "traits": [TextAction(name="Fortitude", text=trait)],
+            "actions": [TextAction(name="Slam", text=action)],
+            "bonus_actions": [],
+            "reactions": [],
+            "legendary_actions": None,
+            "spellcasting": None,
+        }
+    )
+
+
+def test_text_that_names_the_old_creature_names_the_new_one() -> None:
+    zombie = with_text(
+        sample("Cinderkite"),
+        "Zombie",
+        "If damage reduces the zombie to 0 hit points, it makes a save. On a success, the zombie drops to 1 hit point instead.",
+        "The zombie hits hard.",
+    )
+    result = retarget_name(zombie, "Zombie", "Ironbound Revenant")
+    assert result.traits[0].text == (
+        "If damage reduces the ironbound revenant to 0 hit points, it makes a save. On a success, the ironbound revenant drops to 1 hit point instead."
+    )
+    assert result.actions[0].text == "The ironbound revenant hits hard."  # type: ignore[union-attr]
+
+
+def test_a_capitalised_mention_keeps_the_new_names_own_capitals() -> None:
+    base = with_text(sample("Cinderkite"), "Zombie", "Zombie tricks.", "x")
+    assert retarget_name(base, "Zombie", "Ironbound Revenant").traits[0].text == "Ironbound Revenant tricks."
+
+
+def test_only_whole_words_are_replaced() -> None:
+    base = with_text(sample("Cinderkite"), "Zombie", "Zombies and zombified things stay as they are, but the zombie changes.", "x")
+    assert retarget_name(base, "Zombie", "Husk").traits[0].text == "Zombies and zombified things stay as they are, but the husk changes."
+
+
+def test_a_possessive_is_handled() -> None:
+    base = with_text(sample("Cinderkite"), "Zombie", "The zombie's slam.", "x")
+    assert retarget_name(base, "Zombie", "Husk").traits[0].text == "The husk's slam."
+
+
+def test_a_name_with_a_bracket_is_found_by_its_plain_part() -> None:
+    base = with_text(sample("Cinderkite"), "Giant Rat (Diseased)", "The giant rat bites.", "x")
+    assert retarget_name(base, "Giant Rat (Diseased)", "Plague Gnawer").traits[0].text == "The plague gnawer bites."
+
+
+def test_every_kind_of_text_is_covered() -> None:
+    from cauldron.actions import AttackAction, MultiattackAction, SaveAction
+    from cauldron.monster import LegendaryActions
+
+    base = sample("Stormhide Drake")
+    old = base.name
+    attack = next(a for a in base.actions if isinstance(a, AttackAction)).model_copy(update={"effects_text": f"The {old.lower()} grapples."})
+    save = next(a for a in base.actions if isinstance(a, SaveAction)).model_copy(update={"effects_text": f"The {old.lower()} roars."})
+    multi = MultiattackAction(name="Multiattack", sequence=[{"action": "Bite", "count": 1}], text=f"The {old.lower()} attacks twice.")
+    legendary = LegendaryActions.model_validate({"per_round": 3, "options": [{"name": "Detect", "cost": 1, "text": f"The {old.lower()} looks around."}]})
+    prepared = base.model_copy(update={"actions": [attack, save, multi], "legendary_actions": legendary, "traits": [TextAction(name="T", text=f"The {old.lower()} is calm.")]})
+    result = retarget_name(prepared, old, "Wavebreaker")
+    text = " ".join(
+        [t.text for t in result.traits]
+        + [a.effects_text or "" for a in result.actions if isinstance(a, (AttackAction, SaveAction))]
+        + [a.text or "" for a in result.actions if isinstance(a, MultiattackAction)]
+        + [o.text for o in result.legendary_actions.options]  # type: ignore[union-attr]
+    )
+    assert old.lower() not in text and text.count("wavebreaker") == 5
+
+
+def test_nothing_changes_when_the_name_is_the_same_or_missing() -> None:
+    base = with_text(sample("Cinderkite"), "Zombie", "The zombie waits.", "x")
+    assert retarget_name(base, "Zombie", "Zombie") == base
+    assert retarget_name(base, "", "Husk") == base
+
+
+def test_the_original_monster_is_not_changed_by_renaming_its_text() -> None:
+    base = with_text(sample("Cinderkite"), "Zombie", "The zombie waits.", "x")
+    before = base.model_dump()
+    retarget_name(base, "Zombie", "Husk")
+    assert base.model_dump() == before

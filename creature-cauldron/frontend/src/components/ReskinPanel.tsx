@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { damageTypesIn } from "../lib/demoGenerator";
+import { damageDealtBy } from "../lib/demoGenerator";
 import { OFFLINE_MESSAGE, RESTING_MESSAGE, type Generator, type ReskinRequest } from "../lib/generatorApi";
 import { DAMAGE_TYPES, label, type DamageType } from "../lib/options";
 import type { Monster } from "../types/monster";
@@ -57,7 +57,7 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
               }}
             >
               <option value="">Leave as is</option>
-              {damageTypesIn(monster).map((t) => (
+              {damageDealtBy(monster).map((t) => (
                 <option key={t} value={t}>
                   {label(t)}
                 </option>

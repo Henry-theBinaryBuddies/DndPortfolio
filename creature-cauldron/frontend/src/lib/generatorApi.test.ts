@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import sample from "../../public/data/sample-monsters.json";
 import type { Monster } from "../types/monster";
-import { createDemoGenerator, createGenerator, damageTypesIn, swapDamageType } from "./demoGenerator";
+import { createDemoGenerator, createGenerator, damageDealtBy, swapDamageType } from "./demoGenerator";
 import { EMPTY_FILTERS } from "./filters";
 import { buildGenerateRequest } from "./generateRequest";
 import { OFFLINE_MESSAGE, failureMessage, offlineGenerator } from "./generatorApi";
@@ -99,18 +99,18 @@ describe("demo generate", () => {
 });
 
 describe("damage swaps", () => {
-  const withFire = library.find((m) => damageTypesIn(m).includes("fire"))!;
+  const withFire = library.find((m) => damageDealtBy(m).includes("fire"))!;
 
-  it("lists the damage types a monster uses", () => {
-    expect(damageTypesIn(withFire)).toContain("fire");
-    expect(damageTypesIn(withFire)).toEqual([...damageTypesIn(withFire)].sort());
+  it("lists the damage types a monster deals", () => {
+    expect(damageDealtBy(withFire)).toContain("fire");
+    expect(damageDealtBy(withFire)).toEqual([...damageDealtBy(withFire)].sort());
   });
 
   it("replaces every use of a type and leaves the original alone", () => {
     const before = JSON.stringify(withFire);
     const swapped = swapDamageType(withFire, "fire", "cold");
-    expect(damageTypesIn(swapped)).not.toContain("fire");
-    expect(damageTypesIn(swapped)).toContain("cold");
+    expect(damageDealtBy(swapped)).not.toContain("fire");
+    expect(damageDealtBy(swapped)).toContain("cold");
     expect(JSON.stringify(withFire)).toBe(before);
   });
 
@@ -127,12 +127,12 @@ describe("damage swaps", () => {
 
 describe("demo reskin", () => {
   it("makes a new unvalidated reskin that names its parent", async () => {
-    const base = library.find((m) => damageTypesIn(m).includes("fire"))!;
+    const base = library.find((m) => damageDealtBy(m).includes("fire"))!;
     const result = await createDemoGenerator(library).reskin({ base, damageSwap: { from: "fire", to: "cold" }, template: "elite" });
     if (!result.ok) throw new Error("expected success");
     expect(result.monster).toMatchObject({ source: "reskin", validated: false, parent_id: base.id });
     expect(result.monster.name).toBe(`${base.name} (cold elite)`);
-    expect(damageTypesIn(result.monster)).not.toContain("fire");
+    expect(damageDealtBy(result.monster)).not.toContain("fire");
     expect(result.notes.join(" ")).toMatch(/not applied/);
   });
 });

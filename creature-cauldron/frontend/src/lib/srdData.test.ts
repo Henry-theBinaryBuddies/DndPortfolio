@@ -3,6 +3,7 @@ import srd from "../../public/data/srd-monsters.json";
 import type { Monster } from "../types/monster";
 import { SRD_ATTRIBUTION } from "./attribution";
 import { foundryDamageTrait, fiveToolsDamageEntries, splitQualified, typesIn } from "./damageLines";
+import { damageDealtBy } from "./demoGenerator";
 import { buildFiveToolsFile } from "./fiveTools";
 import { exportFoundryActor } from "./foundry";
 import type { JsonObject } from "./foundryJson";
@@ -45,6 +46,28 @@ describe("the SRD data file", () => {
   it("every monster can be exported to both formats without throwing", () => {
     expect(() => buildFiveToolsFile(monsters, NOW)).not.toThrow();
     for (const m of monsters) expect(() => exportFoundryActor(m), m.name).not.toThrow();
+  });
+});
+
+describe("the damage a reskin can swap", () => {
+  it("is only damage the monster deals: the zombie is immune to poison but deals only bludgeoning", () => {
+    const zombie = byId("srd-zombie");
+    expect(zombie.immunities).toContain("poison");
+    expect(damageDealtBy(zombie)).toEqual(["bludgeoning"]);
+  });
+
+  it("includes damage written in the text of an action, such as a breath weapon", () => {
+    expect(damageDealtBy(byId("srd-adult-red-dragon"))).toEqual(expect.arrayContaining(["fire", "piercing", "slashing", "bludgeoning"]));
+  });
+
+  it("does not count what a monster resists or is vulnerable to", () => {
+    const dealt = damageDealtBy(byId("srd-werewolf-hybrid"));
+    expect(dealt).not.toContain("poison");
+  });
+
+  it("does not count damage mentioned only in a trait, which is usually damage the monster takes", () => {
+    const vampire = byId("srd-vampire-vampire");
+    expect(damageDealtBy(vampire)).not.toContain("radiant"); // Sunlight Hypersensitivity: the vampire takes radiant damage
   });
 });
 

@@ -30,7 +30,7 @@ from cauldron.service.models import FailureReason, GenerateFailure, GenerateRequ
 from cauldron.service.prompts import RenameContext
 from cauldron.service.settings import Settings
 from cauldron.service.store import DuplicateMonster, MonsterStore
-from cauldron.templates import get_template, swap_damage_type
+from cauldron.templates import get_template, retarget_name, swap_damage_type
 from cauldron.validator import CrConsistencyCheck, Outcome, Status, ValidationContext, Validator, default_checks
 
 Result = GenerateSuccess | GenerateFailure
@@ -196,6 +196,8 @@ class GenerationService:
     def _accept_reskin(
         self, shaped: Monster, base: Monster, name: str, description: str, generator: str, changes: list[str]
     ) -> GenerateSuccess | list[str]:
+        # The text of the base monster speaks of it by name ("the zombie"); the reskin must speak of itself.
+        shaped = retarget_name(shaped, base.name, name)
         try:
             candidate = self._rebuild(
                 shaped, id=_new_id(name), name=name, description=description, source=Source.RESKIN, validated=False, parent_id=base.id, generator=generator

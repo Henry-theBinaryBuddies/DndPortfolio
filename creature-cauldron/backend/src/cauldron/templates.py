@@ -74,16 +74,84 @@ def swap_damage_type(monster: Monster, old: DamageType, new: DamageType) -> Mons
     )
 
 
-def damage_types_in(monster: Monster) -> list[DamageType]:
-    """The damage types a monster deals or resists, sorted. These are the ones a reskin can swap."""
+_DAMAGE_WORD = re.compile(r"\b([a-z]+) damage\b")
+_DAMAGE_NAMES = {t.value: t for t in DamageType}
+
+
+def _types_named_in(text: str | None) -> set[DamageType]:
+    """The damage types written as "<type> damage" in some text."""
+    return {_DAMAGE_NAMES[w] for w in _DAMAGE_WORD.findall((text or "").lower()) if w in _DAMAGE_NAMES}
+
+
+def damage_dealt_by(monster: Monster) -> list[DamageType]:
+    """The damage types a monster DEALS, sorted: those are the ones a reskin can swap.
+
+    It counts attack and save damage, and the damage named in the text of actions, bonus actions, reactions and legendary
+    options (most SRD breath weapons are text). It deliberately does not count what the monster resists, is immune to or
+    is vulnerable to, nor damage mentioned in a trait (that is usually damage the monster takes). A zombie is immune to
+    poison but deals only bludgeoning, so only bludgeoning is offered."""
     found: set[DamageType] = set()
     for a in monster.all_actions():
         if isinstance(a, AttackAction):
             found.update(r.type for r in a.damage)
-        if isinstance(a, SaveAction):
+            found |= _types_named_in(a.effects_text)
+        elif isinstance(a, SaveAction):
             found.update(r.type for r in a.on_fail)
-    found.update(monster.resistances, monster.immunities, monster.vulnerabilities)
+            found |= _types_named_in(a.effects_text)
+        else:  # a multiattack or a text action
+            found |= _types_named_in(a.text)
+    if monster.legendary_actions is not None:
+        for option in monster.legendary_actions.options:
+            found |= _types_named_in(option.text)
     return sorted(found)
+
+
+# --- the monster's own name in its text -----------------------------------------------------------------
+
+
+def retarget_name(monster: Monster, old_name: str, new_name: str) -> Monster:
+    """A copy whose text calls the monster by its new name wherever the text used the old one.
+
+    SRD text speaks of the monster by name ("If damage reduces the zombie to 0 hit points..."), so a reskin called
+    "Ironbound Revenant" would still say "the zombie". Whole words only, case-insensitive. A mention written in lower
+    case (the SRD convention) becomes the new name in lower case; a capitalised one keeps the new name's capitals. A
+    name in brackets or after a comma ("Giant Rat (Diseased)") is also matched by its plain part ("giant rat").
+    """
+    old_name, new_name = old_name.strip(), new_name.strip()
+    if not old_name or old_name.lower() == new_name.lower():
+        return monster
+    plain = re.sub(r"\s*\(.*?\)", "", old_name).split(",")[0].strip()
+    # One pass with both spellings, longest first, so replaced text is never searched again.
+    alternatives = sorted({old_name, plain} - {""}, key=len, reverse=True)
+    pattern = re.compile(r"(?<![A-Za-z])(?:" + "|".join(re.escape(a) for a in alternatives) + r")(?![A-Za-z])", re.IGNORECASE)
+
+    def said(text: str | None) -> str | None:
+        if text is None:
+            return None
+        return pattern.sub(lambda m: new_name.lower() if m.group(0) == m.group(0).lower() else new_name, text)
+
+    def action(a: Action) -> Action:
+        if isinstance(a, (AttackAction, SaveAction)):
+            return a.model_copy(update={"effects_text": said(a.effects_text)})
+        return a.model_copy(update={"text": said(a.text)})  # a multiattack or a text action
+
+    legendary = monster.legendary_actions
+    if legendary is not None:
+        legendary = legendary.model_copy(update={"options": [o.model_copy(update={"text": said(o.text)}) for o in legendary.options]})
+    spellcasting = monster.spellcasting
+    if spellcasting is not None:
+        spellcasting = spellcasting.model_copy(update={"intro": said(spellcasting.intro), "footer": said(spellcasting.footer)})
+
+    return monster.model_copy(
+        update={
+            "traits": [t.model_copy(update={"text": said(t.text)}) for t in monster.traits],
+            "actions": [action(a) for a in monster.actions],
+            "bonus_actions": [action(a) for a in monster.bonus_actions],
+            "reactions": [action(a) for a in monster.reactions],
+            "legendary_actions": legendary,
+            "spellcasting": spellcasting,
+        }
+    )
 
 
 # --- templates ------------------------------------------------------------------------------------------
