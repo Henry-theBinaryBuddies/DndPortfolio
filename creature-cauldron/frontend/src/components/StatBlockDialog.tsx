@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Monster } from "../types/monster";
+import ExportButtons from "./ExportButtons";
 import StatBlock from "./StatBlock";
 
 interface StatBlockDialogProps {
@@ -89,6 +90,7 @@ export default function StatBlockDialog({
             <span id="add-note" role="status" className="detail-note">
               {addNote}
             </span>
+            <ExportButtons key={monster.id} monster={monster} />
             <button type="button" className="close-button" aria-label="Close stat block" onClick={onClose}>
               <span aria-hidden="true">×</span>
             </button>

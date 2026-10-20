@@ -1,10 +1,11 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MAX_COUNT,
   MAX_NAME_LENGTH,
   MAX_SAVED,
   MIN_COUNT,
   canSave,
+  cleanName,
   defaultEncounterName,
   describeRating,
   isDirty,
@@ -15,6 +16,9 @@ import {
   type SavedEncounter,
   type WorkingEncounter,
 } from "../lib/encounter";
+import { downloadTextFile } from "../lib/download";
+import { exportFileName, toJsonText } from "../lib/exportCommon";
+import { buildEncounterFile } from "../lib/exportJson";
 import { describeParty, type Party } from "../lib/party";
 
 interface EncounterPanelProps {
@@ -72,6 +76,31 @@ export default function EncounterPanel({
   const savable = canSave(saved, working);
   const dirty = isDirty(saved, working);
   const hasAnything = working.id !== null || entries.length > 0 || working.name !== "";
+  // Export needs the library, or every row would be listed as unavailable with no stat blocks.
+  const canExport = libraryReady && entries.length > 0;
+
+  // What the last Export said. It describes a file that no longer matches once the encounter changes,
+  // so it is cleared then.
+  const [exportStatus, setExportStatus] = useState("");
+  useEffect(() => {
+    setExportStatus("");
+  }, [working.entries, working.name]);
+
+  const handleExport = () => {
+    // The typed name, or the plain word "Encounter". The "Encounter N" default depends on how many are
+    // saved, so it does not belong in a file.
+    const typed = cleanName(working.name);
+    const file = buildEncounterFile(typed || "Encounter", summary, party, new Date().toISOString());
+    const filename = exportFileName("encounter", typed);
+    downloadTextFile(filename, toJsonText(file));
+    const unavailable = summary.missingCount;
+    // "started", not "done": a blocked download, or a phone showing a preview first, cannot be detected.
+    setExportStatus(
+      `Download started: ${filename} (${summary.monsterCount} ${summary.monsterCount === 1 ? "monster" : "monsters"}${
+        unavailable > 0 ? `; ${unavailable} unavailable listed but not counted` : ""
+      })`,
+    );
+  };
 
   // The count is part of the text so that every Add, + and - changes it, and a screen reader announces each change.
   const ratingText =
@@ -231,11 +260,22 @@ export default function EncounterPanel({
         </dl>
       )}
 
-      {hasAnything && (
-        <button type="button" className="link-button" onClick={handleNew}>
-          New encounter
-        </button>
-      )}
+      <div className="encounter-actions">
+        {hasAnything && (
+          <button type="button" className="link-button" onClick={handleNew}>
+            New encounter
+          </button>
+        )}
+        {canExport && (
+          <button type="button" className="link-button" onClick={handleExport}>
+            Export JSON
+          </button>
+        )}
+      </div>
+      {/* Always on the page (empty when idle), so a screen reader announces the text when it changes. */}
+      <p role="status" className="detail-note">
+        {exportStatus}
+      </p>
     </section>
   );
 }
