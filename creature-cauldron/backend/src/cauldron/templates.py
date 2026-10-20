@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 
 from cauldron.actions import Action, AttackAction, DamageRoll, MultiattackAction, SaveAction, TextAction
 from cauldron.dice import ability_modifier, format_dice, parse_dice
-from cauldron.monster import Monster
+from cauldron.monster import DamageText, Monster
 from cauldron.options import Ability, DamageTheme, DamageType, Source
 from cauldron.rules import cr_value, hit_die, proficiency_bonus, step_cr, xp_for_cr
 
@@ -22,9 +22,10 @@ _THEMES = {theme.value for theme in DamageTheme}
 # --- the damage-type swap -------------------------------------------------------------------------------
 
 
-def swap_damage_type(monster: Monster, old: DamageType, new: DamageType) -> Monster:
+def swap_damage_type(monster: Monster, old: DamageType, new: DamageType, defences: bool = True) -> Monster:
     """A copy with every use of `old` replaced by `new` in attacks, saves, resistances, immunities,
-    vulnerabilities and damage themes. The words "<type> damage" are also replaced inside action and trait text,
+    vulnerabilities and damage themes (with `defences=False`, only the damage the monster deals changes and its defences are
+    left exactly as they were). The words "<type> damage" are also replaced inside action and trait text,
     so text-only actions (most SRD breath weapons) stay consistent; other wording is left for the renamer."""
 
     phrase = re.compile(r"\b" + re.escape(old.value) + r" damage\b")
@@ -57,18 +58,29 @@ def swap_damage_type(monster: Monster, old: DamageType, new: DamageType) -> Mons
         # dict.fromkeys drops repeats but keeps the order.
         return list(dict.fromkeys(new if t == old else t for t in items))
 
+    dealt = {
+        "actions": [action(a) for a in monster.actions],
+        "bonus_actions": [action(a) for a in monster.bonus_actions],
+        "reactions": [action(a) for a in monster.reactions],
+        "traits": [trait(t) for t in monster.traits],
+        "legendary_actions": legendary,
+    }
+    if not defences:
+        return monster.model_copy(update=dealt)
+
     # Themes are only the elemental types, so a swap to a weapon type just drops the theme.
     theme_names = dict.fromkeys(new.value if t.value == old.value else t.value for t in monster.damage_themes)
+    line = re.compile(r"\b" + re.escape(old.value) + r"\b")
+    text = monster.damage_text
+    if text is not None:
+        text = DamageText(**{field: None if value is None else line.sub(new.value, value) for field, value in text.model_dump().items()})
     return monster.model_copy(
         update={
-            "actions": [action(a) for a in monster.actions],
-            "bonus_actions": [action(a) for a in monster.bonus_actions],
-            "reactions": [action(a) for a in monster.reactions],
-            "traits": [trait(t) for t in monster.traits],
-            "legendary_actions": legendary,
+            **dealt,
             "resistances": types(monster.resistances),
             "immunities": types(monster.immunities),
             "vulnerabilities": types(monster.vulnerabilities),
+            "damage_text": text,
             "damage_themes": [DamageTheme(name) for name in theme_names if name in _THEMES],
         }
     )

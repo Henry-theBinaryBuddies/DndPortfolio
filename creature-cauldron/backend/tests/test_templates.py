@@ -324,3 +324,22 @@ def test_the_original_monster_is_not_changed_by_renaming_its_text() -> None:
     before = base.model_dump()
     retarget_name(base, "Zombie", "Husk")
     assert base.model_dump() == before
+
+
+# --- the swap's switch for leaving defences alone --------------------------------------------------------
+
+
+def test_a_swap_can_leave_the_defences_exactly_as_they_were() -> None:
+    base = sample("Cinderkite").model_copy(update={"resistances": [DamageType.FIRE], "immunities": [DamageType.POISON], "vulnerabilities": [DamageType.COLD]})
+    swapped = swap_damage_type(base, DamageType.FIRE, DamageType.RADIANT, defences=False)
+    assert swapped.resistances == [DamageType.FIRE]  # not rewritten
+    assert swapped.immunities == [DamageType.POISON] and swapped.vulnerabilities == [DamageType.COLD]
+    assert swap_damage_type(base, DamageType.FIRE, DamageType.RADIANT).resistances == [DamageType.RADIANT]  # the default still follows
+
+
+def test_the_printed_defence_wording_follows_a_swap_by_default() -> None:
+    from cauldron.monster import DamageText
+
+    base = sample("Cinderkite").model_copy(update={"immunities": [DamageType.FIRE], "damage_text": DamageText(immunities="fire; bludgeoning from nonmagical weapons")})
+    swapped = swap_damage_type(base, DamageType.FIRE, DamageType.COLD)
+    assert swapped.damage_text is not None and swapped.damage_text.immunities == "cold; bludgeoning from nonmagical weapons"
