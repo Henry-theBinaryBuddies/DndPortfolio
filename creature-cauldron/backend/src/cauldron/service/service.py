@@ -12,6 +12,7 @@ Order of events, cheapest first:
 The rate limit per visitor is applied by the web layer (it needs the visitor's address); this class owns everything else.
 """
 
+import logging
 import random
 import re
 import uuid
@@ -37,6 +38,14 @@ Result = GenerateSuccess | GenerateFailure
 _RESTING = "The forge is resting, back tomorrow. The library still works."
 _COULD_NOT_REACH = "The forge could not be reached just now. Try again in a little while."
 _GAVE_UP = "The forge could not make a monster that passed its checks. Try again, or try different filters."
+
+
+log = logging.getLogger("cauldron")
+
+
+def _log_failed_attempt(kind: str, attempt: int, attempts: int, problems: list[str]) -> None:
+    """Why an attempt was rejected, for the operator. Visitors never see this; it shows how often and why retries happen."""
+    log.info("%s attempt %d of %d was not accepted: %s", kind, attempt, attempts, " | ".join(problems)[:600])
 
 
 def _failure(reason: FailureReason, message: str) -> GenerateFailure:
@@ -92,7 +101,8 @@ class GenerationService:
         wanted = request.model_copy(update={"cr_min": bounds[0], "cr_max": bounds[1]})
 
         feedback: list[str] = []
-        for _ in range(1 + self._settings.max_retries):
+        attempts = 1 + self._settings.max_retries
+        for attempt in range(1, attempts + 1):
             if not self._cap.reserve():
                 return _failure(FailureReason.RESTING, _RESTING)
             try:
@@ -101,6 +111,7 @@ class GenerationService:
                 return _failure(FailureReason.ERROR, _COULD_NOT_REACH)
             except BadOutput as problem:
                 feedback = [str(problem)]
+                _log_failed_attempt("generate", attempt, attempts, feedback)
                 continue
             self._cap.record_tokens(generated.input_tokens, generated.output_tokens)
 
@@ -108,6 +119,7 @@ class GenerationService:
             if isinstance(outcome, GenerateSuccess):
                 return outcome
             feedback = outcome
+            _log_failed_attempt("generate", attempt, attempts, feedback)
         return _failure(FailureReason.ERROR, _GAVE_UP)
 
     def _accept(self, monster: Monster, generator: str, wanted: GenerateRequest) -> GenerateSuccess | list[str]:
@@ -158,7 +170,8 @@ class GenerationService:
         )
 
         feedback: list[str] = []
-        for _ in range(1 + self._settings.max_retries):
+        attempts = 1 + self._settings.max_retries
+        for attempt in range(1, attempts + 1):
             if not self._cap.reserve():
                 return _failure(FailureReason.RESTING, _RESTING)
             try:
@@ -167,6 +180,7 @@ class GenerationService:
                 return _failure(FailureReason.ERROR, _COULD_NOT_REACH)
             except BadOutput as problem:
                 feedback = [str(problem)]
+                _log_failed_attempt("reskin", attempt, attempts, feedback)
                 continue
             self._cap.record_tokens(named.input_tokens, named.output_tokens)
 
@@ -175,6 +189,7 @@ class GenerationService:
                 self._store.remember_reskin(request.cache_key, outcome.monster.id)
                 return outcome
             feedback = outcome
+            _log_failed_attempt("reskin", attempt, attempts, feedback)
         return _failure(FailureReason.ERROR, _GAVE_UP)
 
     def _accept_reskin(

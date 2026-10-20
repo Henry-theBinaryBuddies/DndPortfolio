@@ -162,6 +162,17 @@ def test_a_cr_that_does_not_fit_is_retried_with_the_problem_as_feedback(make, sa
     assert rig.cap.remaining() == 98  # both attempts counted
 
 
+def test_the_reason_for_each_rejected_attempt_is_logged_for_the_operator(make, sample, caplog) -> None:
+    import logging
+
+    drake = sample("Stormhide Drake")
+    rig = make(monsters=[made(with_cr(drake, "0"), "Bad Drake"), made(drake, "Good Drake")])
+    with caplog.at_level(logging.INFO, logger="cauldron"):
+        rig.service.create(req(**DRAGONS))
+    messages = [r.getMessage() for r in caplog.records if r.name == "cauldron"]
+    assert len(messages) == 1 and "attempt 1 of 3" in messages[0] and "Claimed CR" in messages[0]
+
+
 def test_a_monster_that_does_not_fit_the_request_is_retried(make, sample) -> None:
     rig = make(monsters=[made(sample("Hollowvale Hexer"), "Wrong Kind"), made(sample("Stormhide Drake"), "Right Kind")])
     result = rig.service.create(req(**DRAGONS))

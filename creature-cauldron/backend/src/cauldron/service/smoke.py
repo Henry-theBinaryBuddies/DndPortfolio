@@ -6,6 +6,7 @@ the real library or burn the real daily allowance. Run it yourself, after settin
 """
 
 import argparse
+import logging
 import os
 import sys
 from collections.abc import Mapping, Sequence
@@ -37,6 +38,13 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     if not env.get("ANTHROPIC_API_KEY", "").strip():
         print("ANTHROPIC_API_KEY is not set. Set it in this terminal first (see backend/README.md).")
         return 1
+
+    # Show why any attempt was rejected (only our own messages, so nothing from the SDK or the key can appear).
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("  retry reason: %(message)s"))
+    logger = logging.getLogger("cauldron")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
 
     settings = Settings.from_env({**env, "CAULDRON_DATABASE": ":memory:"})
     store = MonsterStore(":memory:")
