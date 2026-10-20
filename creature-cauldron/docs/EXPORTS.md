@@ -30,7 +30,7 @@ Our own JSON files carry `app`, `kind` and `format_version`, so a future import 
 | Name, size, type, alignment, CR | Same fields on the actor and token | Exact |
 | Ability scores, saving throws, skills | Scores, proficiency flags, and a flat bonus for anything unusual | Exact: the totals add up to the printed numbers (checked for every sample monster) |
 | Hit points and hit dice, armor class, speeds, senses | Same fields | Exact. The armor note goes in the biography |
-| Resistances, immunities, vulnerabilities, condition immunities, languages | Same fields. Text Foundry has no key for goes in a free-text field | Exact, or kept as text |
+| Resistances, immunities, vulnerabilities, condition immunities, languages | Same fields. Text Foundry has no key for goes in a free-text field. "From nonmagical weapons" (with silvered or adamantine) sets Foundry's weapon bypass flags; other qualifiers go in the custom text | Exact, or kept as text |
 | Weapon attacks (melee and ranged) | A weapon with an attack that derives its to-hit from the ability, plus damage | Exact |
 | Spell attacks (for example Mind Lash) | A feature with a flat to-hit attack | Numbers exact |
 | Saving-throw abilities (breath weapons, auras) | A feature with a save: DC, damage on a failed save, half or none on a success, area, recharge | Exact |
@@ -77,7 +77,7 @@ Attacks, saves, recharge and legendary costs are written with 5etools' inline ta
 | Size, type and subtypes, alignment | Size letter, type with tags, alignment letters (text that does not fit is kept as written) |
 | Armor class and its note, hit points and dice, speeds, abilities | `ac` with `from`, `hp` with formula, `speed`, the six scores |
 | Saves and skills | Signed text (`"+6"`), skills in lower case |
-| Resistances, immunities, vulnerabilities, condition immunities, senses, languages | Lists, left out when empty (the schema forbids empty lists) |
+| Resistances, immunities, vulnerabilities, condition immunities, senses, languages | Lists, left out when empty (the schema forbids empty lists). A qualified line such as "slashing from nonmagical weapons" becomes a conditional entry with a note, so it is not exported as a blanket immunity |
 | Traits, actions, bonus actions, reactions | `trait`, `action`, `bonus`, `reaction` with tagged text |
 | Legendary actions | `legendary` with the cost in the name ("(Costs 2 Actions)"), and the per-round count |
 | Environments | `environment` (coast becomes coastal; dungeon has no 5etools name and is dropped with a note) |

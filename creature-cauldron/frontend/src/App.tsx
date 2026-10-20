@@ -51,6 +51,7 @@ import {
   parseSavedEncounters,
   parseWorkingEncounter,
 } from "./lib/storage";
+import { SRD_ATTRIBUTION } from "./lib/attribution";
 import { usePersistentState } from "./lib/usePersistentState";
 import type { Monster } from "./types/monster";
 
@@ -240,6 +241,9 @@ export default function App() {
             onToggleFavorite={(id) => apply(toggleSavedFavorite(encounterState, id))}
           />
         </div>
+
+        {/* The SRD's required credit. It must be quoted exactly as Wizards of the Coast gives it. */}
+        <footer className="attribution">{SRD_ATTRIBUTION}</footer>
       </main>
 
       <StatBlockDialog

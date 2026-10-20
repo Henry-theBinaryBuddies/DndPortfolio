@@ -107,6 +107,16 @@ export interface Spellcasting {
   footer: string;
 }
 
+/**
+ * The exact printed wording of a damage line, when a plain list of types cannot express it, for example
+ * "bludgeoning, piercing, and slashing from nonmagical weapons". The type lists still hold the types.
+ */
+export interface DamageText {
+  vulnerabilities?: string;
+  resistances?: string;
+  immunities?: string;
+}
+
 export interface LegendaryActions {
   per_round: number;
   options: { name: string; cost: number; text: string }[];
@@ -137,6 +147,7 @@ export interface Monster {
   vulnerabilities: DamageType[];
   resistances: DamageType[];
   immunities: DamageType[];
+  damage_text?: DamageText | null;
   condition_immunities: string[];
   senses: {
     darkvision?: number;

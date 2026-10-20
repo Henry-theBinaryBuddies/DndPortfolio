@@ -101,6 +101,14 @@ export function looksLikeMonster(value: unknown): value is Monster {
     if (!Array.isArray(list) || !list.every(looksLikeAction)) return false;
   }
 
+  const damageText = value.damage_text;
+  if (damageText !== null && damageText !== undefined) {
+    if (!isObj(damageText)) return false;
+    for (const key of ["vulnerabilities", "resistances", "immunities"]) {
+      if (damageText[key] !== undefined && !isStr(damageText[key])) return false;
+    }
+  }
+
   const legendary = value.legendary_actions;
   if (legendary !== null && legendary !== undefined) {
     if (!isObj(legendary) || !isNum(legendary.per_round) || !Array.isArray(legendary.options)) return false;

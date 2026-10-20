@@ -7,7 +7,7 @@ A 2014-rules D&D monster library and generator. See [docs/REQUIREMENTS.md](docs/
 Phase 1 (front end, no back end) is in progress. Steps 1 to 7 are done:
 
 - The Vite + React + TypeScript app runs, and the monster schema exists as TypeScript types.
-- 20 hand-written sample monsters load from static JSON. Clicking one opens its 2014-style stat block in a pop-out (with print support).
+- The library is 20 hand-written sample monsters plus 333 monsters from the System Reference Document 5.1 (made by the back end's importer, credited with the SRD's exact attribution statement, shown in the page footer and under each SRD stat block). Both load from static JSON. Clicking one opens its 2014-style stat block in a pop-out (with print support).
 - On a desktop the app fits on one page with no scrolling: party and difficulty across the top, a horizontal filter bar, then boxes for results, the encounter and saved encounters. On phones it stacks and scrolls (phone design comes later).
 - The library can be filtered and sorted. A saved party plus an easy/medium/hard/deadly pick narrows the list to monsters of that difficulty (rated as a lone monster, per the 2014 DMG).
 - Monsters can be favorited and added to an encounter, which shows a live difficulty rating. The encounter card has an editable name, a star and a Save button; saved encounters (unique names) are loaded from their own box.
@@ -19,7 +19,7 @@ The party, favorites, working encounter and saved encounters live in the browser
 
 Spellcasting is stored as data (cantrips, slots per level, at will, per day, and the intro sentence), and the stat block sentence is built from it.
 
-The sample monsters are unvalidated (`validated: false`) until the back-end validator exists.
+The SRD monsters have passed the back-end validator (`validated: true`). The 20 samples have not been through it in the page's data (they pass it in the back end's tests).
 
 Run the tests with `npm test` in `frontend/`.
 

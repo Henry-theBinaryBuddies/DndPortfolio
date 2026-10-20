@@ -172,11 +172,17 @@ export default function StatBlock({ monster }: { monster: Monster }) {
         <Property label="Saving Throws">{formatBonuses(monster.saves)}</Property>
       )}
       {Object.keys(monster.skills).length > 0 && <Property label="Skills">{formatBonuses(monster.skills)}</Property>}
-      {monster.vulnerabilities.length > 0 && (
-        <Property label="Damage Vulnerabilities">{joinList(monster.vulnerabilities)}</Property>
+      {(monster.vulnerabilities.length > 0 || monster.damage_text?.vulnerabilities) && (
+        <Property label="Damage Vulnerabilities">
+          {monster.damage_text?.vulnerabilities ?? joinList(monster.vulnerabilities)}
+        </Property>
       )}
-      {monster.resistances.length > 0 && <Property label="Damage Resistances">{joinList(monster.resistances)}</Property>}
-      {monster.immunities.length > 0 && <Property label="Damage Immunities">{joinList(monster.immunities)}</Property>}
+      {(monster.resistances.length > 0 || monster.damage_text?.resistances) && (
+        <Property label="Damage Resistances">{monster.damage_text?.resistances ?? joinList(monster.resistances)}</Property>
+      )}
+      {(monster.immunities.length > 0 || monster.damage_text?.immunities) && (
+        <Property label="Damage Immunities">{monster.damage_text?.immunities ?? joinList(monster.immunities)}</Property>
+      )}
       {monster.condition_immunities.length > 0 && (
         <Property label="Condition Immunities">{joinList(monster.condition_immunities)}</Property>
       )}

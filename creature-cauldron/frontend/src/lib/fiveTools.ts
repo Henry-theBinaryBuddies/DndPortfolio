@@ -1,8 +1,9 @@
 import type { Action, Monster } from "../types/monster";
 import { formatSigned } from "./dice";
-import type { JsonObject } from "./foundryJson";
+import type { JsonObject, JsonValue } from "./foundryJson";
 import { normalizeHpFormula, skillFor } from "./foundryMaps";
 import type { Size } from "./options";
+import { fiveToolsDamageEntries } from "./damageLines";
 import { buildSpellcastingBlock } from "./fiveToolsSpells";
 import { spellcastingToText } from "./spellcastingText";
 import { tagProse } from "./fiveToolsTags";
@@ -155,9 +156,10 @@ function convertMonster(monster: Monster, notes: string[]): JsonObject {
   if (senses.length > 0) out.senses = senses;
   out.passive = monster.senses.passive_perception;
 
-  if (monster.vulnerabilities.length > 0) out.vulnerable = [...monster.vulnerabilities];
-  if (monster.resistances.length > 0) out.resist = [...monster.resistances];
-  if (monster.immunities.length > 0) out.immune = [...monster.immunities];
+  const text = monster.damage_text;
+  if (monster.vulnerabilities.length > 0 || text?.vulnerabilities) out.vulnerable = fiveToolsDamageEntries("vulnerable", monster.vulnerabilities, text?.vulnerabilities) as JsonValue[];
+  if (monster.resistances.length > 0 || text?.resistances) out.resist = fiveToolsDamageEntries("resist", monster.resistances, text?.resistances) as JsonValue[];
+  if (monster.immunities.length > 0 || text?.immunities) out.immune = fiveToolsDamageEntries("immune", monster.immunities, text?.immunities) as JsonValue[];
   if (monster.condition_immunities.length > 0) out.conditionImmune = monster.condition_immunities.map((c) => c.toLowerCase());
 
   const languages = monster.languages

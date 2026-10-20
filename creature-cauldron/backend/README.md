@@ -5,7 +5,7 @@ Python models, rules engine, validator and (later) the generator API. Built test
 
 ## Status
 
-Parts 1 and 2 of phase 2 are done: the domain models, the rules tables, the validator and the reskin templates.
+Parts 1 to 3 of phase 2 are done: the domain models, the rules tables, the validator, the reskin templates and the SRD seed pipeline.
 
 | Module | What it holds |
 |---|---|
@@ -19,11 +19,22 @@ Parts 1 and 2 of phase 2 are done: the domain models, the rules tables, the vali
 | `cauldron/features.py` | Derives the feature tags from the stat block |
 | `cauldron/templates.py` | Abstract `Template` with `EliteTemplate`, plus the damage-type swap |
 
+| `cauldron/seed/` | The SRD importer (`python -m cauldron.seed`): action and spell parsers, damage lines, rule-based tagger, known corrections and the import report |
+
+Raw data and its provenance are in `data/srd-2014/` (see `SOURCE.md` there); the last import report is `data/srd-import-report.md`. The import writes `../frontend/public/data/srd-monsters.json`.
+
 Not built yet: the CR consistency check. The Dungeon Master's Guide table it would use is not in the SRD 5.1, so the estimator will be calibrated from SRD monsters during the seed pipeline.
 
 The tests prove two things beyond the unit tests: all 20 sample monsters from the front end load and
 round-trip through the Python model, and the Python prose is identical to what the web page prints
 (`tests/fixtures/rendered-actions.json` is written by the front end's `crossLanguage.test.ts`).
+
+## Run the SRD import
+
+```bash
+cd backend
+.venv/Scripts/python -m cauldron.seed
+```
 
 ## Run
 

@@ -16,6 +16,7 @@ import {
   splitBonus,
 } from "./foundryMaps";
 import { ACTOR_SYSTEM_TEMPLATE, PROTOTYPE_TOKEN_TEMPLATE } from "./foundryTemplates";
+import { foundryDamageTrait } from "./damageLines";
 import { label } from "./options";
 import { casterLevel } from "./spellcastingText";
 
@@ -46,8 +47,9 @@ function clone<T extends JsonValue>(value: T): T {
 }
 
 /** Resistances, immunities and vulnerabilities share one shape in Foundry. */
-function damageTrait(values: string[]): JsonObject {
-  return { value: [...values], bypasses: [], custom: "" };
+function damageTrait(values: string[], text?: string | null): JsonObject {
+  const { bypasses, custom } = foundryDamageTrait(text);
+  return { value: [...values], bypasses, custom };
 }
 
 function biographyHtml(monster: Monster): string {
@@ -180,9 +182,9 @@ export function exportFoundryActor(monster: Monster): FoundryExport {
 
   const traits = child(system, "traits");
   traits.size = SIZE_KEYS[monster.size] ?? "med";
-  traits.di = damageTrait(monster.immunities);
-  traits.dr = damageTrait(monster.resistances);
-  traits.dv = damageTrait(monster.vulnerabilities);
+  traits.di = damageTrait(monster.immunities, monster.damage_text?.immunities);
+  traits.dr = damageTrait(monster.resistances, monster.damage_text?.resistances);
+  traits.dv = damageTrait(monster.vulnerabilities, monster.damage_text?.vulnerabilities);
   traits.ci = parseConditions(monster.condition_immunities);
   traits.languages = parseLanguages(monster.languages);
 
