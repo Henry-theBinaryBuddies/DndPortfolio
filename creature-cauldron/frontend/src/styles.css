@@ -320,6 +320,49 @@ h2 {
   font-weight: bold;
 }
 
+/* Stat block toolbar: Print, Favorite (and later Add to encounter). */
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.detail-actions .print-button {
+  margin-bottom: 0;
+}
+
+.action-button {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.action-button:hover:not(:disabled) {
+  background: #ebdcbc;
+}
+
+.action-button[aria-pressed="true"] {
+  background: #e2cfa6;
+  font-weight: bold;
+}
+
+.action-button:disabled {
+  border-color: var(--muted);
+  color: var(--muted);
+  cursor: default;
+}
+
+.detail-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 /* Medium screens: filters and results stack on the left, stat block on the right. */
 @media (max-width: 1000px) {
   .layout {

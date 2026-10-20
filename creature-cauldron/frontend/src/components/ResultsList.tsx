@@ -7,9 +7,26 @@ interface ResultsListProps {
   selectedId: string | undefined;
   sortKey: SortKey;
   sortDirection: SortDirection;
+  favorites: ReadonlySet<string>;
+  /** How many favorites the library actually has (stored ids can be stale). */
+  favoriteCount: number;
+  favoritesOnly: boolean;
+  /** False until the library has finished loading, so "no results" isn't shown too early. */
+  libraryReady: boolean;
   onSelect: (id: string) => void;
   onSortKeyChange: (key: SortKey) => void;
   onSortDirectionChange: (direction: SortDirection) => void;
+  onFavoritesOnlyChange: (value: boolean) => void;
+}
+
+/** What to say when the list is empty, depending on why it is empty. */
+function emptyMessage(libraryReady: boolean, favoritesOnly: boolean, favoriteCount: number): string {
+  if (!libraryReady) return "The monster library has not loaded.";
+  if (favoritesOnly && favoriteCount === 0) {
+    return "No favorites yet. Untick Favorites only, select a monster and press Favorite.";
+  }
+  if (favoritesOnly) return "None of your favorites match these filters.";
+  return "No monsters match these filters. Try removing one.";
 }
 
 export default function ResultsList({
@@ -18,14 +35,22 @@ export default function ResultsList({
   selectedId,
   sortKey,
   sortDirection,
+  favorites,
+  favoriteCount,
+  favoritesOnly,
+  libraryReady,
   onSelect,
   onSortKeyChange,
   onSortDirectionChange,
+  onFavoritesOnlyChange,
 }: ResultsListProps) {
   return (
     <section className="results" aria-label="Results">
       <h2>
-        Results <span className="result-count">{monsters.length === totalCount ? totalCount : `${monsters.length} of ${totalCount}`}</span>
+        Results{" "}
+        <span className="result-count">
+          {monsters.length === totalCount ? totalCount : `${monsters.length} of ${totalCount}`}
+        </span>
       </h2>
 
       <div className="sort-controls">
@@ -47,8 +72,19 @@ export default function ResultsList({
         </button>
       </div>
 
+      <div className="sort-controls">
+        <label>
+          <input
+            type="checkbox"
+            checked={favoritesOnly}
+            onChange={(e) => onFavoritesOnlyChange(e.target.checked)}
+          />{" "}
+          Favorites only ({favoriteCount})
+        </label>
+      </div>
+
       {monsters.length === 0 ? (
-        <p className="empty-state">No monsters match these filters. Try removing one.</p>
+        <p className="empty-state">{emptyMessage(libraryReady, favoritesOnly, favoriteCount)}</p>
       ) : (
         <ul className="monster-list">
           {monsters.map((m) => (
@@ -59,7 +95,12 @@ export default function ResultsList({
                 aria-pressed={m.id === selectedId}
                 onClick={() => onSelect(m.id)}
               >
-                <strong>{m.name}</strong>
+                {/* The star is plain text inside <strong> on purpose: the CSS rule for
+                    ".monster-button span" would restyle a span as small grey text. */}
+                <strong>
+                  {favorites.has(m.id) ? "★ " : ""}
+                  {m.name}
+                </strong>
                 <span>
                   {m.size} {m.type} · CR {m.challenge.cr}
                 </span>
