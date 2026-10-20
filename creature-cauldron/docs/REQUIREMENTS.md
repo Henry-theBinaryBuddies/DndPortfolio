@@ -109,7 +109,7 @@ Let a DM filter a large library of original or openly licensed monsters, build e
 | Hit points | Die type follows size; average matches dice and Constitution modifier | Auto-correct |
 | Attack bonus | Proficiency + stated ability modifier | Auto-correct |
 | Save DC | 8 + proficiency + ability modifier | Auto-correct |
-| CR consistency | Recomputed CR within 1 step of claimed CR | Retry model (max 2), then discard |
+| CR consistency | Estimated CR within a tolerance of the claimed CR (see notes: 1 step up to CR 4, up to 4 steps above) | Retry model (max 2), then discard |
 | Legendary actions | Sensible count and costs | Auto-correct or reject |
 | Features | Feature tags derived from the stat block | Auto-correct |
 | Attribution | SRD monsters carry the exact CC-BY statement | Reject |
@@ -118,7 +118,10 @@ Notes on how these are built (backend/src/cauldron/validator.py):
 
 - Attack bonuses, save DCs and spell numbers may sit 0 to 3 above the plain rule, because magic and the elite template add a little. Only larger gaps are corrected. A save DC does not say which ability it uses, so any ability that reaches it is accepted.
 - Official SRD monsters are never "corrected". Differences are reported as notes and the printed numbers stay.
-- **CR consistency is not built yet.** The usual way to estimate CR uses the Dungeon Master's Guide's "Monster Statistics by Challenge Rating" table, which is not in the SRD 5.1 (checked), so it is not used. The estimator will be calibrated from SRD monsters during the seed pipeline instead.
+- **CR consistency uses an estimator calibrated from the SRD monsters** (backend/src/cauldron/cr). The usual method uses the Dungeon Master's Guide's "Monster Statistics by Challenge Rating" table, which is not in the SRD 5.1 (checked), so it is not used. Instead the 333 SRD monsters are measured (effective hit points, armor class, damage per round, best attack bonus or save DC), a never-decreasing curve is fitted for each across the CR ladder, and a monster's numbers are read back against those curves.
+- It is a rough sanity check, and its accuracy was measured by leave-one-out testing (each SRD monster estimated from curves built without it): 83% within 1 step, 92% within 2. It is sharp at low levels (97% within 1 step up to CR 4) and weak in the middle (only 55% within 1 step for CR 5 to 17). So the tolerance is per band, chosen so 90% of SRD monsters fall inside it: 1 step up to CR 4, 4 steps for CR 5 to 17. It ignores spells, flight, auras and other traits that change real CR.
+- The SRD has no monsters at CR 18 or 25 to 29 and one at CR 30, so above CR 17 the estimate is an extrapolation: the check only leaves a note there. Plan: offer generation up to CR 17 at first.
+- Regenerate the calibration with `python -m cauldron.cr.calibrate` (for example after adding trusted monsters to the data).
 - Names are checked against a deliberately cautious blocklist (backend/src/cauldron/blocklist.py): Wizards product-identity monsters, iconic named characters and settings.
 
 ## 7. Data model summary

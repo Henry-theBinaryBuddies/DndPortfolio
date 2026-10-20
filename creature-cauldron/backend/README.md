@@ -23,7 +23,9 @@ Parts 1 to 3 of phase 2 are done: the domain models, the rules tables, the valid
 
 Raw data and its provenance are in `data/srd-2014/` (see `SOURCE.md` there); the last import report is `data/srd-import-report.md`. The import writes `../frontend/public/data/srd-monsters.json`.
 
-Not built yet: the CR consistency check. The Dungeon Master's Guide table it would use is not in the SRD 5.1, so the estimator will be calibrated from SRD monsters during the seed pipeline.
+| `cauldron/cr/` | The CR estimator: `measure.py` (effective hit points, armor class, damage per round, offensive bonus), `curves.py` (never-decreasing fit), `calibrate.py` (`python -m cauldron.cr.calibrate`, builds `calibration_table.py` with leave-one-out accuracy), `estimator.py` |
+
+The validator's CR consistency check uses the estimator. The Dungeon Master's Guide table is not in the SRD 5.1, so the estimator is calibrated from the SRD monsters themselves. It is a rough sanity check (see `docs/REQUIREMENTS.md`).
 
 The tests prove two things beyond the unit tests: all 20 sample monsters from the front end load and
 round-trip through the Python model, and the Python prose is identical to what the web page prints

@@ -335,12 +335,69 @@ def test_other_sources_need_no_attribution() -> None:
 # --- the validator --------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("monster", SAMPLES, ids=lambda m: m.name)
+# Hand-written samples whose numbers the CR estimator disagrees with. The Dune Leviathan has 350 hit points, which is
+# typical of a CR 17 or higher monster, but is rated CR 12. Left as written; the check is doing what it should.
+FLAGGED_BY_ESTIMATOR = {"Dune Leviathan"}
+
+
+@pytest.mark.parametrize("monster", [m for m in SAMPLES if m.name not in FLAGGED_BY_ESTIMATOR], ids=lambda m: m.name)
 def test_every_sample_is_accepted_without_changes(monster: Monster) -> None:
     report = Validator().validate(monster)
     assert report.findings == []
     assert report.status is Status.ACCEPTED
     assert report.monster.validated is True
+
+
+def test_a_sample_the_estimator_disagrees_with_is_sent_back_for_a_retry() -> None:
+    report = Validator().validate(sample("Dune Leviathan"))
+    assert report.status is Status.RETRY
+    assert report.monster.validated is False
+    assert [f.check for f in report.retries] == ["CR consistency"]
+    assert "Claimed CR 12" in report.retries[0].message
+
+
+# --- the CR consistency check ---------------------------------------------------------------------------
+
+
+def with_cr(monster: Monster, cr: str) -> Monster:
+    from cauldron.rules import cr_value, proficiency_bonus, xp_for_cr
+
+    challenge = monster.challenge.model_copy(
+        update={"cr": cr, "cr_value": cr_value(cr), "xp": xp_for_cr(cr), "proficiency_bonus": proficiency_bonus(cr)}
+    )
+    return monster.model_copy(update={"challenge": challenge})
+
+
+def test_a_claim_far_below_the_numbers_asks_for_a_retry() -> None:
+    from cauldron.validator import CrConsistencyCheck
+
+    monster = with_cr(sample("Stormhide Drake"), "0")
+    assert outcomes(CrConsistencyCheck(), monster) == [Outcome.RETRY]
+
+
+def test_a_claim_that_fits_passes_the_cr_check() -> None:
+    from cauldron.validator import CrConsistencyCheck
+
+    assert outcomes(CrConsistencyCheck(), sample("Stormhide Drake")) == []
+
+
+def test_high_challenge_ratings_are_noted_not_judged() -> None:
+    from cauldron.validator import CrConsistencyCheck
+
+    monster = with_cr(sample("Stormhide Drake"), "26")
+    assert outcomes(CrConsistencyCheck(), monster) == [Outcome.NOTED]
+
+
+def test_srd_monsters_are_never_sent_back_for_a_retry() -> None:
+    claimed_wrong = with_cr(sample("Stormhide Drake"), "0").model_copy(update={"source": Source.SRD, "attribution": SRD_ATTRIBUTION})
+    report = Validator().validate(claimed_wrong)
+    assert report.status is Status.ACCEPTED
+    assert any(f.check == "CR consistency" and f.outcome is Outcome.NOTED for f in report.findings)
+
+
+def test_a_rejection_outranks_a_retry() -> None:
+    monster = edit(with_cr(sample("Stormhide Drake"), "0"), lambda d: d.update(name="Beholder"))
+    assert Validator().validate(monster).status is Status.REJECTED
 
 
 def test_a_monster_with_fixable_mistakes_comes_back_corrected() -> None:

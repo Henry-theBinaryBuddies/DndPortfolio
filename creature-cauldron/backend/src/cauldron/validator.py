@@ -8,12 +8,12 @@ The design, in object-oriented terms:
   rule means writing one new subclass and putting it in the list (composition).
 * Checks never change the monster they are given. They return a corrected *copy* plus a list of findings.
 
-Outcomes: a check can auto-correct a number, reject the monster, or (for official SRD monsters) only note a
+Outcomes: a check can auto-correct a number, reject the monster, ask for a retry (the numbers disagree with the
+claimed challenge rating, so the generator should try again), or (for official SRD monsters) only note a
 difference, because official statistics are kept as printed.
 
-Not here yet: the "recomputed CR within one step of the claimed CR" check. It needs a CR calculator, and the
-Dungeon Master's Guide table that such a calculator is normally built on is not in the SRD. It will be built
-later from SRD monsters themselves.
+The CR consistency check uses the estimator in ``cauldron.cr``, which is calibrated from the SRD monsters (the
+Dungeon Master's Guide table is not in the SRD, so it is not used). It is a rough sanity check: see its tolerance.
 """
 
 from abc import ABC, abstractmethod
@@ -23,11 +23,13 @@ from enum import StrEnum
 
 from cauldron.actions import AttackAction, SaveAction
 from cauldron.blocklist import blocked_term
+from cauldron.cr.calibration_table import RELIABLE_UP_TO
+from cauldron.cr.estimator import estimate, tolerance_steps
 from cauldron.dice import ability_modifier, format_dice, format_signed, parse_dice
 from cauldron.features import derive_features
 from cauldron.monster import Monster
 from cauldron.options import Ability, Source
-from cauldron.rules import SRD_ATTRIBUTION, cr_value, hit_die, proficiency_bonus, xp_for_cr
+from cauldron.rules import CR_LABELS, SRD_ATTRIBUTION, cr_value, hit_die, proficiency_bonus, xp_for_cr
 
 # Attack bonuses and save DCs may sit up to this far above the plain rule (proficiency + ability). Magic
 # weapons, expertise and the elite template all add a little, so only larger gaps are treated as mistakes.
@@ -38,12 +40,14 @@ MAX_LEGENDARY_PER_ROUND = 3
 class Outcome(StrEnum):
     CORRECTED = "corrected"  # a number was fixed automatically
     NOTED = "noted"  # a difference was seen but, for an SRD monster, left as printed
+    RETRY = "retry"  # the numbers do not fit the claimed CR; a generator should try again
     REJECT = "reject"  # the monster cannot be used
 
 
 class Status(StrEnum):
     ACCEPTED = "accepted"  # nothing needed changing
     CORRECTED = "corrected"  # accepted after automatic fixes
+    RETRY = "retry"  # not accepted yet: ask the generator again (the caller decides how many times)
     REJECTED = "rejected"
 
 
@@ -84,6 +88,10 @@ class ValidationReport:
     @property
     def notes(self) -> list[Finding]:
         return [f for f in self.findings if f.outcome is Outcome.NOTED]
+
+    @property
+    def retries(self) -> list[Finding]:
+        return [f for f in self.findings if f.outcome is Outcome.RETRY]
 
 
 def _normal(name: str) -> str:
@@ -308,6 +316,37 @@ class FeaturesCheck(Check):
         return self._result(monster.model_copy(update={"features": expected}), self._finding(Outcome.CORRECTED, message))
 
 
+class CrConsistencyCheck(Check):
+    """The claimed challenge rating must fit the monster's numbers, within the estimator's tolerance.
+
+    This is a rough check, not a rating authority. It asks the estimator (built from the SRD monsters) which CR the
+    hit points, armor class, damage and bonuses look like, and complains only when that differs from the claim by
+    more than the tolerance for that band of the ladder. Above the CRs the SRD data covers well, it only leaves a note.
+    """
+
+    name = "CR consistency"
+
+    def run(self, monster: Monster, context: ValidationContext) -> CheckResult:
+        if monster.challenge.cr not in CR_LABELS:
+            return self._result(monster)  # DerivedFieldsCheck rejects an unknown label
+        claimed = CR_LABELS.index(monster.challenge.cr)
+        estimated = estimate(monster)
+        if not estimated.reliable or claimed > CR_LABELS.index(RELIABLE_UP_TO):
+            return self._result(
+                monster,
+                self._finding(Outcome.NOTED, f"CR {monster.challenge.cr} is above what the SRD data covers well, so its numbers were not checked against it."),
+            )
+        gap = abs(estimated.index - claimed)
+        allowed = tolerance_steps(claimed)
+        if gap <= allowed:
+            return self._result(monster)
+        message = (
+            f"Claimed CR {monster.challenge.cr}, but the numbers look like CR {estimated.cr} "
+            f"({gap} steps apart; up to {allowed} is allowed at this level)."
+        )
+        return self._result(monster, self._finding(Outcome.RETRY, message))
+
+
 class AttributionCheck(Check):
     """SRD monsters must carry the exact CC-BY attribution, and nobody may misquote it."""
 
@@ -333,6 +372,7 @@ def default_checks() -> list[Check]:
         SpellcastingCheck(),
         LegendaryCheck(),
         FeaturesCheck(),
+        CrConsistencyCheck(),
         AttributionCheck(),
     ]
 
@@ -354,9 +394,9 @@ class Validator:
         for check in self.checks:
             result = check.run(current, context)
             if official:
-                # Official statistics stay as printed: corrections become notes and the monster is not altered.
+                # Official statistics stay as printed: corrections and retries become notes, the monster is not altered.
                 findings += [
-                    Finding(f.check, Outcome.NOTED, f.message) if f.outcome is Outcome.CORRECTED else f
+                    Finding(f.check, Outcome.NOTED, f.message) if f.outcome in (Outcome.CORRECTED, Outcome.RETRY) else f
                     for f in result.findings
                 ]
             else:
@@ -365,5 +405,7 @@ class Validator:
 
         if any(f.outcome is Outcome.REJECT for f in findings):
             return ValidationReport(Status.REJECTED, current, findings)
+        if any(f.outcome is Outcome.RETRY for f in findings):
+            return ValidationReport(Status.RETRY, current, findings)
         status = Status.CORRECTED if any(f.outcome is Outcome.CORRECTED for f in findings) else Status.ACCEPTED
         return ValidationReport(status, current.model_copy(update={"validated": True}), findings)
