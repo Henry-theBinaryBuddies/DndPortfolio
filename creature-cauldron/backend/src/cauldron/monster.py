@@ -201,6 +201,8 @@ class Monster(CauldronModel):
     validated: bool
     parent_id: str | None = None
     generator: str | None = None
+    # What a reskin or remix changed from its parent, in plain words, for the "What changed" list. Not set for everything else.
+    changes: Annotated[list[Annotated[str, Field(min_length=1, max_length=200)]], Field(max_length=20)] | None = None
     attribution: str | None = None
 
     # core stat block

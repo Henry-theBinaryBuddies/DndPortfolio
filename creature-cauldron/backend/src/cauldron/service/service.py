@@ -237,7 +237,7 @@ class GenerationService:
         shaped = retarget_name(shaped, base.name, name)
         try:
             candidate = self._rebuild(
-                shaped, id=_new_id(name), name=name, description=description, source=Source.RESKIN, validated=False, parent_id=base.id, generator=generator
+                shaped, id=_new_id(name), name=name, description=description, source=Source.RESKIN, validated=False, parent_id=base.id, generator=generator, changes=changes
             )
         except ValidationError as problem:
             return [f"The name or description was not usable: {problem.errors()[0]['msg']}."]

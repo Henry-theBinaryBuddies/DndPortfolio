@@ -131,6 +131,7 @@ export interface Monster {
   validated: boolean;
   parent_id?: string | null;
   generator?: string | null;
+  changes?: string[];
   attribution?: string | null;
 
   // core stat block

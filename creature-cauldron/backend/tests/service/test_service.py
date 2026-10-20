@@ -460,3 +460,18 @@ def test_a_remix_with_a_level_up_raises_the_challenge_rating_once(make, sample) 
     result = rig.service.create_reskin(remix_request(drake.id, theme="cold", levelUp=True))
     assert isinstance(result, GenerateSuccess) and result.monster.challenge.cr == "5"
     assert any(note.startswith("Level up: CR 4") for note in result.notes)
+
+
+def test_a_reskin_remembers_what_it_changed(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named_move("Rimeclaw Drake", "Glacial Lunge")], library=[drake])
+    result = rig.service.create_reskin(remix_request(drake.id, theme="cold", move="lob", levelUp=True))
+    assert isinstance(result, GenerateSuccess)
+    changes = result.monster.changes
+    assert changes is not None and changes[0].startswith("Main damage:") and changes[-1].startswith("Level up:")
+    assert any("Glacial Lunge" in c for c in changes)
+    assert rig.store.get(result.monster.id).changes == changes  # type: ignore[union-attr]
+
+
+def test_a_monster_that_was_not_reskinned_has_no_changes(sample) -> None:
+    assert sample("Stormhide Drake").changes is None
