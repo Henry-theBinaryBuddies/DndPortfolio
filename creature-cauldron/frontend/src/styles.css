@@ -671,6 +671,26 @@ select {
   cursor: pointer;
 }
 
+/* Export status and the "Importing into Foundry" help sit on their own full-width rows. */
+.dialog-header .export-status,
+.dialog-header .export-help {
+  flex-basis: 100%;
+}
+
+.export-help {
+  font-size: 0.85rem;
+}
+
+.export-help summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.export-help ol {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+
 /* Phones: the pop-out fills the screen. */
 @media (max-width: 700px) {
   .statblock-dialog {

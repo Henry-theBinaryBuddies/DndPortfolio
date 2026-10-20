@@ -160,7 +160,7 @@ Each phase ends with something the author can run and test.
 
 ## 10. Open questions
 
-1. Which Foundry dnd5e system version do we target?
+1. ~~Which Foundry dnd5e system version do we target?~~ Answered: dnd5e 5.3.3 (see EXPORTS.md).
 2. How does the built front end reach GitHub Pages (separate workflow, committed build, or the existing root webpack copy step)?
 3. Which SRD data source do we import (open5e or 5e-bits), pending a license check?
 4. Tailscale Funnel or Cloudflare Tunnel for the home server?
