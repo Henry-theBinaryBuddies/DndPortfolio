@@ -22,13 +22,6 @@ export interface ItemContext {
 
 type Section = "trait" | "spellcasting" | "action" | "bonus" | "reaction" | "legendary-header" | "legendary";
 
-const ACTIVATION: Record<"action" | "bonus" | "reaction" | "legendary", string> = {
-  action: "action",
-  bonus: "bonus",
-  reaction: "reaction",
-  legendary: "legendary",
-};
-
 /** Our prose segments as an HTML paragraph, with everything escaped. */
 export function segmentsToHtml(segments: Segment[]): string {
   const inner = segments.map((s) => (s.italic ? `<em>${escapeHtml(s.text)}</em>` : escapeHtml(s.text))).join("");
@@ -323,7 +316,7 @@ function textItem(
 }
 
 function actionItem(ctx: ItemContext, action: Action, section: "action" | "bonus" | "reaction", index: number): JsonObject {
-  const activationType = ACTIVATION[section];
+  const activationType = section;
   switch (action.kind) {
     case "attack":
       return action.attack.mode === "melee_weapon" || action.attack.mode === "ranged_weapon"
@@ -361,7 +354,7 @@ export function buildItems(ctx: ItemContext): JsonObject[] {
     items.push(traitItem(ctx, "legendary-header", 0, "Legendary Actions", textHtml(legendaryIntro(monster.name, legendary.per_round))));
     legendary.options.forEach((option, i) => {
       const id = stableId(`${monster.id}|legendary|${i}|${option.name}`);
-      const activity = utilityActivity(activityId(id), ACTIVATION.legendary, option.cost);
+      const activity = utilityActivity(activityId(id), "legendary", option.cost);
       const system = featSystem(ctx, option.name, textHtml(option.text), [], { [activityId(id)]: activity }, plainUses());
       items.push(itemShell(ctx, "legendary", i, option.name, "feat", system));
     });

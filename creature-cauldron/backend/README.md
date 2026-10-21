@@ -17,7 +17,7 @@ Parts 1 to 3 of phase 2 are done (the domain models, the rules tables, the valid
 | `cauldron/validator.py` | Abstract `Check` with nine rule subclasses (name, derived fields, hit points, attack bonus, save DC, spellcasting, legendary actions, features, attribution) and the `Validator` that runs them over a copy |
 | `cauldron/blocklist.py` | Cautious list of names that are not ours to use |
 | `cauldron/features.py` | Derives the feature tags from the stat block |
-| `cauldron/templates.py` | Abstract `Template` with `LevelUpTemplate`, plus the damage-type swap |
+| `cauldron/templates.py` | `level_up`, the damage-type swap and `retarget_name` |
 
 | `cauldron/remix/` | Remix: `theme.py` (new damage theme and the defences that follow), `moves.py` (the 18 signature moves, each building typed actions with numbers from the monster's own stats), `engine.py` (puts theme, move and level up together and decides "surprise"). See `../docs/REMIX.md` |
 

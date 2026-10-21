@@ -8,7 +8,7 @@ import pytest
 
 from cauldron.actions import AttackAction, MultiattackAction, SaveAction, TextAction
 from cauldron.monster import Abilities
-from cauldron.options import Ability, AreaShape, AttackMode, DamageType, SaveSuccess
+from cauldron.options import Ability, AttackMode, DamageType
 from cauldron.seed.action_parser import parse_action, parse_legendary_action
 
 ABILITIES = Abilities(str=21, dex=9, con=15, int=18, wis=15, cha=18)
@@ -93,26 +93,6 @@ def test_alternative_damage_text_stays_text() -> None:
 
 
 # --- saves ----------------------------------------------------------------------------------------------
-
-
-def test_an_area_save_with_recharge_is_typed() -> None:
-    desc = "Each creature in a 60-foot cone must make a DC 18 Dexterity saving throw, taking 63 (18d6) fire damage on a failed save, or half as much damage on a successful one."
-    raw = {"name": "Fire Breath", "desc": desc, "usage": {"type": "recharge on roll", "dice": "1d6", "min_value": 5}}
-    action = parse(raw)
-    assert isinstance(action, SaveAction)
-    assert action.recharge is not None and action.recharge.min == 5
-    assert action.save.dc == 18 and action.save.ability is Ability.DEX
-    assert action.area is not None and action.area.shape is AreaShape.CONE and action.area.size == 60
-    assert action.on_success is SaveSuccess.HALF
-    assert action.describe("Dragon") == desc
-
-
-def test_a_line_area_with_a_width() -> None:
-    desc = "Each creature in a 90-foot line that is 5 feet wide must make a DC 19 Dexterity saving throw, taking 66 (12d10) lightning damage on a failed save, or half as much damage on a successful one."
-    action = parse({"name": "Lightning Breath", "desc": desc})
-    assert isinstance(action, SaveAction)
-    assert action.area is not None and action.area.shape is AreaShape.LINE and action.area.width == 5
-    assert action.describe("Dragon") == desc
 
 
 def test_a_save_with_a_lead_in_sentence_stays_text() -> None:

@@ -13,7 +13,7 @@ from cauldron.dice import ability_modifier
 from cauldron.monster import Monster
 from cauldron.options import DamageTheme, DamageType, Source
 from cauldron.rules import SRD_ATTRIBUTION, proficiency_bonus, step_cr, xp_for_cr
-from cauldron.templates import LevelUpTemplate, Template, damage_dealt_by, get_template, retarget_name, swap_damage_type
+from cauldron.templates import level_up, retarget_name, swap_damage_type
 from cauldron.validator import CrConsistencyCheck, Status, Validator, default_checks
 
 SAMPLES_PATH = Path(__file__).parents[2] / "frontend" / "public" / "data" / "sample-monsters.json"
@@ -37,51 +37,11 @@ def rolls(monster: Monster) -> list:
 # --- the damage-type swap -------------------------------------------------------------------------------
 
 
-def test_damage_dealt_by_lists_what_a_monster_deals_sorted() -> None:
-    types = damage_dealt_by(sample("Stormhide Drake"))
-    assert types == sorted(types)
-    assert DamageType.LIGHTNING in types
-
-
-def test_what_a_monster_resists_or_is_immune_to_is_not_damage_it_deals() -> None:
-    # The SRD zombie deals only bludgeoning but is immune to poison. Swapping "its damage" must not offer poison.
-    zombie = sample("Cinderkite").model_copy(
-        update={"immunities": [DamageType.POISON], "resistances": [DamageType.COLD], "vulnerabilities": [DamageType.RADIANT]}
-    )
-    dealt = damage_dealt_by(zombie)
-    assert DamageType.POISON not in dealt and DamageType.COLD not in dealt and DamageType.RADIANT not in dealt
-    assert dealt  # it still lists the damage its attacks do
-
-
-def test_damage_named_in_text_actions_counts_as_dealt() -> None:
-    from cauldron.actions import MultiattackAction
-
-    breath = TextAction(name="Fire Breath", text="Each creature takes 63 (18d6) fire damage. It then takes 5 (1d10) cold damage from the frost.")
-    multi = MultiattackAction(name="Multiattack", sequence=[{"action": "Bite", "count": 1}], text="It makes one bite attack dealing extra necrotic damage.")
-    base = sample("Cinderkite").model_copy(update={"actions": [breath, multi], "bonus_actions": [], "reactions": []})
-    assert damage_dealt_by(base) == [DamageType.COLD, DamageType.FIRE, DamageType.NECROTIC]
-
-
-def test_damage_in_a_trait_is_damage_the_monster_takes_not_deals() -> None:
-    trait = TextAction(name="Sunlight Sensitivity", text="While in sunlight, the creature takes 5 (1d10) radiant damage at the start of its turn.")
-    base = sample("Cinderkite").model_copy(update={"traits": [trait], "actions": [], "bonus_actions": [], "reactions": []})
-    assert damage_dealt_by(base) == []
-
-
-def test_legendary_options_and_reactions_count_as_dealt() -> None:
-    from cauldron.monster import LegendaryActions
-
-    legendary = LegendaryActions.model_validate({"per_round": 3, "options": [{"name": "Gaze", "cost": 1, "text": "A creature takes 9 (2d8) psychic damage."}]})
-    reaction = TextAction(name="Backlash", text="The attacker takes 4 (1d8) thunder damage.")
-    base = sample("Cinderkite").model_copy(update={"actions": [], "bonus_actions": [], "reactions": [reaction], "legendary_actions": legendary})
-    assert damage_dealt_by(base) == [DamageType.PSYCHIC, DamageType.THUNDER]
-
-
 def test_swap_replaces_every_use_of_the_type() -> None:
     base = sample("Stormhide Drake")
     swapped = swap_damage_type(base, DamageType.LIGHTNING, DamageType.COLD)
-    assert DamageType.LIGHTNING not in damage_dealt_by(swapped)
-    assert DamageType.COLD in damage_dealt_by(swapped)
+    assert DamageType.LIGHTNING not in {r.type for r in rolls(swapped)}
+    assert DamageType.COLD in {r.type for r in rolls(swapped)}
     assert {r.type for r in rolls(swapped)} <= {r.type for r in rolls(base)} - {DamageType.LIGHTNING} | {DamageType.COLD}
 
 
@@ -121,22 +81,7 @@ def test_swapping_a_type_for_itself_changes_nothing() -> None:
 # --- templates in general -------------------------------------------------------------------------------
 
 
-def test_the_base_template_cannot_be_used_directly() -> None:
-    with pytest.raises(TypeError):
-        Template()  # type: ignore[abstract]
-
-
-def test_templates_are_found_by_name() -> None:
-    assert isinstance(get_template("level_up"), LevelUpTemplate)
-    with pytest.raises(KeyError):
-        get_template("swarm")
-
-
 # --- the level-up template ---------------------------------------------------------------------------------
-
-
-def level_up(monster: Monster) -> Monster:
-    return LevelUpTemplate().apply(monster)
 
 
 def test_level_up_raises_armor_class_by_one() -> None:
@@ -207,15 +152,10 @@ def test_level_up_spellcasting_numbers_and_intro_follow() -> None:
     assert f"spell save DC {result.spellcasting.dc}" in result.spellcasting.intro
 
 
-def test_level_up_is_a_new_unvalidated_reskin_that_keeps_its_attribution() -> None:
+def test_level_up_keeps_the_identity_and_the_attribution() -> None:
     base = sample("Cinderkite").model_copy(update={"source": Source.SRD, "attribution": SRD_ATTRIBUTION})
     result = level_up(base)
-    assert result.source is Source.RESKIN
-    assert result.validated is False
-    assert result.parent_id == base.id
-    assert result.generator == "template:level_up"
-    assert result.id != base.id
-    assert result.name == "Leveled Cinderkite"
+    assert (result.id, result.name, result.source, result.parent_id) == (base.id, base.name, base.source, base.parent_id)
     assert result.attribution == SRD_ATTRIBUTION  # a derived work keeps the credit
 
 
@@ -233,10 +173,6 @@ def test_a_level_up_monster_passes_the_validator_without_corrections(monster: Mo
     checks = [c for c in default_checks() if not isinstance(c, CrConsistencyCheck)]
     report = Validator(checks=checks).validate(level_up(monster))
     assert report.status is Status.ACCEPTED, [f.message for f in report.findings]
-
-
-def test_two_level_ups_of_different_monsters_get_different_ids() -> None:
-    assert level_up(sample("Cinderkite")).id != level_up(sample("Stormhide Drake")).id
 
 
 def test_the_cr_after_level_up_is_one_step_up_for_every_sample() -> None:

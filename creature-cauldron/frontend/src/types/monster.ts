@@ -37,7 +37,6 @@ export interface AttackAction {
   };
   damage: DamageRoll[];
   effects_text?: string | null;
-  conditions?: string[];
 }
 
 export interface SaveAction {

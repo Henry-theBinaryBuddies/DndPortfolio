@@ -1,9 +1,10 @@
 """Turns the SRD's action entries into our hybrid actions.
 
-The hybrid model has typed actions (attack, save, multiattack) and free-text actions. This parser tries to give an
-entry a type, and keeps it as text when it cannot do that *exactly*. The safety rule is a round trip: a typed
-attack or save is accepted only if ``describe()`` writes back precisely the SRD's own wording. So a typed action
-never changes what the stat block says, and a text action never loses anything.
+The hybrid model has typed actions and free-text actions. This parser types the attacks and the multiattacks and keeps
+everything else as text (the SRD words its saving throws with lead-in sentences that a typed save could not reproduce,
+so none of them is typed). The safety rule is a round trip: a typed attack is accepted only if ``describe()`` writes
+back precisely the SRD's own wording. So a typed action never changes what the stat block says, and a text action never
+loses anything.
 """
 
 import re
@@ -12,7 +13,6 @@ from pydantic import ValidationError
 
 from cauldron.actions import (
     Action,
-    Area,
     AttackAction,
     AttackDetails,
     DamageRoll,
@@ -20,22 +20,12 @@ from cauldron.actions import (
     MultiattackEntry,
     Range,
     Recharge,
-    SaveAction,
-    SaveDetails,
     TextAction,
 )
 from cauldron.dice import ability_modifier
 from cauldron.monster import Abilities, LegendaryOption
-from cauldron.options import Ability, AreaShape, AttackMode, DamageType, SaveSuccess
+from cauldron.options import Ability, AttackMode, DamageType
 
-_ABILITY_BY_NAME = {
-    "Strength": Ability.STR,
-    "Dexterity": Ability.DEX,
-    "Constitution": Ability.CON,
-    "Intelligence": Ability.INT,
-    "Wisdom": Ability.WIS,
-    "Charisma": Ability.CHA,
-}
 _MODE_BY_LABEL = {
     "Melee Weapon Attack": AttackMode.MELEE_WEAPON,
     "Ranged Weapon Attack": AttackMode.RANGED_WEAPON,
@@ -51,16 +41,7 @@ _ATTACK = re.compile(
     r"(?P<targets>[^.]+)\. Hit: (?P<rest>.*)",
     re.DOTALL,
 )
-_SAVE = re.compile(
-    r"(?:Each creature in a (?P<size>\d+)-foot(?P<shape>-radius sphere| radius| cone| cube| line(?: that is (?P<width>\d+) feet wide)?)"
-    r"|The target) must make a DC (?P<dc>\d+) (?P<ability>Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw"
-    r"(?:, taking (?P<damage>.+?) on a failed save(?P<half>, or half as much damage on a successful one)?)?\."
-    r"(?: (?P<effects>.*))?",
-    re.DOTALL,
-)
 _LEGENDARY_COST = re.compile(r"\s*\(Costs (\d+) Actions?\)\s*$")
-
-_SHAPES = {"-radius sphere": AreaShape.SPHERE, " radius": AreaShape.RADIUS, " cone": AreaShape.CONE, " cube": AreaShape.CUBE}
 
 
 # --- damage ---------------------------------------------------------------------------------------------
@@ -141,31 +122,6 @@ def _try_attack(desc: str, name: str, abilities: Abilities, proficiency_bonus: i
     )
 
 
-def _try_save(desc: str, name: str, recharge: Recharge | None) -> SaveAction | None:
-    match = _SAVE.fullmatch(desc)
-    if match is None:
-        return None
-    area = None
-    if match["size"]:
-        shape_text = match["shape"]
-        shape = AreaShape.LINE if shape_text.startswith(" line") else _SHAPES[shape_text]
-        area = Area(shape=shape, size=int(match["size"]), width=int(match["width"]) if match["width"] else None)
-    on_fail: list[DamageRoll] = []
-    if match["damage"]:
-        on_fail, end = _damage_chain(match["damage"])
-        if end != len(match["damage"]):
-            return None
-    return SaveAction(
-        name=name,
-        recharge=recharge,
-        save=SaveDetails(ability=_ABILITY_BY_NAME[match["ability"]], dc=int(match["dc"])),
-        area=area,
-        on_fail=on_fail,
-        on_success=SaveSuccess.HALF if match["half"] else SaveSuccess.NONE,
-        effects_text=match["effects"] or None,
-    )
-
-
 # --- multiattack ----------------------------------------------------------------------------------------
 
 
@@ -219,8 +175,6 @@ def parse_action(raw: dict, monster_name: str, abilities: Abilities, proficiency
         typed: Action | None = None
         if recharge is None:  # an attack has no recharge, so a recharging attack stays text
             typed = _try_attack(desc, name, abilities, proficiency_bonus)
-        if typed is None:
-            typed = _try_save(desc, name, recharge)
         # The round trip: keep the typed version only if it prints exactly what the SRD prints.
         if typed is not None and typed.describe(monster_name) == desc:
             return typed

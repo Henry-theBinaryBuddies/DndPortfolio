@@ -15,7 +15,7 @@ from cauldron.monster import Monster
 from cauldron.options import CreatureType, DamageTheme
 from cauldron.remix.moves import MOVES, Move, available_moves, make_context
 from cauldron.remix.theme import apply_theme, primary_damage
-from cauldron.templates import LevelUpTemplate
+from cauldron.templates import level_up as apply_level_up
 
 SURPRISE = "surprise"
 
@@ -102,11 +102,7 @@ def remix(monster: Monster, theme: DamageTheme | None, move_key: str | None, mov
 
     if level_up:
         old_cr = shaped.challenge.cr
-        leveled = LevelUpTemplate().apply(shaped)
-        # The template renames and re-identifies the monster; a remix keeps its identity (the service names it afterwards).
-        shaped = leveled.model_copy(
-            update={"id": shaped.id, "name": shaped.name, "source": shaped.source, "validated": shaped.validated, "parent_id": shaped.parent_id, "generator": shaped.generator}
-        )
-        changes.append(f"Level up: CR {old_cr} → CR {shaped.challenge.cr}, with more hit points, better armor and harder hits")
+        shaped = apply_level_up(shaped)
+        changes.append(f"Level up: CR {old_cr} \u2192 CR {shaped.challenge.cr}, with more hit points, better armor and harder hits")
 
     return RemixResult(shaped, changes)

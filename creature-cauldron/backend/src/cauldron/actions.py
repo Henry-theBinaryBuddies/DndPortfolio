@@ -113,7 +113,6 @@ class AttackAction(Action):
     attack: AttackDetails
     damage: list[DamageRoll]
     effects_text: Prose | None = None
-    conditions: list[str] | None = None
 
     def describe(self, monster_name: str) -> str:
         attack = self.attack

@@ -163,17 +163,12 @@ export function splitBonus(
   return { multiplier, flat: extra - multiplier * pb };
 }
 
-/** True only for digits, dice such as "2d6", plus, minus and spaces: text safe to put in a Foundry formula field. */
-export function isStrictFormula(text: string): boolean {
-  return /^\d+(d\d+)?(\s*[+-]\s*\d+(d\d+)?)*$/.test(text.trim());
-}
-
 /** "4d8+8" becomes "4d8 + 8", the spacing Foundry writes. Returns "" if the text is not a plain dice formula. */
 export function normalizeHpFormula(dice: string): string {
   try {
     const { count, sides, bonus } = parseDice(dice);
     const text = bonus === 0 ? `${count}d${sides}` : `${count}d${sides} ${bonus > 0 ? "+" : "-"} ${Math.abs(bonus)}`;
-    return isStrictFormula(text) ? text : "";
+    return text;
   } catch {
     return "";
   }

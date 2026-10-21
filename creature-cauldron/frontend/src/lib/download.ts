@@ -3,8 +3,8 @@
  * browser builds one in memory (a Blob), gets a temporary address for it, and "clicks" a hidden
  * download link. This is the one impure function in the export code.
  */
-export function downloadTextFile(filename: string, text: string, mimeType = "application/json"): void {
-  const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
+export function downloadTextFile(filename: string, text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;

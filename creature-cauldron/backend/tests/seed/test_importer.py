@@ -2,7 +2,7 @@
 
 import pytest
 
-from cauldron.actions import AttackAction, MultiattackAction, SaveAction, TextAction
+from cauldron.actions import AttackAction, MultiattackAction, TextAction
 from cauldron.monster import Monster
 from cauldron.options import Ability, CreatureType, DamageType, Feature, Role, Size, Source
 from cauldron.rules import SRD_ATTRIBUTION
@@ -136,10 +136,9 @@ def test_every_monster_survives_a_round_trip_through_json(everything) -> None:
 
 def test_most_attacks_are_typed_and_the_rest_keep_their_words(everything) -> None:
     attacks = sum(isinstance(a, AttackAction) for m in everything.monsters for a in m.all_actions())
-    saves = sum(isinstance(a, SaveAction) for m in everything.monsters for a in m.all_actions())
     texts = sum(isinstance(a, TextAction) for m in everything.monsters for a in m.all_actions())
     # The SRD words its saving throws in ways our typed save cannot reproduce exactly, so they stay text.
-    assert attacks > 400 and saves == 0 and texts > 200
+    assert attacks > 400 and texts > 200
 
 
 def test_the_qualified_damage_lines_are_all_kept(everything) -> None:

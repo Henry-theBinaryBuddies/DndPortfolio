@@ -8,7 +8,7 @@ they are derived exactly by ``cauldron.features``.
 import re
 from dataclasses import dataclass
 
-from cauldron.actions import Action, AttackAction, MultiattackAction, SaveAction
+from cauldron.actions import Action, AttackAction
 from cauldron.dice import average_dice
 from cauldron.monster import Monster
 from cauldron.options import AttackMode, CreatureType, DamageTheme, Environment, Role

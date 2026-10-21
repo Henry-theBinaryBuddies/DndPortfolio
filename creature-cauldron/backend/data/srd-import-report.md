@@ -7,7 +7,6 @@ Monsters imported: **333**. Excluded: 1. Rejected by the validator: 0.
 | Kind | Count |
 |---|---|
 | Attacks (typed) | 423 |
-| Saves (typed) | 0 |
 | Multiattacks (typed counts, official wording) | 145 |
 | Text (kept word for word) | 280 |
 

@@ -5,7 +5,7 @@ import type { Monster, Spellcasting } from "../types/monster";
 import { buildFiveToolsFile } from "./fiveTools";
 import { buildSpellcastingBlock, spellTag } from "./fiveToolsSpells";
 import type { JsonObject } from "./foundryJson";
-import { parseSpellcastingText, spellRef, splitSpellList } from "./spellcastingText";
+import { parseSpellcastingText, spellRef, splitSpellList } from "./testing/parseSpellcasting";
 
 const monsters = sample as unknown as Monster[];
 const real = (realFixture as unknown as { monster: JsonObject[] }).monster;

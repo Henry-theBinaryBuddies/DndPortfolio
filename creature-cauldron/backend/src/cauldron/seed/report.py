@@ -2,7 +2,7 @@
 
 from collections import Counter
 
-from cauldron.actions import AttackAction, MultiattackAction, SaveAction, TextAction
+from cauldron.actions import AttackAction, MultiattackAction, TextAction
 from cauldron.seed.importer import ImportResult
 
 
@@ -19,7 +19,6 @@ def write_report(result: ImportResult) -> str:
         "| Kind | Count |",
         "|---|---|",
         f"| Attacks (typed) | {kinds[AttackAction.__name__]} |",
-        f"| Saves (typed) | {kinds[SaveAction.__name__]} |",
         f"| Multiattacks (typed counts, official wording) | {kinds[MultiattackAction.__name__]} |",
         f"| Text (kept word for word) | {kinds[TextAction.__name__]} |",
         "",

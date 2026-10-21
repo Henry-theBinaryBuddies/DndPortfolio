@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import sample from "../../public/data/sample-monsters.json";
 import type { Monster, Spellcasting } from "../types/monster";
 import { looksLikeMonster } from "./generatedStore";
-import { casterLevel, hasSpellLists, parseSpellcastingText, spellRef, spellRefText, spellcastingToText } from "./spellcastingText";
+import { casterLevel, hasSpellLists, spellRefText, spellcastingToText } from "./spellcastingText";
+import { parseSpellcastingText, spellRef } from "./testing/parseSpellcasting";
 
 const monsters = sample as unknown as Monster[];
 const base = { ability: "int", dc: 14, attack_bonus: 6 } as const;

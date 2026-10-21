@@ -9,7 +9,6 @@ import {
   areaTemplate,
   atModBonus,
   foundryProficiency,
-  isStrictFormula,
   normalizeHpFormula,
   parseConditions,
   parseLanguages,
@@ -159,20 +158,6 @@ describe("parseLanguages and parseConditions", () => {
 });
 
 describe("formulas", () => {
-  it.each([
-    ["2d6", true],
-    ["2d6 + 3", true],
-    ["19d12 + 133", true],
-    ["5", true],
-    ["@mod", false],
-    ["2d6; drop table", false],
-    ["", false],
-    ["2d", false],
-    ["1d4 * 2", false],
-  ])("isStrictFormula(%j) is %s", (text, expected) => {
-    expect(isStrictFormula(text)).toBe(expected);
-  });
-
   it("writes hit point formulas with Foundry's spacing, or blank when unreadable", () => {
     expect(normalizeHpFormula("4d8+8")).toBe("4d8 + 8");
     expect(normalizeHpFormula("2d6")).toBe("2d6");

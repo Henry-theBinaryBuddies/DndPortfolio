@@ -90,7 +90,6 @@ export function exportFoundryActor(monster: Monster): FoundryExport {
 
   // Skills: all 18 are written, each with a proficiency multiplier (0, 1 or 2) plus a flat bonus.
   const skills = child(system, "skills");
-  const known = new Set<string>();
   for (const skill of SKILLS) {
     const entry = child(skills, skill.id);
     const bonuses = child(entry, "bonuses");
@@ -101,7 +100,6 @@ export function exportFoundryActor(monster: Monster): FoundryExport {
     if (total === undefined) {
       entry.value = 0;
     } else {
-      known.add(skill.id);
       const { multiplier, flat } = splitBonus(total, mods[skill.ability], pb, 2);
       entry.value = multiplier;
       bonuses.check = flat === 0 ? "" : String(flat);

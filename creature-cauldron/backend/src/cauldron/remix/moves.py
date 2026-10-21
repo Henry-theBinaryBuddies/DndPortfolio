@@ -33,11 +33,9 @@ class Context:
     monster: Monster
     theme: DamageTheme
     name: str
-    pb: int
     dc: int  # 8 + proficiency + the best ability modifier, but never above what the monster's own attacks and saves reach
     attack_ability: Ability
     attack_bonus: int  # proficiency + the better of Strength and Dexterity
-    best: float  # the average damage of its best single attack
     budget: int  # the most damage one use of a signature attack may deal
 
     @property
@@ -79,11 +77,9 @@ def make_context(monster: Monster, theme: DamageTheme, name: str) -> Context:
         monster=monster,
         theme=theme,
         name=name,
-        pb=pb,
         dc=dc,
         attack_ability=ability,
         attack_bonus=pb + mods[ability.value],
-        best=best,
         budget=budget,
     )
 
