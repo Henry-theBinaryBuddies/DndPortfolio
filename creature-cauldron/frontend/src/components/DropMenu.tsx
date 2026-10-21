@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
+const OPENED_EVENT = "dropmenu-opened";
+
 interface DropMenuProps {
   /** What the button says. */
   label: ReactNode;
@@ -11,6 +13,9 @@ interface DropMenuProps {
   panelClassName?: string;
   /** Keep the panel's contents alive while it is closed, so what was typed or chosen in it is still there on reopening. */
   keepMounted?: boolean;
+  /** Whether a click, or tabbing, outside the panel closes it. Turn it off for a panel with a form in it, so a slightly missed
+   *  click does not close it; it then closes with its button or the Escape key. */
+  closeOnOutside?: boolean;
   /** The contents. A function receives `close`, for items that should shut the panel when they are used. */
   children: ReactNode | ((close: () => void) => ReactNode);
 }
@@ -24,6 +29,7 @@ export default function DropMenu({
   align = "left",
   panelClassName = "",
   keepMounted = false,
+  closeOnOutside = true,
   children,
 }: DropMenuProps) {
   const [open, setOpen] = useState(false);
@@ -45,16 +51,31 @@ export default function DropMenu({
       setOpen(false);
       button.current?.focus(); // put keyboard focus back on the button that opened it
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("focusin", onFocusIn);
+    if (closeOnOutside) {
+      document.addEventListener("pointerdown", onPointerDown);
+      document.addEventListener("focusin", onFocusIn);
+    }
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, closeOnOutside]);
 
+  // Only one panel is open at a time: opening this one closes any other (including the ones that do not close on an outside click).
+  useEffect(() => {
+    const onOtherOpened = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== panelId) setOpen(false);
+    };
+    window.addEventListener(OPENED_EVENT, onOtherOpened);
+    return () => window.removeEventListener(OPENED_EVENT, onOtherOpened);
+  }, [panelId]);
+
+  const toggle = () => {
+    if (!open) window.dispatchEvent(new CustomEvent(OPENED_EVENT, { detail: panelId }));
+    setOpen(!open);
+  };
   const close = () => setOpen(false);
   const content = typeof children === "function" ? children(close) : children;
 
@@ -67,7 +88,7 @@ export default function DropMenu({
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={ariaLabel}
-        onClick={() => setOpen(!open)}
+        onClick={toggle}
       >
         {label}
       </button>

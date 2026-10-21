@@ -56,7 +56,7 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
   const surprising = theme === SURPRISE || move === SURPRISE;
 
   return (
-    <DropMenu label="Reskin" ariaLabel="Reskin" align="right" keepMounted panelClassName="reskin-panel">
+    <DropMenu label="Reskin" ariaLabel="Reskin" align="right" keepMounted closeOnOutside={false} panelClassName="reskin-panel">
           <fieldset className="reskin-kind">
             <legend className="sr-only">Kind of reskin</legend>
             <label>
