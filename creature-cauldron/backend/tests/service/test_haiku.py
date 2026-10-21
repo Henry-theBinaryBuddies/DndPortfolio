@@ -13,7 +13,6 @@ import pytest
 
 from cauldron.options import Source
 from cauldron.service.brief import build_brief
-from cauldron.service.draft import NameDraft
 from cauldron.service.generators import BadOutput, GeneratorUnavailable
 from cauldron.service.haiku import HaikuGenerator, build_generator
 from cauldron.service.models import GenerateRequest
@@ -188,7 +187,6 @@ def test_the_name_tool_only_asks_for_a_name_and_a_description() -> None:
     generator(client).rename(context(), [])
     schema = client.requests[0]["tools"][0]["input_schema"]
     assert set(schema["properties"]) == {"name", "description"}
-    assert set(NameDraft.model_fields) == {"name", "description"}
 
 
 def test_a_bad_name_reply_is_bad_output() -> None:

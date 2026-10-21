@@ -27,7 +27,6 @@ def test_a_theme_alone_changes_damage_and_defences_and_says_so(named) -> None:
     assert isinstance(result, RemixResult)
     assert result.changes[0] == "Main damage: bludgeoning → cold"
     assert not any(c.startswith("New move") for c in result.changes)
-    assert result.monster.actions == [a for a in result.monster.actions]  # no move added
     assert len(result.monster.actions) == len(named("Zombie").actions)
 
 

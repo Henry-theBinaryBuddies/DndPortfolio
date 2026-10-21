@@ -63,7 +63,6 @@ def test_the_json_schema_describes_the_draft_and_is_plain_json() -> None:
 
     schema = draft_json_schema()
     assert "discriminator" not in json.dumps(schema)  # OpenAPI-only keyword, removed so the schema is standard JSON Schema
-    json.dumps(schema)
     assert schema["type"] == "object"
     assert "name" in schema["properties"] and "id" not in schema["properties"]
 
@@ -83,7 +82,7 @@ def test_the_system_prompt_sets_the_rules_that_matter() -> None:
     assert "2014" in system
     assert "original" in system
     assert "do not" in system and "monster manual" in system
-    assert "submit_monster" in system or "tool" in system
+    assert "submit_monster" in system  # the tool the reply must be sent through
 
 
 def test_without_a_chosen_damage_theme_the_model_is_told_not_to_default_to_fire() -> None:

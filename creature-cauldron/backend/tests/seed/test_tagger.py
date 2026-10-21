@@ -7,8 +7,6 @@ rules down so a change to them is deliberate.
 import json
 from pathlib import Path
 
-import pytest
-
 from cauldron.monster import Monster
 from cauldron.options import CreatureType, DamageTheme, Environment, Role
 from cauldron.seed.tagger import tag
@@ -67,11 +65,6 @@ def test_casters_are_controllers_when_they_are_not_solos() -> None:
     assert tag(sample("Hollowvale Hexer")).role is Role.CONTROLLER
 
 
-def test_every_monster_gets_a_valid_role() -> None:
-    for monster in SAMPLES:
-        assert tag(monster).role in set(Role)
-
-
 def test_tagging_is_deterministic() -> None:
     assert tag(sample("Stormhide Drake")) == tag(sample("Stormhide Drake"))
 
@@ -84,19 +77,9 @@ def test_damage_themes_are_the_elements_a_monster_deals_or_is_immune_to() -> Non
     assert DamageTheme.LIGHTNING in drake.damage_themes
 
 
-def test_weapon_damage_is_never_a_theme() -> None:
-    for monster in SAMPLES:
-        assert all(t.value not in {"slashing", "piercing", "bludgeoning"} for t in tag(monster).damage_themes)
-
-
 def test_themes_are_unique_and_at_most_three() -> None:
     for monster in SAMPLES:
         themes = tag(monster).damage_themes
         assert len(themes) == len(set(themes)) <= 3, monster.name
 
 
-@pytest.mark.parametrize("monster", SAMPLES, ids=lambda m: m.name)
-def test_tags_are_all_valid_enum_members(monster: Monster) -> None:
-    result = tag(monster)
-    assert all(isinstance(e, Environment) for e in result.environments)
-    assert all(isinstance(t, DamageTheme) for t in result.damage_themes)

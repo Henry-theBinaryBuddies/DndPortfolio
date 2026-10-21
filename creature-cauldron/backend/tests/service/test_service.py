@@ -274,7 +274,8 @@ def test_a_damage_swap_is_done_by_code_and_the_ai_only_names_it(make, sample) ->
     assert monster.name == "Rimestorm Drake" and monster.description == "A frosty twist."
     assert monster.source is Source.RESKIN and monster.parent_id == drake.id and monster.id.startswith("gen-")
     assert DamageType.LIGHTNING not in monster.immunities + monster.resistances
-    assert DamageType.COLD in {r.type for a in monster.actions if hasattr(a, "damage") for r in a.damage} | {DamageType.COLD}
+    prose = " ".join(a.describe(monster.name) for a in monster.all_actions())
+    assert "cold damage" in prose and "lightning damage" not in prose
     assert monster.challenge == drake.challenge
     assert rig.store.get(monster.id) == monster
 

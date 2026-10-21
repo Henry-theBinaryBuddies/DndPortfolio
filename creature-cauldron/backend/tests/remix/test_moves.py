@@ -97,7 +97,7 @@ def test_every_move_names_its_action_with_the_name_given(key: str, named) -> Non
 
 def test_text_that_names_the_monster_does_so_in_lower_case_as_the_srd_does(named) -> None:
     ogre = named("Ogre")
-    assert "the ogre dies" in build(MOVES["death_burst"], ogre).traits[0].text.replace("When the ogre dies", "the ogre dies")
+    assert "the ogre dies" in build(MOVES["death_burst"], ogre).traits[0].text
     assert "the ogre" in build(MOVES["backlash"], ogre).reactions[0].text  # type: ignore[union-attr]
     assert "The ogre teleports" in build(MOVES["blink_step"], ogre).bonus_actions[0].text  # type: ignore[union-attr]
     assert "Ogre" not in " ".join(item.describe("Ogre") for move in MOVES.values() for item in everything(build(move, ogre)))

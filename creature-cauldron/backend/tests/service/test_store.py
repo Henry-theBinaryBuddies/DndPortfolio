@@ -67,7 +67,11 @@ def test_find_applies_every_filter(store, samples) -> None:
     for m in samples:
         store.add(m)
     result = store.find(req(crMin=2, crMax=4, features=["flying"]), exclude_ids=frozenset())
-    assert all(2 <= m.challenge.cr_value <= 4 and "flying" in [f.value for f in m.features] for m in result)
+    found = {m.id for m in result}
+    assert found, "the samples include flying monsters of CR 2 to 4"
+    for m in samples:
+        fits = 2 <= m.challenge.cr_value <= 4 and "flying" in [f.value for f in m.features]
+        assert (m.id in found) == fits, m.name  # nothing that fits is missing, and nothing that does not fit is in
 
 
 def test_find_respects_the_limit(store, samples) -> None:

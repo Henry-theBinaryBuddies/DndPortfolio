@@ -1,7 +1,7 @@
 """The two spend protections (per-address rate limit, global daily cap) and finding the visitor's address."""
 
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -76,14 +76,21 @@ def test_a_refused_request_does_not_count_against_the_visitor() -> None:
     assert limiter.allow("a").allowed
 
 
-def test_idle_addresses_are_forgotten_so_memory_stays_bounded() -> None:
+def test_idle_addresses_are_forgotten() -> None:
     clock = FakeClock()
     limiter = RateLimiter([(60, 5)], clock=clock, max_keys=100)
-    for i in range(150):
+    for i in range(100):
         limiter.allow(f"visitor-{i}")
-    clock.now += 120
+    clock.now += 120  # every one of them is idle now
     limiter.allow("fresh")
-    assert limiter.tracked <= 100
+    assert limiter.tracked == 1
+
+
+def test_a_flood_of_new_addresses_cannot_grow_memory_without_bound() -> None:
+    limiter = RateLimiter([(60, 5)], clock=FakeClock(), max_keys=100)
+    for i in range(150):  # nothing is idle, because the clock never moves
+        limiter.allow(f"visitor-{i}")
+    assert limiter.tracked == 100
 
 
 # --- the daily cap --------------------------------------------------------------------------------------
@@ -118,9 +125,11 @@ def test_a_new_day_starts_with_a_fresh_allowance(store) -> None:
 
 
 def test_the_day_is_the_utc_day(store) -> None:
-    cap = DailyCap(store, limit=5, clock=lambda: day(2026, 10, 20, 23))
+    # 22:00 on 20 October at UTC-5 is already 03:00 UTC on the 21st
+    cap = DailyCap(store, limit=5, clock=lambda: datetime(2026, 10, 20, 22, tzinfo=timezone(timedelta(hours=-5))))
     cap.reserve()
-    assert store.usage("2026-10-20").calls == 1
+    assert store.usage("2026-10-21").calls == 1
+    assert store.usage("2026-10-20").calls == 0
 
 
 def test_remaining_counts_down(store) -> None:

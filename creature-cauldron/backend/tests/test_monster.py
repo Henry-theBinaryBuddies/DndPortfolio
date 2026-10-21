@@ -130,10 +130,18 @@ def test_legendary_intro_sentence() -> None:
     assert legendary_intro("Ancient Drake", 3).startswith("The ancient drake can take 3 legendary actions, choosing from the options below.")
 
 
-def test_a_monster_can_list_every_ability_it_has_in_stat_block_order() -> None:
-    monster = Monster.model_validate(sample("Cinderkite"))
-    names = [a.display_name for a in monster.all_actions()]
-    assert names == [a.display_name for a in [*monster.actions, *monster.bonus_actions, *monster.reactions]]
+def test_all_actions_lists_actions_then_bonus_actions_then_reactions() -> None:
+    from cauldron.actions import TextAction
+
+    base = Monster.model_validate(sample("Cinderkite"))
+    monster = base.model_copy(
+        update={
+            "actions": [TextAction(name="Bite", text="x")],
+            "bonus_actions": [TextAction(name="Dash", text="x")],
+            "reactions": [TextAction(name="Parry", text="x")],
+        }
+    )
+    assert [a.name for a in monster.all_actions()] == ["Bite", "Dash", "Parry"]
 
 
 # --- the shared builders --------------------------------------------------------------------------------

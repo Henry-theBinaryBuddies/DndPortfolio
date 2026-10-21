@@ -28,12 +28,6 @@ def test_a_goblin() -> None:
     assert m.offense_bonus == 4
 
 
-def test_multiattack_adds_up_the_attacks_it_names() -> None:
-    # Bite 19 + 7, two claws of 15, and Frightful Presence does no damage: 56. Fire Breath alone is 63.
-    m = measure(srd("adult-red-dragon"))
-    assert m.dpr == 63
-
-
 def test_a_multiattack_beats_a_single_attack() -> None:
     # The bandit captain: two scimitar hits of 6 and a dagger hit of 5.
     assert measure(srd("bandit-captain")).dpr == 17

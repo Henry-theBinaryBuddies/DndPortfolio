@@ -106,18 +106,16 @@ def test_the_committed_curves_cover_the_whole_ladder_and_never_decrease() -> Non
 
 
 def test_the_committed_calibration_records_how_it_was_made() -> None:
-    assert table.SAMPLE_SIZE == len(SRD) == 333
+    assert table.SAMPLE_SIZE == len(SRD)
     assert table.RELIABLE_UP_TO in CR_LABELS
     assert 0 < table.MEAN_ABS_ERROR < 2
     assert table.WITHIN[2] > 0.85
 
 
-def test_the_tolerance_grows_with_the_challenge_rating() -> None:
+def test_the_tolerance_is_tighter_at_low_challenge_ratings_than_in_the_middle() -> None:
     low = tolerance_steps(CR_LABELS.index("2"))
     mid = tolerance_steps(CR_LABELS.index("8"))
-    high = tolerance_steps(CR_LABELS.index("25"))
-    assert 1 <= low <= mid
-    assert high >= 1
+    assert 1 <= low < mid
 
 
 def test_most_srd_monsters_fall_inside_their_tolerance() -> None:

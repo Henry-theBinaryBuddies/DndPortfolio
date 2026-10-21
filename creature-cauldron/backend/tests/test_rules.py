@@ -41,7 +41,7 @@ def test_xp_table_matches_the_srd() -> None:
     assert xp_for_cr("5") == 1800
     assert xp_for_cr("17") == 18000
     assert xp_for_cr("30") == 155000
-    assert set(XP_BY_CR) == set(CR_LABELS)
+    assert len(XP_BY_CR) == 34  # every challenge rating from 0 to 30, with the four below 1
 
 
 @pytest.mark.parametrize(

@@ -4,7 +4,7 @@ import pytest
 
 from cauldron.actions import AttackAction, MultiattackAction, TextAction
 from cauldron.monster import Monster
-from cauldron.options import Ability, CreatureType, DamageType, Feature, Role, Size, Source
+from cauldron.options import Ability, CreatureType, DamageType, Feature, Size, Source
 from cauldron.rules import SRD_ATTRIBUTION
 from cauldron.seed.importer import import_all, import_monster
 
@@ -60,7 +60,7 @@ def test_swarms_keep_their_swarm_wording_as_a_subtype(raw) -> None:
 def test_qualified_damage_lines_keep_their_exact_text(raw) -> None:
     m = imported(raw, "werewolf-hybrid")
     assert m.damage_text is not None and m.damage_text.immunities is not None
-    assert "nonmagical" in m.damage_text.immunities or "nonmagical" in (m.damage_text.resistances or "")
+    assert "nonmagical" in m.damage_text.immunities
     assert DamageType.SLASHING in (m.immunities + m.resistances)
 
 
@@ -147,7 +147,7 @@ def test_the_qualified_damage_lines_are_all_kept(everything) -> None:
 
 def test_every_monster_has_tags(everything) -> None:
     for m in everything.monsters:
-        assert 1 <= len(m.environments) <= 3 and m.role in set(Role), m.name
+        assert 1 <= len(m.environments) <= 3, m.name
 
 
 def test_the_srd_monsters_have_the_real_hit_points_from_the_official_document(everything) -> None:

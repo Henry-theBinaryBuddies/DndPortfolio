@@ -7,9 +7,8 @@ const library = sample as unknown as Monster[];
 const named = (name: string) => library.find((m) => m.name === name)!;
 
 describe("the remix move menu", () => {
-  it("has eighteen moves with unique keys, each in a known group", () => {
-    expect(REMIX_MOVES).toHaveLength(18);
-    expect(new Set(REMIX_MOVES.map((m) => m.key)).size).toBe(18);
+  it("has moves with unique keys, each in a known group", () => {
+    expect(new Set(REMIX_MOVES.map((m) => m.key)).size).toBe(REMIX_MOVES.length);
     for (const move of REMIX_MOVES) expect(MOVE_GROUPS).toContain(move.group);
   });
 
@@ -19,7 +18,7 @@ describe("the remix move menu", () => {
 
   it("offers every move to a monster that deals damage", () => {
     const attacker = library.find((m) => m.size !== "tiny" && m.actions.some((a) => a.kind === "attack"))!;
-    expect(movesFor(attacker)).toHaveLength(18);
+    expect(movesFor(attacker)).toHaveLength(REMIX_MOVES.length);
   });
 
   it("keeps the moves that move creatures around away from a Tiny monster", () => {

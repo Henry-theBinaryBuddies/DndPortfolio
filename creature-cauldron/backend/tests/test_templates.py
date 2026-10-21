@@ -10,7 +10,8 @@ import pytest
 
 from cauldron.actions import AttackAction, SaveAction, TextAction
 from cauldron.dice import ability_modifier
-from cauldron.monster import Monster
+from cauldron.dice import parse_dice
+from cauldron.monster import HitPoints, Monster
 from cauldron.options import DamageTheme, DamageType, Source
 from cauldron.rules import SRD_ATTRIBUTION, proficiency_bonus, step_cr, xp_for_cr
 from cauldron.templates import level_up, retarget_name, swap_damage_type
@@ -75,7 +76,7 @@ def test_swap_also_rewrites_the_damage_words_inside_text_actions() -> None:
 
 def test_swapping_a_type_for_itself_changes_nothing() -> None:
     base = sample("Stormhide Drake")
-    assert swap_damage_type(base, DamageType.FIRE, DamageType.FIRE) == base
+    assert swap_damage_type(base, DamageType.LIGHTNING, DamageType.LIGHTNING) == base  # the drake really deals lightning
 
 
 # --- templates in general -------------------------------------------------------------------------------
@@ -92,9 +93,9 @@ def test_level_up_raises_armor_class_by_one() -> None:
 def test_level_up_raises_hit_points_by_about_half_with_matching_dice() -> None:
     base = sample("Stormhide Drake")
     result = level_up(base)
-    per_die = (10 + 1) / 2 + ability_modifier(base.abilities.con)  # a large creature rolls d10s
-    assert abs(result.hit_points.average - base.hit_points.average * 1.5) <= per_die
-    assert result.hit_points.dice.startswith(f"{round(result.hit_points.average / per_die)}d10")
+    assert 1.3 * base.hit_points.average <= result.hit_points.average <= 1.7 * base.hit_points.average
+    count = parse_dice(result.hit_points.dice).count  # a large creature rolls d10s
+    assert result.hit_points == HitPoints.for_dice(count, 10, ability_modifier(base.abilities.con))
 
 
 def test_level_up_raises_challenge_rating_one_step_and_follows_it() -> None:

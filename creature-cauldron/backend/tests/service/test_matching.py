@@ -1,5 +1,6 @@
 """Does a monster fit a request? The same rules as the web page's filters."""
 
+from cauldron.options import DamageTheme, Environment, Role
 from cauldron.service.matching import matches
 from cauldron.service.models import GenerateRequest
 
@@ -26,13 +27,25 @@ def test_type_size_and_role_are_one_of(sample) -> None:
     assert not matches(drake, req(types=["undead"]))
     assert matches(drake, req(sizes=["large"]))
     assert not matches(drake, req(sizes=["tiny", "small"]))
+    other_role = next(r for r in Role if r is not drake.role)
+    assert matches(drake, req(roles=[drake.role.value, other_role.value]))
+    assert not matches(drake, req(roles=[other_role.value]))
 
 
-def test_environments_and_damage_themes_need_any_one_of_the_picks(sample) -> None:
+def test_environments_need_any_one_of_the_picks(sample) -> None:
     drake = sample("Stormhide Drake")
-    wanted = req(environments=[drake.environments[0].value, "arctic"])
-    assert matches(drake, wanted)
-    assert not matches(drake, req(environments=["arctic"]) if "arctic" not in [e.value for e in drake.environments] else req(environments=["underwater"]))
+    home = drake.environments[0]
+    away = next(e for e in Environment if e not in drake.environments)
+    assert matches(drake, req(environments=[home.value, away.value]))
+    assert not matches(drake, req(environments=[away.value]))
+
+
+def test_damage_themes_need_any_one_of_the_picks(sample) -> None:
+    drake = sample("Stormhide Drake")
+    own = drake.damage_themes[0]
+    other = next(t for t in DamageTheme if t not in drake.damage_themes)
+    assert matches(drake, req(damageThemes=[own.value, other.value]))
+    assert not matches(drake, req(damageThemes=[other.value]))
 
 
 def test_features_need_all_of_the_picks(sample) -> None:

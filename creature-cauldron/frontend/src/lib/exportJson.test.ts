@@ -28,10 +28,6 @@ describe("buildMonsterFile", () => {
       expect(parsed.monster, monster.name).toEqual(monster);
     }
   });
-
-  it("is a pure function of its input", () => {
-    expect(buildMonsterFile(monsters[3], NOW)).toEqual(buildMonsterFile(monsters[3], NOW));
-  });
 });
 
 describe("buildEncounterFile", () => {

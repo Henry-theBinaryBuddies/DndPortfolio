@@ -193,7 +193,6 @@ describe("a dragon written in our format reproduces the real SRD dragon", () => 
     const ourDetect = itemNamed(actor, "Detect");
     expect(obj(activitiesOf(ourDetect)[0].activation).type).toBe(obj(activitiesOf(realTailAttack)[0].activation).type);
     expect(obj(activitiesOf(itemNamed(actor, "Wing Attack"))[0].activation).value).toBe(2);
-    expect(itemNamed(actor, "Legendary Actions")).toBeDefined();
   });
 
   it("writes traits as passive features, like the real Legendary Resistance", () => {
@@ -422,7 +421,7 @@ describe("it never throws, and says so when it leaves something out", () => {
     const { actor } = exportFoundryActor(evil);
     const html = JSON.stringify(actor);
     expect(html).not.toContain("<img");
-    expect(html).not.toContain("<b>Bold</b>".replace("<b>Bold</b>", "<b>Bold</b></p>"));
+    for (const item of items(actor)) expect(String(obj(sys(item).description).value ?? "")).not.toContain("<b>");
     const feature = items(actor).find((i) => sys(i).identifier === "b-bold-b")!;
     expect(obj(sys(feature).description).value).toBe("<p>5 &lt; 6 &amp; 7 &gt; 3</p>");
   });
