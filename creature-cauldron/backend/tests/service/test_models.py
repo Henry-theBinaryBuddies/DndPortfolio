@@ -143,3 +143,16 @@ def test_a_success_carries_the_monster_without_empty_fields(sample) -> None:
     assert dumped["ok"] is True and dumped["notes"] == ["Fixed a number."]
     assert dumped["monster"]["name"] == "Cinderkite"
     assert "parent_id" not in dumped["monster"]
+
+
+def test_a_reflavor_stands_on_its_own() -> None:
+    assert ReskinRequest.model_validate({"baseId": "a", "reflavor": True}).reflavor is True
+    for other in ({"theme": "cold"}, {"move": "lob"}, {"levelUp": True}, {"damageSwap": {"from": "fire", "to": "cold"}}):
+        with pytest.raises(ValidationError):
+            ReskinRequest.model_validate({"baseId": "a", "reflavor": True, **other})
+
+
+def test_a_reflavor_does_not_share_a_cache_key_with_a_plain_request() -> None:
+    reflavor = ReskinRequest.model_validate({"baseId": "a", "reflavor": True})
+    other = ReskinRequest.model_validate({"baseId": "a", "levelUp": True})
+    assert reflavor.cache_key != other.cache_key

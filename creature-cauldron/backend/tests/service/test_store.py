@@ -129,3 +129,18 @@ def test_find_returns_the_newest_matches_first_and_stops_at_the_limit(store, sam
     found = store.find(req(), exclude_ids=frozenset(), limit=50)
     assert len(found) == 50
     assert found[0].id == "drake-59" and "drake-0" not in {m.id for m in found}
+
+
+def test_reflavors_are_listed_oldest_first_and_counted_per_monster(store, sample) -> None:
+    base = sample("Cinderkite")
+    for number in range(3):
+        store.add(base.model_copy(update={"id": f"look-{number}", "name": f"Look {number}"}))
+    store.add(base.model_copy(update={"id": "other-look", "name": "Other Look"}))
+    assert store.reflavors("cinderkite-3a1f") == []
+    store.remember_reflavor("cinderkite-3a1f", "look-0")
+    store.remember_reflavor("cinderkite-3a1f", "look-1")
+    store.remember_reflavor("another-base", "other-look")
+    assert [m.id for m in store.reflavors("cinderkite-3a1f")] == ["look-0", "look-1"]
+    assert [m.id for m in store.reflavors("another-base")] == ["other-look"]
+    store.remember_reflavor("cinderkite-3a1f", "look-2")
+    assert len(store.reflavors("cinderkite-3a1f")) == 3  # the third did not overwrite the first

@@ -24,6 +24,7 @@ from cauldron.monster import Monster
 from cauldron.options import DamageTheme, Source
 from cauldron.remix.engine import remix, resolve
 from cauldron.remix.moves import MOVES
+from cauldron.remix.reflavor import apply_renames, rename_candidates
 from cauldron.service.brief import build_brief, effective_bounds
 from cauldron.service.generators import BadOutput, GeneratorUnavailable, MonsterGenerator
 from cauldron.service.limits import DailyCap
@@ -37,6 +38,7 @@ from cauldron.validator import CrConsistencyCheck, Outcome, Status, ValidationCo
 
 Result = GenerateSuccess | GenerateFailure
 
+MAX_REFLAVORS = 3  # a monster keeps at most this many reflavors; after that a press hands back one of them
 RESTING_MESSAGE = "The forge is resting, back tomorrow. The library still works."
 _COULD_NOT_REACH = "The forge could not be reached just now. Try again in a little while."
 _PLACEHOLDER_MOVE = "Signature Move"
@@ -179,7 +181,13 @@ class GenerationService:
         return request.model_copy(update={"theme": theme, "move": move})
 
     def lookup_reskin(self, request: ReskinRequest) -> Monster | None:
-        """A reskin made earlier for exactly this request. Free. A request with a surprise in it has no earlier answer."""
+        """A reskin made earlier for exactly this request. Free. A request with a surprise in it has no earlier answer.
+
+        A reflavor has no choices, so it is answered from the monster's stored reflavors once there are MAX_REFLAVORS of them
+        (a random one); until then each press makes a new one."""
+        if request.reflavor:
+            variants = self._store.reflavors(request.base_id)
+            return self._rng.choice(variants) if len(variants) >= MAX_REFLAVORS else None
         return None if request.has_surprise else self._store.reskin(request.cache_key)
 
     @staticmethod
@@ -201,6 +209,8 @@ class GenerationService:
         base = self._find_base(request.base_id)
         if base is None:
             return _failure(FailureReason.INVALID, "That monster is not known to the forge.")
+        if request.reflavor:
+            return self._reflavor(base)
         if request.damage_swap is None and request.theme is None and request.move is None and not request.level_up:
             return _failure(FailureReason.INVALID, "Nothing could be changed for that monster. Try a different theme or move.")
         move = MOVES[request.move] if request.move is not None else None
@@ -228,6 +238,32 @@ class GenerationService:
             outcome = self._accept_reskin(shaped, base, named.name, named.description, named.generator, changes)
             if isinstance(outcome, GenerateSuccess):
                 self._store.remember_reskin(request.cache_key, outcome.monster.id)
+            return outcome
+
+        return self._attempts("reskin", lambda feedback: self._generator.rename(context, feedback), accept)
+
+    def _reflavor(self, base: Monster) -> Result:
+        """A new name, description and ability names for `base`. No number is touched."""
+        context = RenameContext(
+            base_name=base.name,
+            base_description=base.description,
+            creature_type=base.type.value,
+            size=base.size.value,
+            cr=base.challenge.cr,
+            changes=(),
+            reflavor=True,
+            rename_candidates=tuple(rename_candidates(base)),
+            avoid_names=tuple(m.name for m in self._store.reflavors(base.id)),
+        )
+
+        def accept(named) -> GenerateSuccess | list[str]:
+            renamed = apply_renames(base, named.renames)
+            if renamed.problems:
+                return renamed.problems
+            changes = ["Reflavored: a new name and description, with every number as it was", *renamed.changes]
+            outcome = self._accept_reskin(renamed.monster, base, named.name, named.description, named.generator, changes)
+            if isinstance(outcome, GenerateSuccess):
+                self._store.remember_reflavor(base.id, outcome.monster.id)
             return outcome
 
         return self._attempts("reskin", lambda feedback: self._generator.rename(context, feedback), accept)

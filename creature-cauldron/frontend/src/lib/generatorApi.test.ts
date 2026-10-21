@@ -145,4 +145,13 @@ describe("demo reskin", () => {
     expect(result.monster.changes?.[0]).toMatch(/^Main damage: .* → acid$/);
     expect(result.monster.changes?.join(" ")).toMatch(/signature moves are not added/);
   });
+
+  it("reflavors with a new name and no number changed", async () => {
+    const base = library[0];
+    const result = await createDemoGenerator(library).reskin({ base, damageSwap: null, reflavor: true });
+    if (!result.ok) throw new Error("expected success");
+    expect(result.monster).toMatchObject({ source: "reskin", validated: false, parent_id: base.id, hit_points: base.hit_points, challenge: base.challenge });
+    expect(result.monster.name).not.toBe(base.name);
+    expect(result.monster.changes?.[0]).toMatch(/^Reflavored/);
+  });
 });

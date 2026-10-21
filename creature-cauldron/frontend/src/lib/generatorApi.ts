@@ -31,6 +31,8 @@ export interface ReskinRequest {
   move?: string | null;
   /** About one challenge rating stronger, worked out by the server. */
   levelUp?: boolean;
+  /** A new name, description and ability names, with every number as it was. Stands alone: never combined with the rest. */
+  reflavor?: boolean;
 }
 
 /** Why a request did not produce a monster. */

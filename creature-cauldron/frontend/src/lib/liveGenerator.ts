@@ -123,6 +123,7 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
         theme: request.theme ?? null,
         move: request.move ?? null,
         levelUp: request.levelUp ?? false,
+        reflavor: request.reflavor ?? false,
       }),
 
     async status(): Promise<ForgeStatus> {

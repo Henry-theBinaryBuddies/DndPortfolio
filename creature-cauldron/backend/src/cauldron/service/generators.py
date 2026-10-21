@@ -45,6 +45,7 @@ class GeneratedName:
     input_tokens: int = 0
     output_tokens: int = 0
     move_name: str | None = None  # only for a remix that added a signature move
+    renames: tuple[tuple[str, str], ...] = ()  # only for a reflavor: (old ability name, new ability name)
 
 
 class MonsterGenerator(ABC):

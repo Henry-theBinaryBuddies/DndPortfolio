@@ -43,20 +43,28 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
     return { base: monster, damageSwap: null, theme: theme === "" ? null : theme, move: move === "" ? null : move, levelUp };
   }
 
-  async function make() {
-    if (blocked) return;
+  async function run(asked: ReskinRequest) {
     setBusy(true);
     setMessage("");
-    const failure = await onReskin(request());
+    const failure = await onReskin(asked);
     setBusy(false);
     if (failure) setMessage(failure);
   }
+
+  const unavailable = offline || resting || busy;
+  const make = () => !blocked && run(request());
+  const reflavor = () => !unavailable && run({ base: monster, damageSwap: null, reflavor: true });
 
   const hint = kind === "quick" ? "Pick a damage swap, level up, or both." : "Pick a theme, a signature move, level up, or any mix.";
   const surprising = kind === "remix" && (theme === SURPRISE || move === SURPRISE);
 
   return (
     <DropMenu label="Reskin" ariaLabel="Reskin" align="right" keepMounted closeOnOutside={false} panelClassName="reskin-panel">
+          <button type="button" className="action-button" aria-disabled={unavailable} aria-describedby="reskin-status" onClick={reflavor}>
+            Reflavor
+          </button>
+          <p className="detail-note">New name, description and ability names. Numbers stay the same.</p>
+          <hr />
           <fieldset className="reskin-kind">
             <legend className="sr-only">Kind of reskin</legend>
             <label>

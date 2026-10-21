@@ -112,6 +112,20 @@ The page's menu is a copy of this list. `backend/tests/remix/test_menu_matches_f
 `theme` is a theme name or `"surprise"`; `move` is a move key or `"surprise"`; `damageSwap` (`{"from":"fire","to":"cold"}`) is the
 quick reskin and cannot be combined with a theme or move. At least one of the four must be given. The old `template` field is gone.
 
+## Reflavor (`"reflavor": true`)
+
+A one-click reskin with no choices: a new name, a new description, and new names for the monster's own attacks and traits. No
+number changes, so it skips the engine and the validator's CR checks have nothing to correct. It stands alone: the request
+validator rejects it combined with a swap, theme, move or level up.
+
+- `remix/reflavor.py` decides which AI-proposed renames are used. A rename applies only to an ability the monster really has
+  (never Multiattack, Spellcasting, Legendary Resistance or the Legendary Actions header), within 40 characters, not blocklisted,
+  and not colliding with another ability. Usage notes such as "(3/Day)" are kept, and a Multiattack's sequence and sentence follow
+  the new names. A blocklisted name is sent back to the AI as feedback; other unusable proposals are simply skipped.
+- A monster keeps at most 3 reflavors (`MAX_REFLAVORS`, stored under `reflavor:<base id>:<n>` in the `reskins` table). The first
+  three presses each make a new one, told the names of the earlier ones so it differs; after that a press returns one of the three
+  at random, free of charge.
+
 ## Tests that guard it
 
 - `tests/remix/test_theme.py`, `test_moves.py`: each rule and each move.

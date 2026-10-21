@@ -230,3 +230,18 @@ def test_a_remix_asks_for_a_move_name_and_returns_it() -> None:
 def test_a_remix_reply_without_a_move_name_is_bad_output() -> None:
     with pytest.raises(BadOutput):
         generator(FakeClient(reply("submit_name", {"name": "Rimeback Raider", "description": "Frosted."}))).rename(remix_context(), [])
+
+
+def test_a_reflavor_asks_for_ability_renames_and_returns_them() -> None:
+    reflavor = RenameContext("Wolf", "A grey hunter.", "beast", "medium", "1/4", (), reflavor=True, rename_candidates=("Bite",))
+    data = {"name": "Rimefang", "description": "Frost-furred.", "renames": [{"old": "Bite", "new": "Rimefang Snap"}]}
+    client = FakeClient(reply("submit_name", data))
+    result = generator(client).rename(reflavor, [])
+    assert result.renames == (("Bite", "Rimefang Snap"),)
+    assert set(client.requests[0]["tools"][0]["input_schema"]["properties"]) == {"name", "description", "renames"}
+
+
+def test_a_reflavor_reply_with_no_renames_is_still_good() -> None:
+    reflavor = RenameContext("Wolf", "A grey hunter.", "beast", "medium", "1/4", (), reflavor=True)
+    result = generator(FakeClient(reply("submit_name", {"name": "Rimefang", "description": "Frost-furred."}))).rename(reflavor, [])
+    assert result.renames == ()

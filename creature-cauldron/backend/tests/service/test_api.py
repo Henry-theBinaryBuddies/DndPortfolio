@@ -335,3 +335,12 @@ def test_a_surprise_with_an_unfit_named_move_is_a_clean_422_not_a_crash(make) ->
     rig = make(library=[frog])
     response = rig.client.post("/api/v1/reskin", json={"baseId": frog.id, "theme": "surprise", "move": "burst"})
     assert response.status_code == 422 and response.json()["reason"] == "invalid"
+
+
+def test_a_reflavor_over_the_wire(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[GeneratedName("Saltwind Duelist", "A new look.", "scripted", 5, 5, None, (("Cutlass", "Saber Strike"),))], library=[cutthroat])
+    response = rig.client.post("/api/v1/reskin", json={"baseId": cutthroat.id, "reflavor": True})
+    assert response.status_code == 200
+    body = response.json()["monster"]
+    assert body["name"] == "Saltwind Duelist" and body["changes"][0].startswith("Reflavored")

@@ -159,23 +159,30 @@ describe("the live generator: reskinning", () => {
       theme: null,
       move: null,
       levelUp: true,
+      reflavor: false,
     });
     expect(JSON.stringify(calls[0].body)).not.toContain(drake.name);
   });
 
   it("sends null for the parts that were not chosen", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
-    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, damageSwap: null, levelUp: true });
-    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, theme: null, move: null, levelUp: true });
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, damageSwap: null, levelUp: true, reflavor: false });
+    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, theme: null, move: null, levelUp: true, reflavor: false });
   });
 
   it("sends a remix as a theme and a move, and passes surprise through for the server to decide", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
     const live = createLiveGenerator("http://x.test", { fetchFn: fn });
     await live.reskin({ base: drake, damageSwap: null, theme: "cold", move: "lob" });
-    await live.reskin({ base: drake, damageSwap: null, theme: "surprise", move: "surprise", levelUp: false });
-    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, theme: "cold", move: "lob", levelUp: false });
-    expect(calls[1].body).toEqual({ baseId: drake.id, damageSwap: null, theme: "surprise", move: "surprise", levelUp: false });
+    await live.reskin({ base: drake, damageSwap: null, theme: "surprise", move: "surprise", levelUp: false, reflavor: false });
+    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, theme: "cold", move: "lob", levelUp: false, reflavor: false });
+    expect(calls[1].body).toEqual({ baseId: drake.id, damageSwap: null, theme: "surprise", move: "surprise", levelUp: false, reflavor: false });
+  });
+
+  it("sends a reflavor on its own", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, damageSwap: null, reflavor: true });
+    expect(calls[0].body).toEqual({ baseId: drake.id, damageSwap: null, theme: null, move: null, levelUp: false, reflavor: true });
   });
 
   it("maps answers the same way as generating", async () => {

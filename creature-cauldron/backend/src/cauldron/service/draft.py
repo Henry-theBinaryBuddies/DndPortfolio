@@ -6,6 +6,8 @@ block (XP, proficiency bonus) is computed from the challenge rating label by the
 derived from the stat block.
 """
 
+from typing import Annotated
+
 from pydantic import Field, field_validator
 
 from cauldron.actions import AnyAction, TextAction
@@ -25,6 +27,7 @@ from cauldron.monster import (
 )
 from cauldron.actions import Prose
 from cauldron.options import Ability, CreatureType, DamageTheme, DamageType, Environment, Role, Size, Source
+from cauldron.remix.reflavor import MAX_RENAMES
 from cauldron.rules import CR_LABELS
 
 
@@ -79,8 +82,24 @@ class RemixNameDraft(NameDraft):
     move_name: Short
 
 
-def name_json_schema(with_move: bool = False) -> dict:
-    return (RemixNameDraft if with_move else NameDraft).model_json_schema()
+class Rename(CauldronModel):
+    old: Short
+    new: Short
+
+
+class ReflavorNameDraft(NameDraft):
+    """The same, plus new names for some of the monster's own abilities (a reflavor)."""
+
+    renames: Annotated[list[Rename], Field(max_length=MAX_RENAMES)] = Field(default_factory=list)
+
+
+def name_draft_type(with_move: bool = False, reflavor: bool = False) -> type[NameDraft]:
+    """The shape of the reply the AI is asked for: just a name and description, plus a move name or ability renames."""
+    return ReflavorNameDraft if reflavor else RemixNameDraft if with_move else NameDraft
+
+
+def name_json_schema(with_move: bool = False, reflavor: bool = False) -> dict:
+    return name_draft_type(with_move, reflavor).model_json_schema()
 
 
 def _without_discriminator(node):

@@ -33,8 +33,8 @@ _NAME_RULES = """You write names and descriptions for monsters in the 2014 fanta
 
 Rules you must follow:
 - Reply only by calling the submit_name tool. Write no other text.
-- Write ONLY a new name and a short description of one or two sentences, plus a name for the new move when you are asked for one.
-  Do not change or mention any numbers.
+- Write ONLY a new name and a short description of one or two sentences, plus a name for the new move or new names for its
+  abilities when you are asked for them. Do not change or mention any numbers.
 - Names must be original: not a creature, character, deity, place, spell or ability from any published game or fiction.
 - Keep the description consistent with what changed about the monster, and with its new move if it has one."""
 
@@ -58,6 +58,9 @@ class RenameContext:
     theme: str | None = None  # the new damage theme of a remix, for example "cold"
     move_label: str | None = None  # a remix's new signature move, for example "ranged lob"
     move_blurb: str | None = None
+    reflavor: bool = False  # a new look only: no number changes
+    rename_candidates: tuple[str, ...] = ()  # the abilities the AI may give new names to
+    avoid_names: tuple[str, ...] = ()  # the names of the new looks already made, so this one differs
 
 
 def clean_feedback(feedback: Sequence[str]) -> list[str]:
@@ -95,7 +98,24 @@ def generate_prompt(brief: Brief, feedback: Sequence[str]) -> Prompt:
     return Prompt(system=_RULES, user="\n".join(lines) + _feedback_block(feedback))
 
 
+def _reflavor_prompt(context: RenameContext) -> str:
+    lines = [f"A monster called {context.base_name} ({context.size} {context.creature_type}, CR {context.cr}) is being given a completely new look. All its numbers stay exactly the same."]
+    lines.append(f"Its original description: {context.base_description}")
+    if context.avoid_names:
+        lines.append(f"New looks already made for it: {', '.join(context.avoid_names)}. Make this one clearly different from them.")
+    lines.append("Choose one fresh theme that suits it (not the most obvious one) and keep to it. Write a new name and a new short description.")
+    if context.rename_candidates:
+        lines.append(
+            "Also rename these abilities to fit the new look, as old/new pairs in `renames`: "
+            + "; ".join(context.rename_candidates)
+            + ". Keep each new name to one to four words, and keep it clear what the ability does."
+        )
+    return "\n".join(lines)
+
+
 def rename_prompt(context: RenameContext, feedback: Sequence[str]) -> Prompt:
+    if context.reflavor:
+        return Prompt(system=_NAME_RULES, user=_reflavor_prompt(context) + _feedback_block(feedback))
     changes = "; ".join(context.changes)
     lines = [f"A monster called {context.base_name} ({context.size} {context.creature_type}, CR {context.cr}) has been changed: {changes}."]
     if context.theme is not None:

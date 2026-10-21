@@ -81,6 +81,7 @@ class ReskinRequest(ApiModel):
 
     Quick reskin is a ``damage_swap``, optionally with ``level_up``. Remix is a ``theme`` and/or a signature ``move``,
     optionally with ``level_up``. Theme and move may each be "surprise", which the server decides (see ``settle``).
+    A ``reflavor`` is a request on its own: a new name, description and ability names, and no number changed at all.
     """
 
     base_id: Id
@@ -88,6 +89,7 @@ class ReskinRequest(ApiModel):
     theme: str | None = None
     move: str | None = None
     level_up: bool = False
+    reflavor: bool = False
 
     @field_validator("theme")
     @classmethod
@@ -107,8 +109,11 @@ class ReskinRequest(ApiModel):
     def _something_to_do(self) -> "ReskinRequest":
         if self.damage_swap is not None and (self.theme is not None or self.move is not None):
             raise ValueError("a damage swap is a quick reskin; it cannot be combined with a theme or a move")
-        if self.damage_swap is None and self.theme is None and self.move is None and not self.level_up:
-            raise ValueError("a reskin needs a damage swap, a theme, a move or a level up")
+        changes_numbers = self.damage_swap is not None or self.theme is not None or self.move is not None or self.level_up
+        if self.reflavor and changes_numbers:
+            raise ValueError("a reflavor changes no numbers, so it cannot be combined with a swap, a theme, a move or a level up")
+        if not self.reflavor and not changes_numbers:
+            raise ValueError("a reskin needs a reflavor, a damage swap, a theme, a move or a level up")
         return self
 
     @property
@@ -121,7 +126,7 @@ class ReskinRequest(ApiModel):
 
         A request that still has a "surprise" in it has no meaningful key: settle it first."""
         swap = f"{self.damage_swap.from_.value}>{self.damage_swap.to.value}" if self.damage_swap else "-"
-        parts = f"{self.base_id}|{swap}|{self.theme or '-'}|{self.move or '-'}|{'up' if self.level_up else '-'}"
+        parts = f"{self.base_id}|{swap}|{self.theme or '-'}|{self.move or '-'}|{'up' if self.level_up else '-'}|{'flavor' if self.reflavor else '-'}"
         return hashlib.sha256(parts.encode()).hexdigest()
 
 

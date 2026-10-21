@@ -22,7 +22,7 @@ import anthropic
 from pydantic import ValidationError
 
 from cauldron.service.brief import Brief
-from cauldron.service.draft import MonsterDraft, NameDraft, RemixNameDraft, draft_json_schema, monster_from_draft, name_json_schema
+from cauldron.service.draft import MonsterDraft, ReflavorNameDraft, RemixNameDraft, draft_json_schema, monster_from_draft, name_draft_type
 from cauldron.service.generators import BadOutput, GeneratedMonster, GeneratedName, GeneratorUnavailable, MonsterGenerator
 from cauldron.service.prompts import TOOL_NAME, Prompt, RenameContext, generate_prompt, rename_prompt
 from cauldron.service.settings import Settings
@@ -72,16 +72,17 @@ class HaikuGenerator(MonsterGenerator):
 
     def rename(self, context: RenameContext, feedback: Sequence[str]) -> GeneratedName:
         prompt = rename_prompt(context, feedback)
-        with_move = context.move_label is not None
-        tool = _tool(NAME_TOOL, "Submit the new name and description.", name_json_schema(with_move))
+        draft_type = name_draft_type(context.move_label is not None, context.reflavor)
+        tool = _tool(NAME_TOOL, "Submit the new name and description.", draft_type.model_json_schema())
         response = self._call(prompt, tool)
         data = self._tool_input(response, NAME_TOOL)
         try:
-            draft = (RemixNameDraft if with_move else NameDraft).model_validate(data)
+            draft = draft_type.model_validate(data)
         except ValidationError as error:
             raise BadOutput(_reasons(error), response.usage.input_tokens, response.usage.output_tokens) from None
         move_name = draft.move_name if isinstance(draft, RemixNameDraft) else None
-        return GeneratedName(draft.name, draft.description, self._model, response.usage.input_tokens, response.usage.output_tokens, move_name)
+        renames = tuple((r.old, r.new) for r in draft.renames) if isinstance(draft, ReflavorNameDraft) else ()
+        return GeneratedName(draft.name, draft.description, self._model, response.usage.input_tokens, response.usage.output_tokens, move_name, renames)
 
     # --- the shared parts -------------------------------------------------------------------------------
 

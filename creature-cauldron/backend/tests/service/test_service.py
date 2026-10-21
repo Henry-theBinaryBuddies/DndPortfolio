@@ -502,3 +502,63 @@ def test_a_generator_that_can_never_answer_does_not_spend_the_days_allowance(mak
     assert isinstance(rig.service.create(req(**DRAGONS)), GenerateFailure)
     assert isinstance(rig.service.create_reskin(remix_request(drake.id, move="lob")), GenerateFailure)
     assert rig.cap.remaining() == 100
+
+
+# --- reflavoring ----------------------------------------------------------------------------------------
+
+
+def flavored(name: str, *renames: tuple[str, str]) -> GeneratedName:
+    return GeneratedName(name=name, description="A new look.", generator="scripted", input_tokens=50, output_tokens=40, renames=renames)
+
+
+def test_a_reflavor_renames_the_abilities_and_leaves_every_number_alone(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Saltwind Duelist", ("Cutlass", "Saber Strike"))], library=[cutthroat])
+    result = rig.service.create_reskin(remix_request(cutthroat.id, reflavor=True))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert monster.name == "Saltwind Duelist" and "Saber Strike" in [a.name for a in monster.actions]
+    assert monster.hit_points == cutthroat.hit_points and monster.challenge == cutthroat.challenge
+    assert monster.armor_class == cutthroat.armor_class and monster.abilities == cutthroat.abilities
+    assert monster.changes is not None and monster.changes[0].startswith("Reflavored") and any(c.startswith("Renamed Cutlass") for c in monster.changes)
+    context = rig.generator.rename_calls[0][0]
+    assert context.reflavor and "Cutlass" in context.rename_candidates
+
+
+def test_the_first_three_reflavors_are_new_and_then_one_of_them_is_handed_back(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    names = [flavored("Look One"), flavored("Look Two"), flavored("Look Three")]
+    rig = make(names=names, library=[cutthroat])
+    request = remix_request(cutthroat.id, reflavor=True)
+    for _ in range(3):
+        assert rig.service.lookup_reskin(request) is None  # until there are three, each press makes a new one
+        assert isinstance(rig.service.create_reskin(request), GenerateSuccess)
+    handed_back = rig.service.lookup_reskin(request)
+    assert handed_back is not None and handed_back.name in {"Look One", "Look Two", "Look Three"}
+    assert len(rig.generator.rename_calls) == 3  # asking again cost nothing
+
+
+def test_each_new_reflavor_is_told_which_looks_already_exist(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Look One"), flavored("Look Two")], library=[cutthroat])
+    request = remix_request(cutthroat.id, reflavor=True)
+    rig.service.create_reskin(request)
+    rig.service.create_reskin(request)
+    assert rig.generator.rename_calls[0][0].avoid_names == ()
+    assert rig.generator.rename_calls[1][0].avoid_names == ("Look One",)
+
+
+def test_a_blocked_ability_name_is_sent_back_for_another(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Saltwind Duelist", ("Cutlass", "Beholder Gaze")), flavored("Saltwind Duelist", ("Cutlass", "Saber Strike"))], library=[cutthroat])
+    result = rig.service.create_reskin(remix_request(cutthroat.id, reflavor=True))
+    assert isinstance(result, GenerateSuccess) and "Saber Strike" in [a.name for a in result.monster.actions]
+    assert any("not ours to use" in line for line in rig.generator.rename_calls[1][1])
+
+
+def test_a_reflavor_with_no_usable_renames_still_gives_a_new_name_and_description(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Saltwind Duelist", ("Not An Ability", "Whatever"))], library=[cutthroat])
+    result = rig.service.create_reskin(remix_request(cutthroat.id, reflavor=True))
+    assert isinstance(result, GenerateSuccess) and result.monster.name == "Saltwind Duelist"
+    assert [a.name for a in result.monster.actions] == [a.name for a in cutthroat.actions]

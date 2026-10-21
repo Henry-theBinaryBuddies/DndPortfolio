@@ -181,3 +181,22 @@ class MonsterStore:
     def remember_reskin(self, key: str, monster_id: str) -> None:
         with self._lock, self._conn:
             self._conn.execute("INSERT OR REPLACE INTO reskins (key, monster_id) VALUES (?, ?)", (key, monster_id))
+
+    # A reflavor has no choices to make a key from, so a monster's reflavors are kept as numbered variants:
+    # "reflavor:<base id>:0", ":1", and so on. Comparing the start of the key (not LIKE) keeps odd ids harmless.
+
+    def reflavors(self, base_id: str) -> list[Monster]:
+        """The reflavors already made of this monster, oldest first."""
+        prefix = f"reflavor:{base_id}:"
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT m.json FROM reskins r JOIN monsters m ON m.id = r.monster_id WHERE substr(r.key, 1, ?) = ? ORDER BY r.rowid",
+                (len(prefix), prefix),
+            ).fetchall()
+        return [Monster.model_validate_json(row[0]) for row in rows]
+
+    def remember_reflavor(self, base_id: str, monster_id: str) -> None:
+        prefix = f"reflavor:{base_id}:"
+        with self._lock, self._conn:
+            (count,) = self._conn.execute("SELECT count(*) FROM reskins WHERE substr(key, 1, ?) = ?", (len(prefix), prefix)).fetchone()
+            self._conn.execute("INSERT INTO reskins (key, monster_id) VALUES (?, ?)", (f"{prefix}{count}", monster_id))

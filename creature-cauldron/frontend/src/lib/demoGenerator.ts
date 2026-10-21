@@ -95,7 +95,16 @@ export function createDemoGenerator(library: Monster[]): Generator {
     },
 
     reskin(request: ReskinRequest): Promise<GeneratorResult> {
-      const { base, damageSwap, theme, move, levelUp } = request;
+      const { base, damageSwap, theme, move, levelUp, reflavor } = request;
+      if (reflavor) {
+        const name = `${PREFIXES[count % PREFIXES.length]} ${base.name}`;
+        const id = `demo-${unique()}-${slugify(name)}`;
+        const changes = ["Reflavored: a new name and description, with every number as it was"];
+        const notes = ["Demo mode: only the name was changed. The real generator also writes a new description and renames abilities."];
+        return Promise.resolve(
+          ok({ ...base, id, name, source: "reskin", validated: false, parent_id: base.id, generator: "demo", attribution: null, changes }, notes),
+        );
+      }
       let monster: Monster = base;
       const changes: string[] = [];
       if (damageSwap) {

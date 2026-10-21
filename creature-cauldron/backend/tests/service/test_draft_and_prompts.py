@@ -162,3 +162,15 @@ def test_a_remix_prompt_tells_the_ai_the_theme_and_asks_for_a_move_name() -> Non
 
 def test_a_plain_rename_prompt_does_not_mention_a_move() -> None:
     assert "move_name" not in rename_prompt(context(), []).user
+
+
+def test_a_reflavor_prompt_lists_the_abilities_to_rename_and_the_looks_to_avoid() -> None:
+    prompt = rename_prompt(context(reflavor=True, rename_candidates=("Bite", "Keen Smell"), avoid_names=("Ashfang", "Gloomhound")), [])
+    assert "numbers stay exactly the same" in prompt.user
+    assert "Bite; Keen Smell" in prompt.user and "`renames`" in prompt.user
+    assert "Ashfang, Gloomhound" in prompt.user and "clearly different" in prompt.user
+    assert "move_name" not in prompt.user
+
+
+def test_a_reflavor_with_nothing_to_rename_does_not_ask_for_renames() -> None:
+    assert "renames" not in rename_prompt(context(reflavor=True), []).user
