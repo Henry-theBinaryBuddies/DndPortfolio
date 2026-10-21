@@ -69,6 +69,11 @@ def _failure_response(failure: GenerateFailure, headers: dict[str, str] | None =
     return JSONResponse(failure.model_dump(mode="json"), status_code=_STATUS[failure.reason], headers=headers)
 
 
+def _error_body(status: int, message: str, reason: FailureReason = FailureReason.INVALID) -> JSONResponse:
+    """A failure answer with a status of our own choosing (the ones in _STATUS cover only the service's own failures)."""
+    return JSONResponse(GenerateFailure(reason=reason, message=message).model_dump(mode="json"), status_code=status)
+
+
 def _success_response(success: GenerateSuccess) -> JSONResponse:
     # exclude_none leaves unset fields out, so the answer looks like the static monster files.
     return JSONResponse(success.model_dump(mode="json", exclude_none=True))
@@ -81,7 +86,27 @@ def create_app(settings: Settings, service: GenerationService) -> FastAPI:
     ai_limiter = RateLimiter([(60, settings.ip_per_minute), (3600, settings.ip_per_hour)])
     cache_limiter = RateLimiter([(60, settings.cache_per_minute)])
 
-    # --- CORS: only the web page's own address may call the API from a browser --------------------------
+    # --- errors always use the failure shape -------------------------------------------------------------
+
+    @app.middleware("http")
+    async def guard_requests(request: Request, call_next):
+        """Refuses a POST that is too big or does not say how big it is, and answers a crash with the usual failure body.
+
+        Added BEFORE the CORS layer below, so CORS wraps it: even these answers carry the CORS headers the web page needs
+        in order to read them (otherwise the browser reports a network error instead of our message)."""
+        if request.method == "POST":
+            length = request.headers.get("content-length", "")
+            if not length.isdigit():
+                return _error_body(411, "The request must say how large it is.")
+            if int(length) > MAX_BODY_BYTES:
+                return _error_body(413, "The request is too large.")
+        try:
+            return await call_next(request)
+        except Exception:
+            log.exception("Unexpected error handling %s", request.url.path)  # details go to the log, never to the visitor
+            return _error_body(500, "Something went wrong on the server.", FailureReason.ERROR)
+
+    # --- CORS: only the web page's own address may call the API from a browser (outermost, see above) ------
 
     app.add_middleware(
         CORSMiddleware,
@@ -92,29 +117,12 @@ def create_app(settings: Settings, service: GenerationService) -> FastAPI:
         max_age=600,
     )
 
-    # --- errors always use the failure shape -------------------------------------------------------------
-
-    @app.middleware("http")
-    async def refuse_huge_bodies(request: Request, call_next):
-        length = request.headers.get("content-length")
-        if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
-            failure = GenerateFailure(reason=FailureReason.INVALID, message="The request is too large.")
-            return JSONResponse(failure.model_dump(mode="json"), status_code=413)
-        return await call_next(request)
-
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:
         first = error.errors()[0] if error.errors() else {}
         where = ".".join(str(part) for part in first.get("loc", ()) if part != "body")
         message = f"The request was not valid{f' ({where})' if where else ''}: {first.get('msg', 'unreadable')}."
         return _failure_response(GenerateFailure(reason=FailureReason.INVALID, message=message))
-
-    @app.exception_handler(Exception)
-    async def unexpected(request: Request, error: Exception) -> JSONResponse:
-        log.exception("Unexpected error handling %s", request.url.path)  # details go to the log, never to the visitor
-        return JSONResponse(
-            GenerateFailure(reason=FailureReason.ERROR, message="Something went wrong on the server.").model_dump(mode="json"), status_code=500
-        )
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, error: StarletteHTTPException) -> JSONResponse:

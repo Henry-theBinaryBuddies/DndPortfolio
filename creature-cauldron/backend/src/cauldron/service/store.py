@@ -8,6 +8,7 @@ SQLite is a database in one file, built into Python. Three rules keep it safe:
 * one lock guards the single connection, because the web server runs requests on several threads.
 """
 
+from itertools import islice
 import sqlite3
 import threading
 from dataclasses import dataclass
@@ -137,9 +138,10 @@ class MonsterStore:
             values.extend(sorted(exclude_ids))
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._lock:
-            rows = self._conn.execute(f"SELECT json FROM monsters {where} ORDER BY rowid", values).fetchall()
-        found = [m for m in (Monster.model_validate_json(row[0]) for row in rows) if matches(m, request)]
-        return found if limit is None else found[:limit]
+            rows = self._conn.execute(f"SELECT json FROM monsters {where} ORDER BY rowid DESC", values).fetchall()
+        # Newest first, and parsed one at a time, so asking for 50 stops after 50 instead of parsing every row.
+        matching = (m for m in (Monster.model_validate_json(row[0]) for row in rows) if matches(m, request))
+        return list(islice(matching, limit))
 
     # --- daily usage ------------------------------------------------------------------------------------
 

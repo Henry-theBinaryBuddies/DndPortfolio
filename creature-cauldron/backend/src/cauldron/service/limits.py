@@ -51,8 +51,8 @@ class RateLimiter:
     def allow(self, key: str) -> RateDecision:
         now = self._clock()
         with self._lock:
-            if len(self._hits) >= self._max_keys:
-                self._forget_idle(now)
+            if key not in self._hits and len(self._hits) >= self._max_keys:
+                self._forget_idle(now)  # make room for a newcomer, never for (and at the cost of) someone already tracked
             hits = self._hits.setdefault(key, deque())
             while hits and now - hits[0] >= self._longest:
                 hits.popleft()
@@ -119,9 +119,10 @@ def client_address(headers: Mapping[str, str], peer: str | None, trusted_header:
         wanted = trusted_header.lower()
         value = next((v for k, v in headers.items() if k.lower() == wanted), None)
         if value:
-            first = value.split(",")[0].strip()
+            # A proxy adds the address it saw to the END of the list; anything before that is whatever the visitor sent.
+            last = value.split(",")[-1].strip()
             try:
-                return str(ipaddress.ip_address(first))
+                return str(ipaddress.ip_address(last))
             except ValueError:
                 pass
     return peer or "unknown"

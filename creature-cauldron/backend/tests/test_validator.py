@@ -454,3 +454,11 @@ def test_duplicate_names_are_found_through_the_context() -> None:
 
 def test_sources_are_enum_values() -> None:
     assert sample("Cinderkite").source is Source.CURATED
+
+
+def test_a_low_claim_with_numbers_far_beyond_it_asks_for_a_retry_even_when_the_estimate_is_off_the_scale() -> None:
+    from cauldron.validator import CrConsistencyCheck
+
+    monster = with_cr(sample("Stormhide Drake"), "5")
+    monster = monster.model_copy(update={"hit_points": monster.hit_points.model_copy(update={"average": 1500})})
+    assert outcomes(CrConsistencyCheck(), monster) == [Outcome.RETRY]

@@ -105,6 +105,8 @@ class GenerationService:
         log.info("Designing: %s", brief)
         wanted = request.model_copy(update={"cr_min": bounds[0], "cr_max": bounds[1]})
 
+        if not self._generator.available:
+            return _failure(FailureReason.ERROR, _COULD_NOT_REACH)  # without spending any of the day's allowance
         feedback: list[str] = []
         attempts = 1 + self._settings.max_retries
         for attempt in range(1, attempts + 1):
@@ -115,6 +117,7 @@ class GenerationService:
             except GeneratorUnavailable:
                 return _failure(FailureReason.ERROR, _COULD_NOT_REACH)
             except BadOutput as problem:
+                self._cap.record_tokens(problem.input_tokens, problem.output_tokens)  # a bad reply is still billed
                 feedback = [str(problem)]
                 _log_failed_attempt("generate", attempt, attempts, feedback)
                 continue
@@ -157,7 +160,7 @@ class GenerationService:
         if base is None:
             return request
         theme, move = resolve(base, request.theme, request.move, self._rng)
-        return request.model_copy(update={"theme": theme.value if theme else None, "move": move.key if move else None})
+        return request.model_copy(update={"theme": theme, "move": move})
 
     def lookup_reskin(self, request: ReskinRequest) -> Monster | None:
         """A reskin made earlier for exactly this request. Free. A request with a surprise in it has no earlier answer."""
@@ -202,6 +205,8 @@ class GenerationService:
             move_blurb=move.blurb if move else None,
         )
 
+        if not self._generator.available:
+            return _failure(FailureReason.ERROR, _COULD_NOT_REACH)  # without spending any of the day's allowance
         feedback: list[str] = []
         attempts = 1 + self._settings.max_retries
         for attempt in range(1, attempts + 1):
@@ -212,6 +217,7 @@ class GenerationService:
             except GeneratorUnavailable:
                 return _failure(FailureReason.ERROR, _COULD_NOT_REACH)
             except BadOutput as problem:
+                self._cap.record_tokens(problem.input_tokens, problem.output_tokens)  # a bad reply is still billed
                 feedback = [str(problem)]
                 _log_failed_attempt("reskin", attempt, attempts, feedback)
                 continue

@@ -152,9 +152,10 @@ def test_a_wrong_method_is_not_allowed(make) -> None:
 def test_an_unexpected_crash_still_answers_in_the_failure_shape(make, sample, monkeypatch) -> None:
     rig = make(raise_server_exceptions=False)
     monkeypatch.setattr(rig.service, "lookup", lambda request: 1 / 0)
-    response = rig.client.post("/api/v1/generate", json=DRAGONS)
+    response = rig.client.post("/api/v1/generate", json=DRAGONS, headers={"origin": ORIGIN})
     assert response.status_code == 500
     assert response.json()["reason"] == "error" and "ZeroDivision" not in response.text
+    assert response.headers["access-control-allow-origin"] == ORIGIN  # the page can read the failure
 
 
 # --- rate limits ----------------------------------------------------------------------------------------
@@ -286,9 +287,20 @@ def test_a_preflight_request_from_the_page_is_answered(make) -> None:
     assert "POST" in response.headers["access-control-allow-methods"]
 
 
-def test_a_huge_body_is_refused(make) -> None:
-    response = make().client.post("/api/v1/generate", content=b"{" + b" " * 100_000 + b"}", headers={"content-type": "application/json"})
+def test_a_huge_body_is_refused_and_the_page_is_allowed_to_read_the_refusal(make) -> None:
+    headers = {"content-type": "application/json", "origin": ORIGIN}
+    response = make().client.post("/api/v1/generate", content=b"{" + b" " * 100_000 + b"}", headers=headers)
     assert response.status_code == 413
+    assert response.headers["access-control-allow-origin"] == ORIGIN
+
+
+def test_a_body_that_does_not_say_how_large_it_is_is_refused(make) -> None:
+    def chunks():
+        yield b'{"types": ["dragon"]}'
+
+    response = make().client.post("/api/v1/generate", content=chunks(), headers={"content-type": "application/json", "origin": ORIGIN})
+    assert response.status_code == 411 and response.json()["reason"] == "invalid"
+    assert response.headers["access-control-allow-origin"] == ORIGIN
 
 
 def test_the_automatic_docs_pages_are_switched_off(make) -> None:
@@ -310,3 +322,16 @@ def test_the_static_library_loads_the_samples_and_the_srd_monsters() -> None:
 def test_a_missing_library_folder_is_a_clear_error(tmp_path) -> None:
     with pytest.raises(FileNotFoundError):
         load_library(Settings.from_env({"CAULDRON_LIBRARY_DIR": str(tmp_path)}))
+
+
+def test_a_surprise_with_an_unfit_named_move_is_a_clean_422_not_a_crash(make) -> None:
+    import json
+    from pathlib import Path
+
+    from cauldron.seed.importer import import_monster
+
+    data = Path(__file__).parents[2] / "data" / "srd-2014" / "5e-SRD-Monsters.json"
+    frog = import_monster(next(m for m in json.loads(data.read_text(encoding="utf-8")) if m["index"] == "frog")).monster
+    rig = make(library=[frog])
+    response = rig.client.post("/api/v1/reskin", json={"baseId": frog.id, "theme": "surprise", "move": "burst"})
+    assert response.status_code == 422 and response.json()["reason"] == "invalid"

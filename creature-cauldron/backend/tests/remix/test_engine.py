@@ -93,9 +93,13 @@ def test_the_same_inputs_give_the_same_result(named) -> None:
 # --- choices left to chance -----------------------------------------------------------------------------
 
 
-def test_explicit_choices_are_kept(named) -> None:
-    theme, move = resolve(named("Ogre"), "fire", "burst", random.Random(1))
-    assert theme is DamageTheme.FIRE and move is MOVES["burst"]
+def test_explicit_choices_are_passed_through_untouched(named) -> None:
+    assert resolve(named("Ogre"), "fire", "burst", random.Random(1)) == ("fire", "burst")
+
+
+def test_a_named_move_that_does_not_fit_is_not_resolve_business(named) -> None:
+    # create_reskin refuses it with a clean message; resolve only decides surprises, so it must not raise.
+    assert resolve(named("Frog"), "surprise", "burst", random.Random(1))[1] == "burst"
 
 
 def test_nothing_chosen_stays_nothing(named) -> None:
@@ -105,13 +109,14 @@ def test_nothing_chosen_stays_nothing(named) -> None:
 def test_surprise_picks_a_theme_other_than_the_one_it_has(named) -> None:
     dragon = named("Adult Red Dragon")
     themes = {resolve(dragon, "surprise", None, random.Random(s))[0] for s in range(100)}
-    assert DamageTheme.FIRE not in themes and len(themes) > 5
+    assert DamageTheme.FIRE.value not in themes and len(themes) > 5
+    assert themes <= {t.value for t in DamageTheme}
 
 
 def test_surprise_picks_only_moves_that_fit(named) -> None:
     imp = named("Imp")
     allowed = {m.key for m in available_moves(imp)}
-    picked = {resolve(imp, None, "surprise", random.Random(s))[1].key for s in range(200)}  # type: ignore[union-attr]
+    picked = {resolve(imp, None, "surprise", random.Random(s))[1] for s in range(200)}
     assert picked <= allowed and len(picked) > 8
 
 
@@ -120,21 +125,10 @@ def test_surprise_is_reproducible_for_a_seed(named) -> None:
     assert resolve(ogre, "surprise", "surprise", random.Random(5)) == resolve(ogre, "surprise", "surprise", random.Random(5))
 
 
-def test_surprise_with_no_move_that_fits_gives_no_move(named) -> None:
-    # A monster for which only the no-damage moves fit still gets one of those; an impossible case would give None.
+def test_surprise_with_only_the_no_damage_moves_available_picks_one_of_those(named) -> None:
     frog = named("Frog")
-    move = resolve(frog, None, "surprise", random.Random(3))[1]
-    assert move is not None and move.needs_damage is False
-
-
-def test_a_move_that_does_not_fit_is_refused_when_chosen_by_name(named) -> None:
-    with pytest.raises(ValueError, match="does not fit"):
-        resolve(named("Frog"), None, "burst", random.Random(1))
-
-
-def test_a_theme_name_that_is_not_a_theme_is_refused(named) -> None:
-    with pytest.raises(ValueError):
-        resolve(named("Ogre"), "slashing", None, random.Random(1))
+    key = resolve(frog, None, "surprise", random.Random(3))[1]
+    assert key is not None and MOVES[key].needs_damage is False
 
 
 # --- the sweep: every move on every monster -------------------------------------------------------------

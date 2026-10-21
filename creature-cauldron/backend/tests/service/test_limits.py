@@ -168,8 +168,9 @@ def test_a_trusted_header_overrides_the_socket_address() -> None:
     assert client_address({"CF-Connecting-IP": "9.9.9.9"}, "127.0.0.1", "CF-Connecting-IP") == "9.9.9.9"
 
 
-def test_a_forwarded_for_list_uses_its_first_address() -> None:
-    assert client_address({"x-forwarded-for": "9.9.9.9, 10.0.0.1"}, "127.0.0.1", "X-Forwarded-For") == "9.9.9.9"
+def test_a_forwarded_for_list_uses_its_last_address() -> None:
+    # A proxy appends the address it saw to the END; anything earlier is whatever the visitor chose to send.
+    assert client_address({"x-forwarded-for": "9.9.9.9, 10.0.0.1"}, "127.0.0.1", "X-Forwarded-For") == "10.0.0.1"
 
 
 def test_a_header_that_is_not_an_address_is_ignored() -> None:
@@ -182,3 +183,12 @@ def test_a_missing_trusted_header_falls_back_to_the_socket() -> None:
 
 def test_no_address_at_all_gets_a_shared_placeholder() -> None:
     assert client_address({}, None, None) == "unknown"
+
+
+def test_a_full_table_never_resets_a_visitor_who_is_already_tracked() -> None:
+    clock = FakeClock()
+    limiter = RateLimiter([(60, 1)], clock=clock, max_keys=3)
+    for key in ("a", "b", "c"):
+        assert limiter.allow(key).allowed
+    # The table is full of live entries. "a" is the oldest, but asking again must still be refused, not wiped.
+    assert not limiter.allow("a").allowed

@@ -20,7 +20,13 @@ class GeneratorUnavailable(Exception):
 
 
 class BadOutput(Exception):
-    """The AI answered, but not in a usable form. The message says what was wrong and is passed to the next attempt."""
+    """The AI answered, but not in a usable form. The message says what was wrong and is passed to the next attempt.
+    The tokens say what the unusable answer cost, because the API bills for it all the same."""
+
+    def __init__(self, message: str, input_tokens: int = 0, output_tokens: int = 0) -> None:
+        super().__init__(message)
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,11 @@ class GeneratedName:
 
 
 class MonsterGenerator(ABC):
+    @property
+    def available(self) -> bool:
+        """False for a generator that can never answer (no API key), so the service does not spend the daily allowance on it."""
+        return True
+
     @abstractmethod
     def generate(self, brief: Brief, feedback: Sequence[str]) -> GeneratedMonster:
         """A new monster for the brief. `feedback` lists problems with the previous attempt (empty on the first)."""

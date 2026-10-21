@@ -331,7 +331,7 @@ class CrConsistencyCheck(Check):
             return self._result(monster)  # DerivedFieldsCheck rejects an unknown label
         claimed = CR_LABELS.index(monster.challenge.cr)
         estimated = estimate(monster)
-        if not estimated.reliable or claimed > CR_LABELS.index(RELIABLE_UP_TO):
+        if claimed > CR_LABELS.index(RELIABLE_UP_TO):
             return self._result(
                 monster,
                 self._finding(Outcome.NOTED, f"CR {monster.challenge.cr} is above what the SRD data covers well, so its numbers were not checked against it."),

@@ -53,30 +53,18 @@ def current_theme(monster: Monster) -> DamageTheme:
     return monster.damage_themes[0] if monster.damage_themes else _DEFAULT_THEME[monster.type]
 
 
-def resolve(monster: Monster, theme: str | None, move: str | None, rng: random.Random) -> tuple[DamageTheme | None, Move | None]:
-    """Turns the visitor's choices into a definite theme and move. "surprise" is decided here, by `rng`.
+def resolve(monster: Monster, theme: str | None, move: str | None, rng: random.Random) -> tuple[str | None, str | None]:
+    """Decides the "surprise" parts of a request, using `rng`; every other choice is passed through unchanged.
 
     A surprise theme is never the theme the monster already has (that would change nothing), and a surprise move is
-    only ever one that fits. A move chosen by name that does not fit is refused.
+    only ever one that fits. Whether a move the visitor named fits is not decided here: `create_reskin` refuses it.
     """
-    chosen_theme: DamageTheme | None = None
     if theme == SURPRISE:
-        options = [t for t in DamageTheme if t is not current_theme(monster)]
-        chosen_theme = rng.choice(options)
-    elif theme is not None:
-        if theme not in _THEMES:
-            raise ValueError(f'"{theme}" is not a theme.')
-        chosen_theme = _THEMES[theme]
-
-    chosen_move: Move | None = None
+        theme = rng.choice([t.value for t in DamageTheme if t is not current_theme(monster)])
     if move == SURPRISE:
-        options_m = available_moves(monster)
-        chosen_move = rng.choice(options_m) if options_m else None
-    elif move is not None:
-        chosen_move = _find(move)
-        if not chosen_move.applies_to(monster):
-            raise ValueError(f"The move {chosen_move.label} does not fit this monster.")
-    return chosen_theme, chosen_move
+        fitting = available_moves(monster)
+        move = rng.choice(fitting).key if fitting else None
+    return theme, move
 
 
 def _find(key: str) -> Move:

@@ -116,3 +116,12 @@ def test_the_store_survives_being_reopened(tmp_path, sample) -> None:
     assert second.get(sample("Cinderkite").id) == sample("Cinderkite")
     assert second.usage("2026-10-20").calls == 4
     second.close()
+
+
+def test_find_returns_the_newest_matches_first_and_stops_at_the_limit(store, sample) -> None:
+    base = sample("Cinderkite")
+    for number in range(60):
+        store.add(base.model_copy(update={"id": f"drake-{number}", "name": f"Drake {number}"}))
+    found = store.find(req(), exclude_ids=frozenset(), limit=50)
+    assert len(found) == 50
+    assert found[0].id == "drake-59" and "drake-0" not in {m.id for m in found}

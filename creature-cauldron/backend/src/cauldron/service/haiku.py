@@ -67,7 +67,7 @@ class HaikuGenerator(MonsterGenerator):
             draft = MonsterDraft.model_validate(data)
             monster = monster_from_draft(draft, generator=self._model, new_id=f"gen-draft-{uuid.uuid4().hex[:6]}")
         except ValidationError as error:
-            raise BadOutput(_reasons(error)) from None
+            raise BadOutput(_reasons(error), response.usage.input_tokens, response.usage.output_tokens) from None
         return GeneratedMonster(monster, self._model, response.usage.input_tokens, response.usage.output_tokens)
 
     def rename(self, context: RenameContext, feedback: Sequence[str]) -> GeneratedName:
@@ -79,7 +79,7 @@ class HaikuGenerator(MonsterGenerator):
         try:
             draft = (RemixNameDraft if with_move else NameDraft).model_validate(data)
         except ValidationError as error:
-            raise BadOutput(_reasons(error)) from None
+            raise BadOutput(_reasons(error), response.usage.input_tokens, response.usage.output_tokens) from None
         move_name = draft.move_name if isinstance(draft, RemixNameDraft) else None
         return GeneratedName(draft.name, draft.description, self._model, response.usage.input_tokens, response.usage.output_tokens, move_name)
 
@@ -102,17 +102,20 @@ class HaikuGenerator(MonsterGenerator):
 
     @staticmethod
     def _tool_input(response, tool_name: str) -> dict:
+        spent = (response.usage.input_tokens, response.usage.output_tokens)
         if response.stop_reason == "refusal":
-            raise BadOutput("The model declined this request. Try a different design.")
+            raise BadOutput("The model declined this request. Try a different design.", *spent)
         if response.stop_reason == "max_tokens":
-            raise BadOutput("The reply was cut off before it finished. Make the monster simpler and shorter.")
+            raise BadOutput("The reply was cut off before it finished. Make the monster simpler and shorter.", *spent)
         for block in response.content:
             if block.type == "tool_use" and block.name == tool_name:
                 return block.input
-        raise BadOutput(f"The model did not submit the monster: it must call the {tool_name} tool.")
+        raise BadOutput(f"The model did not submit the monster: it must call the {tool_name} tool.", *spent)
 
 
 class UnavailableGenerator(MonsterGenerator):
+    available = False
+
     """Used when no API key is configured. The server still runs (the library, the cache and reskins already made all work);
     anything that needs the AI answers that the forge cannot be reached."""
 

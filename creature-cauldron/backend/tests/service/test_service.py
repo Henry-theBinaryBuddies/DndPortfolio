@@ -475,3 +475,32 @@ def test_a_reskin_remembers_what_it_changed(make, sample) -> None:
 
 def test_a_monster_that_was_not_reskinned_has_no_changes(sample) -> None:
     assert sample("Stormhide Drake").changes is None
+
+
+def test_a_surprise_with_a_named_move_that_does_not_fit_is_refused_cleanly(make) -> None:
+    frog = import_monster(RAW["frog"]).monster
+    rig = make(library=[frog])
+    settled = rig.service.settle(remix_request(frog.id, theme="surprise", move="burst"))  # must not raise
+    result = rig.service.create_reskin(settled)
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == [] and rig.cap.remaining() == 100
+
+
+def test_the_tokens_of_a_reply_that_could_not_be_used_are_still_counted(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[BadOutput("not usable", 700, 400), named_move("Rimeclaw Drake", "Glacial Lunge")], library=[drake])
+    result = rig.service.create_reskin(remix_request(drake.id, move="lob"))
+    assert isinstance(result, GenerateSuccess)
+    used = rig.store.usage(DAY.date().isoformat())
+    assert used.input_tokens == 700 + 50 and used.output_tokens == 400 + 40  # the bad reply and the good one
+
+
+def test_a_generator_that_can_never_answer_does_not_spend_the_days_allowance(make, sample) -> None:
+    from cauldron.service.haiku import UnavailableGenerator
+
+    drake = sample("Stormhide Drake")
+    rig = make(library=[drake])
+    rig.service._generator = UnavailableGenerator()  # what the server uses when there is no API key
+    assert isinstance(rig.service.create(req(**DRAGONS)), GenerateFailure)
+    assert isinstance(rig.service.create_reskin(remix_request(drake.id, move="lob")), GenerateFailure)
+    assert rig.cap.remaining() == 100
