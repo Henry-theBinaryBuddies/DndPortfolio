@@ -1566,3 +1566,21 @@ select {
     margin-top: 0.35rem;
   }
 }
+
+/* In the stat block's button row, the wide overlays (reskin options, Foundry help) line up with the left edge of the row and
+   open just under their button, at any window width. Lined up with their own buttons they would run past the edge of the
+   pop-out. (The small Export list still hangs from its button.) */
+.dialog-header .dropmenu:has(> .reskin-panel),
+.dialog-header .dropmenu:has(> .export-help) {
+  position: static;
+}
+
+.dialog-header .dropmenu__panel.reskin-panel,
+.dialog-header .dropmenu__panel.export-help {
+  top: auto;
+  right: auto;
+  left: 0.5rem;
+  margin-top: 0.35rem;
+  width: min(26rem, calc(100% - 1rem));
+  max-width: none;
+}
