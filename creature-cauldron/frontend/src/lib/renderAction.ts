@@ -74,7 +74,8 @@ function renderAttack(action: AttackAction): Segment[] {
     distances.push(range.normal === range.long ? `range ${range.normal} ft.` : `range ${range.normal}/${range.long} ft.`);
   }
 
-  const lead = ` ${sign}${Math.abs(to_hit)} to hit, ${distances.join(" or ")}, ${targets}. `;
+  const where = distances.length > 0 ? `, ${distances.join(" or ")}` : "";
+  const lead = ` ${sign}${Math.abs(to_hit)} to hit${where}, ${targets}. `;
   return [
     { text: `${ATTACK_LABELS[mode]}:`, italic: true },
     { text: lead },

@@ -98,15 +98,22 @@ describe("damage lines", () => {
   });
 
   it("maps nonmagical qualifiers to Foundry's bypass flags", () => {
-    expect(foundryDamageTrait(null)).toEqual({ bypasses: [], custom: "" });
+    expect(foundryDamageTrait(null)).toEqual({ bypasses: [], custom: "", textOnlyTypes: [] });
     expect(foundryDamageTrait("bludgeoning, piercing, and slashing from nonmagical weapons").bypasses).toEqual(["mgc"]);
     expect(foundryDamageTrait("slashing from nonmagical weapons that aren't silvered").bypasses).toEqual(["mgc", "sil"]);
     expect(foundryDamageTrait("slashing from nonmagical weapons that aren't adamantine").bypasses).toEqual(["mgc", "ada"]);
   });
 
   it("keeps wording Foundry cannot model as custom text", () => {
-    expect(foundryDamageTrait("damage from spells")).toEqual({ bypasses: [], custom: "damage from spells" });
+    expect(foundryDamageTrait("damage from spells")).toEqual({ bypasses: [], custom: "damage from spells", textOnlyTypes: [] });
     expect(foundryDamageTrait("piercing from magic weapons wielded by good creatures").custom).toContain("good creatures");
+  });
+
+  it("names the types that exist only in wording Foundry cannot model", () => {
+    expect(foundryDamageTrait("piercing from magic weapons wielded by good creatures").textOnlyTypes).toEqual(["piercing"]);
+    // a type that also appears plainly, or in a modellable part, stays a real Foundry type
+    expect(foundryDamageTrait("piercing; piercing from magic weapons wielded by good creatures").textOnlyTypes).toEqual([]);
+    expect(foundryDamageTrait("damage from spells").textOnlyTypes).toEqual([]);
   });
 });
 

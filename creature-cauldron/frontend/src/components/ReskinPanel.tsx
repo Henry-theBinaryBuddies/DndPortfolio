@@ -53,7 +53,7 @@ export default function ReskinPanel({ monster, mode, resting = false, onReskin }
   }
 
   const hint = kind === "quick" ? "Pick a damage swap, level up, or both." : "Pick a theme, a signature move, level up, or any mix.";
-  const surprising = theme === SURPRISE || move === SURPRISE;
+  const surprising = kind === "remix" && (theme === SURPRISE || move === SURPRISE);
 
   return (
     <DropMenu label="Reskin" ariaLabel="Reskin" align="right" keepMounted closeOnOutside={false} panelClassName="reskin-panel">

@@ -95,6 +95,8 @@ export function looksLikeMonster(value: unknown): value is Monster {
   for (const key of ["subtypes", "vulnerabilities", "resistances", "immunities", "condition_immunities", "environments", "damage_themes", "features"]) {
     if (!isStrList(value[key])) return false;
   }
+  if (value.changes !== undefined && !isStrList(value.changes)) return false;
+  if (value.attribution != null && !isStr(value.attribution)) return false;
   if (!Array.isArray(value.traits) || !value.traits.every((t) => isObj(t) && isStr(t.name) && isStr(t.text))) return false;
   for (const key of ["actions", "bonus_actions", "reactions"]) {
     const list = value[key];

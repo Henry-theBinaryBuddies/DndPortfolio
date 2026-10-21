@@ -123,8 +123,10 @@ export default function App() {
 
   // With a live generator, ask the server once for the shared library and for how it is doing. A server that does not
   // answer is not an error: the built-in monsters still work, and a small note says so.
+  // It waits until the built-in library has loaded (or failed), because the generator is rebuilt at that moment; asking
+  // sooner would send each request twice and throw the first answers away.
   useEffect(() => {
-    if (generator.mode !== "live" || !API_URL) return;
+    if ((!libraryReady && error === null) || generator.mode !== "live" || !API_URL) return;
     let cancelled = false;
     fetchSharedLibrary(API_URL).then((result) => {
       if (cancelled) return;
@@ -141,7 +143,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [generator]);
+  }, [generator, libraryReady, error]);
 
   // The visible list is derived from state on every render, never stored.
   // useMemo skips the work when none of its inputs changed; it matters once the library is large.

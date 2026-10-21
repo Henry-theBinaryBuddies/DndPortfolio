@@ -5,6 +5,7 @@
   --ink: #1e1710;
   --accent: #2d5a1c;
   --on-accent: #eee4c8; /* text on an accent-coloured button */
+  --danger: #8a1c14; /* errors and the deadliest rating */
   --panel-deep: #9c8453; /* the scorched rim of a paper panel */
   --ember: #5f9a2e; /* the glow along a burnt edge: witchfire green */
   --char: rgba(35, 25, 8, 0.78);
@@ -44,6 +45,7 @@
   --ink: #e2dcc6;
   --accent: #86e05a;
   --on-accent: #0b1006;
+  --danger: #ff7a66;
   --muted: #a5a38a;
   --panel: #1e2117;
   --panel-deep: #0b0d08;
@@ -91,13 +93,9 @@ h2 {
   letter-spacing: 0.03em;
 }
 
-/* Buttons and small labels speak in the display face; running text stays in the readable one. */
-.action-button,
-.print-button,
-.menu-button,
+/* The difficulty pills and their label speak in the display face; buttons and running text use the readable one. */
 .pill,
-.difficulty legend,
-.theme-toggle {
+.difficulty legend {
   font-family: var(--font-display);
   letter-spacing: 0.02em;
 }
@@ -116,7 +114,7 @@ h2 {
 }
 
 .error {
-  color: var(--accent);
+  color: var(--danger);
   font-weight: bold;
 }
 
@@ -1061,9 +1059,12 @@ select {
   color: var(--muted);
 }
 
-.rating-hard,
-.rating-deadly {
+.rating-hard {
   color: var(--accent);
+}
+
+.rating-deadly {
+  color: var(--danger);
 }
 
 .encounter-totals {

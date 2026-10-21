@@ -215,3 +215,19 @@ describe("the live generator: status", () => {
     expect(await status(() => json({ status: "weird" }))).toBe("offline");
   });
 });
+
+describe("a server that stalls", () => {
+  it("is given up on even after its headers arrived, so the page is never left waiting", async () => {
+    const stalled: typeof fetch = async (_input, init) => {
+      // headers arrive at once; the body then never finishes, until the page aborts the request
+      const body = new ReadableStream({
+        start(controller) {
+          init?.signal?.addEventListener("abort", () => controller.error(new Error("aborted")));
+        },
+      });
+      return new Response(body, { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const result = await createLiveGenerator("http://x.test", { fetchFn: stalled, timeoutMs: 30 }).generate(REQUEST);
+    expect(result).toMatchObject({ ok: false, reason: "offline" });
+  });
+});

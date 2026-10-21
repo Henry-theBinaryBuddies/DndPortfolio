@@ -27,6 +27,9 @@ describe("looksLikeMonster", () => {
     expect(looksLikeMonster({ ...clone(monsters[0]), size: "Gigantic" })).toBe(false);
     expect(looksLikeMonster({ ...clone(monsters[0]), type: "robot" })).toBe(false);
     expect(looksLikeMonster({ ...clone(monsters[0]), id: "" })).toBe(false);
+    expect(looksLikeMonster({ ...clone(monsters[0]), changes: "abc" })).toBe(false);
+    expect(looksLikeMonster({ ...clone(monsters[0]), attribution: {} })).toBe(false);
+    expect(looksLikeMonster({ ...clone(monsters[0]), changes: ["Main damage: fire \u2192 cold"] })).toBe(true);
     expect(looksLikeMonster({ ...clone(monsters[0]), actions: [{ kind: "attack", name: "x" }] })).toBe(false);
     const withBadDice = clone(monsters[0]) as { actions: { damage?: { dice: string }[] }[] };
     const attack = withBadDice.actions.find((a) => a.damage);

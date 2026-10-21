@@ -492,3 +492,18 @@ describe("golden files: our exported actors, written to disk so any change is vi
     await expect(`${JSON.stringify(actor, null, 2)}\n`).toMatchFileSnapshot(`./goldens/fvtt-Actor-${slug}.json`);
   });
 });
+
+describe("a conditional vulnerability", () => {
+  it("is not exported as a blanket one", () => {
+    const rakshasa: Monster = {
+      ...byName("Cinderkite"),
+      vulnerabilities: ["piercing"],
+      damage_text: { vulnerabilities: "piercing from magic weapons wielded by good creatures" },
+    };
+    const { actor, notes } = exportFoundryActor(rakshasa);
+    const dv = obj(obj(actor.system).traits).dv as JsonObject;
+    expect(dv.value).toEqual([]);
+    expect(dv.custom).toBe("piercing from magic weapons wielded by good creatures");
+    expect(notes.some((n) => n.includes("good creatures"))).toBe(true);
+  });
+});

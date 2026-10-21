@@ -35,22 +35,33 @@ export function fiveToolsDamageEntries(kind: DamageKind, types: readonly string[
   });
 }
 
-/** What Foundry can model: which kinds of weapon get past the trait ("mgc", "sil", "ada"), and any wording it cannot. */
-export function foundryDamageTrait(text: string | null | undefined): { bypasses: string[]; custom: string } {
-  if (!text) return { bypasses: [], custom: "" };
+/**
+ * What Foundry can model: which kinds of weapon get past the trait ("mgc", "sil", "ada"), and any wording it cannot.
+ * `textOnlyTypes` are the damage types named ONLY in that unmodellable wording ("piercing from magic weapons wielded by good
+ * creatures"): they must stay out of Foundry's list of types, or the trait would apply to all piercing damage.
+ */
+export function foundryDamageTrait(text: string | null | undefined): { bypasses: string[]; custom: string; textOnlyTypes: string[] } {
+  if (!text) return { bypasses: [], custom: "", textOnlyTypes: [] };
   const bypasses = new Set<string>();
   const custom: string[] = [];
+  const modelled = new Set<string>();
+  const wordedOnly = new Set<string>();
   for (const part of text.split("; ")) {
-    if (TYPES.has(part)) continue;
-    const { qualifier } = splitQualified(part);
+    if (TYPES.has(part)) {
+      modelled.add(part);
+      continue;
+    }
+    const { types, qualifier } = splitQualified(part);
     const expressible = qualifier !== null && /nonmagical/.test(qualifier) && !/spells|good creatures/.test(qualifier);
     if (!expressible) {
       custom.push(part);
+      types.forEach((t) => wordedOnly.add(t));
       continue;
     }
+    types.forEach((t) => modelled.add(t));
     bypasses.add("mgc");
     if (/silvered/.test(qualifier)) bypasses.add("sil");
     if (/adamantine/.test(qualifier)) bypasses.add("ada");
   }
-  return { bypasses: [...bypasses], custom: custom.join("; ") };
+  return { bypasses: [...bypasses], custom: custom.join("; "), textOnlyTypes: [...wordedOnly].filter((t) => !modelled.has(t)) };
 }

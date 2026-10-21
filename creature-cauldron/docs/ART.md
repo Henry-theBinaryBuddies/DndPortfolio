@@ -7,8 +7,7 @@ nothing is broken without it.
 ## Adding it
 
 1. Make an image (see the prompt below).
-2. Save it as `frontend/public/images/witch.webp` (preferred) or `frontend/public/images/witch.png`. Create the `images` folder
-   if it is not there.
+2. Save it as `frontend/public/images/witch.webp`. Create the `images` folder if it is not there.
 3. Reload the page. No code change is needed. If the file is missing or cannot be read, the drawn witch appears again.
 
 **Format:** a wide banner, about 3 to 4 times as wide as it is tall (for example 1200 by 360 pixels), with a **transparent

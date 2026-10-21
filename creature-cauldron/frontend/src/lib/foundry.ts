@@ -47,9 +47,10 @@ function clone<T extends JsonValue>(value: T): T {
 }
 
 /** Resistances, immunities and vulnerabilities share one shape in Foundry. */
-function damageTrait(values: string[], text?: string | null): JsonObject {
-  const { bypasses, custom } = foundryDamageTrait(text);
-  return { value: [...values], bypasses, custom };
+function damageTrait(values: string[], text: string | null | undefined, notes: string[]): JsonObject {
+  const { bypasses, custom, textOnlyTypes } = foundryDamageTrait(text);
+  if (textOnlyTypes.length > 0) notes.push(`Foundry cannot model "${custom}", so it is written as text only.`);
+  return { value: values.filter((t) => !textOnlyTypes.includes(t)), bypasses, custom };
 }
 
 function biographyHtml(monster: Monster): string {
@@ -182,9 +183,9 @@ export function exportFoundryActor(monster: Monster): FoundryExport {
 
   const traits = child(system, "traits");
   traits.size = SIZE_KEYS[monster.size] ?? "med";
-  traits.di = damageTrait(monster.immunities, monster.damage_text?.immunities);
-  traits.dr = damageTrait(monster.resistances, monster.damage_text?.resistances);
-  traits.dv = damageTrait(monster.vulnerabilities, monster.damage_text?.vulnerabilities);
+  traits.di = damageTrait(monster.immunities, monster.damage_text?.immunities, notes);
+  traits.dr = damageTrait(monster.resistances, monster.damage_text?.resistances, notes);
+  traits.dv = damageTrait(monster.vulnerabilities, monster.damage_text?.vulnerabilities, notes);
   traits.ci = parseConditions(monster.condition_immunities);
   traits.languages = parseLanguages(monster.languages);
 

@@ -48,6 +48,7 @@ export default function DropMenu({
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      event.preventDefault(); // otherwise the stat block's dialog treats this Escape as its own close request too
       setOpen(false);
       button.current?.focus(); // put keyboard focus back on the button that opened it
     };
