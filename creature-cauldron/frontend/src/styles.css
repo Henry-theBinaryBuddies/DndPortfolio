@@ -519,9 +519,16 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 9rem;
+  width: 12rem;
   transform: translateX(-50%);
   filter: drop-shadow(0 0 1.2rem var(--brew-glow));
+}
+
+/* The painted cauldron, scaled down by the browser (the same file the empty encounter box shows). */
+.brew-overlay__art {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .brew-overlay__pot p {
@@ -536,7 +543,7 @@ select {
 
 .brew-bubble {
   position: absolute;
-  bottom: 4rem;
+  bottom: 8rem; /* up from the rim of the painted pot */
   border-radius: 50%;
   border: 2px solid var(--brew);
   background: var(--brew-glow);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { bubbleLayout } from "../lib/bubbles";
-import { Cauldron } from "./Illustrations";
+import { CauldronArt } from "./Illustrations";
 
 const BUBBLES = bubbleLayout(20);
 const POP_MS = 700;
@@ -45,7 +45,7 @@ export default function BrewingOverlay({ active }: { active: boolean }) {
         />
       ))}
       <div className="brew-overlay__pot">
-        <Cauldron />
+        <CauldronArt className="brew-overlay__art" />
         <p>Brewing…</p>
       </div>
     </div>
