@@ -85,11 +85,16 @@ export const XP_BY_CR: Record<string, number> = {
 
 export type Thresholds = Record<Difficulty, number>;
 
+/** A character level made usable: rounded, and held between the lowest and highest level. */
+export function clampLevel(level: number): number {
+  return Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, Math.round(level)));
+}
+
 /** The party's XP budget for each difficulty: every character's threshold, added up. */
 export function partyThresholds(party: Party): Thresholds {
   const totals: Thresholds = { easy: 0, medium: 0, hard: 0, deadly: 0 };
   for (const level of party.levels) {
-    const row = THRESHOLDS_BY_LEVEL[Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, level)) - 1];
+    const row = THRESHOLDS_BY_LEVEL[clampLevel(level) - 1];
     DIFFICULTIES.forEach((difficulty, i) => {
       totals[difficulty] += row[i];
     });

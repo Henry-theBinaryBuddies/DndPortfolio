@@ -6,13 +6,14 @@ in the validator.
 """
 
 import re
+from collections.abc import Callable
 from typing import Annotated
 
 from pydantic import Field, field_validator
 
 from cauldron.actions import AnyAction, Prose, TextAction
 from cauldron.base import CauldronModel
-from cauldron.dice import parse_dice
+from cauldron.dice import format_dice, parse_dice
 from cauldron.options import (
     Ability,
     CreatureType,
@@ -24,6 +25,7 @@ from cauldron.options import (
     Size,
     Source,
 )
+from cauldron.rules import cr_value, proficiency_bonus, xp_for_cr
 
 Score = Annotated[int, Field(ge=1, le=30)]
 Short = Annotated[str, Field(min_length=1, max_length=100)]
@@ -144,6 +146,13 @@ class HitPoints(CauldronModel):
         parse_dice(value)
         return value
 
+    @classmethod
+    def for_dice(cls, count: int, sides: int, con_modifier: int) -> "HitPoints":
+        """`count` hit dice of `sides`, each with the Constitution modifier added, and their average (never below 1).
+        The one place that knows how hit points are written down."""
+        bonus = count * con_modifier
+        return cls(dice=format_dice(count, sides, bonus), average=max(1, (count * (sides + 1) + 2 * bonus) // 2))
+
 
 class Speeds(CauldronModel):
     walk: int | None = Field(default=None, ge=0, le=500)
@@ -178,6 +187,12 @@ class Challenge(CauldronModel):
     cr_value: float = Field(ge=0, le=30)
     xp: int = Field(ge=0)
     proficiency_bonus: int = Field(ge=2, le=9)
+
+    @classmethod
+    def for_cr(cls, label: str) -> "Challenge":
+        """The whole block for a challenge rating label: the value, the XP and the proficiency bonus all follow from it.
+        Raises ValueError for a label that is not a challenge rating."""
+        return cls(cr=label, cr_value=cr_value(label), xp=xp_for_cr(label), proficiency_bonus=proficiency_bonus(label))
 
 
 class DamageText(CauldronModel):
@@ -245,3 +260,13 @@ class Monster(CauldronModel):
     def all_actions(self) -> list[AnyAction]:
         """Actions, bonus actions and reactions, in the order a stat block lists them."""
         return [*self.actions, *self.bonus_actions, *self.reactions]
+
+    def map_actions(self, fn: Callable[[AnyAction], AnyAction]) -> "Monster":
+        """A copy with `fn` applied to every action, bonus action and reaction (the write-side partner of all_actions)."""
+        return self.model_copy(
+            update={
+                "actions": [fn(a) for a in self.actions],
+                "bonus_actions": [fn(a) for a in self.bonus_actions],
+                "reactions": [fn(a) for a in self.reactions],
+            }
+        )

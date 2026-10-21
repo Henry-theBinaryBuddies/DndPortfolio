@@ -25,7 +25,7 @@ from cauldron.monster import (
 )
 from cauldron.actions import Prose
 from cauldron.options import Ability, CreatureType, DamageTheme, DamageType, Environment, Role, Size, Source
-from cauldron.rules import CR_LABELS, cr_value, proficiency_bonus, xp_for_cr
+from cauldron.rules import CR_LABELS
 
 
 class MonsterDraft(CauldronModel):
@@ -109,7 +109,7 @@ def monster_from_draft(draft: MonsterDraft, generator: str, new_id: str) -> Mons
         source=Source.AI,
         validated=False,
         generator=generator,
-        challenge=Challenge(cr=draft.cr, cr_value=cr_value(draft.cr), xp=xp_for_cr(draft.cr), proficiency_bonus=proficiency_bonus(draft.cr)),
+        challenge=Challenge.for_cr(draft.cr),
         features=[],
     )
     return monster.model_copy(update={"features": derive_features(monster)})

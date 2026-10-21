@@ -37,7 +37,7 @@ from cauldron.validator import CrConsistencyCheck, Outcome, Status, ValidationCo
 
 Result = GenerateSuccess | GenerateFailure
 
-_RESTING = "The forge is resting, back tomorrow. The library still works."
+RESTING_MESSAGE = "The forge is resting, back tomorrow. The library still works."
 _COULD_NOT_REACH = "The forge could not be reached just now. Try again in a little while."
 _PLACEHOLDER_MOVE = "Signature Move"
 ARROW = chr(0x2192)
@@ -90,6 +90,41 @@ class GenerationService:
     def generated_monsters(self) -> list[Monster]:
         return self._store.all()
 
+    # --- asking the AI ----------------------------------------------------------------------------------
+
+    def _attempts(self, kind: str, ask, accept) -> Result:
+        """Ask the AI, check what it says, and try again with the problems as feedback: one try and up to ``max_retries`` more.
+
+        Every attempt takes a call from the day's allowance BEFORE it is made, and every reply is billed whether or not it
+        was usable. `ask(feedback)` makes the call; `accept(answer)` gives the stored success or the list of problems."""
+        if not self._generator.available:
+            return _failure(FailureReason.ERROR, _COULD_NOT_REACH)  # without spending any of the day's allowance
+        feedback: list[str] = []
+        attempts = 1 + self._settings.max_retries
+        for attempt in range(1, attempts + 1):
+            if not self._cap.reserve():
+                return _failure(FailureReason.RESTING, RESTING_MESSAGE)
+            try:
+                answer = ask(feedback)
+            except GeneratorUnavailable:
+                return _failure(FailureReason.ERROR, _COULD_NOT_REACH)
+            except BadOutput as problem:
+                self._cap.record_tokens(problem.input_tokens, problem.output_tokens)
+                feedback = [str(problem)]
+                _log_failed_attempt(kind, attempt, attempts, feedback)
+                continue
+            self._cap.record_tokens(answer.input_tokens, answer.output_tokens)
+            outcome = accept(answer)
+            if isinstance(outcome, GenerateSuccess):
+                return outcome
+            feedback = outcome
+            _log_failed_attempt(kind, attempt, attempts, feedback)
+        return _failure(FailureReason.ERROR, _GAVE_UP)
+
+    def _find_base(self, base_id: str) -> Monster | None:
+        """A monster a reskin may start from: one the server ships with, or one it generated."""
+        return self._library.get(base_id) or self._store.get(base_id)
+
     # --- generating -------------------------------------------------------------------------------------
 
     def lookup(self, request: GenerateRequest) -> Monster | None:
@@ -105,30 +140,11 @@ class GenerationService:
         log.info("Designing: %s", brief)
         wanted = request.model_copy(update={"cr_min": bounds[0], "cr_max": bounds[1]})
 
-        if not self._generator.available:
-            return _failure(FailureReason.ERROR, _COULD_NOT_REACH)  # without spending any of the day's allowance
-        feedback: list[str] = []
-        attempts = 1 + self._settings.max_retries
-        for attempt in range(1, attempts + 1):
-            if not self._cap.reserve():
-                return _failure(FailureReason.RESTING, _RESTING)
-            try:
-                generated = self._generator.generate(brief, feedback)
-            except GeneratorUnavailable:
-                return _failure(FailureReason.ERROR, _COULD_NOT_REACH)
-            except BadOutput as problem:
-                self._cap.record_tokens(problem.input_tokens, problem.output_tokens)  # a bad reply is still billed
-                feedback = [str(problem)]
-                _log_failed_attempt("generate", attempt, attempts, feedback)
-                continue
-            self._cap.record_tokens(generated.input_tokens, generated.output_tokens)
-
-            outcome = self._accept(generated.monster, generated.generator, wanted)
-            if isinstance(outcome, GenerateSuccess):
-                return outcome
-            feedback = outcome
-            _log_failed_attempt("generate", attempt, attempts, feedback)
-        return _failure(FailureReason.ERROR, _GAVE_UP)
+        return self._attempts(
+            "generate",
+            lambda feedback: self._generator.generate(brief, feedback),
+            lambda generated: self._accept(generated.monster, generated.generator, wanted),
+        )
 
     def _accept(self, monster: Monster, generator: str, wanted: GenerateRequest) -> GenerateSuccess | list[str]:
         """The validated, stored monster, or the list of problems to send back to the AI."""
@@ -156,7 +172,7 @@ class GenerationService:
         An unknown base is left alone: ``create_reskin`` refuses it."""
         if not request.has_surprise:
             return request
-        base = self._library.get(request.base_id) or self._store.get(request.base_id)
+        base = self._find_base(request.base_id)
         if base is None:
             return request
         theme, move = resolve(base, request.theme, request.move, self._rng)
@@ -182,7 +198,7 @@ class GenerationService:
 
     def create_reskin(self, request: ReskinRequest) -> Result:
         request = self.settle(request)
-        base = self._library.get(request.base_id) or self._store.get(request.base_id)
+        base = self._find_base(request.base_id)
         if base is None:
             return _failure(FailureReason.INVALID, "That monster is not known to the forge.")
         if request.damage_swap is None and request.theme is None and request.move is None and not request.level_up:
@@ -205,36 +221,16 @@ class GenerationService:
             move_blurb=move.blurb if move else None,
         )
 
-        if not self._generator.available:
-            return _failure(FailureReason.ERROR, _COULD_NOT_REACH)  # without spending any of the day's allowance
-        feedback: list[str] = []
-        attempts = 1 + self._settings.max_retries
-        for attempt in range(1, attempts + 1):
-            if not self._cap.reserve():
-                return _failure(FailureReason.RESTING, _RESTING)
-            try:
-                named = self._generator.rename(context, feedback)
-            except GeneratorUnavailable:
-                return _failure(FailureReason.ERROR, _COULD_NOT_REACH)
-            except BadOutput as problem:
-                self._cap.record_tokens(problem.input_tokens, problem.output_tokens)  # a bad reply is still billed
-                feedback = [str(problem)]
-                _log_failed_attempt("reskin", attempt, attempts, feedback)
-                continue
-            self._cap.record_tokens(named.input_tokens, named.output_tokens)
+        def accept(named) -> GenerateSuccess | list[str]:
             if move is not None and not named.move_name:
-                feedback = ["The new move needs a name: give move_name."]
-                _log_failed_attempt("reskin", attempt, attempts, feedback)
-                continue
-
+                return ["The new move needs a name: give move_name."]
             shaped, changes = self._shape(base, request, named.move_name or _PLACEHOLDER_MOVE)
             outcome = self._accept_reskin(shaped, base, named.name, named.description, named.generator, changes)
             if isinstance(outcome, GenerateSuccess):
                 self._store.remember_reskin(request.cache_key, outcome.monster.id)
-                return outcome
-            feedback = outcome
-            _log_failed_attempt("reskin", attempt, attempts, feedback)
-        return _failure(FailureReason.ERROR, _GAVE_UP)
+            return outcome
+
+        return self._attempts("reskin", lambda feedback: self._generator.rename(context, feedback), accept)
 
     def _accept_reskin(
         self, shaped: Monster, base: Monster, name: str, description: str, generator: str, changes: list[str]

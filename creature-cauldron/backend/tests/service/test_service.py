@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from cauldron.monster import Monster
+from cauldron.monster import Challenge, Monster
 from cauldron.options import DamageType, Source
-from cauldron.rules import SRD_ATTRIBUTION, cr_value, proficiency_bonus, xp_for_cr
+from cauldron.rules import SRD_ATTRIBUTION, cr_value
 from cauldron.seed.importer import import_monster
 from cauldron.service.generators import BadOutput, GeneratedMonster, GeneratedName, GeneratorUnavailable, ScriptedGenerator
 from cauldron.service.limits import DailyCap
@@ -62,10 +62,7 @@ def made(monster: Monster, name: str | None = None, tokens: tuple[int, int] = (0
 
 
 def with_cr(monster: Monster, cr: str) -> Monster:
-    challenge = monster.challenge.model_copy(
-        update={"cr": cr, "cr_value": cr_value(cr), "xp": xp_for_cr(cr), "proficiency_bonus": proficiency_bonus(cr)}
-    )
-    return monster.model_copy(update={"challenge": challenge})
+    return monster.model_copy(update={"challenge": Challenge.for_cr(cr)})
 
 
 DRAGONS = dict(types=["dragon"], crMin=4, crMax=4)  # the Stormhide Drake is a CR 4 dragon

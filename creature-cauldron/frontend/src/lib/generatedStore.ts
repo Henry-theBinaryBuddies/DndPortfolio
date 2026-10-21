@@ -1,5 +1,6 @@
 import type { Monster } from "../types/monster";
 import { parseDice } from "./dice";
+import { isValidId } from "./storage";
 import { CREATURE_TYPES, ROLES, SIZES } from "./options";
 
 // Generated monsters are remembered in the browser until the server's shared cache exists. Like
@@ -8,7 +9,6 @@ import { CREATURE_TYPES, ROLES, SIZES } from "./options";
 
 export const GENERATED_STORAGE_KEY = "creature-cauldron:generated";
 export const MAX_GENERATED = 200;
-const MAX_ID_LENGTH = 100;
 
 type Obj = Record<string, unknown>;
 
@@ -78,7 +78,7 @@ function looksLikeSpellcasting(value: unknown): boolean {
 /** Does this look like a complete, displayable Monster? Cheap structural checks, not rules validation. */
 export function looksLikeMonster(value: unknown): value is Monster {
   if (!isObj(value)) return false;
-  if (!isStr(value.id) || value.id === "" || value.id.length > MAX_ID_LENGTH || !isStr(value.name) || value.name === "") return false;
+  if (!isValidId(value.id) || !isStr(value.name) || value.name === "") return false;
   if (!["srd", "curated", "ai", "reskin"].includes(value.source as string) || typeof value.validated !== "boolean") return false;
   if (!(SIZES as readonly unknown[]).includes(value.size) || !(CREATURE_TYPES as readonly unknown[]).includes(value.type)) return false;
   if (!(ROLES as readonly unknown[]).includes(value.role)) return false;

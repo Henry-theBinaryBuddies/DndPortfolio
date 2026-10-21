@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { downloadTextFile } from "../lib/download";
-import { exportFileName, toJsonText } from "../lib/exportCommon";
+import { downloadJson } from "../lib/download";
 import { buildMonsterFile } from "../lib/exportJson";
 import { buildFiveToolsFile } from "../lib/fiveTools";
 import { exportFoundryActor } from "../lib/foundry";
@@ -15,24 +14,21 @@ export default function ExportButtons({ monster }: { monster: Monster }) {
   const [status, setStatus] = useState("");
 
   const exportJson = () => {
-    const filename = exportFileName("monster", monster.name);
-    downloadTextFile(filename, toJsonText(buildMonsterFile(monster, new Date().toISOString())));
+    const filename = downloadJson("monster", monster.name, buildMonsterFile(monster, new Date().toISOString()));
     // "started", not "done": a blocked download, or a phone showing a preview first, cannot be detected.
     setStatus(`Download started: ${filename}`);
   };
 
   const exportFoundry = () => {
     const { actor, notes } = exportFoundryActor(monster);
-    const filename = exportFileName(FOUNDRY_TARGET.filePrefix, monster.name);
-    downloadTextFile(filename, toJsonText(actor));
+    const filename = downloadJson(FOUNDRY_TARGET.filePrefix, monster.name, actor);
     // Notes say what Foundry will show differently or what could not be converted.
     setStatus(`Download started: ${filename}${notes.length > 0 ? ` Notes: ${notes.join(" ")}` : ""}`);
   };
 
   const exportFiveTools = () => {
     const { file, notes } = buildFiveToolsFile([monster], new Date().toISOString());
-    const filename = exportFileName("5etools", monster.name);
-    downloadTextFile(filename, toJsonText(file));
+    const filename = downloadJson("5etools", monster.name, file);
     setStatus(`Download started: ${filename}${notes.length > 0 ? ` Notes: ${notes.join(" ")}` : ""}`);
   };
 

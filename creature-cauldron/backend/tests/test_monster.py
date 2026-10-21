@@ -134,3 +134,35 @@ def test_a_monster_can_list_every_ability_it_has_in_stat_block_order() -> None:
     monster = Monster.model_validate(sample("Cinderkite"))
     names = [a.display_name for a in monster.all_actions()]
     assert names == [a.display_name for a in [*monster.actions, *monster.bonus_actions, *monster.reactions]]
+
+
+# --- the shared builders --------------------------------------------------------------------------------
+
+
+def test_a_challenge_block_follows_from_its_label() -> None:
+    from cauldron.monster import Challenge
+
+    block = Challenge.for_cr("1/4")
+    assert (block.cr, block.cr_value, block.xp, block.proficiency_bonus) == ("1/4", 0.25, 50, 2)
+    assert Challenge.for_cr("17").proficiency_bonus == 6
+    with pytest.raises(ValueError):
+        Challenge.for_cr("31")
+
+
+def test_hit_points_from_dice_add_the_constitution_modifier_to_every_die() -> None:
+    from cauldron.monster import HitPoints
+
+    assert HitPoints.for_dice(4, 8, 2) == HitPoints(dice="4d8+8", average=26)
+    assert HitPoints.for_dice(2, 4, -3).average == 1  # never below 1 hit point
+
+
+def test_map_actions_reaches_the_actions_the_bonus_actions_and_the_reactions() -> None:
+    from cauldron.actions import TextAction
+
+    monster = Monster.model_validate(sample("Stormhide Drake"))
+    reaction = TextAction(name="Backlash", text="It strikes back.")
+    monster = monster.model_copy(update={"bonus_actions": [reaction], "reactions": [reaction]})
+    renamed = monster.map_actions(lambda a: a.model_copy(update={"name": a.name.upper()}))
+    assert [a.name for a in renamed.all_actions()] == [a.name.upper() for a in monster.all_actions()]
+    assert renamed.bonus_actions[0].name == "BACKLASH" and renamed.reactions[0].name == "BACKLASH"
+    assert monster.reactions[0].name == "Backlash"  # the original is untouched

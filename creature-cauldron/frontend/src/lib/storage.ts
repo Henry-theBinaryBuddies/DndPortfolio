@@ -9,7 +9,7 @@ import {
   type SavedEncounter,
   type WorkingEncounter,
 } from "./encounter";
-import { DEFAULT_PARTY, MAX_LEVEL, MAX_PARTY_SIZE, MIN_LEVEL, type Party } from "./party";
+import { DEFAULT_PARTY, MAX_PARTY_SIZE, clampLevel, type Party } from "./party";
 
 // Anything read back from localStorage is untrusted: it may be stale, hand-edited,
 // or missing, and storage itself can throw (private windows, blocked site data).
@@ -22,6 +22,11 @@ export const SAVED_ENCOUNTERS_STORAGE_KEY = "creature-cauldron:saved-encounters"
 
 /** Loose on purpose: ids of future AI-generated monsters may look different from today's. */
 export const MAX_ID_LENGTH = 100;
+
+/** An id the page will keep: a string of 1 to MAX_ID_LENGTH characters. */
+export function isValidId(value: unknown): value is string {
+  return typeof value === "string" && value.length >= 1 && value.length <= MAX_ID_LENGTH;
+}
 export const MAX_FAVORITES = 5000;
 
 /** Reads and parses a JSON value. Returns undefined if storage is unavailable, empty or not valid JSON. */
@@ -59,7 +64,7 @@ export function parseParty(value: unknown): Party {
   return {
     levels: (levels as number[])
       .slice(0, MAX_PARTY_SIZE)
-      .map((level) => Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, Math.round(level)))),
+      .map(clampLevel),
   };
 }
 
@@ -74,7 +79,7 @@ export function parseFavorites(value: unknown): string[] {
   // A Set keeps each id once (the first occurrence wins) and remembers insertion order.
   const ids = new Set<string>();
   for (const item of value) {
-    if (typeof item === "string" && item.length >= 1 && item.length <= MAX_ID_LENGTH) {
+    if (isValidId(item)) {
       ids.add(item);
       if (ids.size >= MAX_FAVORITES) break;
     }
@@ -96,7 +101,7 @@ export function parseEntries(value: unknown): EncounterEntry[] {
   for (const item of value) {
     if (typeof item !== "object" || item === null) continue;
     const { monsterId, count, name } = item as Record<string, unknown>;
-    if (typeof monsterId !== "string" || monsterId.length < 1 || monsterId.length > MAX_ID_LENGTH) continue;
+    if (!isValidId(monsterId)) continue;
     if (typeof count !== "number" || !Number.isFinite(count)) continue;
 
     const existing = merged.get(monsterId);
@@ -140,7 +145,7 @@ export function parseSavedEncounters(value: unknown): SavedEncounter[] {
     const rows = parseEntries(entries);
     if (rows.length === 0) continue;
 
-    let finalId = typeof id === "string" && id.length >= 1 && id.length <= MAX_ID_LENGTH ? id : "";
+    let finalId = isValidId(id) ? id : "";
     if (finalId === "" || usedIds.has(finalId)) {
       let n = saved.length;
       while (usedIds.has(`legacy-${n}`)) n++;
@@ -163,7 +168,7 @@ export function parseWorkingEncounter(value: unknown): WorkingEncounter {
 
   const { id, name, favorite, entries } = value as Record<string, unknown>;
   return {
-    id: typeof id === "string" && id.length >= 1 && id.length <= MAX_ID_LENGTH ? id : null,
+    id: isValidId(id) ? id : null,
     name: typeof name === "string" ? cleanName(name) : "",
     favorite: favorite === true,
     entries: parseEntries(entries),

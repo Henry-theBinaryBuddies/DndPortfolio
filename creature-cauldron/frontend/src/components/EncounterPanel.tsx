@@ -17,8 +17,7 @@ import {
   type SavedEncounter,
   type WorkingEncounter,
 } from "../lib/encounter";
-import { downloadTextFile } from "../lib/download";
-import { exportFileName, toJsonText } from "../lib/exportCommon";
+import { downloadJson } from "../lib/download";
 import { buildFiveToolsFile } from "../lib/fiveTools";
 import { buildEncounterFile } from "../lib/exportJson";
 import { describeParty, type Party } from "../lib/party";
@@ -93,8 +92,7 @@ export default function EncounterPanel({
     // saved, so it does not belong in a file.
     const typed = cleanName(working.name);
     const file = buildEncounterFile(typed || "Encounter", summary, party, new Date().toISOString());
-    const filename = exportFileName("encounter", typed);
-    downloadTextFile(filename, toJsonText(file));
+    const filename = downloadJson("encounter", typed, file);
     const unavailable = summary.missingCount;
     // "started", not "done": a blocked download, or a phone showing a preview first, cannot be detected.
     setExportStatus(
@@ -120,8 +118,7 @@ export default function EncounterPanel({
     const typed = cleanName(working.name);
     const known = summary.lines.flatMap((line) => (line.monster ? [line.monster] : []));
     const { file, notes } = buildFiveToolsFile(known, new Date().toISOString());
-    const filename = exportFileName("5etools-encounter", typed);
-    downloadTextFile(filename, toJsonText(file));
+    const filename = downloadJson("5etools-encounter", typed, file);
     const skipped = summary.lines.length - known.length;
     setExportStatus(
       `Download started: ${filename} (${known.length} ${known.length === 1 ? "monster" : "monsters"}${

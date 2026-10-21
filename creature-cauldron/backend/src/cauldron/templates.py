@@ -5,14 +5,38 @@ reskin can never invent statistics. The results are new monsters; run them throu
 """
 
 import re
+from collections.abc import Callable
 
-from cauldron.actions import Action, AttackAction, DamageRoll, MultiattackAction, SaveAction, TextAction
-from cauldron.dice import ability_modifier, format_dice, parse_dice
-from cauldron.monster import DamageText, Monster
+from cauldron.actions import Action, AttackAction, DamageRoll, SaveAction
+from cauldron.dice import ability_modifier, parse_dice
+from cauldron.monster import Challenge, DamageText, HitPoints, Monster
 from cauldron.options import DamageTheme, DamageType
-from cauldron.rules import cr_value, hit_die, proficiency_bonus, step_cr, xp_for_cr
+from cauldron.rules import hit_die, proficiency_bonus, step_cr
 
 _THEMES = {theme.value for theme in DamageTheme}
+
+
+# --- every piece of prose ---------------------------------------------------------------------------------
+
+
+def _rewrite_text(monster: Monster, fn: Callable[[str | None], str | None]) -> Monster:
+    """A copy with `fn` applied to every piece of prose: the effects of attacks and saves, the text of other actions, traits,
+    legendary options and the spellcasting intro and footer. Numbers and types are left to the caller."""
+
+    def action(a: Action) -> Action:
+        if isinstance(a, (AttackAction, SaveAction)):
+            return a.model_copy(update={"effects_text": fn(a.effects_text)})
+        return a.model_copy(update={"text": fn(a.text)})  # a multiattack or a text action
+
+    legendary = monster.legendary_actions
+    if legendary is not None:
+        legendary = legendary.model_copy(update={"options": [o.model_copy(update={"text": fn(o.text)}) for o in legendary.options]})
+    spellcasting = monster.spellcasting
+    if spellcasting is not None:
+        spellcasting = spellcasting.model_copy(update={"intro": fn(spellcasting.intro), "footer": fn(spellcasting.footer)})
+    return monster.map_actions(action).model_copy(
+        update={"traits": [t.model_copy(update={"text": fn(t.text)}) for t in monster.traits], "legendary_actions": legendary, "spellcasting": spellcasting}
+    )
 
 
 # --- the damage-type swap -------------------------------------------------------------------------------
@@ -35,37 +59,20 @@ def swap_damage_type(monster: Monster, old: DamageType, new: DamageType, defence
     def roll(r: DamageRoll) -> DamageRoll:
         return r.model_copy(update={"type": new}) if r.type == old else r
 
-    def action(a: Action) -> Action:
+    def rolls(a: Action) -> Action:
         if isinstance(a, AttackAction):
-            return a.model_copy(update={"damage": [roll(r) for r in a.damage], "effects_text": words(a.effects_text)})
+            return a.model_copy(update={"damage": [roll(r) for r in a.damage]})
         if isinstance(a, SaveAction):
-            return a.model_copy(update={"on_fail": [roll(r) for r in a.on_fail], "effects_text": words(a.effects_text)})
-        if isinstance(a, MultiattackAction):
-            return a.model_copy(update={"text": words(a.text)})
-        if isinstance(a, TextAction):
-            return a.model_copy(update={"text": words(a.text)})
+            return a.model_copy(update={"on_fail": [roll(r) for r in a.on_fail]})
         return a
 
-    def trait(t: TextAction) -> TextAction:
-        return t.model_copy(update={"text": words(t.text)})
-
-    legendary = monster.legendary_actions
-    if legendary is not None:
-        legendary = legendary.model_copy(update={"options": [o.model_copy(update={"text": words(o.text)}) for o in legendary.options]})
+    dealt = _rewrite_text(monster, words).map_actions(rolls)
+    if not defences:
+        return dealt
 
     def types(items: list[DamageType]) -> list[DamageType]:
         # dict.fromkeys drops repeats but keeps the order.
         return list(dict.fromkeys(new if t == old else t for t in items))
-
-    dealt = {
-        "actions": [action(a) for a in monster.actions],
-        "bonus_actions": [action(a) for a in monster.bonus_actions],
-        "reactions": [action(a) for a in monster.reactions],
-        "traits": [trait(t) for t in monster.traits],
-        "legendary_actions": legendary,
-    }
-    if not defences:
-        return monster.model_copy(update=dealt)
 
     # Themes are only the elemental types, so a swap to a weapon type just drops the theme.
     theme_names = dict.fromkeys(new.value if t.value == old.value else t.value for t in monster.damage_themes)
@@ -73,9 +80,8 @@ def swap_damage_type(monster: Monster, old: DamageType, new: DamageType, defence
     text = monster.damage_text
     if text is not None:
         text = DamageText(**{field: None if value is None else line.sub(new.value, value) for field, value in text.model_dump().items()})
-    return monster.model_copy(
+    return dealt.model_copy(
         update={
-            **dealt,
             "resistances": types(monster.resistances),
             "immunities": types(monster.immunities),
             "vulnerabilities": types(monster.vulnerabilities),
@@ -109,34 +115,13 @@ def retarget_name(monster: Monster, old_name: str, new_name: str) -> Monster:
             return None
         return pattern.sub(lambda m: new_name.lower() if m.group(0) == m.group(0).lower() else new_name, text)
 
-    def action(a: Action) -> Action:
-        if isinstance(a, (AttackAction, SaveAction)):
-            return a.model_copy(update={"effects_text": said(a.effects_text)})
-        return a.model_copy(update={"text": said(a.text)})  # a multiattack or a text action
-
-    legendary = monster.legendary_actions
-    if legendary is not None:
-        legendary = legendary.model_copy(update={"options": [o.model_copy(update={"text": said(o.text)}) for o in legendary.options]})
-    spellcasting = monster.spellcasting
-    if spellcasting is not None:
-        spellcasting = spellcasting.model_copy(update={"intro": said(spellcasting.intro), "footer": said(spellcasting.footer)})
-
-    return monster.model_copy(
-        update={
-            "traits": [t.model_copy(update={"text": said(t.text)}) for t in monster.traits],
-            "actions": [action(a) for a in monster.actions],
-            "bonus_actions": [action(a) for a in monster.bonus_actions],
-            "reactions": [action(a) for a in monster.reactions],
-            "legendary_actions": legendary,
-            "spellcasting": spellcasting,
-        }
-    )
+    return _rewrite_text(monster, said)
 
 
 # --- level up -------------------------------------------------------------------------------------------
 
 
-def _level_up_hit_points(monster: Monster):
+def _level_up_hit_points(monster: Monster) -> HitPoints:
     """About 1.5x the average, using as many hit dice as that needs, with the dice and average kept consistent."""
     sides = hit_die(monster.size)
     con = ability_modifier(monster.abilities.con)
@@ -144,9 +129,7 @@ def _level_up_hit_points(monster: Monster):
     target = (monster.hit_points.average * 3 + 1) // 2
     per_die = (sides + 1) / 2 + con
     count = max(1, round(target / per_die)) if per_die > 0 else (old_count * 3 + 1) // 2
-    bonus = count * con
-    average = max(1, (count * (sides + 1) + 2 * bonus) // 2)
-    return monster.hit_points.model_copy(update={"dice": format_dice(count, sides, bonus), "average": average})
+    return HitPoints.for_dice(count, sides, con)
 
 
 def level_up(monster: Monster) -> Monster:
@@ -174,7 +157,7 @@ def level_up(monster: Monster) -> Monster:
     if spellcasting is not None:
         spellcasting = spellcasting.with_numbers(spellcasting.dc + boost, spellcasting.attack_bonus + boost)
 
-    return monster.model_copy(
+    return monster.map_actions(action).model_copy(
         update={
             "armor_class": monster.armor_class.model_copy(update={"value": monster.armor_class.value + 1}),
             "hit_points": _level_up_hit_points(monster),
@@ -183,17 +166,7 @@ def level_up(monster: Monster) -> Monster:
             "senses": monster.senses.model_copy(
                 update={"passive_perception": monster.senses.passive_perception + (pb_gain if "Perception" in monster.skills else 0)}
             ),
-            "challenge": monster.challenge.model_copy(
-                update={
-                    "cr": new_cr,
-                    "cr_value": cr_value(new_cr),
-                    "xp": xp_for_cr(new_cr),
-                    "proficiency_bonus": proficiency_bonus(new_cr),
-                }
-            ),
-            "actions": [action(a) for a in monster.actions],
-            "bonus_actions": [action(a) for a in monster.bonus_actions],
-            "reactions": [action(a) for a in monster.reactions],
+            "challenge": Challenge.for_cr(new_cr),
             "spellcasting": spellcasting,
         }
     )

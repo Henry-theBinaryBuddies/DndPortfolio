@@ -14,7 +14,7 @@ from cauldron.actions import AttackAction, SaveAction
 from cauldron.blocklist import blocked_term
 from cauldron.dice import ability_modifier, format_dice
 from cauldron.features import derive_features
-from cauldron.monster import Monster
+from cauldron.monster import Challenge, Monster
 from cauldron.options import Feature, Source
 from cauldron.rules import SRD_ATTRIBUTION
 from cauldron.validator import (
@@ -358,12 +358,7 @@ def test_a_monster_rated_far_below_its_numbers_is_sent_back_for_a_retry() -> Non
 
 
 def with_cr(monster: Monster, cr: str) -> Monster:
-    from cauldron.rules import cr_value, proficiency_bonus, xp_for_cr
-
-    challenge = monster.challenge.model_copy(
-        update={"cr": cr, "cr_value": cr_value(cr), "xp": xp_for_cr(cr), "proficiency_bonus": proficiency_bonus(cr)}
-    )
-    return monster.model_copy(update={"challenge": challenge})
+    return monster.model_copy(update={"challenge": Challenge.for_cr(cr)})
 
 
 def test_a_claim_far_below_the_numbers_asks_for_a_retry() -> None:

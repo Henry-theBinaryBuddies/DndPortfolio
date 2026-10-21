@@ -30,7 +30,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from cauldron.monster import Monster
 from cauldron.service.limits import RateLimiter, client_address
 from cauldron.service.models import FailureReason, GenerateFailure, GenerateRequest, GenerateSuccess, ReskinRequest
-from cauldron.service.service import GenerationService
+from cauldron.service.service import RESTING_MESSAGE, GenerationService
 from cauldron.service.settings import Settings
 
 log = logging.getLogger("cauldron")
@@ -65,13 +65,14 @@ def load_library(settings: Settings) -> dict[str, Monster]:
     return library
 
 
-def _failure_response(failure: GenerateFailure, headers: dict[str, str] | None = None) -> JSONResponse:
-    return JSONResponse(failure.model_dump(mode="json"), status_code=_STATUS[failure.reason], headers=headers)
+def _failure_response(failure: GenerateFailure, headers: dict[str, str] | None = None, status: int | None = None) -> JSONResponse:
+    """A failure in the one shape the web page knows. The status is the reason's own unless one is given."""
+    return JSONResponse(failure.model_dump(mode="json"), status_code=status or _STATUS[failure.reason], headers=headers)
 
 
 def _error_body(status: int, message: str, reason: FailureReason = FailureReason.INVALID) -> JSONResponse:
     """A failure answer with a status of our own choosing (the ones in _STATUS cover only the service's own failures)."""
-    return JSONResponse(GenerateFailure(reason=reason, message=message).model_dump(mode="json"), status_code=status)
+    return _failure_response(GenerateFailure(reason=reason, message=message), status=status)
 
 
 def _success_response(success: GenerateSuccess) -> JSONResponse:
@@ -126,7 +127,7 @@ def create_app(settings: Settings, service: GenerationService) -> FastAPI:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, error: StarletteHTTPException) -> JSONResponse:
-        return JSONResponse({"ok": False, "reason": "error", "message": str(error.detail)}, status_code=error.status_code)
+        return _error_body(error.status_code, str(error.detail), FailureReason.ERROR)
 
     # --- helpers ------------------------------------------------------------------------------------------
 
@@ -148,49 +149,39 @@ def create_app(settings: Settings, service: GenerationService) -> FastAPI:
     def library() -> JSONResponse:
         return JSONResponse([m.model_dump(mode="json", exclude_none=True) for m in service.generated_monsters()])
 
-    @app.post(f"{API}/generate")
-    def generate(body: GenerateRequest, request: Request) -> JSONResponse:
+    def serve(request: Request, cached, note: str, create) -> JSONResponse:
+        """What every AI endpoint does, cheapest first: the cheap limit, then the free cached answer, then (only if the forge
+        is not resting and the visitor is within the AI limit) the real thing."""
         who = visitor(request)
         decision = cache_limiter.allow(who)
         if not decision.allowed:
             return too_many(decision.retry_after)
 
-        cached = service.lookup(body)
-        if cached is not None:
-            return _success_response(GenerateSuccess(monster=cached, notes=["From the shared library of generated monsters."]))
+        monster = cached()
+        if monster is not None:
+            return _success_response(GenerateSuccess(monster=monster, notes=[note]))
 
         if service.resting():
-            return _failure_response(
-                GenerateFailure(reason=FailureReason.RESTING, message="The forge is resting, back tomorrow. The library still works.")
-            )
+            return _failure_response(GenerateFailure(reason=FailureReason.RESTING, message=RESTING_MESSAGE))
         decision = ai_limiter.allow(who)
         if not decision.allowed:
             return too_many(decision.retry_after)
 
-        result = service.create(body)
+        result = create()
         return _success_response(result) if isinstance(result, GenerateSuccess) else _failure_response(result)
+
+    @app.post(f"{API}/generate")
+    def generate(body: GenerateRequest, request: Request) -> JSONResponse:
+        return serve(request, lambda: service.lookup(body), "From the shared library of generated monsters.", lambda: service.create(body))
 
     @app.post(f"{API}/reskin")
     def reskin(body: ReskinRequest, request: Request) -> JSONResponse:
-        who = visitor(request)
-        decision = cache_limiter.allow(who)
-        if not decision.allowed:
-            return too_many(decision.retry_after)
-
-        body = service.settle(body)  # a "surprise" is decided first, so a repeat of the same outcome is still free
-        cached = service.lookup_reskin(body)
-        if cached is not None:
-            return _success_response(GenerateSuccess(monster=cached, notes=["A reskin made earlier for the same choices."]))
-
-        if service.resting():
-            return _failure_response(
-                GenerateFailure(reason=FailureReason.RESTING, message="The forge is resting, back tomorrow. The library still works.")
-            )
-        decision = ai_limiter.allow(who)
-        if not decision.allowed:
-            return too_many(decision.retry_after)
-
-        result = service.create_reskin(body)
-        return _success_response(result) if isinstance(result, GenerateSuccess) else _failure_response(result)
+        settled = service.settle(body)  # a "surprise" is decided first, so a repeat of the same outcome is still free
+        return serve(
+            request,
+            lambda: service.lookup_reskin(settled),
+            "A reskin made earlier for the same choices.",
+            lambda: service.create_reskin(settled),
+        )
 
     return app

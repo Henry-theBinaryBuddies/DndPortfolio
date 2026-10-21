@@ -25,11 +25,11 @@ from cauldron.actions import AttackAction, SaveAction
 from cauldron.blocklist import blocked_term
 from cauldron.cr.calibration_table import RELIABLE_UP_TO
 from cauldron.cr.estimator import estimate, tolerance_steps
-from cauldron.dice import ability_modifier, format_dice, format_signed, parse_dice
+from cauldron.dice import ability_modifier, format_signed, parse_dice
 from cauldron.features import derive_features
-from cauldron.monster import Monster
+from cauldron.monster import Challenge, HitPoints, Monster
 from cauldron.options import Ability, Source
-from cauldron.rules import CR_LABELS, SRD_ATTRIBUTION, cr_value, hit_die, proficiency_bonus, xp_for_cr
+from cauldron.rules import CR_LABELS, SRD_ATTRIBUTION, hit_die
 
 # Attack bonuses and save DCs may sit up to this far above the plain rule (proficiency + ability). Magic
 # weapons, expertise and the level-up template all add a little, so only larger gaps are treated as mistakes.
@@ -143,23 +143,18 @@ class DerivedFieldsCheck(Check):
     def run(self, monster: Monster, context: ValidationContext) -> CheckResult:
         label = monster.challenge.cr
         try:
-            expected_value = cr_value(label)
+            expected = Challenge.for_cr(label)
         except ValueError:
             return self._result(monster, self._finding(Outcome.REJECT, f'"{label}" is not a challenge rating.'))
 
-        wanted = {
-            "cr_value": expected_value,
-            "xp": xp_for_cr(label),
-            "proficiency_bonus": proficiency_bonus(label),
-        }
         findings = [
-            self._finding(Outcome.CORRECTED, f"{key} was {getattr(monster.challenge, key)} and should be {value} for CR {label}.")
-            for key, value in wanted.items()
-            if getattr(monster.challenge, key) != value
+            self._finding(Outcome.CORRECTED, f"{key} was {getattr(monster.challenge, key)} and should be {getattr(expected, key)} for CR {label}.")
+            for key in ("cr_value", "xp", "proficiency_bonus")
+            if getattr(monster.challenge, key) != getattr(expected, key)
         ]
         if not findings:
             return self._result(monster)
-        return self._result(monster.model_copy(update={"challenge": monster.challenge.model_copy(update=wanted)}), *findings)
+        return self._result(monster.model_copy(update={"challenge": expected}), *findings)
 
 
 class HitPointsCheck(Check):
@@ -169,20 +164,16 @@ class HitPointsCheck(Check):
 
     def run(self, monster: Monster, context: ValidationContext) -> CheckResult:
         count = parse_dice(monster.hit_points.dice).count
-        sides = hit_die(monster.size)
-        bonus = count * _modifier(monster, Ability.CON)
-        dice = format_dice(count, sides, bonus)
-        average = max(1, (count * (sides + 1) + 2 * bonus) // 2)
+        expected = HitPoints.for_dice(count, hit_die(monster.size), _modifier(monster, Ability.CON))
 
         findings: list[Finding] = []
-        if dice != monster.hit_points.dice:
-            findings.append(self._finding(Outcome.CORRECTED, f"Hit dice were {monster.hit_points.dice} and should be {dice} for a {monster.size.value} creature with this Constitution."))
-        if average != monster.hit_points.average:
-            findings.append(self._finding(Outcome.CORRECTED, f"Average hit points were {monster.hit_points.average} and should be {average}."))
+        if expected.dice != monster.hit_points.dice:
+            findings.append(self._finding(Outcome.CORRECTED, f"Hit dice were {monster.hit_points.dice} and should be {expected.dice} for a {monster.size.value} creature with this Constitution."))
+        if expected.average != monster.hit_points.average:
+            findings.append(self._finding(Outcome.CORRECTED, f"Average hit points were {monster.hit_points.average} and should be {expected.average}."))
         if not findings:
             return self._result(monster)
-        fixed = monster.hit_points.model_copy(update={"dice": dice, "average": average})
-        return self._result(monster.model_copy(update={"hit_points": fixed}), *findings)
+        return self._result(monster.model_copy(update={"hit_points": expected}), *findings)
 
 
 class AttackBonusCheck(Check):
@@ -201,16 +192,7 @@ class AttackBonusCheck(Check):
             findings.append(self._finding(Outcome.CORRECTED, f'"{action.name}" had {format_signed(action.attack.to_hit)} to hit and should have {format_signed(expected)}.'))
             return action.model_copy(update={"attack": action.attack.model_copy(update={"to_hit": expected})})
 
-        def fix_all(actions: list) -> list:
-            return [fix(a) if isinstance(a, AttackAction) else a for a in actions]
-
-        updated = monster.model_copy(
-            update={
-                "actions": fix_all(monster.actions),
-                "bonus_actions": fix_all(monster.bonus_actions),
-                "reactions": fix_all(monster.reactions),
-            }
-        )
+        updated = monster.map_actions(lambda a: fix(a) if isinstance(a, AttackAction) else a)
         return self._result(updated if findings else monster, *findings)
 
 
@@ -233,16 +215,7 @@ class SaveDcCheck(Check):
             findings.append(self._finding(Outcome.CORRECTED, f'"{action.name}" had DC {dc}, which no ability reaches. Changed to DC {nearest}.'))
             return action.model_copy(update={"save": action.save.model_copy(update={"dc": nearest})})
 
-        def fix_all(actions: list) -> list:
-            return [fix(a) if isinstance(a, SaveAction) else a for a in actions]
-
-        updated = monster.model_copy(
-            update={
-                "actions": fix_all(monster.actions),
-                "bonus_actions": fix_all(monster.bonus_actions),
-                "reactions": fix_all(monster.reactions),
-            }
-        )
+        updated = monster.map_actions(lambda a: fix(a) if isinstance(a, SaveAction) else a)
         return self._result(updated if findings else monster, *findings)
 
 
