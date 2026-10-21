@@ -20875,7 +20875,8 @@
   "role": "brute",
   "damage_themes": [],
   "features": [
-   "swimming"
+   "swimming",
+   "multiattack"
   ],
   "description": ""
  },
@@ -35633,7 +35634,9 @@
   "damage_themes": [
    "necrotic"
   ],
-  "features": [],
+  "features": [
+   "multiattack"
+  ],
   "description": ""
  },
  {

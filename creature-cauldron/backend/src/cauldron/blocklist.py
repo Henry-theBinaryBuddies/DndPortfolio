@@ -6,6 +6,7 @@ list freely; removing a name needs a good reason.
 """
 
 import re
+import unicodedata
 
 # Monsters Wizards keeps as product identity, and iconic named characters, deities and settings.
 PRODUCT_IDENTITY_TERMS: frozenset[str] = frozenset(
@@ -62,14 +63,20 @@ PRODUCT_IDENTITY_TERMS: frozenset[str] = frozenset(
 
 
 def _words(text: str) -> str:
-    """Lowercase, with every run of punctuation or spaces turned into one space: "Mind-Flayer's" -> " mind flayer s "."""
-    return f" {re.sub(r'[^a-z0-9&]+', ' ', text.lower()).strip()} "
+    """Lowercase, accents removed, and every run of punctuation or spaces turned into one space:
+    "Mind-Flayer's" -> " mind flayer s ", and "Faer\u00fbn" -> " faerun "."""
+    plain = "".join(c for c in unicodedata.normalize("NFKD", text.lower()) if not unicodedata.combining(c))
+    return f" {re.sub(r'[^a-z0-9&]+', ' ', plain).strip()} "
+
+
+# Each blocked term in the form it is compared in, worked out once.
+_BLOCKED = tuple((term, _words(term)) for term in sorted(PRODUCT_IDENTITY_TERMS))
 
 
 def blocked_term(name: str) -> str | None:
-    """The blocked term this name contains as whole words, or None. Matching ignores case and punctuation."""
+    """The blocked term this name contains as whole words, or None. Matching ignores case, accents and punctuation."""
     haystack = _words(name)
-    for term in sorted(PRODUCT_IDENTITY_TERMS):
-        if _words(term) in haystack:
+    for term, words in _BLOCKED:
+        if words in haystack:
             return term
     return None

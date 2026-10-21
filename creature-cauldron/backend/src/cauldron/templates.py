@@ -28,10 +28,13 @@ def swap_damage_type(monster: Monster, old: DamageType, new: DamageType, defence
     left exactly as they were). The words "<type> damage" are also replaced inside action and trait text,
     so text-only actions (most SRD breath weapons) stay consistent; other wording is left for the renamer."""
 
-    phrase = re.compile(r"\b" + re.escape(old.value) + r" damage\b")
+    phrase = re.compile(r"\b" + re.escape(old.value) + r" damage\b", re.IGNORECASE)
+
+    def swapped(match: re.Match[str]) -> str:
+        return (new.value.capitalize() if match.group(0)[0].isupper() else new.value) + " damage"  # "Fire damage" stays capital
 
     def words(text: str | None) -> str | None:
-        return None if text is None else phrase.sub(f"{new.value} damage", text)
+        return None if text is None else phrase.sub(swapped, text)
 
     def roll(r: DamageRoll) -> DamageRoll:
         return r.model_copy(update={"type": new}) if r.type == old else r
@@ -219,6 +222,9 @@ class LevelUpTemplate(Template):
                 "hit_points": self._hit_points(monster),
                 "saves": {ability: bonus + pb_gain for ability, bonus in monster.saves.items()},
                 "skills": {skill: bonus + pb_gain for skill, bonus in monster.skills.items()},
+                "senses": monster.senses.model_copy(
+                    update={"passive_perception": monster.senses.passive_perception + (pb_gain if "Perception" in monster.skills else 0)}
+                ),
                 "challenge": monster.challenge.model_copy(
                     update={
                         "cr": new_cr,

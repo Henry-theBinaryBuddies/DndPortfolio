@@ -35,7 +35,7 @@ None.
 
 ## Validator notes (official numbers are kept as printed)
 
-- CR consistency: 28 monsters
+- CR consistency: 23 monsters
 - attack bonus: 9 monsters
 - derived fields: 2 monsters
 - spellcasting: 1 monsters

@@ -4,7 +4,7 @@ import pytest
 
 from cauldron.monster import DamageText, Monster
 from cauldron.options import DamageTheme, DamageType
-from cauldron.remix.theme import apply_theme, damage_weights, primary_damage, vulnerability_to
+from cauldron.remix.theme import _text_weights, apply_theme, damage_weights, primary_damage, vulnerability_to
 
 
 # --- the vulnerability table ----------------------------------------------------------------------------
@@ -160,3 +160,11 @@ def test_every_theme_gives_a_valid_monster(named) -> None:
         for name in ("Zombie", "Adult Red Dragon", "Ogre", "Frog"):
             monster = themed(named(name), theme).monster
             assert Monster.model_validate(monster.model_dump(mode="json")) == monster
+
+
+def test_every_damage_mention_in_a_text_is_counted_once_whatever_the_order() -> None:
+    from collections import defaultdict
+
+    weights: dict[DamageType, float] = defaultdict(float)
+    _text_weights("Hit: 1 piercing damage, and the target takes 2 (1d4) poison damage.", weights)  # the Spider's bite
+    assert dict(weights) == {DamageType.PIERCING: 1.0, DamageType.POISON: 2.0}

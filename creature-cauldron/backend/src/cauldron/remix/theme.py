@@ -25,8 +25,7 @@ from cauldron.templates import swap_damage_type
 _THEMES = {t.value for t in DamageTheme}
 _TYPES = {t.value: t for t in DamageType}
 # "63 (18d6) fire damage" gives the amount and the type; "fire damage" alone gives just the type.
-_AMOUNT_AND_TYPE = re.compile(r"(\d+) \([^)]*\) ([a-z]+) damage")
-_TYPE_ONLY = re.compile(r"\b([a-z]+) damage\b")
+_DAMAGE_MENTION = re.compile(r"(?:(\d+) \([^)]*\) )?\b([a-z]+) damage\b")
 
 _VULNERABILITY: dict[DamageTheme, DamageType] = {
     DamageTheme.FIRE: DamageType.COLD,
@@ -54,15 +53,9 @@ def vulnerability_to(theme: DamageTheme) -> DamageType | None:
 
 def _text_weights(text: str | None, weights: dict[DamageType, float]) -> None:
     """Adds the damage written in some text: by amount where one is given, otherwise a small weight per mention."""
-    lowered = (text or "").lower()
-    counted = 0
-    for amount, kind in _AMOUNT_AND_TYPE.findall(lowered):
+    for amount, kind in _DAMAGE_MENTION.findall((text or "").lower()):
         if kind in _TYPES:
-            weights[_TYPES[kind]] += int(amount)
-            counted += 1
-    mentions = [m for m in _TYPE_ONLY.findall(lowered) if m in _TYPES]
-    for kind in mentions[counted:]:
-        weights[_TYPES[kind]] += 1
+            weights[_TYPES[kind]] += int(amount) if amount else 1
 
 
 def damage_weights(monster: Monster) -> dict[DamageType, float]:

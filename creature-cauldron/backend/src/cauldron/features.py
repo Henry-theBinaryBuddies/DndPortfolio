@@ -15,6 +15,11 @@ def _is_breath_weapon(monster: Monster, action: Action) -> bool:
     return monster.type is CreatureType.DRAGON and shaped and action.recharge is not None
 
 
+def _is_multiattack(action: Action) -> bool:
+    """A typed multiattack, or one the importer could only keep as text (Hydra, Violet Fungus)."""
+    return isinstance(action, MultiattackAction) or action.name.lower().startswith("multiattack")
+
+
 def derive_features(monster: Monster) -> list[Feature]:
     """The features this stat block really has, in the order of the Feature enum."""
     found: set[Feature] = set()
@@ -22,7 +27,7 @@ def derive_features(monster: Monster) -> list[Feature]:
         found.add(Feature.FLYING)
     if monster.speeds.swim:
         found.add(Feature.SWIMMING)
-    if any(isinstance(action, MultiattackAction) for action in monster.actions):
+    if any(_is_multiattack(action) for action in monster.actions):
         found.add(Feature.MULTIATTACK)
     if any(_is_breath_weapon(monster, action) for action in monster.actions):
         found.add(Feature.BREATH_WEAPON)

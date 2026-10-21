@@ -65,13 +65,20 @@ def action_damage(action: Action) -> float:
     return 0.0  # a multiattack deals no damage itself; its parts do
 
 
+def _key(name: str) -> str:
+    """An action's name as multiattacks spell it: no bracket, lower case, singular ("Claws" and "Claw" meet)."""
+    return re.sub(r"\s*\(.*\)", "", name).strip().lower().removesuffix("s")
+
+
 def _damage_per_round(monster: Monster) -> float:
-    by_name = {a.name.lower(): action_damage(a) for a in monster.actions if not isinstance(a, MultiattackAction)}
+    by_name = {_key(a.name): action_damage(a) for a in monster.actions if not isinstance(a, MultiattackAction)}
     best_single = max(by_name.values(), default=0.0)
+    # A multiattack entry that names nothing we can find is priced as the monster's best ATTACK, never as a recharge breath.
+    best_attack = max((action_damage(a) for a in monster.actions if isinstance(a, AttackAction)), default=best_single)
     best_round = best_single
     for action in monster.actions:
         if isinstance(action, MultiattackAction):
-            total = sum(by_name.get(entry.action.lower(), best_single) * entry.count for entry in action.sequence)
+            total = sum(by_name.get(_key(entry.action), best_attack) * entry.count for entry in action.sequence)
             best_round = max(best_round, total)
     return best_round
 

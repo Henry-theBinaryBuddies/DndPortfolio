@@ -87,3 +87,10 @@ def test_every_srd_monster_can_be_measured() -> None:
             continue
         m = measure(srd(index))
         assert m.dpr >= 0 and m.effective_hp > 0, index
+
+
+def test_a_multiattack_that_names_a_plural_or_bracketed_action_still_finds_it() -> None:
+    # The Dragon Turtle's multiattack says "Claws" for the action called "Claw"; before, the lookup missed and priced both
+    # at the steam breath (52 each) instead of at the claws.
+    turtle = measure(srd("dragon-turtle"))
+    assert turtle.dpr < 80  # bite 26 + two claws of 16 = 58; with the breath mispriced in it was 130

@@ -346,3 +346,18 @@ def test_the_printed_defence_wording_follows_a_swap_by_default() -> None:
     base = sample("Cinderkite").model_copy(update={"immunities": [DamageType.FIRE], "damage_text": DamageText(immunities="fire; bludgeoning from nonmagical weapons")})
     swapped = swap_damage_type(base, DamageType.FIRE, DamageType.COLD)
     assert swapped.damage_text is not None and swapped.damage_text.immunities == "cold; bludgeoning from nonmagical weapons"
+
+
+def test_a_sentence_that_starts_with_the_damage_type_is_swapped_too() -> None:
+    text = "Fire damage erupts from the vent. Each creature takes 10 fire damage."
+    base = sample("Cinderkite").model_copy(update={"actions": [TextAction(name="Vent", text=text)]})
+    swapped = swap_damage_type(base, DamageType.FIRE, DamageType.COLD)
+    assert swapped.actions[0].text == "Cold damage erupts from the vent. Each creature takes 10 cold damage."  # type: ignore[union-attr]
+
+
+def test_level_up_keeps_passive_perception_in_step_with_the_skill() -> None:
+    drake = sample("Stormhide Drake")  # CR 4 -> CR 5 raises the proficiency bonus
+    assert "Perception" in drake.skills and drake.senses.passive_perception == 10 + drake.skills["Perception"]
+    stronger = level_up(drake)
+    assert stronger.skills["Perception"] > drake.skills["Perception"]
+    assert stronger.senses.passive_perception == 10 + stronger.skills["Perception"]

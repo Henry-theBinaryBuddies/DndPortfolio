@@ -67,9 +67,11 @@ def make_context(monster: Monster, theme: DamageTheme, name: str) -> Context:
     ability = Ability.DEX if mods["dex"] > mods["str"] else Ability.STR
     best = best_attack(monster)
     budget = max(2, round(best * 0.75)) if best >= 2 else 0
-    # A signature move must not make the monster hit harder than it already does: the cap keeps a monster whose best
-    # ability is a mental one (a deva) from jumping a challenge rating on the strength of one new save.
-    dc = 8 + monster.challenge.proficiency_bonus + max(mods.values())
+    # A new save must not make the monster hit harder than it already does: the cap keeps a monster whose best ability is a
+    # mental one (a deva) from jumping a challenge rating on the strength of one new save. (An attack's bonus cannot be capped
+    # the same way: the validator insists on the rule's bonus, and corrects anything lower.)
+    pb = monster.challenge.proficiency_bonus
+    dc = 8 + pb + max(mods.values())
     own = measure(monster).offense_bonus
     if own is not None:
         dc = min(dc, 8 + own)
@@ -77,10 +79,10 @@ def make_context(monster: Monster, theme: DamageTheme, name: str) -> Context:
         monster=monster,
         theme=theme,
         name=name,
-        pb=monster.challenge.proficiency_bonus,
+        pb=pb,
         dc=dc,
         attack_ability=ability,
-        attack_bonus=monster.challenge.proficiency_bonus + mods[ability.value],
+        attack_bonus=pb + mods[ability.value],
         best=best,
         budget=budget,
     )

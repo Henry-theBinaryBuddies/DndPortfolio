@@ -87,7 +87,7 @@ def test_features_come_from_the_stat_block() -> None:
 # --- the name blocklist ---------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["Beholder", "Elder BEHOLDER", "mind-flayer scout", "The Mind  Flayer's Pet", "Strahd's Hound"])
+@pytest.mark.parametrize("name", ["Beholder", "Elder BEHOLDER", "mind-flayer scout", "The Mind  Flayer's Pet", "Strahd's Hound", "Faer\u00fbn Guard"])
 def test_product_identity_names_are_blocked(name: str) -> None:
     assert blocked_term(name) is not None
 
@@ -462,3 +462,11 @@ def test_a_low_claim_with_numbers_far_beyond_it_asks_for_a_retry_even_when_the_e
     monster = with_cr(sample("Stormhide Drake"), "5")
     monster = monster.model_copy(update={"hit_points": monster.hit_points.model_copy(update={"average": 1500})})
     assert outcomes(CrConsistencyCheck(), monster) == [Outcome.RETRY]
+
+
+def test_a_multiattack_kept_only_as_text_still_counts_as_a_multiattack() -> None:
+    from cauldron.actions import MultiattackAction, TextAction
+
+    drake = sample("Stormhide Drake")
+    as_text = [TextAction(name="Multiattack", text="The drake makes two attacks.") if isinstance(a, MultiattackAction) else a for a in drake.actions]
+    assert Feature.MULTIATTACK in derive_features(drake.model_copy(update={"actions": as_text}))
