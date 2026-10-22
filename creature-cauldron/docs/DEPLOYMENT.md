@@ -19,7 +19,7 @@ listens on `127.0.0.1` only: the tunnel is the one door.
 |---|---|
 | `frontend/.env.production` | Bakes the server's public address (`https://api.creaturecauldron.com`) into the build. Not a secret. |
 | `frontend/public/_headers` | Security headers Cloudflare Pages sends: a strict Content-Security-Policy (own files only; the page may talk to the API and nothing else), no sniffing, no camera or microphone. Checked against the built page: no violations. |
-| `deploy/run-server.ps1` | Starts the server for real use and starts it again if it stops. Reads the API key and settings from a file **outside** the project, into that process only. Writes a log per day and keeps two weeks. |
+| `deploy/run-server.ps1` | Starts the server for real use and starts it again if it stops. Reads the API key and settings from a file **outside** the project, into that process only. Writes one log file per day (stopping at 50 MB a day), keeps two weeks, and warns if the key looks mistyped. |
 | `deploy/secrets.env.example` | The shape of that file. |
 | `deploy/backup_db.py` | A safe copy of the database (every generated monster, plus the day's spend count). Keeps the newest 14. |
 | `python -m cauldron.service.smoke` | A real-key check: plain, `--remix`, `--reflavor`, `--polymorph`. |
@@ -66,9 +66,15 @@ can show the library but cannot call the server. That is intended.
    Register-ScheduledTask -TaskName "Creature Cauldron server" -Action $action -Trigger $trigger -Settings $settings -Principal $principal
    ```
    Then set the PC's power plan to never sleep while plugged in, or the site goes quiet at night.
-5. A nightly backup of the database:
+5. A nightly backup of the database, as a second task that also runs when you are logged out (the script finds the database the server uses, including one set
+   with `CAULDRON_DATABASE` in the secrets file):
    ```powershell
-   schtasks /Create /SC DAILY /ST 03:00 /TN "Creature Cauldron backup" /TR "C:\Users\iamlo\IdeaProjects\UWSchoolWork\DndPortfolio\creature-cauldron\backend\.venv\Scripts\python.exe C:\Users\iamlo\IdeaProjects\UWSchoolWork\DndPortfolio\creature-cauldron\deploy\backup_db.py"
+   $python = "C:\Users\iamlo\IdeaProjects\UWSchoolWork\DndPortfolio\creature-cauldron\backend\.venv\Scripts\python.exe"
+   $script = "C:\Users\iamlo\IdeaProjects\UWSchoolWork\DndPortfolio\creature-cauldron\deploy\backup_db.py"
+   $action = New-ScheduledTaskAction -Execute $python -Argument "`"$script`""
+   $trigger = New-ScheduledTaskTrigger -Daily -At 3am
+   $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Limited
+   Register-ScheduledTask -TaskName "Creature Cauldron backup" -Action $action -Trigger $trigger -Principal $principal
    ```
    Copies go to `C:\cauldron\backups`. Once in a while, copy that folder somewhere that is not this PC.
 
@@ -88,7 +94,8 @@ can show the library but cannot call the server. That is intended.
 
 Behind a tunnel every request arrives from the tunnel program, not from the visitor. Cloudflare adds the real address in `CF-Connecting-IP`, and
 `run-server.ps1` sets `CAULDRON_TRUSTED_PROXY_HEADER=CF-Connecting-IP`, so the per-visitor limits count real people. The header is believed only because the
-server is reachable *only* through the tunnel; never open the server to the network directly.
+server is reachable *only* through the tunnel; never open the server to the network directly. An IPv6 visitor is counted by their /64 network prefix, not their single address: one home
+connection owns billions of addresses and could otherwise start every request from a new one.
 
 ## Key safety
 
@@ -138,4 +145,6 @@ the forge has made (shared with every visitor) and the day's call count.
 ## Known limits
 
 One PC is one point of failure (power, sleep, Windows updates). The per-visitor limit is per address, so a visitor on a shared network shares a bucket. The limits reset when the
-server restarts, but the daily cap does not (it lives in the database). The cap counts UTC days.
+server restarts, but the daily cap does not (it lives in the database). The cap counts UTC days. A "let the forge choose" polymorph, and a reflavor of a monster that has fewer than three, are never reused, so each
+press is a fresh AI call: a handful of visitors can use up the day's allowance in a few hours, which puts the forge in "resting" (the library keeps working). The cap and
+the Console limit, not the cache, are the ceiling for those two paths. Several people pressing Reflavor at the same moment can also leave a monster with a fourth reflavor; that is harmless.

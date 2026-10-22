@@ -122,7 +122,17 @@ def client_address(headers: Mapping[str, str], peer: str | None, trusted_header:
             # A proxy adds the address it saw to the END of the list; anything before that is whatever the visitor sent.
             last = value.split(",")[-1].strip()
             try:
-                return str(ipaddress.ip_address(last))
+                return _bucket(ipaddress.ip_address(last))
             except ValueError:
                 pass
     return peer or "unknown"
+
+
+def _bucket(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> str:
+    """The unit that is rate-limited. A home connection gets a whole /64 of IPv6 addresses and can send each request from a new one,
+    so an IPv6 visitor is identified by the /64 (its network prefix); an IPv4 visitor by the address."""
+    if isinstance(address, ipaddress.IPv6Address):
+        if address.ipv4_mapped is not None:
+            return str(address.ipv4_mapped)
+        return str(ipaddress.ip_network(f"{address}/64", strict=False))
+    return str(address)

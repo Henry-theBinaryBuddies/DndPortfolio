@@ -42,3 +42,11 @@ def test_a_missing_database_is_a_clear_error_and_creates_nothing(tmp_path) -> No
     with pytest.raises(FileNotFoundError):
         backup_db.backup(tmp_path / "nope.sqlite3", tmp_path / "backups")
     assert not (tmp_path / "backups").exists()
+
+
+def test_the_backup_follows_the_database_the_server_uses(tmp_path) -> None:
+    secrets = tmp_path / "secrets.env"
+    secrets.write_text("\ufeffANTHROPIC_API_KEY=x\nCAULDRON_DATABASE=\"D:\\data\\live.sqlite3\"\n", encoding="utf-8")
+    assert backup_db.database_in_use(secrets, env={}) == Path("D:\\data\\live.sqlite3")
+    assert backup_db.database_in_use(secrets, env={"CAULDRON_DATABASE": "E:\\env.sqlite3"}) == Path("E:\\env.sqlite3")  # the environment wins
+    assert backup_db.database_in_use(tmp_path / "missing.env", env={}) == backup_db.DEFAULT_DB

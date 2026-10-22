@@ -364,3 +364,9 @@ def test_a_polymorph_over_the_wire(make, sample) -> None:
     assert response.status_code == 200
     body = response.json()["monster"]
     assert body["name"] == "Stormwake Cutthroat" and body["speeds"]["fly"] == donor.speeds.fly
+
+
+def test_the_library_listing_is_rate_limited_like_the_other_free_answers(make) -> None:
+    rig = make(CAULDRON_CACHE_PER_MINUTE="3")
+    statuses = [rig.client.get("/api/v1/library").status_code for _ in range(5)]
+    assert statuses[:3] == [200, 200, 200] and statuses[3:] == [429, 429]

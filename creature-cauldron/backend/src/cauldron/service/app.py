@@ -157,7 +157,10 @@ def create_app(settings: Settings, service: GenerationService) -> FastAPI:
         return {"status": "resting" if service.resting() else "ok"}
 
     @app.get(f"{API}/library")
-    def library() -> JSONResponse:
+    def library(request: Request) -> JSONResponse:
+        decision = cache_limiter.allow(visitor(request))  # it reads every stored monster, so it is limited like the other free answers
+        if not decision.allowed:
+            return too_many(decision.retry_after)
         return JSONResponse([m.model_dump(mode="json", exclude_none=True) for m in service.generated_monsters()])
 
     def serve(request: Request, cached, note: str, create) -> JSONResponse:

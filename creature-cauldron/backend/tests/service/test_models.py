@@ -187,3 +187,9 @@ def test_legendary_actions_belong_to_a_polymorph_and_change_its_cache_key() -> N
     assert legendary.legendary and plain.cache_key != legendary.cache_key
     with pytest.raises(ValidationError):
         ReskinRequest.model_validate({"baseId": "a", "levelUp": True, "legendary": True})
+
+
+def test_repeating_a_tick_is_the_same_request_with_the_same_cache_key() -> None:
+    once = ReskinRequest.model_validate({"baseId": "a", "donorId": "b", "borrow": ["sense:darkvision"]})
+    many = ReskinRequest.model_validate({"baseId": "a", "donorId": "b", "borrow": ["sense:darkvision"] * 5})
+    assert many.borrow == ["sense:darkvision"] and many.cache_key == once.cache_key

@@ -87,6 +87,11 @@ class ReskinRequest(ApiModel):
     forge_chooses: bool = False
     legendary: bool = False
 
+    @field_validator("borrow")
+    @classmethod
+    def _no_repeated_keys(cls, value: list[str]) -> list[str]:
+        return _unique(value)  # the same ticks in any count are the same request, so they share one cache key
+
     @field_validator("theme")
     @classmethod
     def _a_known_theme(cls, value: str | None) -> str | None:

@@ -201,3 +201,15 @@ def test_a_full_table_never_resets_a_visitor_who_is_already_tracked() -> None:
         assert limiter.allow(key).allowed
     # The table is full of live entries. "a" is the oldest, but asking again must still be refused, not wiped.
     assert not limiter.allow("a").allowed
+
+
+def test_an_ipv6_visitor_is_one_bucket_per_64_prefix_not_one_per_address() -> None:
+    first = client_address({"CF-Connecting-IP": "2001:db8:1:2:aaaa:bbbb:cccc:dddd"}, None, "CF-Connecting-IP")
+    second = client_address({"CF-Connecting-IP": "2001:db8:1:2:1111:2222:3333:4444"}, None, "CF-Connecting-IP")
+    other_network = client_address({"CF-Connecting-IP": "2001:db8:1:3::1"}, None, "CF-Connecting-IP")
+    assert first == second == "2001:db8:1:2::/64" and other_network != first
+
+
+def test_an_ipv4_visitor_is_the_address_and_an_ipv4_mapped_ipv6_one_is_too() -> None:
+    assert client_address({"CF-Connecting-IP": "203.0.113.9"}, None, "CF-Connecting-IP") == "203.0.113.9"
+    assert client_address({"CF-Connecting-IP": "::ffff:203.0.113.9"}, None, "CF-Connecting-IP") == "203.0.113.9"
