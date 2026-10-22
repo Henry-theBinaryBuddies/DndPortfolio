@@ -62,6 +62,14 @@ def test_text_is_made_plain_for_the_srd_parser() -> None:
     assert a5e.clean("_Melee Weapon Attack:_ +9 to hit. _Hit:_ 19 (4d6+5) bludgeoning damage.") == "Melee Weapon Attack: +9 to hit. Hit: 19 (4d6 + 5) bludgeoning damage."
 
 
+def test_markdown_lists_become_plain_sentences() -> None:
+    text = "It can innately cast the following spells:\n\n- **3/Day Each:** Detect Thoughts, Project Image\n- **1/Day Each:** Dominate Monster\n\nIt never tires."
+    assert a5e.clean(text) == "It can innately cast the following spells: 3/Day Each: Detect Thoughts, Project Image; 1/Day Each: Dominate Monster It never tires."
+    assert a5e.clean("- **Cantrips** (at will): Mending") == "Cantrips (at will): Mending"
+    assert a5e.clean("The aboleths spellcasting ability is Charisma. Its bite hits.") == "The aboleth's spellcasting ability is Charisma. Its bite hits."
+    assert a5e.clean("Its spellcasting ability is Wisdom.") == "Its spellcasting ability is Wisdom."  # "its" is not a possessive to repair
+
+
 def test_an_aboleth_is_imported_with_a_typed_attack_and_the_a5e_credit() -> None:
     result = a5e.import_a5e([record("a5e-mm_aboleth")])
     aboleth = result.monsters[0]
@@ -103,6 +111,13 @@ def test_an_a5e_monster_must_carry_the_exact_credit_and_keeps_its_printed_number
 
 
 # --- the library file that shipped ---------------------------------------------------------------------------
+
+
+def test_no_shipped_a5e_text_carries_markup_or_line_breaks() -> None:
+    for monster in json.loads((DATA / "a5e-monsters.json").read_text(encoding="utf-8")):
+        texts = [t["text"] for t in monster["traits"]] + [a.get("text") or a.get("effects_text") or "" for k in ("actions", "bonus_actions", "reactions") for a in monster.get(k, [])]
+        texts += [o["text"] for o in (monster.get("legendary_actions") or {}).get("options", [])]
+        assert not any("**" in t or "\n" in t or "_" in t for t in texts), monster["name"]
 
 
 def test_the_shipped_a5e_file_is_complete_valid_and_credits_every_monster() -> None:

@@ -71,11 +71,33 @@ def fetch(pages: int = 10) -> list[dict]:
 # --- converting -----------------------------------------------------------------------------------------
 
 
+_POSSESSIVE = re.compile(r"\bThe ([A-Za-z ]+?)s (spellcasting ability)")
+
+
 def clean(desc: str) -> str:
-    """Open5e marks italics with underscores and writes dice as "2d6+8"; the SRD parser expects plain text and "2d6 + 8"."""
-    text = desc.replace("_", "").replace("’", "'")
+    """Open5e's text is lightly marked up (underscores and stars for emphasis, "- " bullet lines, blank lines) and writes dice as
+    "2d6+8"; the stat block shows plain sentences and the SRD parser expects "2d6 + 8". Bullets (A5E's spell lists) are joined into one
+    sentence with semicolons. Open5e also drops the apostrophe from "The aboleth's spellcasting ability"; that stock phrase is restored."""
+    text = desc.replace("_", "").replace("*", "").replace("\u2019", "'")
     text = re.sub(r"(\d+d\d+)([+-])(\d+)", lambda m: f"{m.group(1)} {m.group(2)} {m.group(3)}", text)
-    return text.strip()
+    parts: list[str] = []
+    bullets: list[str] = []
+    for line in (ln.strip() for ln in text.split("\n")):
+        if not line:
+            continue
+        if line.startswith("- "):
+            bullets.append(line[2:].strip())
+            continue
+        if bullets:
+            parts.append("; ".join(bullets))
+            bullets = []
+        parts.append(line)
+    if bullets:
+        parts.append("; ".join(bullets))
+    text = " ".join(parts)
+    if text and text[-1].isalnum() and "\n" in desc:
+        text += "."  # a list that ended without a full stop
+    return _POSSESSIVE.sub(r"The \1's \2", text).strip()
 
 
 def _feet(n: float) -> str:
