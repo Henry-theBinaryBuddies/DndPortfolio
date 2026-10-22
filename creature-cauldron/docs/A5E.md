@@ -48,3 +48,13 @@ Three experiments, each a leave-one-out test on the 333 SRD monsters (each monst
 - **A5E** is independent data but uses its own challenge rating scale: the SRD-calibrated estimator agrees with A5E's CRs within one step only 70% of the
   time (CR 5 to 10: 38%). Adding it to the calibration is neutral on the SRD, so it was not worth mixing two scales. The estimator therefore stays
   calibrated on the SRD, and A5E monsters are labelled as following A5E's numbers.
+
+## Import details worth knowing
+
+- **Multiattack.** Typed (with the counts of each attack) only when its first sentence is a plain form such as "attacks once with its bite and twice with its claws" or
+  "makes two greatsword attacks"; 174 of 275 are. A sentence that offers a choice or replaces an attack stays prose (101), because a wrong count would price the creature wrongly.
+- **Legendary actions.** The intro paragraph gives the number a round (1, 2 or 3) and is not an option; "(1/Day)" and recharge limits stay on the option.
+- **Credits.** An A5E monster carries `A5E_ATTRIBUTION`. A reskin of one carries the same; an SRD monster polymorphed with an A5E donor carries both credits (`combined_credit`).
+- **Text.** Open5e's A5E text is lightly marked up and lost its commas (as double spaces) and most apostrophes. Lists become one sentence, markup goes, commas are restored; only the
+  stock "The aboleth's spellcasting ability" apostrophe is restored. The record's own hit dice are used, and physical resistances name only the types the line names.
+- The second review's findings, and what was done about each, are in `CODE_REVIEW_2.md`.
