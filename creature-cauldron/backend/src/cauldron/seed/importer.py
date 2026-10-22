@@ -169,10 +169,11 @@ def import_monster(raw: dict, *, source: Source = Source.SRD, attribution: str =
     legendary = None
     if raw.get("legendary_actions"):
         legendary = LegendaryActions(
-            per_round=LEGENDARY_PER_ROUND,
+            per_round=raw.get("legendary_per_round") or LEGENDARY_PER_ROUND,
             options=[parse_legendary_action(e) for e in raw["legendary_actions"]],
         )
-        notes.append(f"Legendary actions per round set to {LEGENDARY_PER_ROUND}: the data does not give the number.")
+        if not raw.get("legendary_per_round"):
+            notes.append(f"Legendary actions per round set to {LEGENDARY_PER_ROUND}: the data does not give the number.")
 
     saves, skills = _proficiencies(raw)
     vulnerabilities, vulnerability_text = parse_damage_line(raw["damage_vulnerabilities"])

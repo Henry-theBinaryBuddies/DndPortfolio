@@ -135,3 +135,58 @@ def test_names_and_ids_are_unique_across_every_library_file() -> None:
 @pytest.mark.parametrize("name", ["Aboleth (A5E)"])
 def test_a_renamed_monster_is_in_the_shipped_file(name: str) -> None:
     assert name in {m["name"] for m in json.loads((DATA / "a5e-monsters.json").read_text(encoding="utf-8"))}
+
+
+# --- found by the second review: each of these was wrong in the first import --------------------------------
+
+SHIPPED = {m["name"]: m for m in json.loads((DATA / "a5e-monsters.json").read_text(encoding="utf-8"))}
+
+
+def shipped(name: str) -> dict:
+    """A shipped monster by name, with or without the (A5E) suffix a clashing name gets."""
+    return SHIPPED.get(name) or SHIPPED[f"{name} (A5E)"]
+
+
+def sequence(name: str) -> list[tuple[str, int]]:
+    multiattack = next(a for a in shipped(name)["actions"] if a["kind"] == "multiattack")
+    return [(e["action"], e["count"]) for e in multiattack["sequence"]]
+
+
+def test_a_plain_multiattack_sentence_is_typed_with_every_attack_it_names() -> None:
+    assert sequence("Aboleth") == [("Tentacle", 3)]
+    assert sequence("Barbed Devil") == [("Claws", 2), ("Tail", 1)]  # "two attacks with its claws and one with its tail"
+    assert sequence("Cave Troll") == [("Bite", 1), ("Claw", 2)]
+    assert sequence("Hezrou") == [("Bite", 1), ("Claws", 1)]
+
+
+def test_a_multiattack_that_offers_a_choice_or_replaces_an_attack_stays_text() -> None:
+    for sentence in (
+        "The efreeti makes two brass sword attacks or hurls flame twice.",
+        "The werebear makes two claw attacks  two greataxe attacks  or two handaxe attacks.",
+        "The weretiger makes two attacks  neither of which can be a bite.",
+        "The wereboar makes two attacks  only one of which can be with its tusks.",
+        "The roc attacks once with its beak and once with its talons  or makes a beak attack and drops a grappled creature.",
+    ):
+        assert a5e._multiattack_sequence(sentence, [{"name": n} for n in ("Brass Sword", "Beak", "Talons", "Tusks", "Claw", "Bite")]) == []
+
+
+def test_the_legendary_intro_gives_the_count_and_is_not_an_option() -> None:
+    legendary = [m for m in SHIPPED.values() if m.get("legendary_actions")]
+    assert legendary and not any("legendary action" in o["name"].lower() for m in legendary for o in m["legendary_actions"]["options"])
+    assert shipped("Vampire")["legendary_actions"]["per_round"] == 1 and shipped("Aboleth")["legendary_actions"]["per_round"] == 2
+    names = [o["name"] for m in legendary for o in m["legendary_actions"]["options"]]
+    assert "Raging Storm (1/Day)" in names  # a per-day limit stays on a legendary option
+
+
+def test_hit_dice_are_the_creatures_own_and_a_physical_resistance_names_only_its_types() -> None:
+    assert shipped("Bugbear")["hit_points"]["dice"] == "5d8 + 8"
+    gargoyle = shipped("Drainpipe Gargoyle")
+    assert gargoyle["resistances"] == ["piercing", "slashing"] and gargoyle["damage_text"]["resistances"] == "piercing and slashing from nonmagical attacks"
+
+
+def test_stat_block_debris_and_run_together_names_are_cleaned() -> None:
+    traits = [t["name"] for m in SHIPPED.values() for t in m["traits"]]
+    assert not any(n[0].isdigit() or "Weapon Attack" in n or (": " in n and len(n) > 30) for n in traits)
+    assert "Healing" in [a["name"] for a in shipped("Unicorn")["actions"]]  # the first words of its text had been glued to the name
+    assert "Curse: Mummy Rot" in [t["name"] for t in shipped("Mummy")["traits"]]  # a real name with a colon is kept
+    assert a5e.clean("On a failure  it takes 5 damage.") == "On a failure, it takes 5 damage."

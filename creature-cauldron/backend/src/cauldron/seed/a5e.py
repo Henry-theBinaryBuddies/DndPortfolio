@@ -30,7 +30,8 @@ API = "https://api.open5e.com/v2/creatures/?document__key=a5e-mm&limit=100&page=
 MAX_ENTRY_NAME = 60  # longer "names" are paragraphs of lore or notes, not abilities
 MAX_SIGHT = 1000  # a sense longer than this is a data error
 SUFFIX = " (A5E)"
-_NUMBER = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "a": 1}
+_DEBRIS = re.compile(r"^\d|Weapon Attack")  # "8 Scorpion Tail Melee Weapon Attack: +5 to hit": a stat block line, not an ability name
+_NUMBER = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "a": 1, "an": 1}
 _SIZES = {"titanic": "gargantuan"}  # A5E has a size above gargantuan; the model has none
 
 
@@ -50,7 +51,7 @@ def slim(record: dict) -> dict:
         kept[kind] = [
             {k: v for k, v in e.items() if k != "crossreferences"}
             for e in record.get(kind, [])
-            if 0 < len(e["name"]) <= MAX_ENTRY_NAME and e.get("desc", "").strip()
+            if 0 < len(e["name"]) <= MAX_ENTRY_NAME and e.get("desc", "").strip() and not _DEBRIS.search(e["name"])
         ]
     return kept
 
@@ -79,6 +80,7 @@ def clean(desc: str) -> str:
     "2d6+8"; the stat block shows plain sentences and the SRD parser expects "2d6 + 8". Bullets (A5E's spell lists) are joined into one
     sentence with semicolons. Open5e also drops the apostrophe from "The aboleth's spellcasting ability"; that stock phrase is restored."""
     text = desc.replace("_", "").replace("*", "").replace("\u2019", "'")
+    text = re.sub(r"(?<=[\w)])  (?=\w)", ", ", text)  # Open5e turned each comma into a space, leaving two: "On a failure  it takes"
     text = re.sub(r"(\d+d\d+)([+-])(\d+)", lambda m: f"{m.group(1)} {m.group(2)} {m.group(3)}", text)
     parts: list[str] = []
     bullets: list[str] = []
@@ -104,42 +106,95 @@ def _feet(n: float) -> str:
     return f"{int(n)} ft."
 
 
-def _hit_dice(record: dict) -> tuple[int, str]:
-    """Open5e gives no hit dice, so they are worked out: as many dice of the size's type as the average hit points imply."""
+def _hit_dice(record: dict) -> tuple[int, int, str]:
+    """The creature's hit dice as (count, sides, printed): the record's own when it gives them ("18d10+72"), else worked out as many
+    dice of the size's type as the average hit points imply."""
+    own = re.fullmatch(r"(\d+)d(\d+)\s*(?:([+-])\s*(\d+))?", (record.get("hit_dice") or "").strip())
+    if own:
+        count, sides = int(own[1]), int(own[2])
+        bonus = int(own[4] or 0) * (-1 if own[3] == "-" else 1)
+        return count, sides, f"{count}d{sides}" + (f" + {bonus}" if bonus > 0 else f" - {-bonus}" if bonus < 0 else "")
     sides = hit_die(Size(_SIZES.get(record["size"]["key"], record["size"]["key"])))
     con = record["modifiers"]["constitution"]
     per_die = (sides + 1) / 2 + con
     count = max(1, round(record["hit_points"] / per_die)) if per_die > 0 else 1
     bonus = con * count
     roll = f"{count}d{sides}" + (f" + {bonus}" if bonus > 0 else f" - {-bonus}" if bonus < 0 else "")
-    return count, roll
+    return count, sides, roll
+
+
+_COUNT = r"(?P<count>once|twice|one|two|three|four|five|six|an?|\d+)(?: times)?"
+_OWNER = r"(?:its|their|his|her|the)"
+_CLAUSES = (
+    re.compile(rf"^{_COUNT} (?:attacks? )?with {_OWNER} (?P<name>[a-z' -]+?)(?: attacks?)?$"),  # "twice with its claws", "two attacks with its claws"
+    re.compile(rf"^{_COUNT} (?P<name>[a-z' -]+?) attacks?$"),  # "two greatsword attacks"
+    re.compile(rf"^(?:with )?{_OWNER} (?P<name>[a-z' -]+?)$"),  # "with its beak", "its talons" (once each)
+)
+_CHOICE = re.compile(r"\b(or|either|alternatively|any combination|only one|neither|instead|different|in place)\b")
+
+
+def _plain(name: str) -> str:
+    return re.sub(r"\s*\(.*?\)", "", name).strip().lower().removesuffix("s")
 
 
 def _multiattack_sequence(desc: str, actions: list[dict]) -> list[dict]:
-    names = [a["name"] for a in actions if a["name"] != "Multiattack"]
-    found = []
-    for name in names:
-        match = re.search(r"(one|two|three|four|five|six|a|\d+)\s+(?:\w+\s+){0,2}?" + re.escape(name.lower()) + r"\b", desc.lower())
-        if match:
-            count = match.group(1)
-            found.append({"action_name": name, "count": str(_NUMBER.get(count, count)), "type": "melee"})
-    return found
+    """The attacks of a Multiattack, but only when its first sentence is one of the plain forms ("attacks once with its bite and
+    twice with its claws", "makes two greatsword attacks", "makes three attacks: two with its claws and one with its tail") and every
+    attack named is one of the creature's actions. A sentence that offers a choice, replaces an attack or names nothing stays
+    text: a wrong count would price the creature wrongly, and the printed sentence is always kept."""
+    sentence = " ".join(re.split(r"\.\s", desc.replace("_", "").strip().lower(), maxsplit=1)[0].rstrip(".").split())
+    if _CHOICE.search(sentence):
+        return []
+    match = re.match(r"^the [a-z' -]+? (?:attacks|makes) (.*)$", sentence)
+    if match is None:
+        return []
+    body = match.group(1).split(":", 1)[-1].strip()
+    by_name = {_plain(a["name"]): a["name"] for a in actions if a["name"] != "Multiattack"}
+    counts: dict[str, int] = {}
+    for clause in (c for c in re.split(r"\s*(?:,|\band then\b|\bthen\b|\band\b)\s*", body) if c):
+        for pattern in _CLAUSES:
+            found = pattern.match(clause)
+            if found:
+                break
+        else:
+            return []
+        action = by_name.get(_plain(found["name"]))
+        if action is None:
+            return []
+        count = found.groupdict().get("count") or "one"
+        counts[action] = counts.get(action, 0) + (_NUMBER.get(count) or (2 if count == "twice" else 1 if count == "once" else int(count)))
+    return [{"action_name": name, "count": str(count), "type": "melee"} for name, count in counts.items()]
 
 
 def _damage_list(record: dict, kind: str) -> list[str]:
     info = record["resistances_and_immunities"]
     keys = [e["key"] for e in info[f"damage_{kind}"]]
-    if "nonmagical" in info[f"damage_{kind}_display"].lower():
+    display = info[f"damage_{kind}_display"].lower()
+    if "nonmagical" in display:
+        physical = [t for t in ("bludgeoning", "piercing", "slashing") if t in display.split("nonmagical")[0]]
         rest = [k for k in keys if k not in ("bludgeoning", "piercing", "slashing")]
-        return [*rest, "bludgeoning, piercing, and slashing from nonmagical attacks"]
+        joined = physical[0] if len(physical) == 1 else f"{physical[0]} and {physical[1]}" if len(physical) == 2 else "bludgeoning, piercing, and slashing"
+        return [*rest, f"{joined} from nonmagical attacks"]
     return keys
+
+
+def _unglue(name: str, desc: str) -> tuple[str, str]:
+    """An entry whose "name" has swallowed the start of its text ("Healing: The creature magically regains 21 hit points"): the words
+    before the colon are the name. (A short name with a colon, "Curse: Mummy Rot", is a real name and is left alone.)"""
+    head, _, lead = name.partition(": ")
+    return (head, f"{lead} {desc}") if lead and len(name) > 30 else (name, desc)
+
+
+def _trait(entry: dict) -> dict:
+    name, desc = _unglue(entry["name"], entry["desc"])
+    return {"name": name, "desc": clean(desc)}
 
 
 def convert(record: dict) -> dict:
     """One Open5e creature as an entry of the SRD data file."""
     mods, scores = record["modifiers"], record["ability_scores"]
     size = _SIZES.get(record["size"]["key"], record["size"]["key"])
-    count, roll = _hit_dice(record)
+    count, sides, roll = _hit_dice(record)
     speed_all = record["speed_all"]
     speed = {k: _feet(v) for k, v in speed_all.items() if k in ("walk", "fly", "swim", "climb", "burrow") and v}
     speed.setdefault("walk", "0 ft.")
@@ -162,9 +217,10 @@ def convert(record: dict) -> dict:
     ]
 
     actions, bonus_actions, reactions, legendary = [], [], [], []
+    per_round = None
     for a in sorted(record["actions"], key=lambda a: a.get("order_in_statblock") or 0):
-        name = a["name"]
-        entry = {"name": name, "desc": clean(a["desc"])}
+        name, desc = _unglue(a["name"], a["desc"])
+        entry = {"name": name, "desc": clean(desc)}
         usage = a.get("usage_limits")
         if usage and usage["type"] == "RECHARGE_ON_ROLL":
             entry["usage"] = {"type": "recharge on roll", "dice": "1d6", "min_value": usage["param"]}
@@ -172,7 +228,15 @@ def convert(record: dict) -> dict:
             entry["usage"] = {"type": "per day", "times": usage["param"]}
         kind = a["action_type"]
         if kind == "LEGENDARY_ACTION":
+            intro = re.search(r"can take (\d) legendary actions?", name)
+            if intro:  # "The dragon can take 3 legendary actions...": how many a round, not an option
+                per_round = int(intro.group(1))
+                continue
             cost = a.get("legendary_action_cost") or 1
+            if usage and usage["type"] == "PER_DAY":
+                name += f" ({usage['param']}/Day)"
+            elif usage and usage["type"] == "RECHARGE_ON_ROLL":
+                name += f" (Recharge {usage['param']}-6)" if usage["param"] < 6 else " (Recharge 6)"
             legendary.append({"name": name + (f" (Costs {cost} Actions)" if cost > 1 else ""), "desc": entry["desc"]})
         elif kind == "REACTION":
             reactions.append(entry)
@@ -194,7 +258,7 @@ def convert(record: dict) -> dict:
         "alignment": record["alignment"],
         "armor_class": [{"type": "natural", "value": record["armor_class"]}],
         "hit_points": record["hit_points"],
-        "hit_dice": f"{count}d{hit_die(Size(size))}",
+        "hit_dice": f"{count}d{sides}",
         "hit_points_roll": roll,
         "speed": speed,
         "strength": scores["strength"],
@@ -213,10 +277,11 @@ def convert(record: dict) -> dict:
         "challenge_rating": float(record["challenge_rating"]),
         "proficiency_bonus": record.get("proficiency_bonus") or 2,
         "xp": record["experience_points"] or 0,
-        "special_abilities": [{"name": t["name"], "desc": clean(t["desc"])} for t in record["traits"]],
+        "special_abilities": [_trait(t) for t in record["traits"]],
         "actions": [*actions, *bonus_actions],
         "reactions": reactions,
         "legendary_actions": legendary or None,
+        "legendary_per_round": per_round,
         "desc": "",
     }
 
@@ -297,7 +362,7 @@ def main() -> None:
         args.raw.parent.mkdir(parents=True, exist_ok=True)
         args.raw.write_text(json.dumps(records, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"Saved {len(records)} creatures to {args.raw}")
-    records = json.loads(args.raw.read_text(encoding="utf-8"))
+    records = [slim(r) for r in json.loads(args.raw.read_text(encoding="utf-8"))]  # slimming twice changes nothing
     result = import_a5e(records, library_names(args.out.parent))
     payload = [m.model_dump(mode="json", exclude_none=True) for m in result.monsters]
     args.out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")

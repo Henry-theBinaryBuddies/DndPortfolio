@@ -465,3 +465,27 @@ def test_a_multiattack_kept_only_as_text_still_counts_as_a_multiattack() -> None
     drake = sample("Stormhide Drake")
     as_text = [TextAction(name="Multiattack", text="The drake makes two attacks.") if isinstance(a, MultiattackAction) else a for a in drake.actions]
     assert Feature.MULTIATTACK in derive_features(drake.model_copy(update={"actions": as_text}))
+
+
+def test_a_derived_monster_may_carry_either_credit_or_both_but_not_a_paraphrase() -> None:
+    from cauldron.rules import A5E_ATTRIBUTION, combined_credit
+
+    base = sample("Cinderkite")
+    for credit in (SRD_ATTRIBUTION, A5E_ATTRIBUTION, combined_credit(SRD_ATTRIBUTION, A5E_ATTRIBUTION), None):
+        assert outcomes(AttributionCheck(), edit(base, lambda d, c=credit: d.update(source="reskin", attribution=c))) == []
+    paraphrase = edit(base, lambda d: d.update(source="reskin", attribution="Based on the System Reference Document, roughly."))
+    assert outcomes(AttributionCheck(), paraphrase) != []
+
+
+def test_a_made_monster_with_an_ability_score_above_30_is_corrected_but_a_published_one_is_kept() -> None:
+    from cauldron.validator import AbilityScoreCheck, Validator
+
+    def strong(source: str):
+        return edit(sample("Cinderkite"), lambda d: (d.update(source=source), d["abilities"].update(str=38, con=33)))
+
+    report = Validator().validate(strong("ai"))
+    assert report.monster.abilities.str == 30 and report.monster.abilities.con == 30
+    assert [f.message for f in report.corrections if f.check == "ability scores"] == ["STR 38 is above 30; changed to 30.", "CON 33 is above 30; changed to 30."]
+    kept = Validator().validate(strong("srd").model_copy(update={"attribution": SRD_ATTRIBUTION}))
+    assert kept.monster.abilities.str == 38  # official statistics stay as printed
+    assert outcomes(AbilityScoreCheck(), sample("Cinderkite")) == []

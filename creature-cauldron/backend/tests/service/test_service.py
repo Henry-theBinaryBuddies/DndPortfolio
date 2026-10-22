@@ -694,3 +694,41 @@ def test_the_ai_names_the_built_legendary_actions_and_a_blocked_name_is_sent_bac
     assert rig.generator.rename_calls[0][0].legendary_names is True
     assert any("not ours to use" in line for line in rig.generator.rename_calls[1][1])
     assert [o.name for o in result.monster.legendary_actions.options][:2] == ["Salt Slash", "Slip Away"]  # type: ignore[union-attr]
+
+
+# --- credits travel with derived monsters ------------------------------------------------------------------
+
+
+def a5e_library() -> dict[str, Monster]:
+    import json
+
+    path = Path(__file__).parents[3] / "frontend" / "public" / "data" / "a5e-monsters.json"
+    return {m["id"]: Monster.model_validate(m) for m in json.loads(path.read_text(encoding="utf-8"))}
+
+
+def test_an_a5e_monster_can_be_reflavored_remixed_and_polymorphed_and_keeps_its_credit(make) -> None:
+    from cauldron.rules import A5E_ATTRIBUTION
+
+    library = a5e_library()
+    aboleth = library["a5e-aboleth"]
+    other = next(m for k, m in library.items() if k != "a5e-aboleth" and m.speeds.fly)
+    rig = make(names=[named("Deepglow Aboleth"), named("Murkglow Aboleth"), hybrid("Skyglow Aboleth")], library=[aboleth, other])
+    for request in (remix_request(aboleth.id, reflavor=True), remix_request(aboleth.id, theme="fire")):
+        result = rig.service.create_reskin(request)
+        assert isinstance(result, GenerateSuccess), result
+        assert result.monster.attribution == A5E_ATTRIBUTION
+    offered = [b.key for b in rig.service.graft_options(aboleth.id, other.id)]  # type: ignore[union-attr]
+    result = rig.service.create_reskin(polymorph(aboleth.id, other.id, offered[0]))
+    assert isinstance(result, GenerateSuccess) and result.monster.attribution == A5E_ATTRIBUTION
+
+
+def test_an_srd_monster_polymorphed_with_an_a5e_donor_carries_both_credits(make, sample) -> None:
+    from cauldron.rules import A5E_ATTRIBUTION, SRD_ATTRIBUTION
+
+    donor = a5e_library()["a5e-aboleth"]
+    base = sample("Brinewrack Cutthroat").model_copy(update={"source": Source.SRD, "attribution": SRD_ATTRIBUTION})
+    rig = make(names=[hybrid("Deepglow Cutthroat")], library=[base, donor])
+    offered = [b.key for b in rig.service.graft_options(base.id, donor.id)]  # type: ignore[union-attr]
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, offered[0]))
+    assert isinstance(result, GenerateSuccess)
+    assert result.monster.attribution == f"{SRD_ATTRIBUTION} {A5E_ATTRIBUTION}"

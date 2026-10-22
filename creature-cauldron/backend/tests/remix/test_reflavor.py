@@ -1,6 +1,6 @@
 """Reflavor: new names for a monster's own abilities, with every number left alone."""
 
-from cauldron.actions import MultiattackAction
+from cauldron.actions import MultiattackAction, TextAction
 from cauldron.remix.reflavor import MAX_RENAMES, apply_renames, rename_candidates, split_name
 
 
@@ -82,3 +82,41 @@ def test_old_names_are_matched_without_regard_to_case_and_the_original_is_unchan
     result = apply_renames(wolf, [("bite", "Rimefang Snap")])
     assert result.monster.actions[0].name == "Rimefang Snap"
     assert wolf.model_dump() == before
+
+
+# --- found by the second review --------------------------------------------------------------------------------
+
+
+def test_a_renamed_action_keeps_its_multiattack_entry_even_when_the_entry_is_plural(named) -> None:
+    from cauldron.cr.measure import measure
+
+    turtle = named("Dragon Turtle")  # its Multiattack says "Claws" and the action is "Claw"
+    result = apply_renames(turtle, [("Claw", "Talon")])
+    multi = next(a for a in result.monster.actions if isinstance(a, MultiattackAction))
+    assert "Talon" in [e.action for e in multi.sequence] and "Claws" not in [e.action for e in multi.sequence]
+    assert measure(result.monster).dpr == measure(turtle).dpr  # no number moved
+
+
+def test_a_multiattack_kept_as_prose_and_the_legendary_options_follow_the_new_names(named) -> None:
+    dragon = named("Adult Red Dragon")
+    result = apply_renames(dragon, [("Tail", "Lash")]).monster
+    options = {o.name: o.text for o in result.legendary_actions.options}  # type: ignore[union-attr]
+    assert "Lash Attack" in options and "Tail Attack" not in options and options["Lash Attack"] == "The dragon makes a lash attack."
+    plain_text = TextAction(name="Multiattack", text="The dragon attacks once with its bite and twice with its claws.")
+    prose = result.model_copy(update={"actions": [plain_text, *[a for a in result.actions if not isinstance(a, MultiattackAction)]]})
+    again = apply_renames(prose, [("Claw", "Talon")]).monster
+    assert next(a for a in again.actions if a.name == "Multiattack").text == "The dragon attacks once with its bite and twice with its talons."  # type: ignore[union-attr]
+
+
+def test_a_new_name_that_holds_another_old_name_is_not_rewritten_twice(named) -> None:
+    dragon = named("Adult Red Dragon")
+    multi = next(a for a in dragon.actions if isinstance(a, MultiattackAction))
+    result = apply_renames(dragon, [("Bite", "Venom Claw"), ("Claw", "Talon")]).monster
+    new_multi = next(a for a in result.actions if isinstance(a, MultiattackAction))
+    assert multi.text is not None and new_multi.text is not None
+    assert "venom claw" in new_multi.text and "venom talon" not in new_multi.text and "talons" in new_multi.text
+
+
+def test_a_rename_to_the_name_of_a_legendary_option_is_ignored(named) -> None:
+    dragon = named("Adult Red Dragon")
+    assert apply_renames(dragon, [("Tail", "Wing Attack")]).monster == dragon

@@ -217,3 +217,68 @@ def test_a_missing_repeated_or_too_long_name_falls_back_to_the_plain_one(named) 
 def test_the_ais_names_are_ignored_when_the_donors_own_legendary_actions_are_used(named) -> None:
     result = graft(named("Goblin"), named("Adult Red Dragon"), ["attack:Tail"], legendary=True, legendary_names=["A", "B", "C"])
     assert "Tail Attack" in [o.name for o in result.monster.legendary_actions.options]  # type: ignore[union-attr]
+
+
+# --- found by the second review ---------------------------------------------------------------------------------
+
+
+def test_damage_in_borrowed_text_is_capped_whether_or_not_it_names_a_type_or_gives_an_average(named) -> None:
+    from cauldron.actions import TextAction
+    from cauldron.remix.graft import _ANY_DAMAGE
+    from cauldron.remix.moves import make_context
+    from cauldron.options import DamageTheme
+
+    donor = named("Wolf")
+    text = "Once per turn the wolf deals an extra 13 (4d6) damage, 4d8 radiant damage and 45 (10d8) fire damage."
+    donor = donor.model_copy(update={"traits": [*donor.traits, TextAction(name="Sneak Strike", text=text)]})
+    base = named("Goblin")
+    cap = max(2, round(make_context(base, DamageTheme.FIRE, "x").budget * 0.5))
+    fitted = next(t.text for t in graft(base, donor, ["trait:Sneak Strike"]).monster.traits if t.name == "Sneak Strike")
+    amounts = [int(m[0]) if m[0] else int(average_dice(m[1])) for m in _ANY_DAMAGE.findall(fitted)]
+    assert len(amounts) == 3 and max(amounts) <= cap, (fitted, cap)
+    assert "radiant damage" in fitted and "fire damage" in fitted  # the types stay
+
+
+def test_a_base_with_the_smallest_budget_gets_one_roll_not_two_floored_rolls(named) -> None:
+    commoner, dragon = named("Commoner"), named("Adult Red Dragon")
+    bite = next(a for a in graft(commoner, dragon, ["attack:Bite"]).monster.actions if a.name == "Bite")
+    assert sum(average_dice(r.dice, r.bonus) for r in bite.damage) <= best_attack(commoner)  # the bite is piercing and fire: only one is kept
+
+
+def test_text_calls_the_base_by_its_own_name_and_a_disease_is_not_a_creature() -> None:
+    from cauldron.remix.graft import speak_as
+
+    assert speak_as("The vampire regains 20 hit points. The vampire's bite hits.", "Vampire Mage", "Goblin") == "The goblin regains 20 hit points. The goblin's bite hits."
+    assert speak_as("If the dragon fails, the Pseudodragon flees.", "Pseudodragon Familiar", "Wolf") == "If the dragon fails, the wolf flees."
+    assert speak_as("The target is cursed with mummy rot.", "Mummy", "Wolf") == "The target is cursed with mummy rot."  # no "the": not the mummy
+    assert speak_as("Adult Red Dragon scales burn.", "Adult Red Dragon", "Goblin") == "Goblin scales burn."
+
+
+def test_a_negative_attack_bonus_is_written_with_one_sign(named) -> None:
+    from cauldron.remix.graft import _fitted_text
+    from cauldron.remix.moves import make_context
+    from cauldron.options import DamageTheme
+
+    base = named("Shrieker")
+    ctx = make_context(base, DamageTheme.POISON, "x")
+    assert "+-" not in _fitted_text("It hits at +7 to hit.", ctx, named("Wolf")) and f"{ctx.attack_bonus:+d} to hit" in _fitted_text("+7 to hit", ctx, named("Wolf"))
+
+
+def test_donor_legendary_options_that_need_a_speed_or_a_trait_the_hybrid_lacks_are_dropped(named) -> None:
+    from cauldron.monster import LegendaryActions, LegendaryOption
+
+    options = [
+        LegendaryOption(name="Dive", cost=1, text="The dragon swims up to its swim speed."),
+        LegendaryOption(name="Tunnel", cost=1, text="The dragon burrows up to its burrowing speed."),
+        LegendaryOption(name="Detect", cost=1, text="The dragon makes a Wisdom (Perception) check."),
+    ]
+    donor = named("Adult Red Dragon").model_copy(update={"legendary_actions": LegendaryActions(per_round=3, options=options)})
+    result = graft(named("Goblin"), donor, ["speed:fly"], legendary=True).monster
+    assert [o.name for o in result.legendary_actions.options] == ["Detect"]  # type: ignore[union-attr]
+
+
+def test_a_power_limited_to_so_many_uses_a_day_is_not_made_an_at_will_legendary_action(named) -> None:
+    eagle = named("Giant Eagle")
+    limited = eagle.model_copy(update={"actions": [a.model_copy(update={"name": "Talons (3/Day)"}) if a.name == "Talons" else a for a in eagle.actions]})
+    result = graft(named("Goblin"), limited, ["attack:Talons (3/Day)"], legendary=True).monster
+    assert [o.name for o in result.legendary_actions.options] == ["Scimitar Attack", "Move"]  # type: ignore[union-attr]

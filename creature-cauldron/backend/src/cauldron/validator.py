@@ -29,7 +29,7 @@ from cauldron.dice import ability_modifier, format_signed, parse_dice
 from cauldron.features import derive_features
 from cauldron.monster import Challenge, HitPoints, Monster
 from cauldron.options import Ability, Source
-from cauldron.rules import A5E_ATTRIBUTION, CR_LABELS, SRD_ATTRIBUTION, hit_die
+from cauldron.rules import A5E_ATTRIBUTION, CR_LABELS, SRD_ATTRIBUTION, combined_credit, hit_die
 
 # Attack bonuses and save DCs may sit up to this far above the plain rule (proficiency + ability). Magic
 # weapons, expertise and the level-up template all add a little, so only larger gaps are treated as mistakes.
@@ -155,6 +155,23 @@ class DerivedFieldsCheck(Check):
         if not findings:
             return self._result(monster)
         return self._result(monster.model_copy(update={"challenge": expected}), *findings)
+
+
+MAX_ABILITY_SCORE = 30  # the top of the rules' table; the model accepts more only because a few published creatures go past it
+
+
+class AbilityScoreCheck(Check):
+    """A monster the forge makes has no ability score above 30. (A published monster may go higher and is kept as printed.)"""
+
+    name = "ability scores"
+
+    def run(self, monster: Monster, context: ValidationContext) -> CheckResult:
+        high = {name: score for name, score in monster.abilities.model_dump().items() if score > MAX_ABILITY_SCORE}
+        if not high:
+            return self._result(monster)
+        fixed = monster.abilities.model_copy(update={name: MAX_ABILITY_SCORE for name in high})
+        findings = [self._finding(Outcome.CORRECTED, f"{name.upper()} {score} is above {MAX_ABILITY_SCORE}; changed to {MAX_ABILITY_SCORE}.") for name, score in high.items()]
+        return self._result(monster.model_copy(update={"abilities": fixed}), *findings)
 
 
 class HitPointsCheck(Check):
@@ -320,6 +337,10 @@ class CrConsistencyCheck(Check):
         return self._result(monster, self._finding(Outcome.RETRY, message))
 
 
+# What a derived monster (a reskin, a polymorph) may carry: either source's exact credit, or both.
+_ALLOWED_CREDITS = {SRD_ATTRIBUTION, A5E_ATTRIBUTION, combined_credit(SRD_ATTRIBUTION, A5E_ATTRIBUTION)}
+
+
 class AttributionCheck(Check):
     """SRD monsters must carry the exact CC-BY attribution, A5E monsters the exact A5E credit, and nobody may misquote the SRD's."""
 
@@ -333,7 +354,7 @@ class AttributionCheck(Check):
         elif monster.source is Source.A5E:
             if text != A5E_ATTRIBUTION:
                 return self._result(monster, self._finding(Outcome.REJECT, "An A5E monster must carry the exact A5E credit."))
-        elif text is not None and "system reference document" in text.lower() and text != SRD_ATTRIBUTION:
+        elif text is not None and "system reference document" in text.lower() and text not in _ALLOWED_CREDITS:
             return self._result(monster, self._finding(Outcome.REJECT, "The SRD attribution must be quoted exactly, not paraphrased."))
         return self._result(monster)
 
@@ -341,6 +362,7 @@ class AttributionCheck(Check):
 def default_checks() -> list[Check]:
     return [
         NameCheck(),
+        AbilityScoreCheck(),
         DerivedFieldsCheck(),
         HitPointsCheck(),
         AttackBonusCheck(),

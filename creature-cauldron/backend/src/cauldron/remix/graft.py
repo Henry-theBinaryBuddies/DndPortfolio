@@ -27,11 +27,11 @@ from cauldron.features import derive_features
 from cauldron.cr.measure import action_damage
 from cauldron.monster import LegendaryActions, LegendaryOption, Monster, Senses, Speeds
 from cauldron.options import AreaShape, AttackMode, DamageTheme, DamageType, Size
+from cauldron.rules import combined_credit
 from cauldron.remix.engine import RemixResult, current_theme
 from cauldron.remix.moves import Context, best_attack, dice_for, make_context
 from cauldron.remix.theme import apply_theme, primary_damage
 from cauldron.templates import level_up as apply_level_up
-from cauldron.templates import name_rewriter
 
 MAX_BORROW = 10  # features borrowed at once; keeps the list of changes within a monster's limit
 MAX_PICKS = 4  # features the AI may choose when the forge chooses
@@ -44,8 +44,12 @@ _SENSES = ("darkvision", "blindsight", "tremorsense", "truesight")
 _NOT_BORROWABLE = {"legendary resistance", "spellcasting", "innate spellcasting", "shapechanger", "multiattack"}
 _BIG = {Size.LARGE, Size.HUGE, Size.GARGANTUAN}
 _DAMAGE_IN_TEXT = re.compile(r"(\d+) \(\d+d\d+(?: [+-] \d+)?\) ([a-z]+) damage")
+# An amount of damage as text is written with its average and its type ("13 (4d6) fire damage"), without the type, or as bare dice
+# ("an extra 4d8 radiant damage"). (?(1)\)) closes the bracket only when one was opened.
+_ANY_DAMAGE = re.compile(r"(?:(\d+) \()?(\d+d\d+)(?: ([+-]) (\d+))?(?(1)\))(?: ([a-z]+))? damage")
 _DC = re.compile(r"\bDC (\d+)")
-_TO_HIT = re.compile(r"\+(\d+) to hit")
+_TO_HIT = re.compile(r"([+-]\d+) to hit")
+_FIRST_WORDS = {"adult", "ancient", "young", "elder", "greater", "lesser", "great", "noble", "master"}  # not what text calls a creature
 _FOOT_AREA = re.compile(r"(\d+)-foot(?:-radius)? (cone|line|cube|radius|sphere)")
 _SPELL_TO_WEAPON = {AttackMode.MELEE_SPELL: AttackMode.MELEE_WEAPON, AttackMode.RANGED_SPELL: AttackMode.RANGED_WEAPON}
 
@@ -138,6 +142,21 @@ def borrowable(base: Monster, donor: Monster) -> list[Borrowable]:
 # --- making the borrowed pieces fit the base --------------------------------------------------------------
 
 
+def speak_as(text: str, donor_name: str, base_name: str) -> str:
+    """Text that called the donor by name calling the base by its name. Text speaks of a creature as "the vampire" (a word of its name, not
+    always the last: "Vampire Mage"), so those mentions after "the" are replaced; the full name of a multi-word donor is replaced wherever it
+    is. A word on its own is left alone, because "mummy rot" is a disease and not the mummy."""
+    plain = re.sub(r"\s*\(.*?\)", "", donor_name.split(",")[0]).strip()
+    words = {w for w in re.findall(r"[A-Za-z']+", plain) if len(w) >= 4 and w.lower() not in _FIRST_WORDS}
+    base = base_name.lower()
+    if words:
+        pattern = "|".join(re.escape(w) for w in sorted({plain, *words}, key=len, reverse=True))
+        text = re.sub(rf"\b([Tt]he) (?:{pattern})\b", lambda m: f"{m.group(1)} {base}", text, flags=re.IGNORECASE)
+    if " " in plain:
+        text = re.sub(rf"\b{re.escape(plain)}\b", base_name, text, flags=re.IGNORECASE)
+    return text
+
+
 def _text_cap(ctx: Context) -> int:
     """The most damage a borrowed piece of text may deal: half the base's budget, or a small amount for a monster that deals none."""
     return max(2, round(ctx.budget * 0.5)) if ctx.budget else 3
@@ -151,33 +170,29 @@ def _fitted_text(text: str | None, ctx: Context, donor: Monster, cap: int | None
     cap = _text_cap(ctx) if cap is None else cap
 
     def damage(match: re.Match[str]) -> str:
-        kind = match.group(2)
-        if kind not in {t.value for t in DamageType}:
-            return match.group(0)
-        roll = dice_for(max(2, min(int(match.group(1)), cap)), DamageType(kind))
-        return ctx.phrase(roll)
+        average, dice, sign, bonus, word = match.groups()
+        own = int(average) if average else average_dice(dice, int(bonus or 0) * (-1 if sign == "-" else 1))
+        kind = DamageType(word) if word in _KINDS else DamageType.FORCE  # a placeholder type: only the dice are used when untyped
+        roll = dice_for(max(2, min(own, cap)), kind)
+        shown = f"{average_dice(roll.dice, roll.bonus)} ({roll.dice})"
+        return f"{shown} {word} damage" if word else f"{shown} damage"
 
     def area(match: re.Match[str]) -> str:
         limit = (60 if ctx.monster.size in _BIG else 30) * (2 if match.group(2) == "line" else 1)
         return match.group(0).replace(match.group(1), str(min(int(match.group(1)), limit)), 1)
 
-    text = _DAMAGE_IN_TEXT.sub(damage, text)
+    text = _ANY_DAMAGE.sub(damage, text)
     text = _DC.sub(f"DC {ctx.dc}", text)
-    text = _TO_HIT.sub(f"+{ctx.attack_bonus} to hit", text)
+    text = _TO_HIT.sub(f"{ctx.attack_bonus:+d} to hit", text)
     text = _FOOT_AREA.sub(area, text)
-    text = name_rewriter(donor.name, ctx.monster.name)(text)
-    # SRD text also calls the donor by its kind alone ("the dragon exhales"), which is its name's last word.
-    kind = _plain(donor.name.split(",")[0]).split()[-1].removesuffix("s") if donor.name.strip() else ""
-    if len(kind) >= 3:
-        text = re.sub(rf"\b([Tt]he) {re.escape(kind)}s?\b", lambda m: f"{m.group(1)} {ctx.monster.name.lower()}", text)
-    return text
+    return speak_as(text, donor.name, ctx.monster.name)
 
 
 def _rolls(action: AttackAction | SaveAction, ctx: Context):
     """The action's damage re-rolled to the base's budget, split between its damage types as the donor split it (two at most)."""
     rolls = action.damage if isinstance(action, AttackAction) else action.on_fail
     averages = [(average_dice(r.dice, r.bonus), r.type) for r in rolls]
-    top = sorted(averages, key=lambda pair: -pair[0])[:2]
+    top = sorted(averages, key=lambda pair: -pair[0])[: 2 if ctx.budget >= 4 else 1]
     total = sum(avg for avg, _ in top) or 1
     return [dice_for(max(2, int(ctx.budget * avg / total)), kind) for avg, kind in top]
 
@@ -191,7 +206,7 @@ def _area_cap(base: Monster, area: Area) -> Area:
 
 def _borrowed_attack(action: AttackAction | SaveAction | TextAction, ctx: Context, donor: Monster) -> Action:
     if isinstance(action, TextAction):  # its whole text is the attack, so each damage amount may use the budget (shared if several)
-        mentions = max(1, len(_DAMAGE_IN_TEXT.findall(action.text)))
+        mentions = max(1, len(_ANY_DAMAGE.findall(action.text)))
         return action.model_copy(update={"text": _fitted_text(action.text, ctx, donor, max(2, ctx.budget // mentions))})
     effects = _fitted_text(action.effects_text, ctx, donor)
     if isinstance(action, SaveAction):
@@ -232,8 +247,11 @@ def _usable_option(option: LegendaryOption, shaped: Monster, donor: Monster) -> 
         return False
     if re.search(r"\bfl(y|ies|ying)\b", text) and not shaped.speeds.fly:
         return False
-    own = {_plain(a.name) for a in shaped.all_actions()}
-    named = (_plain(a.name) for a in donor.all_actions())
+    for word, mode in (("swim", "swim"), ("climb", "climb"), ("burrow", "burrow")):  # "swims up to its swim speed", "burrowing speed"
+        if re.search(rf"\b{word}(s|ing)?\b", text) and not getattr(shaped.speeds, mode):
+            return False
+    own = {_plain(a.name) for a in [*shaped.all_actions(), *shaped.traits]}
+    named = (_plain(a.name) for a in [*donor.all_actions(), *donor.traits])  # an attack or a trait of the donor's that it names
     return all(n in own for n in named if len(n) >= 4 and n in text)
 
 
@@ -266,7 +284,8 @@ def standard_legendary_actions(monster: Monster, borrowed: list[Action], names: 
     name = _legendary_name(names, "move", "Move", taken)
     options.append(LegendaryOption(name=name, cost=1, text=f"{who.capitalize()} moves up to its speed without provoking opportunity attacks."))
     for action in borrowed:
-        if isinstance(action, (AttackAction, SaveAction, TextAction)) and getattr(action, "recharge", None) is None:
+        limited = re.search(r"/day\)|\brest\)", action.name.lower())  # a 3/Day power is not an at-will legendary action
+        if isinstance(action, (AttackAction, SaveAction, TextAction)) and getattr(action, "recharge", None) is None and not limited:
             verb = "makes one {} attack" if isinstance(action, AttackAction) else "uses its {}"
             name = _legendary_name(names, "special", action.name, taken)
             options.append(LegendaryOption(name=name, cost=2, text=f"{who.capitalize()} {verb.format(action.name.lower())}."))
@@ -341,7 +360,7 @@ def graft(
         grant, line = _legendary(shaped, donor, borrowed_actions, ctx, legendary_names)
         shaped = shaped.model_copy(update={"legendary_actions": grant})
         changes.append(line)
-    shaped = shaped.model_copy(update={"features": derive_features(shaped)})
+    shaped = shaped.model_copy(update={"features": derive_features(shaped), "attribution": combined_credit(base.attribution, donor.attribution)})
 
     if level_up:
         old_cr = shaped.challenge.cr

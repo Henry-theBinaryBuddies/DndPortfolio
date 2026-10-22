@@ -23,6 +23,15 @@ A5E_ATTRIBUTION = (
     "www.levelup5e.com. Used under the Open Game License v1.0a and the ORC License; see the Licences page."
 )
 
+
+
+def combined_credit(*credits: str | None) -> str | None:
+    """The credit a monster derived from others carries: the SRD's and/or A5E's, each once and in that order, for whichever of them
+    its sources carried. (A reskin of an A5E monster, or an SRD monster polymorphed with an A5E donor, is a derived work of both.)"""
+    found = [c for c in (SRD_ATTRIBUTION, A5E_ATTRIBUTION) if any(x is not None and c in x for x in credits)]
+    return " ".join(found) or None
+
+
 # Experience points by challenge rating (SRD 5.1, page 258). CR 0 is "0 or 10"; 10 is used, as the front end does.
 XP_BY_CR: dict[str, int] = {
     "0": 10,

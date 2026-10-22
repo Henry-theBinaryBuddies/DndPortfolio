@@ -10,7 +10,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from cauldron.actions import Action, MultiattackAction
+from cauldron.actions import Action, MultiattackAction, TextAction
 from cauldron.blocklist import blocked_term
 from cauldron.monster import Monster
 
@@ -51,16 +51,33 @@ class Reflavored:
     problems: list[str] = field(default_factory=list)  # for the AI, when a proposed name cannot be used at all
 
 
-def _replace_word(text: str, old: str, new: str) -> str:
-    """Whole-word, case-insensitive; a mention written in lower case stays lower case."""
-    pattern = re.compile(r"(?<![A-Za-z])" + re.escape(old) + r"(?![A-Za-z])", re.IGNORECASE)
-    return pattern.sub(lambda m: new.lower() if m.group(0) == m.group(0).lower() else new, text)
+def _norm(name: str) -> str:
+    """A name as the CR measure and multiattacks spell it: no usage note, lower case, singular ("Claws" and "Claw" are one)."""
+    return split_name(name)[0].lower().removesuffix("s")
+
+
+def _prose_rewriter(chosen: dict[str, str], candidates: dict[str, str]):
+    """A function that says the new names wherever prose used the old ones: whole words, one pass (so a new name that contains another
+    old name is never rewritten again), plurals kept ("two with its claws" becomes "two with its talons"), lower case kept lower case."""
+    names = sorted((candidates[key] for key in chosen), key=len, reverse=True)
+    pattern = re.compile(r"(?<![A-Za-z])(" + "|".join(re.escape(n) for n in names) + r")(s?)(?![A-Za-z])", re.IGNORECASE)
+
+    def say(text: str) -> str:
+        def swap(match: re.Match[str]) -> str:
+            new = chosen[match.group(1).lower()]
+            plural = match.group(2) if not new.lower().endswith("s") else ""
+            return (new.lower() if match.group(1) == match.group(1).lower() else new) + plural
+
+        return pattern.sub(swap, text)
+
+    return say
 
 
 def apply_renames(monster: Monster, proposals: Sequence[tuple[str, str]]) -> Reflavored:
     """The monster with the usable proposed renames applied. Unusable ones are skipped, or (a blocked name) reported."""
     candidates = {name.lower(): name for name in rename_candidates(monster)}
-    taken = {split_name(a.name)[0].lower() for a in _named(monster)}
+    legendary = monster.legendary_actions.options if monster.legendary_actions is not None else []
+    taken = {_norm(a.name) for a in _named(monster)} | {_norm(o.name) for o in legendary}
     chosen: dict[str, str] = {}  # old name in lower case -> new name
     problems: list[str] = []
     for old, new in proposals:
@@ -71,8 +88,8 @@ def apply_renames(monster: Monster, proposals: Sequence[tuple[str, str]]) -> Ref
         if term is not None:
             problems.append(f'The ability name "{new}" contains "{term}", which is not ours to use. Choose a different name.')
             continue
-        # a new name may not collide with another ability, nor with another new name
-        if new.lower() != key and (new.lower() in taken or new.lower() in {n.lower() for n in chosen.values()}):
+        # a new name may not collide with another ability or legendary option, nor with another new name
+        if _norm(new) != _norm(key) and (_norm(new) in taken or _norm(new) in {_norm(n) for n in chosen.values()}):
             continue
         chosen[key] = new
     if problems:
@@ -80,21 +97,27 @@ def apply_renames(monster: Monster, proposals: Sequence[tuple[str, str]]) -> Ref
     if not chosen:
         return Reflavored(monster)
 
+    by_norm = {_norm(key): new for key, new in chosen.items()}
+    say = _prose_rewriter(chosen, candidates)
+
     def renamed(name: str) -> str:
         base, suffix = split_name(name)
-        return chosen[base.lower()] + suffix if base.lower() in chosen else name
+        new = by_norm.get(_norm(base))
+        return new + suffix if new else name
 
     def action(a: Action) -> Action:
         update: dict[str, object] = {"name": renamed(a.name)}
         if isinstance(a, MultiattackAction):
             update["sequence"] = [e.model_copy(update={"action": renamed(e.action)}) for e in a.sequence]
             if a.text:
-                text = a.text
-                for key, new in chosen.items():
-                    text = _replace_word(text, candidates[key], new)
-                update["text"] = text
+                update["text"] = say(a.text)
+        elif isinstance(a, TextAction) and a.name.lower() == "multiattack":  # a Multiattack that stayed prose names its attacks too
+            update["text"] = say(a.text)
         return a.model_copy(update=update)
 
     result = monster.map_actions(action).model_copy(update={"traits": [action(t) for t in monster.traits]})  # type: ignore[misc]
+    if monster.legendary_actions is not None:
+        options = [o.model_copy(update={"name": say(o.name), "text": say(o.text)}) for o in legendary]
+        result = result.model_copy(update={"legendary_actions": monster.legendary_actions.model_copy(update={"options": options})})
     changes = [f"Renamed {candidates[key]} {ARROW} {new}" for key, new in chosen.items()]
     return Reflavored(result, changes)
