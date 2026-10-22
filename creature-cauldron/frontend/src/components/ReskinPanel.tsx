@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { OFFLINE_MESSAGE, RESTING_MESSAGE, type BorrowKind, type BorrowOption, type Generator, type ReskinRequest } from "../lib/generatorApi";
 import { DAMAGE_THEMES, label, type DamageTheme } from "../lib/options";
 import { MOVE_GROUPS, SURPRISE, movesFor } from "../lib/remixMoves";
@@ -55,14 +55,22 @@ export default function ReskinPanel({ monster, mode, resting = false, donors = [
   const unavailable = offline || resting || busy;
   const moves = movesFor(monster);
 
+  // The donors on offer: every other creature, once per name (generated monsters can share a name, and the box picks by name).
+  const choices = useMemo(() => {
+    const byName = new Map<string, Monster>();
+    for (const d of donors) if (d.id !== monster.id && !byName.has(d.name.toLowerCase())) byName.set(d.name.toLowerCase(), d);
+    return [...byName.values()];
+  }, [donors, monster.id]);
   // The donor is whichever creature the typed name matches exactly (the list below the box offers the names).
-  const donor = donors.find((d) => d.id !== monster.id && d.name.toLowerCase() === donorName.trim().toLowerCase()) ?? null;
+  const donor = choices.find((d) => d.name.toLowerCase() === donorName.trim().toLowerCase()) ?? null;
   const donorId = donor?.id ?? null;
   const asked = useRef(0);
   useEffect(() => {
     const turn = ++asked.current;
     setOptions(null);
     setTicked([]);
+    setForgeChooses(false);
+    setLegendary(false);
     setOptionsMessage("");
     if (donorId === null || graftOptions === undefined) return;
     void graftOptions(monster.id, donorId).then((result) => {
@@ -75,7 +83,7 @@ export default function ReskinPanel({ monster, mode, resting = false, donors = [
   }, [donorId, monster.id, graftOptions]);
 
   const hasRemix = theme !== "" || move !== "" || levelUp;
-  const hasPolymorph = donor !== null && options !== null && (forgeChooses || ticked.length > 0);
+  const hasPolymorph = donor !== null && options !== null && options.length > 0 && (forgeChooses || ticked.length > 0);
   const blocked = unavailable || !(kind === "remix" ? hasRemix : hasPolymorph);
 
   async function run(request: ReskinRequest) {
@@ -170,18 +178,16 @@ export default function ReskinPanel({ monster, mode, resting = false, donors = [
             <input type="text" list="polymorph-donors" value={donorName} placeholder="Type a creature's name" onChange={(e) => setDonorName(e.target.value)} />
           </label>
           <datalist id="polymorph-donors">
-            {donors
-              .filter((d) => d.id !== monster.id)
-              .map((d) => (
-                <option key={d.id} value={d.name} />
-              ))}
+            {choices.map((d) => (
+              <option key={d.id} value={d.name} />
+            ))}
           </datalist>
           {options !== null && options.length > 0 && (
             <>
               <label>
                 <input type="checkbox" checked={forgeChooses} onChange={(e) => setForgeChooses(e.target.checked)} /> Let the forge choose (up to four features)
               </label>
-              <div className="graft-options" aria-label={`What ${donor?.name ?? "the donor"} could lend`}>
+              <div className="graft-options" role="group" aria-label={`What ${donor?.name ?? "the donor"} could lend`}>
                 {KIND_HEADINGS.map(([kindName, heading]) => {
                   const group = options.filter((o) => o.kind === kindName);
                   return group.length === 0 ? null : (

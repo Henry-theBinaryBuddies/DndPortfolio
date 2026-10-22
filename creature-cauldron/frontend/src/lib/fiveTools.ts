@@ -241,5 +241,8 @@ export function buildFiveToolsFile(monsters: Monster[], exportedAt: string): Fiv
     },
     monster: unique.map((m) => convertMonster(m, notes)),
   };
+  // The credit an SRD or A5E monster must carry goes with it, as its fluff (5etools shows it on the monster's Info tab).
+  const credits = unique.filter((m) => m.attribution).map((m) => ({ name: m.name, source: FIVETOOLS_SOURCE.json, entries: [m.attribution as string] }));
+  if (credits.length > 0) file.monsterFluff = credits;
   return { file, notes: [...new Set(notes)] };
 }

@@ -314,3 +314,15 @@ describe("golden files: our exported 5etools files, written to disk so any chang
     await expect(`${JSON.stringify(file, null, 2)}\n`).toMatchFileSnapshot("./goldens/5etools-sample.json");
   });
 });
+
+describe("the credit of a monster's source", () => {
+  it("travels with the monster as fluff, so an exported SRD or A5E monster still carries its credit", () => {
+    const credited = { ...goblin, attribution: "A5E System Reference Document (A5ESRD), (c) EN Publishing." };
+    const { file } = buildFiveToolsFile([credited, hillGiant], NOW);
+    expect(file.monsterFluff).toEqual([{ name: goblin.name, source: "CreatureCauldronHB", entries: [credited.attribution] }]);
+  });
+
+  it("adds nothing for monsters that carry no credit", () => {
+    expect(buildFiveToolsFile([{ ...goblin, attribution: null }], NOW).file).not.toHaveProperty("monsterFluff");
+  });
+});

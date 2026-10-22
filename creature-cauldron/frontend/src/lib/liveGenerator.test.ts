@@ -271,3 +271,16 @@ describe("a server that stalls", () => {
     expect(result).toMatchObject({ ok: false, reason: "offline" });
   });
 });
+
+describe("an answer about what a donor could lend is not trusted blindly", () => {
+  it("drops repeated keys and caps the list, and never sends more than ten ticks", async () => {
+    const many = Array.from({ length: 150 }, (_, i) => ({ key: `trait:T${i}`, kind: "trait", label: `T${i}` }));
+    const { fn, calls } = fakeFetch((call) => (call.url.endsWith("/graft/options") ? json({ ok: true, options: [many[0], many[0], ...many] }) : json({ ok: true, monster: drake, notes: [] })));
+    const live = createLiveGenerator("http://x.test", { fetchFn: fn });
+    const result = await live.graftOptions("a", "b");
+    expect(result.ok && result.options).toHaveLength(100);
+    expect(result.ok && new Set(result.options.map((o) => o.key)).size).toBe(100);
+    await live.reskin({ base: drake, donorId: "b", borrow: many.map((o) => o.key) });
+    expect((calls[1].body as { borrow: string[] }).borrow).toHaveLength(10);
+  });
+});

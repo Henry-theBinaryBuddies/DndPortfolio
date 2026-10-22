@@ -79,7 +79,7 @@ function looksLikeSpellcasting(value: unknown): boolean {
 export function looksLikeMonster(value: unknown): value is Monster {
   if (!isObj(value)) return false;
   if (!isValidId(value.id) || !isStr(value.name) || value.name === "") return false;
-  if (!["srd", "curated", "ai", "reskin"].includes(value.source as string) || typeof value.validated !== "boolean") return false;
+  if (!["srd", "a5e", "curated", "ai", "reskin"].includes(value.source as string) || typeof value.validated !== "boolean") return false;
   if (!(SIZES as readonly unknown[]).includes(value.size) || !(CREATURE_TYPES as readonly unknown[]).includes(value.type)) return false;
   if (!(ROLES as readonly unknown[]).includes(value.role)) return false;
   if (!isStr(value.alignment) || !isStr(value.languages) || !isStr(value.description)) return false;

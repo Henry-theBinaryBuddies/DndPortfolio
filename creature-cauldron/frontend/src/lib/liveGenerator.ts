@@ -21,6 +21,8 @@ const API_PATH = "/api/v1";
 const DEFAULT_TIMEOUT_MS = 120_000;
 const HEALTH_TIMEOUT_MS = 10_000;
 const KNOWN_REASONS: readonly GeneratorFailure[] = ["offline", "resting", "rate-limited", "invalid", "error"];
+const MAX_OPTIONS = 100; // the most features of one donor the page will list
+const MAX_BORROW = 10; // the most the server accepts in one polymorph
 const GENERAL_RATE_LIMIT = "Slow down a little: try again in a minute.";
 
 export interface HttpOptions {
@@ -131,7 +133,7 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
         levelUp: request.levelUp ?? false,
         reflavor: request.reflavor ?? false,
         donorId: request.donorId ?? null,
-        borrow: request.borrow ?? [],
+        borrow: (request.borrow ?? []).slice(0, MAX_BORROW),
         forgeChooses: request.forgeChooses ?? false,
         legendary: request.legendary ?? false,
       }),
@@ -144,7 +146,9 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
           options,
         );
         if (isObject(answer.data) && answer.data.ok === true && Array.isArray(answer.data.options)) {
-          return { ok: true, options: answer.data.options.filter(isBorrowOption) };
+          const seen = new Set<string>();
+          const found = answer.data.options.filter(isBorrowOption).filter((o) => !seen.has(o.key) && seen.add(o.key));
+          return { ok: true, options: found.slice(0, MAX_OPTIONS) };
         }
         if (answer.status === 404) return { ok: false, reason: "error", message: "This forge does not know Polymorph yet: restart the server." };
         const result = toResult(answer.status, answer.data, answer.retryAfter);
