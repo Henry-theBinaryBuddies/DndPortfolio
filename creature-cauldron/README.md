@@ -39,3 +39,7 @@ npm run dev
 - `frontend/` Vite + React + TypeScript app. The sample library is `frontend/public/data/sample-monsters.json`.
 - `docs/` requirements and design notes.
 - `backend/` Python API (not started).
+
+## Deploying
+
+See `docs/DEPLOYMENT.md`: the page on Cloudflare Pages, the server on a home PC behind a Cloudflare Tunnel, key safety and a launch checklist. The licences are in `LICENSES.md`.
