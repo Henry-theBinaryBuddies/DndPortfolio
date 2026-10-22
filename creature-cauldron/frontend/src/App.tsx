@@ -56,7 +56,7 @@ import {
   parseSavedEncounters,
   parseWorkingEncounter,
 } from "./lib/storage";
-import { SRD_ATTRIBUTION } from "./lib/attribution";
+import { A5E_ATTRIBUTION, SRD_ATTRIBUTION } from "./lib/attribution";
 import { usePersistentState } from "./lib/usePersistentState";
 import type { Monster } from "./types/monster";
 
@@ -300,7 +300,16 @@ export default function App() {
         </div>
 
         {/* The SRD's required credit. It must be quoted exactly as Wizards of the Coast gives it. */}
-        <footer className="attribution">{SRD_ATTRIBUTION}</footer>
+        <footer className="attribution">
+          <p>{SRD_ATTRIBUTION}</p>
+          <p>{A5E_ATTRIBUTION.replace("see the Licences page.", "")}</p>
+          <p>
+            <a href={`${import.meta.env.BASE_URL}legal/licences.html`} target="_blank" rel="noreferrer">
+              Licences
+            </a>
+            : the Open Game License text, the copyright notices, and the licence of this site's own code.
+          </p>
+        </footer>
       </main>
 
       <StatBlockDialog

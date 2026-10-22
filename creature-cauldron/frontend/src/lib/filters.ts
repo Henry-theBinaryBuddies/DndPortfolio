@@ -1,4 +1,4 @@
-import type { Monster } from "../types/monster";
+import type { Monster, Source } from "../types/monster";
 import type { CreatureType, DamageTheme, Environment, Feature, Role, Size } from "./options";
 
 // Pure filtering and sorting. The visible list is always computed from the full
@@ -21,6 +21,8 @@ export interface FilterState {
   roles: Role[];
   damageThemes: DamageTheme[];
   features: Feature[];
+  /** Where the monster came from: the SRD, A5E, the curated samples, or one the forge made. */
+  sources: Source[];
   /** Inclusive bounds on challenge rating; null means no bound. */
   crMin: number | null;
   crMax: number | null;
@@ -34,6 +36,7 @@ export const EMPTY_FILTERS: FilterState = {
   roles: [],
   damageThemes: [],
   features: [],
+  sources: [],
   crMin: null,
   crMax: null,
 };
@@ -73,6 +76,7 @@ export function matchesFilters(monster: Monster, filters: FilterState, xpRange: 
     matchesOne(filters.types, monster.type) &&
     matchesOne(filters.sizes, monster.size) &&
     matchesOne(filters.roles, monster.role) &&
+    matchesOne(filters.sources, monster.source) &&
     matchesAny(filters.environments, monster.environments) &&
     matchesAny(filters.damageThemes, monster.damage_themes) &&
     matchesAll(filters.features, monster.features) &&
@@ -95,6 +99,7 @@ export function countActiveFilters(filters: FilterState): number {
     filters.roles.length > 0,
     filters.damageThemes.length > 0,
     filters.features.length > 0,
+    filters.sources.length > 0,
     filters.crMin !== null || filters.crMax !== null,
   ];
   return groups.filter(Boolean).length;

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CR_LADDER, toggle, type FilterState } from "../lib/filters";
+import { SOURCES, SOURCE_NAMES } from "../lib/sourceLabel";
 import DropMenu from "./DropMenu";
 import {
   CREATURE_TYPES,
@@ -162,6 +163,15 @@ export default function FilterBar({ filters, activeCount, onChange, onClear }: F
             options={DAMAGE_THEMES}
             selected={filters.damageThemes}
             onToggle={(v) => update({ damageThemes: toggle(filters.damageThemes, v) })}
+          />
+        </FilterMenu>
+
+        <FilterMenu title="Source" count={filters.sources.length} align="right">
+          <CheckboxList
+            options={SOURCES}
+            selected={filters.sources}
+            onToggle={(v) => update({ sources: toggle(filters.sources, v) })}
+            getLabel={(source) => SOURCE_NAMES[source]}
           />
         </FilterMenu>
 

@@ -1,9 +1,9 @@
 import type { Monster } from "../types/monster";
 
-// The library is two static JSON files served next to the page: our own sample monsters, and the SRD 5.1 monsters
-// made by the back end's importer (backend/src/cauldron/seed). BASE_URL keeps the paths correct when the site is
-// hosted in a subfolder.
-const LIBRARY_FILES = ["sample-monsters.json", "srd-monsters.json"];
+// The library is static JSON files served next to the page: our own sample monsters, the SRD 5.1 monsters and the A5E
+// Monstrous Menagerie monsters, the last two made by the back end's importers (backend/src/cauldron/seed). BASE_URL keeps the
+// paths correct when the site is hosted in a subfolder.
+const LIBRARY_FILES = ["sample-monsters.json", "srd-monsters.json", "a5e-monsters.json"];
 
 async function loadFile(name: string): Promise<Monster[]> {
   const response = await fetch(`${import.meta.env.BASE_URL}data/${name}`);

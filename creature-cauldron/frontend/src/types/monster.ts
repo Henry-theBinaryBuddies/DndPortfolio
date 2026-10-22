@@ -9,7 +9,7 @@ export type { CreatureType, DamageTheme, DamageType, Environment, Feature, Role,
 
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
-export type Source = "srd" | "curated" | "ai" | "reskin";
+export type Source = "srd" | "a5e" | "curated" | "ai" | "reskin";
 
 export interface DamageRoll {
   dice: string; // e.g. "2d6"

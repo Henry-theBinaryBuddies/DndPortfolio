@@ -127,10 +127,16 @@ export default function StatBlockDialog({
               <span aria-hidden="true">×</span>
             </button>
           </div>
-          {sourceLabel(monster) && (
+          {monster.source === "a5e" ? (
             <p className="source-note no-print">
-              {sourceLabel(monster)}. Its numbers have not been checked against the rules, so look it over before using it.
+              A5E (Advanced 5th Edition, Monstrous Menagerie). Its numbers and challenge rating follow A5E, not the 2014 rules.
             </p>
+          ) : (
+            sourceLabel(monster) && (
+              <p className="source-note no-print">
+                {sourceLabel(monster)}. Its numbers have not been checked against the rules, so look it over before using it.
+              </p>
+            )
           )}
           {monster.changes && monster.changes.length > 0 && (
             <section className="changes-note no-print" aria-label="What changed">

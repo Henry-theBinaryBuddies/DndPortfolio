@@ -84,7 +84,27 @@ describe("filterMonsters", () => {
   });
 });
 
+describe("the Source filter", () => {
+  const mixed = [
+    { ...monsters[0], id: "a", name: "A", source: "srd" },
+    { ...monsters[1], id: "b", name: "B", source: "a5e" },
+    { ...monsters[2], id: "c", name: "C", source: "reskin" },
+    { ...monsters[3], id: "d", name: "D", source: "ai" },
+  ] as Monster[];
+
+  it("keeps only the chosen sources, several picks being OR", () => {
+    expect(names(filterMonsters(mixed, withFilters({ sources: ["a5e"] })))).toEqual(["B"]);
+    expect(names(filterMonsters(mixed, withFilters({ sources: ["srd", "ai"] })))).toEqual(["A", "D"]);
+    expect(filterMonsters(mixed, EMPTY_FILTERS)).toHaveLength(4);
+  });
+
+  it("counts as one active group", () => {
+    expect(countActiveFilters(withFilters({ sources: ["a5e", "srd"] }))).toBe(1);
+  });
+});
+
 describe("countActiveFilters", () => {
+
   it("counts groups, not individual picks", () => {
     expect(countActiveFilters(EMPTY_FILTERS)).toBe(0);
     expect(countActiveFilters(withFilters({ types: ["beast", "fey"], crMin: 1, crMax: 3 }))).toBe(2);
