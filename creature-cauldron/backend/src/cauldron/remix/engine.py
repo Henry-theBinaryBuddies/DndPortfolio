@@ -73,8 +73,12 @@ def _find(key: str) -> Move:
     return MOVES[key]
 
 
-def remix(monster: Monster, theme: DamageTheme | None, move_key: str | None, move_name: str, level_up: bool = False) -> RemixResult:
-    """The remixed monster and what changed. Needs at least one of a theme, a move or a level up."""
+def remix(
+    monster: Monster, theme: DamageTheme | None, move_key: str | None, move_name: str, level_up: bool = False, defences: bool = True
+) -> RemixResult:
+    """The remixed monster and what changed. Needs at least one of a theme, a move or a level up.
+
+    With `defences` False a theme changes the damage only: the monster keeps its resistances and immunities."""
     if theme is None and move_key is None and not level_up:
         raise ValueError("There is nothing to change: choose a theme, a move or a level up.")
     move = _find(move_key) if move_key is not None else None
@@ -84,7 +88,7 @@ def remix(monster: Monster, theme: DamageTheme | None, move_key: str | None, mov
     changes: list[str] = []
     shaped = monster
     if theme is not None:
-        themed = apply_theme(shaped, theme)
+        themed = apply_theme(shaped, theme, defences)
         shaped, changes = themed.monster, list(themed.changes)
 
     if move is not None:

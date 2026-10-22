@@ -258,14 +258,14 @@ def test_cached_answers_still_work_when_the_forge_is_resting(make, sample) -> No
 
 
 def swap(base_id: str, **extra) -> ReskinRequest:
-    return ReskinRequest.model_validate({"baseId": base_id, "damageSwap": {"from": "lightning", "to": "cold"}, **extra})
+    return ReskinRequest.model_validate({"baseId": base_id, "theme": "cold", **extra})
 
 
 def named(name: str, text: str = "A frosty twist.") -> GeneratedName:
     return GeneratedName(name=name, description=text, generator="scripted", input_tokens=50, output_tokens=40)
 
 
-def test_a_damage_swap_is_done_by_code_and_the_ai_only_names_it(make, sample) -> None:
+def test_a_theme_is_applied_by_code_and_the_ai_only_names_it(make, sample) -> None:
     drake = sample("Stormhide Drake")
     rig = make(names=[named("Rimestorm Drake")], library=[drake])
     result = rig.service.create_reskin(swap(drake.id))
@@ -278,6 +278,26 @@ def test_a_damage_swap_is_done_by_code_and_the_ai_only_names_it(make, sample) ->
     assert "cold damage" in prose and "lightning damage" not in prose
     assert monster.challenge == drake.challenge
     assert rig.store.get(monster.id) == monster
+
+
+def test_a_damage_only_theme_leaves_the_defences_alone(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimestorm Drake")], library=[drake])
+    result = rig.service.create_reskin(swap(drake.id, damageOnly=True))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert (monster.immunities, monster.resistances, monster.vulnerabilities) == (drake.immunities, drake.resistances, drake.vulnerabilities)
+    assert any(c.startswith("Main damage") for c in monster.changes or [])
+    prose = " ".join(a.describe(monster.name) for a in monster.all_actions())
+    assert "cold damage" in prose and "lightning damage" not in prose
+
+
+def test_a_damage_only_theme_the_monster_already_has_changes_nothing_and_is_refused(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Same Drake")], library=[drake])
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": drake.id, "theme": "lightning", "damageOnly": True}))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == []
 
 
 def test_the_ai_is_told_what_changed_but_never_given_numbers_to_change(make, sample) -> None:
@@ -359,7 +379,7 @@ def test_a_reskin_is_not_sent_back_over_the_base_monsters_own_cr(make, sample) -
     leviathan = sample("Dune Leviathan")
     doubtful = with_cr(leviathan, "12").model_copy(update={"id": "doubtful"})
     rig = make(names=[named("Sandsong Leviathan")], library=[doubtful])
-    request = ReskinRequest.model_validate({"baseId": "doubtful", "damageSwap": {"from": "piercing", "to": "cold"}})
+    request = ReskinRequest.model_validate({"baseId": "doubtful", "theme": "cold"})
     assert isinstance(rig.service.create_reskin(request), GenerateSuccess)
 
 

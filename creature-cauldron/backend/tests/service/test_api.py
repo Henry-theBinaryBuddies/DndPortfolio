@@ -212,7 +212,7 @@ def test_a_proxy_header_is_ignored_unless_it_is_configured(make, sample) -> None
 def test_reskin_returns_a_new_monster_and_repeats_are_free(make, sample) -> None:
     drake = sample("Stormhide Drake")
     rig = make(names=[named("Rimestorm Drake")], library=[drake])
-    body = {"baseId": drake.id, "damageSwap": {"from": "lightning", "to": "cold"}}
+    body = {"baseId": drake.id, "theme": "cold"}
     first = rig.client.post("/api/v1/reskin", json=body)
     assert first.status_code == 200 and first.json()["monster"]["name"] == "Rimestorm Drake"
     assert first.json()["monster"]["parent_id"] == drake.id
@@ -247,7 +247,7 @@ def test_reskins_are_limited_like_generation(make, sample) -> None:
     drake = sample("Stormhide Drake")
     rig = make(names=[named("One"), named("Two")], library=[drake], CAULDRON_IP_PER_MINUTE="1")
     first = rig.client.post("/api/v1/reskin", json={"baseId": drake.id, "levelUp": True})
-    second = rig.client.post("/api/v1/reskin", json={"baseId": drake.id, "damageSwap": {"from": "lightning", "to": "cold"}})
+    second = rig.client.post("/api/v1/reskin", json={"baseId": drake.id, "theme": "cold"})
     assert first.status_code == 200 and second.status_code == 429
 
 

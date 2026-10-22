@@ -1,4 +1,4 @@
-import type { DamageType, Monster } from "../types/monster";
+import type { Monster } from "../types/monster";
 import type { CreatureType, DamageTheme, Environment, Feature, Role, Size } from "./options";
 
 // The contract between the page and a monster generator. The real generator will be the Python server
@@ -23,11 +23,11 @@ export interface GenerateRequest {
 export interface ReskinRequest {
   /** The whole monster, so the request stands alone (it may be a generated one the server has never seen). */
   base: Monster;
-  /** Change every use of one damage type into another, with resistances and immunities following. */
-  damageSwap: { from: DamageType; to: DamageType } | null;
-  /** Remix: a new damage theme, or "surprise" to let the server pick. Never combined with a damage swap. */
+  /** Remix: a new damage theme, or "surprise" to let the server pick. */
   theme?: DamageTheme | "surprise" | null;
-  /** Remix: the key of a signature move (see remixMoves.ts), or "surprise". Never combined with a damage swap. */
+  /** With a theme: change the damage only, leaving the monster's resistances and immunities as they were. */
+  damageOnly?: boolean;
+  /** Remix: the key of a signature move (see remixMoves.ts), or "surprise". */
   move?: string | null;
   /** About one challenge rating stronger, worked out by the server. */
   levelUp?: boolean;

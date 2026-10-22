@@ -70,9 +70,8 @@ def test_requests_serialise_back_to_camel_case() -> None:
 
 
 def test_a_reskin_request_names_a_base_and_at_least_one_change() -> None:
-    r = ReskinRequest.model_validate({"baseId": "srd-goblin", "damageSwap": {"from": "fire", "to": "cold"}})
-    assert r.base_id == "srd-goblin"
-    assert r.damage_swap is not None and r.damage_swap.from_ is DamageType.FIRE and r.damage_swap.to is DamageType.COLD
+    r = ReskinRequest.model_validate({"baseId": "srd-goblin", "theme": "cold"})
+    assert r.base_id == "srd-goblin" and r.theme == "cold" and r.damage_only is False
     assert ReskinRequest.model_validate({"baseId": "a", "levelUp": True}).level_up is True
     remix = ReskinRequest.model_validate({"baseId": "a", "theme": "cold", "move": "burst"})
     assert (remix.theme, remix.move, remix.level_up) == ("cold", "burst", False)
@@ -83,9 +82,11 @@ def test_a_reskin_with_no_change_is_refused() -> None:
         ReskinRequest.model_validate({"baseId": "srd-goblin"})
 
 
-def test_a_swap_to_the_same_type_is_refused() -> None:
-    with pytest.raises(ValidationError):
-        ReskinRequest.model_validate({"baseId": "a", "damageSwap": {"from": "fire", "to": "fire"}})
+def test_damage_only_needs_a_theme_and_the_old_damage_swap_is_gone() -> None:
+    assert ReskinRequest.model_validate({"baseId": "a", "theme": "cold", "damageOnly": True}).damage_only is True
+    for bad in ({"damageOnly": True}, {"levelUp": True, "damageOnly": True}, {"damageSwap": {"from": "fire", "to": "cold"}}):
+        with pytest.raises(ValidationError):
+            ReskinRequest.model_validate({"baseId": "a", **bad})
 
 
 def test_an_unknown_theme_or_move_is_refused() -> None:
@@ -100,22 +101,14 @@ def test_surprise_is_allowed_for_a_theme_and_for_a_move() -> None:
     assert not ReskinRequest.model_validate({"baseId": "a", "theme": "fire"}).has_surprise
 
 
-def test_a_damage_swap_cannot_be_mixed_with_a_theme_or_move() -> None:
-    swap = {"from": "fire", "to": "cold"}
-    for extra in ({"theme": "acid"}, {"move": "lob"}):
-        with pytest.raises(ValidationError):
-            ReskinRequest.model_validate({"baseId": "a", "damageSwap": swap, **extra})
-    assert ReskinRequest.model_validate({"baseId": "a", "damageSwap": swap, "levelUp": True}).level_up
-
-
 def test_a_reskin_cannot_carry_a_monster_only_an_id() -> None:
     with pytest.raises(ValidationError):
         ReskinRequest.model_validate({"baseId": "a", "levelUp": True, "base": {"name": "evil text"}})
 
 
 def test_a_reskin_has_a_stable_cache_key() -> None:
-    one = ReskinRequest.model_validate({"baseId": "a", "damageSwap": {"from": "fire", "to": "cold"}, "levelUp": True})
-    two = ReskinRequest.model_validate({"baseId": "a", "damageSwap": {"from": "fire", "to": "cold"}, "levelUp": True})
+    one = ReskinRequest.model_validate({"baseId": "a", "theme": "cold", "levelUp": True})
+    two = ReskinRequest.model_validate({"baseId": "a", "theme": "cold", "levelUp": True})
     other = ReskinRequest.model_validate({"baseId": "a", "levelUp": True})
     assert one.cache_key == two.cache_key != other.cache_key
 
@@ -123,9 +116,9 @@ def test_a_reskin_has_a_stable_cache_key() -> None:
 def test_the_cache_key_tells_themes_moves_and_level_up_apart() -> None:
     keys = {
         ReskinRequest.model_validate({"baseId": "a", **extra}).cache_key
-        for extra in ({"theme": "cold"}, {"theme": "fire"}, {"move": "lob"}, {"theme": "cold", "move": "lob"}, {"theme": "cold", "levelUp": True})
+        for extra in ({"theme": "cold"}, {"theme": "fire"}, {"move": "lob"}, {"theme": "cold", "move": "lob"}, {"theme": "cold", "levelUp": True}, {"theme": "cold", "damageOnly": True})
     }
-    assert len(keys) == 5
+    assert len(keys) == 6
 
 
 # --- responses ------------------------------------------------------------------------------------------
@@ -147,7 +140,7 @@ def test_a_success_carries_the_monster_without_empty_fields(sample) -> None:
 
 def test_a_reflavor_stands_on_its_own() -> None:
     assert ReskinRequest.model_validate({"baseId": "a", "reflavor": True}).reflavor is True
-    for other in ({"theme": "cold"}, {"move": "lob"}, {"levelUp": True}, {"damageSwap": {"from": "fire", "to": "cold"}}):
+    for other in ({"theme": "cold"}, {"move": "lob"}, {"levelUp": True}, {"theme": "cold", "damageOnly": True}):
         with pytest.raises(ValidationError):
             ReskinRequest.model_validate({"baseId": "a", "reflavor": True, **other})
 

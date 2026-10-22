@@ -95,7 +95,7 @@ export function createDemoGenerator(library: Monster[]): Generator {
     },
 
     reskin(request: ReskinRequest): Promise<GeneratorResult> {
-      const { base, damageSwap, theme, move, levelUp, reflavor } = request;
+      const { base, theme, damageOnly, move, levelUp, reflavor } = request;
       if (reflavor) {
         const name = `${PREFIXES[count % PREFIXES.length]} ${base.name}`;
         const id = `demo-${unique()}-${slugify(name)}`;
@@ -107,18 +107,18 @@ export function createDemoGenerator(library: Monster[]): Generator {
       }
       let monster: Monster = base;
       const changes: string[] = [];
-      if (damageSwap) {
-        monster = swapDamageType(monster, damageSwap.from, damageSwap.to);
-        changes.push(`Damage swap: ${damageSwap.from} → ${damageSwap.to}`);
-      }
-      // A remix theme swaps the monster's first damage type. The real server also trades defences and adds a move.
+      // A remix theme swaps the monster's first damage type. The real server also trades defences (unless damage only) and adds a move.
       const themeChosen = theme && theme !== "surprise" ? theme : null;
       const main = damageDealtBy(base)[0];
       if (themeChosen && main && main !== themeChosen) {
         monster = swapDamageType(monster, main, themeChosen);
         changes.push(`Main damage: ${main} → ${themeChosen}`);
+        if (damageOnly) {
+          const { resistances, immunities, vulnerabilities } = base;
+          monster = { ...monster, resistances, immunities, vulnerabilities };
+        }
       }
-      const label = [damageSwap?.to ?? themeChosen, levelUp ? "level up" : null].filter(Boolean).join(" ");
+      const label = [themeChosen, levelUp ? "level up" : null].filter(Boolean).join(" ");
       const name = `${base.name} (${label || "reskin"})`;
       const id = `demo-${unique()}-${slugify(name)}`;
       const notes = ["Demo mode: only the damage type was swapped. Numbers, signature moves and level-ups are not applied."];

@@ -8,8 +8,7 @@ final technical document.
 A visitor opens a monster, chooses **Remix**, and picks a new damage **theme**, a **signature move**, a **level up**, or any mix
 (or "Surprise me" for the theme and/or the move). The server changes the monster's numbers with plain code, asks Claude Haiku
 only for words (a new name, a new description, and a name for the new move), checks the result with the same validator as every
-other reskin, stores it, and returns it with a list of **what changed**. **Quick reskin** (the older damage-type swap) still
-exists beside it.
+other reskin, stores it, and returns it with a list of **what changed**. The old **Quick reskin** (a damage-type swap) is gone: its job is the `damageOnly` tick under a theme, and **Reflavor** (below) is the no-choice reskin.
 
 ## The rules that never bend
 
@@ -35,7 +34,7 @@ exists beside it.
 | `backend/src/cauldron/service/service.py` | `settle` (decide surprises), `create_reskin`, `_shape` (the numbers by code), `_accept_reskin` (validate and store). |
 | `backend/src/cauldron/service/prompts.py`, `draft.py`, `haiku.py` | The naming prompt, the tool schema (with a `move_name` only when a move was chosen) and the Haiku call. |
 | `frontend/src/lib/remixMoves.ts` | The move menu shown on the page: a copy of the server's list. |
-| `frontend/src/components/ReskinPanel.tsx` | The panel: Quick reskin or Remix. |
+| `frontend/src/components/ReskinPanel.tsx` | The panel: Reflavor, then Remix. |
 | `frontend/src/components/StatBlockDialog.tsx` | The "What changed" list, shown from `monster.changes`. |
 
 ## Themes
@@ -106,11 +105,10 @@ The page's menu is a copy of this list. `backend/tests/remix/test_menu_matches_f
 ## Wire format (`POST /api/v1/reskin`)
 
 ```json
-{ "baseId": "srd-ogre", "damageSwap": null, "theme": "cold", "move": "lob", "levelUp": false }
+{ "baseId": "srd-ogre", "theme": "cold", "damageOnly": false, "move": "lob", "levelUp": false }
 ```
 
-`theme` is a theme name or `"surprise"`; `move` is a move key or `"surprise"`; `damageSwap` (`{"from":"fire","to":"cold"}`) is the
-quick reskin and cannot be combined with a theme or move. At least one of the four must be given. The old `template` field is gone.
+`theme` is a theme name or `"surprise"`; `move` is a move key or `"surprise"`. `damageOnly: true` (needs a theme) changes the main damage and the theme tag but leaves resistances, immunities and vulnerabilities as they were; a damage-only theme the monster already had changes nothing and is refused. `damageSwap` no longer exists. At least one of theme, move, levelUp or reflavor must be given. The old `template` field is gone.
 
 ## Reflavor (`"reflavor": true`)
 
@@ -146,5 +144,5 @@ validator rejects it combined with a swap, theme, move or level up.
 - **Level up is the only thing that changes CR** (about +1 step; hit points about 1.5x, AC +1, +1 to hit, DC and damage).
 - **Reskins are remembered by their choices.** A flawed older reskin persists until `backend/data/cauldron.sqlite3` is deleted
   (stop the server first).
-- **Demo mode** (`?generator=demo`) applies only the theme's damage swap and says signature moves are not added.
+- **Demo mode** (`?generator=demo`) applies only the theme's damage swap (keeping the defences when damage only) and says signature moves are not added.
 - **Not built:** swapping resistances or immunities as a separate option; deleting generated monsters from the page.

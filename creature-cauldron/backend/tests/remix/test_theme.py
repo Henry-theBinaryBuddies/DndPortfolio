@@ -81,6 +81,16 @@ def test_a_physical_monster_changes_its_main_damage_and_trades_its_old_immunity(
     ]
 
 
+def test_a_damage_only_theme_changes_the_damage_and_nothing_else(named) -> None:
+    dragon = named("Adult Red Dragon")
+    result = apply_theme(dragon, DamageTheme.COLD, defences=False)
+    monster = result.monster
+    assert (monster.immunities, monster.resistances, monster.vulnerabilities) == (dragon.immunities, dragon.resistances, dragon.vulnerabilities)
+    assert monster.damage_text == dragon.damage_text and monster.damage_themes == [DamageTheme.COLD]
+    assert result.changes == ["Main damage: fire → cold"]
+    assert "cold damage" in " ".join(getattr(a, "text", "") or "" for a in monster.actions)
+
+
 def test_an_elemental_monster_keeps_its_physical_attacks(named) -> None:
     dragon = named("Adult Red Dragon")
     monster = themed(dragon, DamageTheme.COLD).monster

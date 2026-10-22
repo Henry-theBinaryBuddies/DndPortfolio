@@ -33,7 +33,7 @@ from cauldron.service.models import FailureReason, GenerateFailure, GenerateRequ
 from cauldron.service.prompts import RenameContext
 from cauldron.service.settings import Settings
 from cauldron.service.store import DuplicateMonster, MonsterStore
-from cauldron.templates import retarget_name, swap_damage_type
+from cauldron.templates import retarget_name
 from cauldron.validator import CrConsistencyCheck, Outcome, Status, ValidationContext, Validator, default_checks
 
 Result = GenerateSuccess | GenerateFailure
@@ -42,7 +42,6 @@ MAX_REFLAVORS = 3  # a monster keeps at most this many reflavors; after that a p
 RESTING_MESSAGE = "The forge is resting, back tomorrow. The library still works."
 _COULD_NOT_REACH = "The forge could not be reached just now. Try again in a little while."
 _PLACEHOLDER_MOVE = "Signature Move"
-ARROW = chr(0x2192)
 _GAVE_UP = "The forge could not make a monster that passed its checks. Try again, or try different filters."
 
 
@@ -192,17 +191,10 @@ class GenerationService:
 
     @staticmethod
     def _shape(base: Monster, request: ReskinRequest, move_name: str) -> tuple[Monster, list[str]]:
-        """The numbers of a reskin, all by code: the damage swap or remix, then the level up. Returns the monster and what changed."""
-        shaped, changes = base, []
-        if request.damage_swap is not None:
-            swap = request.damage_swap
-            shaped = swap_damage_type(shaped, swap.from_, swap.to)
-            changes.append(f"Damage swap: {swap.from_.value} {ARROW} {swap.to.value}")
+        """The numbers of a reskin, all by code: the theme and move, then the level up. Returns the monster and what changed."""
         theme = DamageTheme(request.theme) if request.theme else None
-        if theme is not None or request.move is not None or request.level_up:
-            remixed = remix(shaped, theme, request.move, move_name, request.level_up)
-            shaped, changes = remixed.monster, changes + remixed.changes
-        return shaped, changes
+        remixed = remix(base, theme, request.move, move_name, request.level_up, defences=not request.damage_only)
+        return remixed.monster, remixed.changes
 
     def create_reskin(self, request: ReskinRequest) -> Result:
         request = self.settle(request)
@@ -211,14 +203,14 @@ class GenerationService:
             return _failure(FailureReason.INVALID, "That monster is not known to the forge.")
         if request.reflavor:
             return self._reflavor(base)
-        if request.damage_swap is None and request.theme is None and request.move is None and not request.level_up:
-            return _failure(FailureReason.INVALID, "Nothing could be changed for that monster. Try a different theme or move.")
         move = MOVES[request.move] if request.move is not None else None
         if move is not None and not move.applies_to(base):
             return _failure(FailureReason.INVALID, f"The move {move.label} does not fit that monster.")
 
         # A first pass with a stand-in move name gives the challenge rating and the list of changes for the AI to read.
         preview, changes = self._shape(base, request, _PLACEHOLDER_MOVE)
+        if not changes:  # a damage-only theme the monster already had, with nothing else asked for
+            return _failure(FailureReason.INVALID, "Nothing could be changed for that monster. Try a different theme or move.")
         context = RenameContext(
             base_name=base.name,
             base_description=base.description,

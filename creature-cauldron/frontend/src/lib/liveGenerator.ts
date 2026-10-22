@@ -119,8 +119,8 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
     reskin: (request: ReskinRequest) =>
       post("/reskin", {
         baseId: request.base.id,
-        damageSwap: request.damageSwap ? { from: request.damageSwap.from, to: request.damageSwap.to } : null,
         theme: request.theme ?? null,
+        damageOnly: request.damageOnly ?? false,
         move: request.move ?? null,
         levelUp: request.levelUp ?? false,
         reflavor: request.reflavor ?? false,

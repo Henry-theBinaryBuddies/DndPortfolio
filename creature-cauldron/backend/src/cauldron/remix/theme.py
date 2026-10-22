@@ -111,7 +111,8 @@ def _describe(label_set: str, label_verb: str, before: list[DamageType], after: 
     return None
 
 
-def apply_theme(monster: Monster, theme: DamageTheme) -> ThemeResult:
+def apply_theme(monster: Monster, theme: DamageTheme, defences: bool = True) -> ThemeResult:
+    """The monster with its main damage changed to the theme and, unless `defences` is False, its defences traded to match."""
     new = DamageType(theme.value)
     changes: list[str] = []
 
@@ -120,6 +121,8 @@ def apply_theme(monster: Monster, theme: DamageTheme) -> ThemeResult:
     if source is not None and source != new:
         current = swap_damage_type(current, source, new, defences=False)
         changes.append(f"Main damage: {source.value} → {new.value}")
+    if not defences:
+        return ThemeResult(current.model_copy(update={"damage_themes": [theme]}), changes)
 
     # The old theme: the elemental type that was swapped out, else the monster's own first theme tag.
     if source is not None and source.value in _THEMES:

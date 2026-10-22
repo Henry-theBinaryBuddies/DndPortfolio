@@ -16,7 +16,7 @@ from cauldron.base import CauldronModel
 from cauldron.monster import Monster
 from cauldron.remix.engine import SURPRISE
 from cauldron.remix.moves import MOVES
-from cauldron.options import CreatureType, DamageTheme, DamageType, Environment, Feature, Role, Size
+from cauldron.options import CreatureType, DamageTheme, Environment, Feature, Role, Size
 from cauldron.rules import CR_LABELS, cr_value
 
 _LADDER_VALUES = {cr_value(label) for label in CR_LABELS}
@@ -64,29 +64,18 @@ class GenerateRequest(ApiModel):
         return self
 
 
-class DamageSwap(ApiModel):
-    # "from" is a Python keyword, so the field is from_ and the wire name is set by hand.
-    from_: DamageType = Field(alias="from")
-    to: DamageType
-
-    @model_validator(mode="after")
-    def _a_real_change(self) -> "DamageSwap":
-        if self.from_ == self.to:
-            raise ValueError("a damage swap must change the type")
-        return self
-
-
 class ReskinRequest(ApiModel):
     """A reskin names an existing monster by id. The monster itself is never sent, so none of its text can reach the model.
 
-    Quick reskin is a ``damage_swap``, optionally with ``level_up``. Remix is a ``theme`` and/or a signature ``move``,
-    optionally with ``level_up``. Theme and move may each be "surprise", which the server decides (see ``settle``).
-    A ``reflavor`` is a request on its own: a new name, description and ability names, and no number changed at all.
+    A remix is a ``theme`` and/or a signature ``move``, optionally with ``level_up``. Theme and move may each be "surprise",
+    which the server decides (see ``settle``). ``damage_only`` makes a theme change the damage alone, leaving the monster's
+    resistances and immunities as they were. A ``reflavor`` is a request on its own: a new name, description and ability
+    names, and no number changed at all.
     """
 
     base_id: Id
-    damage_swap: DamageSwap | None = None
     theme: str | None = None
+    damage_only: bool = False
     move: str | None = None
     level_up: bool = False
     reflavor: bool = False
@@ -107,13 +96,13 @@ class ReskinRequest(ApiModel):
 
     @model_validator(mode="after")
     def _something_to_do(self) -> "ReskinRequest":
-        if self.damage_swap is not None and (self.theme is not None or self.move is not None):
-            raise ValueError("a damage swap is a quick reskin; it cannot be combined with a theme or a move")
-        changes_numbers = self.damage_swap is not None or self.theme is not None or self.move is not None or self.level_up
+        if self.damage_only and self.theme is None:
+            raise ValueError("damageOnly needs a theme to apply")
+        changes_numbers = self.theme is not None or self.move is not None or self.level_up
         if self.reflavor and changes_numbers:
-            raise ValueError("a reflavor changes no numbers, so it cannot be combined with a swap, a theme, a move or a level up")
+            raise ValueError("a reflavor changes no numbers, so it cannot be combined with a theme, a move or a level up")
         if not self.reflavor and not changes_numbers:
-            raise ValueError("a reskin needs a reflavor, a damage swap, a theme, a move or a level up")
+            raise ValueError("a reskin needs a reflavor, a theme, a move or a level up")
         return self
 
     @property
@@ -125,8 +114,8 @@ class ReskinRequest(ApiModel):
         """The same request always gives the same key, so a repeated reskin is answered from the store.
 
         A request that still has a "surprise" in it has no meaningful key: settle it first."""
-        swap = f"{self.damage_swap.from_.value}>{self.damage_swap.to.value}" if self.damage_swap else "-"
-        parts = f"{self.base_id}|{swap}|{self.theme or '-'}|{self.move or '-'}|{'up' if self.level_up else '-'}|{'flavor' if self.reflavor else '-'}"
+        theme = f"{self.theme}{'!' if self.damage_only else ''}" if self.theme else "-"
+        parts = f"{self.base_id}|{theme}|{self.move or '-'}|{'up' if self.level_up else '-'}|{'flavor' if self.reflavor else '-'}"
         return hashlib.sha256(parts.encode()).hexdigest()
 
 

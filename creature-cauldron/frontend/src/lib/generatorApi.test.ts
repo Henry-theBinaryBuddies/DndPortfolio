@@ -13,7 +13,7 @@ const anyRequest = buildGenerateRequest(EMPTY_FILTERS, null).request!;
 describe("offlineGenerator", () => {
   it("fails every call with the offline message and no network", async () => {
     const generated = await offlineGenerator.generate(anyRequest);
-    const reskinned = await offlineGenerator.reskin({ base: library[0], damageSwap: null });
+    const reskinned = await offlineGenerator.reskin({ base: library[0], levelUp: true });
     for (const result of [generated, reskinned]) {
       expect(result).toEqual({ ok: false, reason: "offline", message: OFFLINE_MESSAGE });
     }
@@ -128,18 +128,25 @@ describe("damage swaps", () => {
 describe("demo reskin", () => {
   it("makes a new unvalidated reskin that names its parent", async () => {
     const base = library.find((m) => damageDealtBy(m).includes("fire"))!;
-    const result = await createDemoGenerator(library).reskin({ base, damageSwap: { from: "fire", to: "cold" }, levelUp: true });
+    const result = await createDemoGenerator(library).reskin({ base, theme: "cold", levelUp: true });
     if (!result.ok) throw new Error("expected success");
     expect(result.monster).toMatchObject({ source: "reskin", validated: false, parent_id: base.id });
     expect(result.monster.name).toBe(`${base.name} (cold level up)`);
     expect(damageDealtBy(result.monster)).not.toContain("fire");
     expect(result.notes.join(" ")).toMatch(/not applied/);
-    expect(result.monster.changes).toEqual(["Damage swap: fire → cold"]);
+    expect(result.monster.changes).toEqual(["Main damage: fire → cold"]);
+  });
+
+  it("keeps the defences when asked to change only the damage", async () => {
+    const base = { ...library.find((m) => damageDealtBy(m).includes("fire"))!, immunities: ["fire" as const], resistances: [], vulnerabilities: [] };
+    const result = await createDemoGenerator(library).reskin({ base, theme: "cold", damageOnly: true });
+    if (!result.ok) throw new Error("expected success");
+    expect(result.monster.immunities).toEqual(["fire"]);
   });
 
   it("applies a remix theme to the main damage and lists the change", async () => {
     const base = library.find((m) => damageDealtBy(m).includes("fire"))!;
-    const result = await createDemoGenerator(library).reskin({ base, damageSwap: null, theme: "acid", move: "lob" });
+    const result = await createDemoGenerator(library).reskin({ base, theme: "acid", move: "lob" });
     if (!result.ok) throw new Error("expected success");
     expect(damageDealtBy(result.monster)).toContain("acid");
     expect(result.monster.changes?.[0]).toMatch(/^Main damage: .* → acid$/);
@@ -148,7 +155,7 @@ describe("demo reskin", () => {
 
   it("reflavors with a new name and no number changed", async () => {
     const base = library[0];
-    const result = await createDemoGenerator(library).reskin({ base, damageSwap: null, reflavor: true });
+    const result = await createDemoGenerator(library).reskin({ base, reflavor: true });
     if (!result.ok) throw new Error("expected success");
     expect(result.monster).toMatchObject({ source: "reskin", validated: false, parent_id: base.id, hit_points: base.hit_points, challenge: base.challenge });
     expect(result.monster.name).not.toBe(base.name);
