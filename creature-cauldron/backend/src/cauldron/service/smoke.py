@@ -1,6 +1,8 @@
 """A manual check of the real Haiku generator: ``python -m cauldron.service.smoke --yes``.
 
-Add ``--remix`` to try a remix instead (a theme and a signature move on a library monster, named by the real model).
+Add ``--remix`` to try a remix instead (a theme and a signature move on a library monster, named by the real model), ``--reflavor``
+to try a reflavor (new name, description and ability names), or ``--polymorph`` to let the forge choose what a library monster borrows
+from a donor (and name the legendary actions it is given).
 
 This makes REAL calls to the Anthropic API and costs a small amount of money (a fraction of a cent per call). Because of that
 it refuses to run without ``--yes``, and it uses a throwaway in-memory database and a cap of a few calls, so it can never touch
@@ -37,7 +39,11 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     parser.add_argument("--base", default="srd-ogre", help="id of the library monster to remix (default: srd-ogre)")
     parser.add_argument("--theme", default="cold", help="damage theme for the remix (default: cold)")
     parser.add_argument("--move", default="lob", help="signature move key for the remix (default: lob)")
+    parser.add_argument("--reflavor", action="store_true", help="try a reflavor of the --base library monster")
+    parser.add_argument("--polymorph", action="store_true", help="try a polymorph of --base, borrowing from --donor, the forge choosing")
+    parser.add_argument("--donor", default="srd-giant-eagle", help="id of the library monster to borrow from (default: srd-giant-eagle)")
     args = parser.parse_args(argv)
+    from_library = args.remix or args.reflavor or args.polymorph
 
     if not args.yes:
         print("This makes real calls to the Anthropic API and costs a small amount of money. Add --yes to go ahead.")
@@ -56,9 +62,14 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     settings = Settings.from_env({**env, "CAULDRON_DATABASE": ":memory:"})
     store = MonsterStore(":memory:")
     cap = DailyCap(store, limit=3)  # one try and two retries at most
-    library = load_library(settings) if args.remix else {}
+    library = load_library(settings) if from_library else {}
     service = GenerationService(settings, store, HaikuGenerator(settings), cap, library)
-    if args.remix:
+    if args.reflavor:
+        result = service.create_reskin(ReskinRequest.model_validate({"baseId": args.base, "reflavor": True}))
+    elif args.polymorph:
+        request = {"baseId": args.base, "donorId": args.donor, "forgeChooses": True, "legendary": True}
+        result = service.create_reskin(ReskinRequest.model_validate(request))
+    elif args.remix:
         result = service.create_reskin(ReskinRequest.model_validate({"baseId": args.base, "theme": args.theme, "move": args.move}))
     else:
         result = service.create(GenerateRequest.model_validate({"types": [args.type], "crMin": args.cr, "crMax": args.cr}))
@@ -72,7 +83,7 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     monster = result.monster
     print(f"OK: {monster.name} ({monster.size.value} {monster.type.value}, CR {monster.challenge.cr}, {monster.hit_points.average} HP, AC {monster.armor_class.value})")
     for note in result.notes:
-        print(f"  {'changed' if args.remix else 'corrected'}: {note}")
+        print(f"  {'changed' if from_library else 'corrected'}: {note}")
     print(f"  {monster.description}")
     return 0
 

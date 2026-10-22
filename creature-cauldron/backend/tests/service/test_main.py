@@ -55,3 +55,9 @@ def test_the_smoke_tool_needs_a_key(capsys) -> None:
 
 def test_the_remix_smoke_tool_also_refuses_without_yes(capsys) -> None:
     assert smoke(["--remix"], {"ANTHROPIC_API_KEY": "sk-ant-test"}) == 2
+
+
+def test_the_reflavor_and_polymorph_smoke_tools_also_refuse_without_yes(capsys) -> None:
+    for option in ("--reflavor", "--polymorph"):
+        assert smoke([option], {"ANTHROPIC_API_KEY": "sk-ant-test"}) == 2
+    assert "Add --yes" in capsys.readouterr().out
