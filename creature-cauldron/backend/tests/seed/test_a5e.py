@@ -1,0 +1,122 @@
+"""The A5E importer: Open5e records into validated Monsters, and the committed library file that came out of it."""
+
+import io
+import json
+from pathlib import Path
+
+import pytest
+
+from cauldron.monster import Monster
+from cauldron.options import Source
+from cauldron.rules import A5E_ATTRIBUTION, SRD_ATTRIBUTION
+from cauldron.seed import a5e
+from cauldron.validator import Outcome, Validator
+
+DATA = Path(__file__).parents[3] / "frontend" / "public" / "data"
+RAW = json.loads(a5e.RAW.read_text(encoding="utf-8"))
+
+
+def record(key: str) -> dict:
+    return next(r for r in RAW if r["key"] == key)
+
+
+# --- slimming and fetching ----------------------------------------------------------------------------------
+
+
+def test_slim_drops_art_cross_references_and_lore_paragraphs() -> None:
+    raw = {
+        "key": "a5e-mm_x",
+        "illustration": "https://example.test/art.png",
+        "crossreferences": [],
+        "document": {"name": "Monstrous Menagerie"},
+        "actions": [
+            {"name": "Bite", "desc": "A bite.", "crossreferences": {}},
+            {"name": "An acolyte is a priest in training or an assistant to a more senior member of the clergy", "desc": "Lore text."},
+            {"name": "Empty", "desc": "  "},
+        ],
+        "traits": [{"name": "Keen Senses", "desc": "Sharp."}],
+    }
+    slimmed = a5e.slim(raw)
+    assert "illustration" not in slimmed and "crossreferences" not in slimmed and "document" not in slimmed
+    assert [x["name"] for x in slimmed["actions"]] == ["Bite"] and "crossreferences" not in slimmed["actions"][0]
+    assert [x["name"] for x in slimmed["traits"]] == ["Keen Senses"]
+
+
+def test_fetch_follows_the_pages_until_there_are_no_more(monkeypatch) -> None:
+    pages = [{"results": [{"key": "a", "actions": [], "traits": []}], "next": "page2"}, {"results": [{"key": "b", "actions": [], "traits": []}], "next": None}]
+    asked: list[str] = []
+
+    def fake_urlopen(url, timeout):  # noqa: ANN001
+        asked.append(url)
+        return io.StringIO(json.dumps(pages[len(asked) - 1]))
+
+    monkeypatch.setattr(a5e.urllib.request, "urlopen", fake_urlopen)
+    assert [r["key"] for r in a5e.fetch()] == ["a", "b"]
+    assert len(asked) == 2 and "document__key=a5e-mm" in asked[0] and asked[1].endswith("page=2")
+
+
+# --- converting ------------------------------------------------------------------------------------------
+
+
+def test_text_is_made_plain_for_the_srd_parser() -> None:
+    assert a5e.clean("_Melee Weapon Attack:_ +9 to hit. _Hit:_ 19 (4d6+5) bludgeoning damage.") == "Melee Weapon Attack: +9 to hit. Hit: 19 (4d6 + 5) bludgeoning damage."
+
+
+def test_an_aboleth_is_imported_with_a_typed_attack_and_the_a5e_credit() -> None:
+    result = a5e.import_a5e([record("a5e-mm_aboleth")])
+    aboleth = result.monsters[0]
+    assert aboleth.id == "a5e-aboleth" and aboleth.source is Source.A5E and aboleth.attribution == A5E_ATTRIBUTION
+    assert aboleth.challenge.cr == "11" and aboleth.hit_points.average == 171
+    tentacle = next(a for a in aboleth.actions if a.name == "Tentacle")
+    assert tentacle.kind == "attack" and tentacle.attack.to_hit == 9  # type: ignore[union-attr]
+    assert aboleth.description == ""  # no lore comes with the statistics
+
+
+def test_a_name_already_in_the_library_gets_the_a5e_suffix() -> None:
+    plain = a5e.import_a5e([record("a5e-mm_aboleth")]).monsters[0]
+    taken = a5e.import_a5e([record("a5e-mm_aboleth")], frozenset({"aboleth"}))
+    assert plain.name == "Aboleth" and taken.monsters[0].name == "Aboleth (A5E)" and taken.renamed == ["Aboleth (A5E)"]
+
+
+def test_a_record_that_cannot_be_imported_is_skipped_and_reported_not_fatal() -> None:
+    broken = {**record("a5e-mm_aboleth"), "key": "a5e-mm_broken", "ability_scores": {"strength": "x"}}
+    result = a5e.import_a5e([broken, record("a5e-mm_aboleth")])
+    assert len(result.monsters) == 1 and "a5e-mm_broken" in result.skipped
+
+
+def test_the_largest_size_becomes_gargantuan() -> None:
+    titanic = next(r for r in RAW if r["size"]["key"] == "titanic")
+    assert a5e.import_a5e([titanic]).monsters[0].size.value == "gargantuan"
+
+
+# --- the validator knows the source ---------------------------------------------------------------------------
+
+
+def test_an_a5e_monster_must_carry_the_exact_credit_and_keeps_its_printed_numbers() -> None:
+    aboleth = a5e.import_a5e([record("a5e-mm_aboleth")]).monsters[0]
+    assert Validator().validate(aboleth).status.value != "rejected"
+    wrong = aboleth.model_copy(update={"attribution": "Somebody else's credit."})
+    report = Validator().validate(wrong)
+    assert any(f.outcome is Outcome.REJECT and "A5E credit" in f.message for f in report.findings)
+    srd_text = aboleth.model_copy(update={"attribution": SRD_ATTRIBUTION})
+    assert any(f.outcome is Outcome.REJECT for f in Validator().validate(srd_text).findings)
+
+
+# --- the library file that shipped ---------------------------------------------------------------------------
+
+
+def test_the_shipped_a5e_file_is_complete_valid_and_credits_every_monster() -> None:
+    shipped = [Monster.model_validate(m) for m in json.loads((DATA / "a5e-monsters.json").read_text(encoding="utf-8"))]
+    assert len(shipped) == len(RAW) >= 580
+    assert all(m.source is Source.A5E and m.attribution == A5E_ATTRIBUTION and m.id.startswith("a5e-") and not m.description for m in shipped)
+
+
+def test_names_and_ids_are_unique_across_every_library_file() -> None:
+    everyone = [m for f in ("sample-monsters.json", "srd-monsters.json", "a5e-monsters.json") for m in json.loads((DATA / f).read_text(encoding="utf-8"))]
+    assert len({m["id"] for m in everyone}) == len(everyone)
+    assert len({m["name"].lower() for m in everyone}) == len(everyone)
+
+
+@pytest.mark.parametrize("name", ["Aboleth (A5E)"])
+def test_a_renamed_monster_is_in_the_shipped_file(name: str) -> None:
+    assert name in {m["name"] for m in json.loads((DATA / "a5e-monsters.json").read_text(encoding="utf-8"))}

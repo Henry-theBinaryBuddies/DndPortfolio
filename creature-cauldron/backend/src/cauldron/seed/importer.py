@@ -126,8 +126,9 @@ def _type_and_subtypes(raw: dict) -> tuple[CreatureType, list[str]]:
 # --- one monster ----------------------------------------------------------------------------------------
 
 
-def import_monster(raw: dict) -> ImportedMonster:
-    """Converts one raw SRD entry. Applies the known corrections first."""
+def import_monster(raw: dict, *, source: Source = Source.SRD, attribution: str = SRD_ATTRIBUTION, id_prefix: str = "srd") -> ImportedMonster:
+    """Converts one raw SRD entry. Applies the known corrections first. The A5E importer reuses this with its own source,
+    credit and id prefix."""
     raw = {**raw, **OVERRIDES.get(raw["index"], {})}
     notes: list[str] = []
 
@@ -183,12 +184,12 @@ def import_monster(raw: dict) -> ImportedMonster:
 
     creature_type, subtypes = _type_and_subtypes(raw)
     monster = Monster(
-        id=f"srd-{raw['index']}",
+        id=f"{id_prefix}-{raw['index']}",
         schema_version=1,
         name=raw["name"],
-        source=Source.SRD,
+        source=source,
         validated=False,
-        attribution=SRD_ATTRIBUTION,
+        attribution=attribution,
         size=Size(raw["size"].lower()),
         type=creature_type,
         subtypes=subtypes,

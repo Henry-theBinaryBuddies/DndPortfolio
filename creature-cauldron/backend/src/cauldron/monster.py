@@ -27,7 +27,7 @@ from cauldron.options import (
 )
 from cauldron.rules import cr_value, proficiency_bonus, xp_for_cr
 
-Score = Annotated[int, Field(ge=1, le=30)]
+Score = Annotated[int, Field(ge=1, le=40)]  # the rules stop at 30, but some published creatures go higher
 Short = Annotated[str, Field(min_length=1, max_length=100)]
 
 _ORDINALS = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"]

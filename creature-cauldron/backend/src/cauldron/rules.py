@@ -16,6 +16,13 @@ SRD_ATTRIBUTION = (
     "https://creativecommons.org/licenses/by/4.0/legalcode."
 )
 
+# The credit for the A5E monsters: EN Publishing's own wording, then the licences they are used under. The full licence texts and
+# the Section 15 notices are in frontend/public/legal/.
+A5E_ATTRIBUTION = (
+    "A5E System Reference Document (A5ESRD), © EN Publishing, www.a5esrd.com; based on Level Up: Advanced 5th Edition, "
+    "www.levelup5e.com. Used under the Open Game License v1.0a and the ORC License; see the Licences page."
+)
+
 # Experience points by challenge rating (SRD 5.1, page 258). CR 0 is "0 or 10"; 10 is used, as the front end does.
 XP_BY_CR: dict[str, int] = {
     "0": 10,

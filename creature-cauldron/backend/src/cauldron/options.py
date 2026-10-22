@@ -113,6 +113,7 @@ class Ability(StrEnum):
 
 class Source(StrEnum):
     SRD = "srd"
+    A5E = "a5e"  # Monstrous Menagerie (Advanced 5th Edition), imported from Open5e
     CURATED = "curated"
     AI = "ai"
     RESKIN = "reskin"

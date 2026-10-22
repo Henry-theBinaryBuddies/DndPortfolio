@@ -29,7 +29,7 @@ from cauldron.dice import ability_modifier, format_signed, parse_dice
 from cauldron.features import derive_features
 from cauldron.monster import Challenge, HitPoints, Monster
 from cauldron.options import Ability, Source
-from cauldron.rules import CR_LABELS, SRD_ATTRIBUTION, hit_die
+from cauldron.rules import A5E_ATTRIBUTION, CR_LABELS, SRD_ATTRIBUTION, hit_die
 
 # Attack bonuses and save DCs may sit up to this far above the plain rule (proficiency + ability). Magic
 # weapons, expertise and the level-up template all add a little, so only larger gaps are treated as mistakes.
@@ -321,7 +321,7 @@ class CrConsistencyCheck(Check):
 
 
 class AttributionCheck(Check):
-    """SRD monsters must carry the exact CC-BY attribution, and nobody may misquote it."""
+    """SRD monsters must carry the exact CC-BY attribution, A5E monsters the exact A5E credit, and nobody may misquote the SRD's."""
 
     name = "attribution"
 
@@ -330,6 +330,9 @@ class AttributionCheck(Check):
         if monster.source is Source.SRD:
             if text != SRD_ATTRIBUTION:
                 return self._result(monster, self._finding(Outcome.REJECT, "An SRD monster must carry the exact SRD 5.1 attribution statement."))
+        elif monster.source is Source.A5E:
+            if text != A5E_ATTRIBUTION:
+                return self._result(monster, self._finding(Outcome.REJECT, "An A5E monster must carry the exact A5E credit."))
         elif text is not None and "system reference document" in text.lower() and text != SRD_ATTRIBUTION:
             return self._result(monster, self._finding(Outcome.REJECT, "The SRD attribution must be quoted exactly, not paraphrased."))
         return self._result(monster)
@@ -362,7 +365,7 @@ class Validator:
         context = context or ValidationContext()
         current = monster
         findings: list[Finding] = []
-        official = monster.source is Source.SRD
+        official = monster.source in (Source.SRD, Source.A5E)
 
         for check in self.checks:
             result = check.run(current, context)

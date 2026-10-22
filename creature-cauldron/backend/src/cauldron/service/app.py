@@ -48,7 +48,7 @@ log = logging.getLogger("cauldron")
 
 API = "/api/v1"
 MAX_BODY_BYTES = 64_000
-LIBRARY_FILES = ("sample-monsters.json", "srd-monsters.json")
+LIBRARY_FILES = ("sample-monsters.json", "srd-monsters.json", "a5e-monsters.json")
 
 _STATUS = {
     FailureReason.INVALID: 422,

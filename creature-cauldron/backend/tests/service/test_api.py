@@ -312,10 +312,10 @@ def test_the_automatic_docs_pages_are_switched_off(make) -> None:
 # --- loading the static library ------------------------------------------------------------------------
 
 
-def test_the_static_library_loads_the_samples_and_the_srd_monsters() -> None:
+def test_the_static_library_loads_the_samples_the_srd_and_the_a5e_monsters() -> None:
     library = load_library(Settings.from_env({}))
-    assert len(library) == 353
-    assert "srd-goblin" in library
+    assert len(library) == 353 + 586
+    assert "srd-goblin" in library and "a5e-aboleth" in library
     assert all(isinstance(m, Monster) for m in library.values())
 
 

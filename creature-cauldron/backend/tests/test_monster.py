@@ -62,8 +62,10 @@ def test_bad_values_are_rejected(field: str, value: object) -> None:
         Monster.model_validate({**SAMPLES[0], field: value})
 
 
-def test_ability_scores_must_be_1_to_30() -> None:
-    for score in (0, 31):
+def test_ability_scores_must_be_1_to_40() -> None:
+    abilities = {**SAMPLES[0]["abilities"], "str": 38}
+    assert Monster.model_validate({**SAMPLES[0], "abilities": abilities}).abilities.str == 38  # some published creatures pass 30
+    for score in (0, 41):
         abilities = {**SAMPLES[0]["abilities"], "str": score}
         with pytest.raises(ValidationError):
             Monster.model_validate({**SAMPLES[0], "abilities": abilities})
