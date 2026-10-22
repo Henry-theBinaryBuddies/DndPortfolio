@@ -203,6 +203,8 @@ export default function ReskinPanel({ monster, mode, resting = false, donors = [
             </>
           )}
           {optionsMessage && <p className="detail-note">{optionsMessage}</p>}
+          {!optionsMessage && donorName.trim() !== "" && donor === null && <p className="detail-note">No creature by that name. Pick one from the list.</p>}
+          {!optionsMessage && donor !== null && options === null && <p className="detail-note">Looking up what it could lend…</p>}
         </>
       )}
 

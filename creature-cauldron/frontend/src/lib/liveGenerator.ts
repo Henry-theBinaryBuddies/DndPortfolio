@@ -145,6 +145,7 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
         if (isObject(answer.data) && answer.data.ok === true && Array.isArray(answer.data.options)) {
           return { ok: true, options: answer.data.options.filter(isBorrowOption) };
         }
+        if (answer.status === 404) return { ok: false, reason: "error", message: "This forge does not know Polymorph yet: restart the server." };
         const result = toResult(answer.status, answer.data, answer.retryAfter);
         if (result.ok) return { ok: false, reason: "error", message: "The forge sent an answer the page could not read." };
         return result;
