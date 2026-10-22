@@ -94,17 +94,11 @@ def swap_damage_type(monster: Monster, old: DamageType, new: DamageType, defence
 # --- the monster's own name in its text -----------------------------------------------------------------
 
 
-def retarget_name(monster: Monster, old_name: str, new_name: str) -> Monster:
-    """A copy whose text calls the monster by its new name wherever the text used the old one.
-
-    SRD text speaks of the monster by name ("If damage reduces the zombie to 0 hit points..."), so a reskin called
-    "Ironbound Revenant" would still say "the zombie". Whole words only, case-insensitive. A mention written in lower
-    case (the SRD convention) becomes the new name in lower case; a capitalised one keeps the new name's capitals. A
-    name in brackets or after a comma ("Giant Rat (Diseased)") is also matched by its plain part ("giant rat").
-    """
+def name_rewriter(old_name: str, new_name: str) -> Callable[[str | None], str | None]:
+    """A function that makes a piece of text call a monster by its new name wherever it used the old one (see `retarget_name`)."""
     old_name, new_name = old_name.strip(), new_name.strip()
     if not old_name or old_name.lower() == new_name.lower():
-        return monster
+        return lambda text: text
     plain = re.sub(r"\s*\(.*?\)", "", old_name).split(",")[0].strip()
     # One pass with both spellings, longest first, so replaced text is never searched again.
     alternatives = sorted({old_name, plain} - {""}, key=len, reverse=True)
@@ -115,7 +109,18 @@ def retarget_name(monster: Monster, old_name: str, new_name: str) -> Monster:
             return None
         return pattern.sub(lambda m: new_name.lower() if m.group(0) == m.group(0).lower() else new_name, text)
 
-    return _rewrite_text(monster, said)
+    return said
+
+
+def retarget_name(monster: Monster, old_name: str, new_name: str) -> Monster:
+    """A copy whose text calls the monster by its new name wherever the text used the old one.
+
+    SRD text speaks of the monster by name ("If damage reduces the zombie to 0 hit points..."), so a reskin called
+    "Ironbound Revenant" would still say "the zombie". Whole words only, case-insensitive. A mention written in lower
+    case (the SRD convention) becomes the new name in lower case; a capitalised one keeps the new name's capitals. A
+    name in brackets or after a comma ("Giant Rat (Diseased)") is also matched by its plain part ("giant rat").
+    """
+    return _rewrite_text(monster, name_rewriter(old_name, new_name))
 
 
 # --- level up -------------------------------------------------------------------------------------------

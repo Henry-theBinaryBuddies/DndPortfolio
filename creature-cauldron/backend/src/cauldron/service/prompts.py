@@ -61,6 +61,9 @@ class RenameContext:
     reflavor: bool = False  # a new look only: no number changes
     rename_candidates: tuple[str, ...] = ()  # the abilities the AI may give new names to
     avoid_names: tuple[str, ...] = ()  # the names of the new looks already made, so this one differs
+    donor_name: str | None = None  # a polymorph: the creature the features come from
+    donor_description: str | None = None
+    graft_options: tuple[tuple[str, str], ...] = ()  # (key, label) of what the AI may pick from when the forge chooses
 
 
 def clean_feedback(feedback: Sequence[str]) -> list[str]:
@@ -113,7 +116,28 @@ def _reflavor_prompt(context: RenameContext) -> str:
     return "\n".join(lines)
 
 
+def _graft_prompt(context: RenameContext) -> str:
+    lines = [
+        f"A monster called {context.base_name} ({context.size} {context.creature_type}, CR {context.cr}) is being polymorphed: "
+        f"it takes on features of another creature, {context.donor_name}."
+    ]
+    lines.append(f"{context.base_name}: {context.base_description}")
+    lines.append(f"{context.donor_name}: {context.donor_description}")
+    if context.graft_options:
+        lines.append(
+            "Pick the features that make the best, most coherent hybrid, one to four of them, as their keys exactly as written in `picks`:"
+        )
+        lines += [f"- {key}: {label}" for key, label in context.graft_options]
+        lines.append("Then write a new name and a short description for the hybrid as it will be with those features.")
+    else:
+        lines.append(f"What it borrowed: {'; '.join(context.changes)}.")
+        lines.append("Write a new name and a short description for the hybrid. Do not mention numbers.")
+    return "\n".join(lines)
+
+
 def rename_prompt(context: RenameContext, feedback: Sequence[str]) -> Prompt:
+    if context.donor_name is not None:
+        return Prompt(system=_NAME_RULES, user=_graft_prompt(context) + _feedback_block(feedback))
     if context.reflavor:
         return Prompt(system=_NAME_RULES, user=_reflavor_prompt(context) + _feedback_block(feedback))
     changes = "; ".join(context.changes)

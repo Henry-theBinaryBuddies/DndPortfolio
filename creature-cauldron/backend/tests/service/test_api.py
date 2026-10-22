@@ -344,3 +344,23 @@ def test_a_reflavor_over_the_wire(make, sample) -> None:
     assert response.status_code == 200
     body = response.json()["monster"]
     assert body["name"] == "Saltwind Duelist" and body["changes"][0].startswith("Reflavored")
+
+
+def test_graft_options_over_the_wire(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[], library=[base, donor])
+    response = rig.client.post("/api/v1/graft/options", json={"baseId": base.id, "donorId": donor.id})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True and {"key": "speed:fly", "kind": "movement", "label": "Fly 60 ft."} in body["options"]
+    bad = rig.client.post("/api/v1/graft/options", json={"baseId": base.id, "donorId": "nobody"})
+    assert bad.status_code == 422 and bad.json()["reason"] == "invalid"
+
+
+def test_a_polymorph_over_the_wire(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[GeneratedName("Stormwake Cutthroat", "A blend.", "scripted", 5, 5)], library=[base, donor])
+    response = rig.client.post("/api/v1/reskin", json={"baseId": base.id, "donorId": donor.id, "borrow": ["speed:fly"]})
+    assert response.status_code == 200
+    body = response.json()["monster"]
+    assert body["name"] == "Stormwake Cutthroat" and body["speeds"]["fly"] == donor.speeds.fly

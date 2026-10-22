@@ -18,6 +18,9 @@ interface StatBlockDialogProps {
   resting: boolean;
   /** Makes a reskin of the open monster. Resolves to null on success, or to a message when it failed. */
   onReskin: (request: ReskinRequest) => Promise<string | null>;
+  /** Every monster the page knows, for choosing a polymorph donor from, and the way to ask what a donor could lend. */
+  donors: Monster[];
+  graftOptions: Generator["graftOptions"];
   onClose: () => void;
   onToggleFavorite: () => void;
   onAdd: () => void;
@@ -34,6 +37,8 @@ export default function StatBlockDialog({
   generatorMode,
   resting,
   onReskin,
+  donors,
+  graftOptions,
   onClose,
   onToggleFavorite,
   onAdd,
@@ -108,7 +113,15 @@ export default function StatBlockDialog({
             <span id="add-note" role="status" className="detail-note">
               {addNote}
             </span>
-            <ReskinPanel key={`reskin-${monster.id}`} monster={monster} mode={generatorMode} resting={resting} onReskin={onReskin} />
+            <ReskinPanel
+              key={`reskin-${monster.id}`}
+              monster={monster}
+              mode={generatorMode}
+              resting={resting}
+              donors={donors}
+              graftOptions={graftOptions}
+              onReskin={onReskin}
+            />
             <ExportButtons key={monster.id} monster={monster} />
             <button type="button" className="close-button" aria-label="Close stat block" onClick={onClose}>
               <span aria-hidden="true">×</span>

@@ -10,6 +10,7 @@ import { DAMAGE_THEMES, DAMAGE_TYPES } from "./options";
 // NOT checked or recalculated, so everything it makes is marked unvalidated. It runs only when the page is
 // opened with ?generator=demo.
 
+const POLYMORPH_NEEDS_THE_FORGE = "Polymorph needs the live forge: the demo can't borrow features.";
 const PREFIXES = ["Ashen", "Gilded", "Hollow", "Thorned", "Gloaming", "Rimed", "Sunken", "Vagrant"];
 
 /** Every use of `from` replaced with `to` across a monster's damage, resistances and themes. */
@@ -94,8 +95,11 @@ export function createDemoGenerator(library: Monster[]): Generator {
       );
     },
 
+    graftOptions: () => Promise.resolve({ ok: false, reason: "error", message: POLYMORPH_NEEDS_THE_FORGE }),
+
     reskin(request: ReskinRequest): Promise<GeneratorResult> {
       const { base, theme, damageOnly, move, levelUp, reflavor } = request;
+      if (request.donorId) return Promise.resolve({ ok: false, reason: "error", message: POLYMORPH_NEEDS_THE_FORGE });
       if (reflavor) {
         const name = `${PREFIXES[count % PREFIXES.length]} ${base.name}`;
         const id = `demo-${unique()}-${slugify(name)}`;

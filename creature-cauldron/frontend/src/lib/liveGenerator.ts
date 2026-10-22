@@ -7,6 +7,8 @@ import {
   type Generator,
   type GeneratorFailure,
   type GeneratorResult,
+  type BorrowOption,
+  type GraftOptionsResult,
   type ReskinRequest,
 } from "./generatorApi";
 
@@ -71,6 +73,10 @@ export async function fetchJson(url: string, init: RequestInit, options: HttpOpt
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
+const BORROW_KINDS = ["movement", "sense", "trait", "attack", "damage"];
+const isBorrowOption = (value: unknown): value is BorrowOption =>
+  isObject(value) && typeof value.key === "string" && typeof value.label === "string" && BORROW_KINDS.includes(value.kind as string);
+
 function failure(reason: GeneratorFailure, message: string): GeneratorResult {
   return { ok: false, reason, message };
 }
@@ -124,7 +130,28 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
         move: request.move ?? null,
         levelUp: request.levelUp ?? false,
         reflavor: request.reflavor ?? false,
+        donorId: request.donorId ?? null,
+        borrow: request.borrow ?? [],
+        forgeChooses: request.forgeChooses ?? false,
       }),
+
+    async graftOptions(baseId: string, donorId: string): Promise<GraftOptionsResult> {
+      try {
+        const answer = await fetchJson(
+          apiUrl(baseUrl, "/graft/options"),
+          { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ baseId, donorId }) },
+          options,
+        );
+        if (isObject(answer.data) && answer.data.ok === true && Array.isArray(answer.data.options)) {
+          return { ok: true, options: answer.data.options.filter(isBorrowOption) };
+        }
+        const result = toResult(answer.status, answer.data, answer.retryAfter);
+        if (result.ok) return { ok: false, reason: "error", message: "The forge sent an answer the page could not read." };
+        return result;
+      } catch {
+        return { ok: false, reason: "offline", message: UNREACHABLE_MESSAGE };
+      }
+    },
 
     async status(): Promise<ForgeStatus> {
       try {

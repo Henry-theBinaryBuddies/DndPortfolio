@@ -33,7 +33,24 @@ export interface ReskinRequest {
   levelUp?: boolean;
   /** A new name, description and ability names, with every number as it was. Stands alone: never combined with the rest. */
   reflavor?: boolean;
+  /** Polymorph: the id of a creature to borrow features from. Needs `borrow` or `forgeChooses`; may also level up. */
+  donorId?: string;
+  /** Polymorph: the keys of the donor's features to take (see `graftOptions`). */
+  borrow?: string[];
+  /** Polymorph: let the forge pick which features to borrow. */
+  forgeChooses?: boolean;
 }
+
+export type BorrowKind = "movement" | "sense" | "trait" | "attack" | "damage";
+
+/** One thing a donor could lend a base: a key to send back, what kind of thing it is, and its name for the visitor. */
+export interface BorrowOption {
+  key: string;
+  kind: BorrowKind;
+  label: string;
+}
+
+export type GraftOptionsResult = { ok: true; options: BorrowOption[] } | { ok: false; reason: GeneratorFailure; message: string };
 
 /** Why a request did not produce a monster. */
 export type GeneratorFailure = "offline" | "resting" | "rate-limited" | "invalid" | "error";
@@ -50,6 +67,8 @@ export interface Generator {
   readonly mode: "offline" | "demo" | "live";
   generate(request: GenerateRequest): Promise<GeneratorResult>;
   reskin(request: ReskinRequest): Promise<GeneratorResult>;
+  /** What the donor could lend the base. Free: the server makes no AI call to answer it. */
+  graftOptions(baseId: string, donorId: string): Promise<GraftOptionsResult>;
   /** Only a live generator can ask a server how it is. The others leave this out. */
   status?(): Promise<ForgeStatus>;
 }
@@ -64,6 +83,7 @@ export const offlineGenerator: Generator = {
   mode: "offline",
   generate: () => Promise.resolve({ ok: false, reason: "offline", message: OFFLINE_MESSAGE }),
   reskin: () => Promise.resolve({ ok: false, reason: "offline", message: OFFLINE_MESSAGE }),
+  graftOptions: () => Promise.resolve({ ok: false, reason: "offline", message: OFFLINE_MESSAGE }),
 };
 
 /** The message to show for a failure, in the app's own words. */

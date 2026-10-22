@@ -245,3 +245,11 @@ def test_a_reflavor_reply_with_no_renames_is_still_good() -> None:
     reflavor = RenameContext("Wolf", "A grey hunter.", "beast", "medium", "1/4", (), reflavor=True)
     result = generator(FakeClient(reply("submit_name", {"name": "Rimefang", "description": "Frost-furred."}))).rename(reflavor, [])
     assert result.renames == ()
+
+
+def test_a_polymorph_the_forge_chooses_returns_the_picks() -> None:
+    graft = RenameContext("Wolf", "A grey hunter.", "beast", "medium", "1/4", (), donor_name="Giant Eagle", donor_description="A big bird.", graft_options=(("speed:fly", "Fly 80 ft."),))
+    client = FakeClient(reply("submit_name", {"name": "Skywolf", "description": "A winged hunter.", "picks": ["speed:fly"]}))
+    result = generator(client).rename(graft, [])
+    assert result.picks == ("speed:fly",)
+    assert set(client.requests[0]["tools"][0]["input_schema"]["properties"]) == {"name", "description", "picks"}

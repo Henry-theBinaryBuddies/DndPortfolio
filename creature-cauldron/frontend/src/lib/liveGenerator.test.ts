@@ -160,6 +160,9 @@ describe("the live generator: reskinning", () => {
       move: null,
       levelUp: true,
       reflavor: false,
+      donorId: null,
+      borrow: [],
+      forgeChooses: false,
     });
     expect(JSON.stringify(calls[0].body)).not.toContain(drake.name);
   });
@@ -167,7 +170,7 @@ describe("the live generator: reskinning", () => {
   it("sends null for the parts that were not chosen", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
     await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, levelUp: true });
-    expect(calls[0].body).toEqual({ baseId: drake.id, theme: null, damageOnly: false, move: null, levelUp: true, reflavor: false });
+    expect(calls[0].body).toEqual({ baseId: drake.id, theme: null, damageOnly: false, move: null, levelUp: true, reflavor: false, donorId: null, borrow: [], forgeChooses: false });
   });
 
   it("sends a remix as a theme and a move, and passes surprise through for the server to decide", async () => {
@@ -175,14 +178,43 @@ describe("the live generator: reskinning", () => {
     const live = createLiveGenerator("http://x.test", { fetchFn: fn });
     await live.reskin({ base: drake, theme: "cold", move: "lob" });
     await live.reskin({ base: drake, theme: "surprise", move: "surprise", levelUp: false });
-    expect(calls[0].body).toEqual({ baseId: drake.id, theme: "cold", damageOnly: false, move: "lob", levelUp: false, reflavor: false });
-    expect(calls[1].body).toEqual({ baseId: drake.id, theme: "surprise", damageOnly: false, move: "surprise", levelUp: false, reflavor: false });
+    expect(calls[0].body).toEqual({ baseId: drake.id, theme: "cold", damageOnly: false, move: "lob", levelUp: false, reflavor: false, donorId: null, borrow: [], forgeChooses: false });
+    expect(calls[1].body).toEqual({ baseId: drake.id, theme: "surprise", damageOnly: false, move: "surprise", levelUp: false, reflavor: false, donorId: null, borrow: [], forgeChooses: false });
   });
 
   it("sends a reflavor on its own", async () => {
     const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
     await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, reflavor: true });
-    expect(calls[0].body).toEqual({ baseId: drake.id, theme: null, damageOnly: false, move: null, levelUp: false, reflavor: true });
+    expect(calls[0].body).toEqual({ baseId: drake.id, theme: null, damageOnly: false, move: null, levelUp: false, reflavor: true, donorId: null, borrow: [], forgeChooses: false });
+  });
+
+  it("sends a polymorph as a donor and the keys to borrow, or lets the forge choose", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    const live = createLiveGenerator("http://x.test", { fetchFn: fn });
+    await live.reskin({ base: drake, donorId: "srd-wolf", borrow: ["speed:fly"], levelUp: true });
+    await live.reskin({ base: drake, donorId: "srd-wolf", forgeChooses: true });
+    expect(calls[0].body).toMatchObject({ baseId: drake.id, donorId: "srd-wolf", borrow: ["speed:fly"], forgeChooses: false, levelUp: true });
+    expect(calls[1].body).toMatchObject({ donorId: "srd-wolf", borrow: [], forgeChooses: true });
+  });
+
+  it("asks what a donor could lend and keeps only well-formed options", async () => {
+    const answer = { ok: true, options: [{ key: "speed:fly", kind: "movement", label: "Fly 60 ft." }, { key: "x", kind: "nonsense", label: "?" }, "junk"] };
+    const { fn, calls } = fakeFetch(() => json(answer));
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn }).graftOptions("base-id", "donor-id");
+    expect(calls[0].url).toBe("http://x.test/api/v1/graft/options");
+    expect(calls[0].body).toEqual({ baseId: "base-id", donorId: "donor-id" });
+    expect(result).toEqual({ ok: true, options: [{ key: "speed:fly", kind: "movement", label: "Fly 60 ft." }] });
+  });
+
+  it("passes a refusal about the donor through, and reports an unreachable server as offline", async () => {
+    const refusal = fakeFetch(() => json({ ok: false, reason: "invalid", message: "A creature cannot borrow from itself." }, 422));
+    expect(await createLiveGenerator("http://x.test", { fetchFn: refusal.fn }).graftOptions("a", "a")).toEqual({
+      ok: false,
+      reason: "invalid",
+      message: "A creature cannot borrow from itself.",
+    });
+    const down = await createLiveGenerator("http://x.test", { fetchFn: () => Promise.reject(new Error("down")) }).graftOptions("a", "b");
+    expect(down).toMatchObject({ ok: false, reason: "offline" });
   });
 
   it("maps answers the same way as generating", async () => {

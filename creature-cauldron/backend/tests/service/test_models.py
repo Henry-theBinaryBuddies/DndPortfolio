@@ -149,3 +149,33 @@ def test_a_reflavor_does_not_share_a_cache_key_with_a_plain_request() -> None:
     reflavor = ReskinRequest.model_validate({"baseId": "a", "reflavor": True})
     other = ReskinRequest.model_validate({"baseId": "a", "levelUp": True})
     assert reflavor.cache_key != other.cache_key
+
+
+def test_a_polymorph_names_a_donor_and_what_to_borrow() -> None:
+    r = ReskinRequest.model_validate({"baseId": "a", "donorId": "b", "borrow": ["speed:fly", "attack:Bite"], "levelUp": True})
+    assert (r.donor_id, r.borrow, r.forge_chooses, r.level_up) == ("b", ["speed:fly", "attack:Bite"], False, True)
+    assert ReskinRequest.model_validate({"baseId": "a", "donorId": "b", "forgeChooses": True}).forge_chooses is True
+
+
+def test_a_polymorph_must_be_whole_and_stand_apart_from_themes_moves_and_reflavors() -> None:
+    bad = (
+        {"borrow": ["speed:fly"]},  # no donor
+        {"forgeChooses": True},  # no donor
+        {"donorId": "b"},  # nothing to borrow
+        {"donorId": "b", "borrow": ["speed:fly"], "forgeChooses": True},  # both
+        {"donorId": "b", "borrow": ["speed:fly"], "theme": "cold"},
+        {"donorId": "b", "borrow": ["speed:fly"], "move": "lob"},
+        {"donorId": "b", "borrow": ["speed:fly"], "reflavor": True},
+        {"donorId": "b", "borrow": [f"speed:{n}" for n in range(11)]},  # too many
+    )
+    for extra in bad:
+        with pytest.raises(ValidationError):
+            ReskinRequest.model_validate({"baseId": "a", **extra})
+
+
+def test_the_cache_key_of_a_polymorph_ignores_the_order_of_the_ticks_but_not_the_donor_or_the_ticks() -> None:
+    def key(**extra) -> str:
+        return ReskinRequest.model_validate({"baseId": "a", **extra}).cache_key
+
+    assert key(donorId="b", borrow=["x", "y"]) == key(donorId="b", borrow=["y", "x"])
+    assert len({key(donorId="b", borrow=["x"]), key(donorId="c", borrow=["x"]), key(donorId="b", borrow=["x", "y"]), key(levelUp=True)}) == 4

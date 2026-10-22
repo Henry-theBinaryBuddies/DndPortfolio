@@ -9,7 +9,9 @@ Endpoints (all under /api/v1):
 * GET  /health    {"status": "ok" | "resting"}
 * GET  /library   every monster the server has generated
 * POST /generate  filters in, a monster or a failure out
-* POST /reskin    a base monster id plus a damage swap, or a theme and/or move, and/or a level up in, a monster or a failure out
+* POST /reskin    a base monster id plus a reflavor, a theme and/or move, a polymorph (a donor id and what to borrow), and/or a level up in,
+                  a monster or a failure out
+* POST /graft/options  a base id and a donor id in, the donor's features the base could borrow (free: no AI) or a failure out
 
 Failures always have the same body, ``{"ok": false, "reason": ..., "message": ...}``, which is what the web page already
 knows how to show. The HTTP status says the same thing for anything else that reads it: 422 invalid, 429 rate-limited
@@ -29,7 +31,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from cauldron.monster import Monster
 from cauldron.service.limits import RateLimiter, client_address
-from cauldron.service.models import FailureReason, GenerateFailure, GenerateRequest, GenerateSuccess, ReskinRequest
+from cauldron.service.models import (
+    BorrowOption,
+    FailureReason,
+    GenerateFailure,
+    GenerateRequest,
+    GenerateSuccess,
+    GraftOptions,
+    GraftOptionsRequest,
+    ReskinRequest,
+)
 from cauldron.service.service import RESTING_MESSAGE, GenerationService
 from cauldron.service.settings import Settings
 
@@ -183,5 +194,16 @@ def create_app(settings: Settings, service: GenerationService) -> FastAPI:
             "A reskin made earlier for the same choices.",
             lambda: service.create_reskin(settled),
         )
+
+    @app.post(f"{API}/graft/options")
+    def graft_options(body: GraftOptionsRequest, request: Request) -> JSONResponse:
+        decision = cache_limiter.allow(visitor(request))
+        if not decision.allowed:
+            return too_many(decision.retry_after)
+        found = service.graft_options(body.base_id, body.donor_id)
+        if isinstance(found, GenerateFailure):
+            return _failure_response(found)
+        options = GraftOptions(options=[BorrowOption(key=b.key, kind=b.kind, label=b.label) for b in found])
+        return JSONResponse(options.model_dump(mode="json"))
 
     return app

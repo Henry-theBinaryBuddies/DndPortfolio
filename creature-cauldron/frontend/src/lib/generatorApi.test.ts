@@ -161,4 +161,10 @@ describe("demo reskin", () => {
     expect(result.monster.name).not.toBe(base.name);
     expect(result.monster.changes?.[0]).toMatch(/^Reflavored/);
   });
+
+  it("cannot polymorph: borrowing needs the live forge", async () => {
+    const demo = createDemoGenerator(library);
+    expect(await demo.reskin({ base: library[0], donorId: library[1].id, forgeChooses: true })).toMatchObject({ ok: false, message: expect.stringMatching(/live forge/) });
+    expect(await demo.graftOptions(library[0].id, library[1].id)).toMatchObject({ ok: false, message: expect.stringMatching(/live forge/) });
+  });
 });

@@ -311,6 +311,8 @@ export default function App() {
         generatorMode={generator.mode}
         resting={forgeStatus === "resting"}
         onReskin={runReskin}
+        donors={library}
+        graftOptions={generator.graftOptions}
         onClose={() => setOpenId(null)}
         onToggleFavorite={() => {
           if (opened) setFavorites(toggle(favorites, opened.id));

@@ -174,3 +174,15 @@ def test_a_reflavor_prompt_lists_the_abilities_to_rename_and_the_looks_to_avoid(
 
 def test_a_reflavor_with_nothing_to_rename_does_not_ask_for_renames() -> None:
     assert "renames" not in rename_prompt(context(reflavor=True), []).user
+
+
+def test_a_polymorph_prompt_names_the_donor_and_what_was_borrowed() -> None:
+    prompt = rename_prompt(context(donor_name="Stormhide Drake", donor_description="A grey drake.", changes=("Borrowed movement: Fly 60 ft.",)), [])
+    assert "Stormhide Drake" in prompt.user and "A grey drake." in prompt.user and "Fly 60 ft." in prompt.user
+    assert "`picks`" not in prompt.user
+
+
+def test_when_the_forge_chooses_the_prompt_lists_the_options_to_pick_from() -> None:
+    options = (("speed:fly", "Fly 60 ft."), ("attack:Bite", "Bite (piercing, melee attack)"))
+    prompt = rename_prompt(context(donor_name="Stormhide Drake", donor_description="A grey drake.", graft_options=options), [])
+    assert "`picks`" in prompt.user and "- speed:fly: Fly 60 ft." in prompt.user and "- attack:Bite: Bite (piercing, melee attack)" in prompt.user

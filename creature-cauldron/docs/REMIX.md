@@ -34,7 +34,7 @@ other reskin, stores it, and returns it with a list of **what changed**. The old
 | `backend/src/cauldron/service/service.py` | `settle` (decide surprises), `create_reskin`, `_shape` (the numbers by code), `_accept_reskin` (validate and store). |
 | `backend/src/cauldron/service/prompts.py`, `draft.py`, `haiku.py` | The naming prompt, the tool schema (with a `move_name` only when a move was chosen) and the Haiku call. |
 | `frontend/src/lib/remixMoves.ts` | The move menu shown on the page: a copy of the server's list. |
-| `frontend/src/components/ReskinPanel.tsx` | The panel: Reflavor, then Remix. |
+| `frontend/src/components/ReskinPanel.tsx` | The panel: Reflavor, then Remix or Polymorph. |
 | `frontend/src/components/StatBlockDialog.tsx` | The "What changed" list, shown from `monster.changes`. |
 
 ## Themes
@@ -123,6 +123,35 @@ validator rejects it combined with a swap, theme, move or level up.
 - A monster keeps at most 3 reflavors (`MAX_REFLAVORS`, stored under `reflavor:<base id>:<n>` in the `reskins` table). The first
   three presses each make a new one, told the names of the earlier ones so it differs; after that a press returns one of the three
   at random, free of charge.
+
+## Polymorph, graft mode (`donorId` + `borrow`)
+
+A monster borrows chosen features from a second creature, by code (`remix/graft.py`). The base keeps its own hit points, armor
+class, ability scores, skills and attacks. `POST /api/v1/graft/options` (base id, donor id; free, no AI) lists what the donor
+could lend, each with a stable key:
+
+| Key | What it lends |
+|---|---|
+| `speed:fly` / `swim` / `climb` / `burrow` | a movement mode the base lacks or has more slowly |
+| `sense:darkvision` / `blindsight` / `tremorsense` / `truesight` | a sense likewise |
+| `damage` | the donor's main elemental damage, with its defences (what a theme does) |
+| `trait:<name>` | one trait that stands alone (never Legendary Resistance, Spellcasting or a trait that points at another action) |
+| `attack:<name>` | one typed attack or save, or one text action that deals damage (SRD breath weapons are text) |
+
+Borrowed numbers are brought down to the base: an attack is rolled from the base's damage budget (75% of its best attack) at the
+base's own attack bonus, a save uses the base's DC, damage and DCs written inside borrowed text are capped, an area is no bigger
+than the base could use, and the donor's name in the text becomes the base's. A borrowed attack is an alternative to the base's
+attacks, never added to its Multiattack. Names are compared the way the CR measure compares them (`Claws` and `Claw` are one), so
+a borrowed attack can never replace the price of one the base already has.
+
+Request: `{"baseId": ..., "donorId": ..., "borrow": ["speed:fly", "attack:Bite"], "levelUp": false}`, or `"forgeChooses": true`
+in place of `borrow`: the AI is then shown the same list and picks one to four keys (`picks`) in the same call that names the
+hybrid, so it costs no more than any reskin. A polymorph cannot be combined with a theme, move or reflavor. The same ticks give
+the same hybrid, so a repeat is free; a forge's choice is made fresh each time and is not stored under a key. The donor is
+loaded by id on the server, so none of its text comes from the visitor.
+
+`tests/remix/test_graft.py` runs 2,500 random pairs with random ticks: every result must be a valid monster with no new validator
+complaint and within one CR step of the base by the estimator (two for the Purple Worm, as in the remix sweep).
 
 ## Tests that guard it
 

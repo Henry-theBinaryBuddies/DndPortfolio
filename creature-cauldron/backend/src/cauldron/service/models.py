@@ -15,6 +15,7 @@ from pydantic.alias_generators import to_camel
 from cauldron.base import CauldronModel
 from cauldron.monster import Monster
 from cauldron.remix.engine import SURPRISE
+from cauldron.remix.graft import MAX_BORROW
 from cauldron.remix.moves import MOVES
 from cauldron.options import CreatureType, DamageTheme, Environment, Feature, Role, Size
 from cauldron.rules import CR_LABELS, cr_value
@@ -70,7 +71,8 @@ class ReskinRequest(ApiModel):
     A remix is a ``theme`` and/or a signature ``move``, optionally with ``level_up``. Theme and move may each be "surprise",
     which the server decides (see ``settle``). ``damage_only`` makes a theme change the damage alone, leaving the monster's
     resistances and immunities as they were. A ``reflavor`` is a request on its own: a new name, description and ability
-    names, and no number changed at all.
+    names, and no number changed at all. A polymorph names a ``donor_id`` and either ``borrow`` (the keys of the donor's features to
+    take, from the graft options) or ``forge_chooses`` (the AI picks them); it may also ``level_up``.
     """
 
     base_id: Id
@@ -79,6 +81,9 @@ class ReskinRequest(ApiModel):
     move: str | None = None
     level_up: bool = False
     reflavor: bool = False
+    donor_id: Id | None = None
+    borrow: Annotated[list[Annotated[str, Field(min_length=1, max_length=120)]], Field(max_length=MAX_BORROW)] = Field(default_factory=list)
+    forge_chooses: bool = False
 
     @field_validator("theme")
     @classmethod
@@ -98,11 +103,20 @@ class ReskinRequest(ApiModel):
     def _something_to_do(self) -> "ReskinRequest":
         if self.damage_only and self.theme is None:
             raise ValueError("damageOnly needs a theme to apply")
-        changes_numbers = self.theme is not None or self.move is not None or self.level_up
+        if (self.borrow or self.forge_chooses) and self.donor_id is None:
+            raise ValueError("borrowing needs a donor")
+        if self.donor_id is not None:
+            if not self.borrow and not self.forge_chooses:
+                raise ValueError("choose what to borrow, or let the forge choose")
+            if self.borrow and self.forge_chooses:
+                raise ValueError("either choose what to borrow or let the forge choose, not both")
+            if self.theme is not None or self.move is not None or self.reflavor:
+                raise ValueError("a polymorph cannot be combined with a theme, a move or a reflavor")
+        changes_numbers = self.theme is not None or self.move is not None or self.level_up or self.donor_id is not None
         if self.reflavor and changes_numbers:
-            raise ValueError("a reflavor changes no numbers, so it cannot be combined with a theme, a move or a level up")
+            raise ValueError("a reflavor changes no numbers, so it cannot be combined with a theme, a move, a level up or a polymorph")
         if not self.reflavor and not changes_numbers:
-            raise ValueError("a reskin needs a reflavor, a theme, a move or a level up")
+            raise ValueError("a reskin needs a reflavor, a theme, a move, a polymorph or a level up")
         return self
 
     @property
@@ -115,8 +129,15 @@ class ReskinRequest(ApiModel):
 
         A request that still has a "surprise" in it has no meaningful key: settle it first."""
         theme = f"{self.theme}{'!' if self.damage_only else ''}" if self.theme else "-"
-        parts = f"{self.base_id}|{theme}|{self.move or '-'}|{'up' if self.level_up else '-'}|{'flavor' if self.reflavor else '-'}"
+        parts = f"{self.base_id}|{theme}|{self.move or '-'}|{'up' if self.level_up else '-'}|{'flavor' if self.reflavor else '-'}|{self.donor_id or '-'}:{','.join(sorted(self.borrow))}"
         return hashlib.sha256(parts.encode()).hexdigest()
+
+
+class GraftOptionsRequest(ApiModel):
+    """Which of a donor's features a base monster could borrow."""
+
+    base_id: Id
+    donor_id: Id
 
 
 class FailureReason(StrEnum):
@@ -127,6 +148,17 @@ class FailureReason(StrEnum):
     RATE_LIMITED = "rate-limited"
     INVALID = "invalid"
     ERROR = "error"
+
+
+class BorrowOption(CauldronModel):
+    key: str
+    kind: str
+    label: str
+
+
+class GraftOptions(CauldronModel):
+    ok: Literal[True] = True
+    options: list[BorrowOption]
 
 
 class GenerateSuccess(CauldronModel):

@@ -23,6 +23,7 @@ from pydantic import ValidationError
 from cauldron.monster import Monster
 from cauldron.options import DamageTheme, Source
 from cauldron.remix.engine import remix, resolve
+from cauldron.remix.graft import MAX_PICKS, Borrowable, borrowable, graft
 from cauldron.remix.moves import MOVES
 from cauldron.remix.reflavor import apply_renames, rename_candidates
 from cauldron.service.brief import build_brief, effective_bounds
@@ -187,7 +188,7 @@ class GenerationService:
         if request.reflavor:
             variants = self._store.reflavors(request.base_id)
             return self._rng.choice(variants) if len(variants) >= MAX_REFLAVORS else None
-        return None if request.has_surprise else self._store.reskin(request.cache_key)
+        return None if request.has_surprise or request.forge_chooses else self._store.reskin(request.cache_key)
 
     @staticmethod
     def _shape(base: Monster, request: ReskinRequest, move_name: str) -> tuple[Monster, list[str]]:
@@ -203,6 +204,8 @@ class GenerationService:
             return _failure(FailureReason.INVALID, "That monster is not known to the forge.")
         if request.reflavor:
             return self._reflavor(base)
+        if request.donor_id is not None:
+            return self._polymorph(request, base)
         move = MOVES[request.move] if request.move is not None else None
         if move is not None and not move.applies_to(base):
             return _failure(FailureReason.INVALID, f"The move {move.label} does not fit that monster.")
@@ -229,6 +232,60 @@ class GenerationService:
             shaped, changes = self._shape(base, request, named.move_name or _PLACEHOLDER_MOVE)
             outcome = self._accept_reskin(shaped, base, named.name, named.description, named.generator, changes)
             if isinstance(outcome, GenerateSuccess):
+                self._store.remember_reskin(request.cache_key, outcome.monster.id)
+            return outcome
+
+        return self._attempts("reskin", lambda feedback: self._generator.rename(context, feedback), accept)
+
+    def graft_options(self, base_id: str, donor_id: str) -> list[Borrowable] | GenerateFailure:
+        """What the donor could lend the base. Free: no AI."""
+        base, donor = self._find_base(base_id), self._find_base(donor_id)
+        if base is None or donor is None:
+            return _failure(FailureReason.INVALID, "That monster is not known to the forge.")
+        if base.id == donor.id:
+            return _failure(FailureReason.INVALID, "A creature cannot borrow from itself.")
+        return borrowable(base, donor)
+
+    def _polymorph(self, request: ReskinRequest, base: Monster) -> Result:
+        """The base with features of the donor, chosen by the visitor or (forge_chooses) by the AI. The AI never sets a number."""
+        assert request.donor_id is not None
+        offered = self.graft_options(base.id, request.donor_id)
+        if isinstance(offered, GenerateFailure):
+            return offered
+        if not offered:
+            return _failure(FailureReason.INVALID, "That creature has nothing this one could borrow.")
+        donor = self._find_base(request.donor_id)
+        assert donor is not None
+        known = {b.key for b in offered}
+        if any(key not in known for key in request.borrow):
+            return _failure(FailureReason.INVALID, f"{donor.name} cannot lend that to {base.name}.")
+
+        if request.forge_chooses:
+            cr, changes, options = base.challenge.cr, (), tuple((b.key, b.label) for b in offered)
+        else:
+            preview = graft(base, donor, request.borrow, request.level_up)
+            cr, changes, options = preview.monster.challenge.cr, tuple(preview.changes), ()
+        context = RenameContext(
+            base_name=base.name,
+            base_description=base.description,
+            creature_type=base.type.value,
+            size=base.size.value,
+            cr=cr,
+            changes=changes,
+            donor_name=donor.name,
+            donor_description=donor.description,
+            graft_options=options,
+        )
+
+        def accept(named) -> GenerateSuccess | list[str]:
+            keys = request.borrow
+            if request.forge_chooses:
+                keys = [k for k in dict.fromkeys(named.picks) if k in known][:MAX_PICKS]
+                if not keys:
+                    return ["Pick at least one feature from the list to borrow: give picks, using the keys exactly as written."]
+            result = graft(base, donor, keys, request.level_up)
+            outcome = self._accept_reskin(result.monster, base, named.name, named.description, named.generator, result.changes)
+            if isinstance(outcome, GenerateSuccess) and not request.forge_chooses:
                 self._store.remember_reskin(request.cache_key, outcome.monster.id)
             return outcome
 

@@ -582,3 +582,84 @@ def test_a_reflavor_with_no_usable_renames_still_gives_a_new_name_and_descriptio
     result = rig.service.create_reskin(remix_request(cutthroat.id, reflavor=True))
     assert isinstance(result, GenerateSuccess) and result.monster.name == "Saltwind Duelist"
     assert [a.name for a in result.monster.actions] == [a.name for a in cutthroat.actions]
+
+
+# --- polymorphing ---------------------------------------------------------------------------------------
+
+
+def polymorph(base_id: str, donor_id: str, *borrow: str, **extra) -> ReskinRequest:
+    body = {"baseId": base_id, "donorId": donor_id, **extra}
+    return ReskinRequest.model_validate({**body, "borrow": list(borrow)} if borrow else body)
+
+
+def hybrid(name: str, *picks: str) -> GeneratedName:
+    return GeneratedName(name=name, description="A strange blend.", generator="scripted", input_tokens=50, output_tokens=40, picks=picks)
+
+
+def test_a_polymorph_borrows_the_ticked_features_and_keeps_the_bases_own_numbers(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", "sense:darkvision"))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert monster.name == "Stormwake Cutthroat" and monster.source is Source.RESKIN and monster.parent_id == base.id
+    assert monster.speeds.fly == donor.speeds.fly and monster.senses.darkvision == donor.senses.darkvision
+    assert monster.hit_points == base.hit_points and monster.armor_class == base.armor_class and monster.abilities == base.abilities
+    assert monster.changes is not None and monster.changes[0] == "Polymorph: features borrowed from Stormhide Drake"
+    context = rig.generator.rename_calls[0][0]
+    assert context.donor_name == "Stormhide Drake" and context.graft_options == () and any("Fly" in c for c in context.changes)
+
+
+def test_the_same_polymorph_again_is_free(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    request = polymorph(base.id, donor.id, "speed:fly")
+    assert rig.service.lookup_reskin(request) is None
+    created = rig.service.create_reskin(request)
+    assert isinstance(created, GenerateSuccess)
+    assert rig.service.lookup_reskin(request) == created.monster
+    assert rig.service.lookup_reskin(polymorph(base.id, donor.id, "sense:darkvision")) is None
+
+
+def test_a_polymorph_can_also_level_up(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", levelUp=True))
+    assert isinstance(result, GenerateSuccess) and result.monster.challenge.cr != base.challenge.cr
+
+
+def test_when_the_forge_chooses_the_ai_picks_from_the_list_and_the_result_is_not_cached(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat", "speed:fly", "not-a-real-key")], library=[base, donor])
+    request = polymorph(base.id, donor.id, forgeChooses=True)
+    result = rig.service.create_reskin(request)
+    assert isinstance(result, GenerateSuccess) and result.monster.speeds.fly == donor.speeds.fly
+    context = rig.generator.rename_calls[0][0]
+    assert ("speed:fly", "Fly 60 ft.") in context.graft_options
+    assert rig.service.lookup_reskin(request) is None  # a forge's choice is made fresh each time
+
+
+def test_a_forge_choice_with_no_usable_pick_is_sent_back(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat", "nonsense"), hybrid("Stormwake Cutthroat", "speed:fly")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, forgeChooses=True))
+    assert isinstance(result, GenerateSuccess)
+    assert any("Pick at least one" in line for line in rig.generator.rename_calls[1][1])
+
+
+def test_a_polymorph_with_an_unknown_donor_itself_or_a_feature_not_offered_is_refused_without_the_ai(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[], library=[base, donor])
+    for request in (polymorph(base.id, "nobody", "speed:fly"), polymorph(base.id, base.id, "speed:fly"), polymorph(base.id, donor.id, "speed:burrow")):
+        result = rig.service.create_reskin(request)
+        assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == []
+
+
+def test_graft_options_lists_what_the_donor_can_lend_for_free(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[], library=[base, donor])
+    keys = [b.key for b in rig.service.graft_options(base.id, donor.id)]
+    assert "speed:fly" in keys and "attack:Bite" in keys
+    failure = rig.service.graft_options(base.id, "nobody")
+    assert isinstance(failure, GenerateFailure) and failure.reason is FailureReason.INVALID
