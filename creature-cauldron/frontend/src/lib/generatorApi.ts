@@ -39,6 +39,8 @@ export interface ReskinRequest {
   borrow?: string[];
   /** Polymorph: let the forge pick which features to borrow. */
   forgeChooses?: boolean;
+  /** Polymorph: give the hybrid legendary actions (borrowed from the donor if it has them, else built from its own attacks). */
+  legendary?: boolean;
 }
 
 export type BorrowKind = "movement" | "sense" | "trait" | "attack" | "damage";

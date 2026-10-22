@@ -12,6 +12,9 @@ the AI, when the forge chooses) picks from a list of things the donor has that t
 Every borrowed number is brought down to what the base could do: an attack is rolled from the base's damage budget at the
 base's attack bonus, a save uses the base's own DC, and damage written inside borrowed text is
 capped the same way. That keeps the result near the base's challenge rating, which the tests check on thousands of pairs.
+
+Legendary actions are a separate, optional tick for a base that has none. If the donor has them they are borrowed (the ones that
+still make sense on the hybrid); otherwise code builds the usual set of three a round from the hybrid's own attacks.
 """
 
 import re
@@ -20,7 +23,8 @@ from dataclasses import dataclass
 from cauldron.actions import Action, Area, AttackAction, AttackDetails, SaveAction, SaveDetails, TextAction
 from cauldron.dice import average_dice
 from cauldron.features import derive_features
-from cauldron.monster import Monster, Senses, Speeds
+from cauldron.cr.measure import action_damage
+from cauldron.monster import LegendaryActions, LegendaryOption, Monster, Senses, Speeds
 from cauldron.options import AreaShape, AttackMode, DamageTheme, DamageType, Size
 from cauldron.remix.engine import RemixResult, current_theme
 from cauldron.remix.moves import Context, best_attack, dice_for, make_context
@@ -215,11 +219,60 @@ def _borrowed_attack(action: AttackAction | SaveAction | TextAction, ctx: Contex
     )
 
 
+# --- legendary actions ------------------------------------------------------------------------------------
+
+
+def _usable_option(option: LegendaryOption, shaped: Monster, donor: Monster) -> bool:
+    """A donor's legendary option still makes sense on the hybrid: every action of the donor's it names, the hybrid has too, and
+    it does not cast spells the hybrid cannot."""
+    text = option.text.lower()
+    if "spell" in text and shaped.spellcasting is None:
+        return False
+    if re.search(r"\bfl(y|ies|ying)\b", text) and not shaped.speeds.fly:
+        return False
+    own = {_plain(a.name) for a in shaped.all_actions()}
+    named = (_plain(a.name) for a in donor.all_actions())
+    return all(n in own for n in named if len(n) >= 4 and n in text)
+
+
+def standard_legendary_actions(monster: Monster, borrowed: list[Action]) -> LegendaryActions:
+    """Three a round, as the 2014 books do it: an attack (1), a move (1), and, when the hybrid borrowed an ability that is not
+    on a recharge, that ability (2). Every number is the monster's own, since each option only repeats something it can do."""
+    who = f"the {monster.name.lower()}"
+    options: list[LegendaryOption] = []
+    attacks = [a for a in monster.actions if isinstance(a, AttackAction)]
+    if attacks:
+        best = max(attacks, key=action_damage)
+        options.append(LegendaryOption(name=f"{best.name} Attack", cost=1, text=f"{who.capitalize()} makes one {best.name.lower()} attack."))
+    options.append(LegendaryOption(name="Move", cost=1, text=f"{who.capitalize()} moves up to its speed without provoking opportunity attacks."))
+    for action in borrowed:
+        if isinstance(action, (AttackAction, SaveAction, TextAction)) and getattr(action, "recharge", None) is None:
+            verb = "makes one {} attack" if isinstance(action, AttackAction) else "uses its {}"
+            options.append(LegendaryOption(name=action.name, cost=2, text=f"{who.capitalize()} {verb.format(action.name.lower())}."))
+            break
+    return LegendaryActions(per_round=3, options=options)
+
+
+def _legendary(shaped: Monster, donor: Monster, borrowed: list[Action], ctx: Context) -> tuple[LegendaryActions, str]:
+    """The legendary actions for the hybrid and one line saying where they came from."""
+    lent = donor.legendary_actions
+    if lent is not None:
+        kept = [
+            o.model_copy(update={"text": _fitted_text(o.text, ctx, donor) or o.text}) for o in lent.options if _usable_option(o, shaped, donor)
+        ]
+        if kept:
+            return LegendaryActions(per_round=lent.per_round, options=kept), f"Legendary actions: {lent.per_round} a round, borrowed from {donor.name}"
+    return standard_legendary_actions(shaped, borrowed), "Legendary actions: 3 a round, built from its own attacks"
+
+
 # --- grafting ---------------------------------------------------------------------------------------------
 
 
-def graft(base: Monster, donor: Monster, keys: list[str], level_up: bool = False) -> RemixResult:
-    """The base with the chosen features of the donor, and what changed. Raises ValueError for a key the donor cannot lend."""
+def graft(base: Monster, donor: Monster, keys: list[str], level_up: bool = False, legendary: bool = False) -> RemixResult:
+    """The base with the chosen features of the donor, and what changed. Raises ValueError for a key the donor cannot lend, or for
+    legendary actions on a base that already has them."""
+    if legendary and base.legendary_actions is not None:
+        raise ValueError(f"{base.name} already has legendary actions.")
     offered = {b.key: b for b in borrowable(base, donor)}
     chosen = list(dict.fromkeys(keys))
     unknown = [k for k in chosen if k not in offered]
@@ -237,6 +290,7 @@ def graft(base: Monster, donor: Monster, keys: list[str], level_up: bool = False
     ctx = make_context(shaped, current_theme(shaped), "Borrowed")
     speeds, senses = shaped.speeds, shaped.senses
     traits, actions, themes = list(shaped.traits), list(shaped.actions), list(shaped.damage_themes)
+    borrowed_actions: list[Action] = []
     for key in chosen:
         kind, _, name = key.partition(":")
         label = offered[key].label
@@ -254,11 +308,16 @@ def graft(base: Monster, donor: Monster, keys: list[str], level_up: bool = False
             action = next(a for a in donor.actions if a.name == name and _damaging(a, donor))
             borrowed = _borrowed_attack(action, ctx, donor)  # type: ignore[arg-type]
             actions.append(borrowed)
+            borrowed_actions.append(borrowed)
             themes += [DamageTheme(t.value) for t in _damage_types(borrowed) if t.value in _THEMES and DamageTheme(t.value) not in themes]  # type: ignore[arg-type]
         if kind != "damage":
             changes.append(f"Borrowed {kind if kind != 'speed' else 'movement'}: {label}")
 
     shaped = shaped.model_copy(update={"speeds": speeds, "senses": senses, "traits": traits, "actions": actions, "damage_themes": themes})
+    if legendary:
+        grant, line = _legendary(shaped, donor, borrowed_actions, ctx)
+        shaped = shaped.model_copy(update={"legendary_actions": grant})
+        changes.append(line)
     shaped = shaped.model_copy(update={"features": derive_features(shaped)})
 
     if level_up:

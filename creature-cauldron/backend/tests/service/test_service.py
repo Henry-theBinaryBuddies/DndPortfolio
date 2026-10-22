@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from cauldron.monster import Challenge, Monster
+from cauldron.monster import Challenge, LegendaryActions, LegendaryOption, Monster
 from cauldron.options import DamageType, Source
 from cauldron.rules import SRD_ATTRIBUTION, cr_value
 from cauldron.seed.importer import import_monster
@@ -663,3 +663,22 @@ def test_graft_options_lists_what_the_donor_can_lend_for_free(make, sample) -> N
     assert "speed:fly" in keys and "attack:Bite" in keys
     failure = rig.service.graft_options(base.id, "nobody")
     assert isinstance(failure, GenerateFailure) and failure.reason is FailureReason.INVALID
+
+
+def test_a_polymorph_can_ask_for_legendary_actions(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", legendary=True))
+    assert isinstance(result, GenerateSuccess)
+    assert result.monster.legendary_actions is not None and result.monster.legendary_actions.per_round == 3
+    assert any(c.startswith("Legendary actions") for c in rig.generator.rename_calls[0][0].changes)
+    assert rig.service.lookup_reskin(polymorph(base.id, donor.id, "speed:fly")) is None  # a different request, so a different answer
+
+
+def test_legendary_actions_are_refused_for_a_base_that_already_has_them(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    legendary_base = base.model_copy(update={"id": "already", "legendary_actions": LegendaryActions(per_round=3, options=[LegendaryOption(name="Move", cost=1, text="It moves.")])})
+    rig = make(names=[], library=[legendary_base, donor])
+    result = rig.service.create_reskin(polymorph("already", donor.id, "speed:fly", legendary=True))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID and "already has legendary" in result.message
+    assert rig.generator.rename_calls == []

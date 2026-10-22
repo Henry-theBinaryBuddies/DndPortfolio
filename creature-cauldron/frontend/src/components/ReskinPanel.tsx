@@ -45,11 +45,13 @@ export default function ReskinPanel({ monster, mode, resting = false, donors = [
   const [options, setOptions] = useState<BorrowOption[] | null>(null);
   const [ticked, setTicked] = useState<string[]>([]);
   const [forgeChooses, setForgeChooses] = useState(false);
+  const [legendary, setLegendary] = useState(false);
   const [optionsMessage, setOptionsMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
   const offline = mode === "offline";
+  const hasLegendary = monster.legendary_actions != null;
   const unavailable = offline || resting || busy;
   const moves = movesFor(monster);
 
@@ -90,7 +92,7 @@ export default function ReskinPanel({ monster, mode, resting = false, donors = [
     if (kind === "remix") {
       void run({ base: monster, theme: theme === "" ? null : theme, damageOnly: theme !== "" && damageOnly, move: move === "" ? null : move, levelUp });
     } else if (donor) {
-      void run({ base: monster, donorId: donor.id, borrow: forgeChooses ? [] : ticked, forgeChooses, levelUp });
+      void run({ base: monster, donorId: donor.id, borrow: forgeChooses ? [] : ticked, forgeChooses, levelUp, legendary });
     }
   };
   const toggleTick = (key: string) => setTicked(ticked.includes(key) ? ticked.filter((k) => k !== key) : [...ticked, key]);
@@ -200,6 +202,22 @@ export default function ReskinPanel({ monster, mode, resting = false, donors = [
                   );
                 })}
               </div>
+            </>
+          )}
+          {options !== null && options.length > 0 && (
+            <>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={legendary && !hasLegendary}
+                  disabled={hasLegendary}
+                  onChange={(e) => setLegendary(e.target.checked)}
+                />{" "}
+                Give it legendary actions{hasLegendary ? " (it already has them)" : ""}
+              </label>
+              {legendary && !hasLegendary && !levelUp && (
+                <p className="detail-note">Legendary actions make a creature a bigger threat. You may want to tick Level up as well.</p>
+              )}
             </>
           )}
           {optionsMessage && <p className="detail-note">{optionsMessage}</p>}

@@ -147,9 +147,10 @@ def test_random_pairs_with_random_ticks_stay_valid_rule_abiding_and_near_the_bas
         if not offered:
             continue
         chosen = [b.key for b in rng.sample(offered, rng.randint(1, min(5, len(offered))))]
-        where = f"{base.name} <- {donor.name}: {chosen}"
+        legendary = base.legendary_actions is None and rng.random() < 0.4
+        where = f"{base.name} <- {donor.name}: {chosen}{' + legendary' if legendary else ''}"
         try:
-            monster = graft(base, donor, chosen).monster
+            monster = graft(base, donor, chosen, legendary=legendary).monster
             assert Monster.model_validate(monster.model_dump(mode="json")) == monster
         except Exception as error:  # noqa: BLE001
             problems.append(f"{where}: {error!r}"[:200])
@@ -164,3 +165,39 @@ def test_random_pairs_with_random_ticks_stay_valid_rule_abiding_and_near_the_bas
             problems.append(f"{where}: CR drift {drift}")
     assert checked > 2000, checked
     assert not problems, "\n".join(problems[:10]) + f"\n({len(problems)} problems in {checked} grafts)"
+
+
+# --- legendary actions --------------------------------------------------------------------------------------
+
+
+def test_legendary_actions_are_borrowed_when_the_donor_has_them_and_still_fit(named) -> None:
+    result = graft(named("Goblin"), named("Adult Red Dragon"), ["attack:Tail"], legendary=True)
+    legendary = result.monster.legendary_actions
+    assert legendary is not None and legendary.per_round == 3
+    texts = {o.name: o.text for o in legendary.options}
+    assert "Tail Attack" in texts and "Detect" in texts
+    assert "Wing Attack" not in texts  # it flies off, and the goblin cannot fly
+    assert not any("dragon" in t.lower() for t in texts.values()) and "Legendary actions: 3 a round, borrowed from Adult Red Dragon" in result.changes
+    assert "legendary" in [f.value for f in result.monster.features]
+
+
+def test_legendary_actions_are_built_from_the_hybrids_own_attacks_when_neither_has_them(named) -> None:
+    result = graft(named("Goblin"), named("Giant Eagle"), ["attack:Talons"], legendary=True)
+    legendary = result.monster.legendary_actions
+    assert legendary is not None and legendary.per_round == 3
+    assert [(o.name, o.cost) for o in legendary.options] == [("Scimitar Attack", 1), ("Move", 1), ("Talons", 2)]
+    assert "built from its own attacks" in result.changes[-1]
+
+
+def test_a_borrowed_ability_on_a_recharge_is_not_offered_as_a_legendary_action(named) -> None:
+    result = graft(named("Goblin"), named("Adult Red Dragon").model_copy(update={"legendary_actions": None}), ["attack:Fire Breath"], legendary=True)
+    assert [o.name for o in result.monster.legendary_actions.options] == ["Scimitar Attack", "Move"]  # type: ignore[union-attr]
+
+
+def test_a_base_with_legendary_actions_cannot_be_given_more(named) -> None:
+    with pytest.raises(ValueError):
+        graft(named("Adult Red Dragon"), named("Wolf"), ["sense:darkvision"] if "sense:darkvision" in keys(named("Adult Red Dragon"), named("Wolf")) else keys(named("Adult Red Dragon"), named("Wolf"))[:1], legendary=True)
+
+
+def test_legendary_actions_are_off_unless_asked_for(named) -> None:
+    assert graft(named("Goblin"), named("Giant Eagle"), ["speed:fly"]).monster.legendary_actions is None

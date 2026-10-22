@@ -133,6 +133,7 @@ export function createLiveGenerator(baseUrl: string, options: HttpOptions = {}):
         donorId: request.donorId ?? null,
         borrow: request.borrow ?? [],
         forgeChooses: request.forgeChooses ?? false,
+        legendary: request.legendary ?? false,
       }),
 
     async graftOptions(baseId: string, donorId: string): Promise<GraftOptionsResult> {

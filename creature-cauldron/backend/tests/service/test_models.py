@@ -179,3 +179,11 @@ def test_the_cache_key_of_a_polymorph_ignores_the_order_of_the_ticks_but_not_the
 
     assert key(donorId="b", borrow=["x", "y"]) == key(donorId="b", borrow=["y", "x"])
     assert len({key(donorId="b", borrow=["x"]), key(donorId="c", borrow=["x"]), key(donorId="b", borrow=["x", "y"]), key(levelUp=True)}) == 4
+
+
+def test_legendary_actions_belong_to_a_polymorph_and_change_its_cache_key() -> None:
+    plain = ReskinRequest.model_validate({"baseId": "a", "donorId": "b", "borrow": ["x"]})
+    legendary = ReskinRequest.model_validate({"baseId": "a", "donorId": "b", "borrow": ["x"], "legendary": True})
+    assert legendary.legendary and plain.cache_key != legendary.cache_key
+    with pytest.raises(ValidationError):
+        ReskinRequest.model_validate({"baseId": "a", "levelUp": True, "legendary": True})

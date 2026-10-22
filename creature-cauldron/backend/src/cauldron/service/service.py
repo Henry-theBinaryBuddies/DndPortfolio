@@ -256,6 +256,8 @@ class GenerationService:
             return _failure(FailureReason.INVALID, "That creature has nothing this one could borrow.")
         donor = self._find_base(request.donor_id)
         assert donor is not None
+        if request.legendary and base.legendary_actions is not None:
+            return _failure(FailureReason.INVALID, f"{base.name} already has legendary actions.")
         known = {b.key for b in offered}
         if any(key not in known for key in request.borrow):
             return _failure(FailureReason.INVALID, f"{donor.name} cannot lend that to {base.name}.")
@@ -263,7 +265,7 @@ class GenerationService:
         if request.forge_chooses:
             cr, changes, options = base.challenge.cr, (), tuple((b.key, b.label) for b in offered)
         else:
-            preview = graft(base, donor, request.borrow, request.level_up)
+            preview = graft(base, donor, request.borrow, request.level_up, request.legendary)
             cr, changes, options = preview.monster.challenge.cr, tuple(preview.changes), ()
         context = RenameContext(
             base_name=base.name,
@@ -283,7 +285,7 @@ class GenerationService:
                 keys = [k for k in dict.fromkeys(named.picks) if k in known][:MAX_PICKS]
                 if not keys:
                     return ["Pick at least one feature from the list to borrow: give picks, using the keys exactly as written."]
-            result = graft(base, donor, keys, request.level_up)
+            result = graft(base, donor, keys, request.level_up, request.legendary)
             outcome = self._accept_reskin(result.monster, base, named.name, named.description, named.generator, result.changes)
             if isinstance(outcome, GenerateSuccess) and not request.forge_chooses:
                 self._store.remember_reskin(request.cache_key, outcome.monster.id)

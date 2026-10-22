@@ -72,7 +72,8 @@ class ReskinRequest(ApiModel):
     which the server decides (see ``settle``). ``damage_only`` makes a theme change the damage alone, leaving the monster's
     resistances and immunities as they were. A ``reflavor`` is a request on its own: a new name, description and ability
     names, and no number changed at all. A polymorph names a ``donor_id`` and either ``borrow`` (the keys of the donor's features to
-    take, from the graft options) or ``forge_chooses`` (the AI picks them); it may also ``level_up``.
+    take, from the graft options) or ``forge_chooses`` (the AI picks them); it may also ``level_up`` and ask for ``legendary``
+    actions.
     """
 
     base_id: Id
@@ -84,6 +85,7 @@ class ReskinRequest(ApiModel):
     donor_id: Id | None = None
     borrow: Annotated[list[Annotated[str, Field(min_length=1, max_length=120)]], Field(max_length=MAX_BORROW)] = Field(default_factory=list)
     forge_chooses: bool = False
+    legendary: bool = False
 
     @field_validator("theme")
     @classmethod
@@ -103,7 +105,7 @@ class ReskinRequest(ApiModel):
     def _something_to_do(self) -> "ReskinRequest":
         if self.damage_only and self.theme is None:
             raise ValueError("damageOnly needs a theme to apply")
-        if (self.borrow or self.forge_chooses) and self.donor_id is None:
+        if (self.borrow or self.forge_chooses or self.legendary) and self.donor_id is None:
             raise ValueError("borrowing needs a donor")
         if self.donor_id is not None:
             if not self.borrow and not self.forge_chooses:
@@ -129,7 +131,7 @@ class ReskinRequest(ApiModel):
 
         A request that still has a "surprise" in it has no meaningful key: settle it first."""
         theme = f"{self.theme}{'!' if self.damage_only else ''}" if self.theme else "-"
-        parts = f"{self.base_id}|{theme}|{self.move or '-'}|{'up' if self.level_up else '-'}|{'flavor' if self.reflavor else '-'}|{self.donor_id or '-'}:{','.join(sorted(self.borrow))}"
+        parts = f"{self.base_id}|{theme}|{self.move or '-'}|{'up' if self.level_up else '-'}|{'flavor' if self.reflavor else '-'}|{self.donor_id or '-'}:{','.join(sorted(self.borrow))}{'!legendary' if self.legendary else ''}"
         return hashlib.sha256(parts.encode()).hexdigest()
 
 
