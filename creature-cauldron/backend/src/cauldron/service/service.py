@@ -20,6 +20,7 @@ from collections.abc import Mapping
 
 from pydantic import ValidationError
 
+from cauldron.blocklist import blocked_term
 from cauldron.monster import Monster
 from cauldron.options import DamageTheme, Source
 from cauldron.remix.engine import remix, resolve
@@ -262,6 +263,8 @@ class GenerationService:
         if any(key not in known for key in request.borrow):
             return _failure(FailureReason.INVALID, f"{donor.name} cannot lend that to {base.name}.")
 
+        # Legendary actions the donor does not lend are built by code; the AI only names them.
+        name_legendary = request.legendary and donor.legendary_actions is None
         if request.forge_chooses:
             cr, changes, options = base.challenge.cr, (), tuple((b.key, b.label) for b in offered)
         else:
@@ -277,6 +280,7 @@ class GenerationService:
             donor_name=donor.name,
             donor_description=donor.description,
             graft_options=options,
+            legendary_names=name_legendary,
         )
 
         def accept(named) -> GenerateSuccess | list[str]:
@@ -285,7 +289,11 @@ class GenerationService:
                 keys = [k for k in dict.fromkeys(named.picks) if k in known][:MAX_PICKS]
                 if not keys:
                     return ["Pick at least one feature from the list to borrow: give picks, using the keys exactly as written."]
-            result = graft(base, donor, keys, request.level_up, request.legendary)
+            legendary_names = tuple(named.legendary_names) if name_legendary else ()
+            blocked = [f'The legendary action name "{n}" contains "{blocked_term(n)}", which is not ours to use. Choose a different name.' for n in legendary_names if blocked_term(n)]
+            if blocked:
+                return blocked
+            result = graft(base, donor, keys, request.level_up, request.legendary, legendary_names)
             outcome = self._accept_reskin(result.monster, base, named.name, named.description, named.generator, result.changes)
             if isinstance(outcome, GenerateSuccess) and not request.forge_chooses:
                 self._store.remember_reskin(request.cache_key, outcome.monster.id)

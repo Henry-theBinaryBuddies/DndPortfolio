@@ -156,8 +156,7 @@ An optional tick on a polymorph, off by default, for a base that has none (a bas
 has legendary actions, the ones that still make sense on the hybrid are borrowed: an option is dropped when it names an action of
 the donor's that the hybrid lacks, casts spells it cannot, or flies when it cannot; damage and DCs in the text are fitted to the
 base as for any borrowed text. Otherwise code builds the usual set of three a round from the hybrid's own attacks: its best attack
-(cost 1), a move (cost 1), and, if it borrowed an ability that is not on a recharge, that ability (cost 2). The names are plain,
-made by code, so legendary actions cost no AI tokens. They make a creature a bigger threat than the CR measure sees, so the panel
+(cost 1), a move (cost 1), and, if it borrowed an ability that is not on a recharge, that ability (cost 2). The AI only names them (`legendary_names`: the attack, the move and the special, asked for in the same call that names the hybrid, so no extra call); a missing, repeated, over-long or colliding name falls back to a plain one made from the ability, and a blocklisted name is sent back for another. Options borrowed from the donor keep the donor's names. They make a creature a bigger threat than the CR measure sees, so the panel
 suggests (and does not force) ticking Level up.
 `tests/remix/test_graft.py` runs 2,500 random pairs with random ticks: every result must be a valid monster with no new validator
 complaint and within one CR step of the base by the estimator (two for the Purple Worm, as in the remix sweep).

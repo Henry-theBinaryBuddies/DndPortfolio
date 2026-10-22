@@ -18,6 +18,7 @@ still make sense on the hybrid); otherwise code builds the usual set of three a 
 """
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from cauldron.actions import Action, Area, AttackAction, AttackDetails, SaveAction, SaveDetails, TextAction
@@ -34,6 +35,7 @@ from cauldron.templates import name_rewriter
 
 MAX_BORROW = 10  # features borrowed at once; keeps the list of changes within a monster's limit
 MAX_PICKS = 4  # features the AI may choose when the forge chooses
+MAX_NAME_LENGTH = 40  # a legendary action's name
 
 _THEMES = {t.value for t in DamageTheme}
 _MOVEMENT = ("fly", "swim", "climb", "burrow")
@@ -235,25 +237,44 @@ def _usable_option(option: LegendaryOption, shaped: Monster, donor: Monster) -> 
     return all(n in own for n in named if len(n) >= 4 and n in text)
 
 
-def standard_legendary_actions(monster: Monster, borrowed: list[Action]) -> LegendaryActions:
+LEGENDARY_ROLES = ("attack", "move", "special")  # the roles of the standard set, in the order the AI is asked to name them
+
+
+def _legendary_name(chosen: Sequence[str], role: str, default: str, taken: set[str]) -> str:
+    """The AI's name for this role if it gave a usable one (one to 40 characters, not already used), else the plain default."""
+    index = LEGENDARY_ROLES.index(role)
+    name = " ".join(chosen[index].split()) if index < len(chosen) else ""
+    if not 1 <= len(name) <= MAX_NAME_LENGTH or name.lower() in taken:
+        return default
+    taken.add(name.lower())
+    return name
+
+
+def standard_legendary_actions(monster: Monster, borrowed: list[Action], names: Sequence[str] = ()) -> LegendaryActions:
     """Three a round, as the 2014 books do it: an attack (1), a move (1), and, when the hybrid borrowed an ability that is not
-    on a recharge, that ability (2). Every number is the monster's own, since each option only repeats something it can do."""
+    on a recharge, that ability (2). Every number is the monster's own, since each option only repeats something it can do.
+    `names` are the AI's names for the attack, the move and the special, in that order; a missing or unusable one gets a plain
+    name made from the ability."""
     who = f"the {monster.name.lower()}"
+    taken = {_plain(a.name) for a in monster.all_actions()}
     options: list[LegendaryOption] = []
     attacks = [a for a in monster.actions if isinstance(a, AttackAction)]
     if attacks:
         best = max(attacks, key=action_damage)
-        options.append(LegendaryOption(name=f"{best.name} Attack", cost=1, text=f"{who.capitalize()} makes one {best.name.lower()} attack."))
-    options.append(LegendaryOption(name="Move", cost=1, text=f"{who.capitalize()} moves up to its speed without provoking opportunity attacks."))
+        name = _legendary_name(names, "attack", f"{best.name} Attack", taken)
+        options.append(LegendaryOption(name=name, cost=1, text=f"{who.capitalize()} makes one {best.name.lower()} attack."))
+    name = _legendary_name(names, "move", "Move", taken)
+    options.append(LegendaryOption(name=name, cost=1, text=f"{who.capitalize()} moves up to its speed without provoking opportunity attacks."))
     for action in borrowed:
         if isinstance(action, (AttackAction, SaveAction, TextAction)) and getattr(action, "recharge", None) is None:
             verb = "makes one {} attack" if isinstance(action, AttackAction) else "uses its {}"
-            options.append(LegendaryOption(name=action.name, cost=2, text=f"{who.capitalize()} {verb.format(action.name.lower())}."))
+            name = _legendary_name(names, "special", action.name, taken)
+            options.append(LegendaryOption(name=name, cost=2, text=f"{who.capitalize()} {verb.format(action.name.lower())}."))
             break
     return LegendaryActions(per_round=3, options=options)
 
 
-def _legendary(shaped: Monster, donor: Monster, borrowed: list[Action], ctx: Context) -> tuple[LegendaryActions, str]:
+def _legendary(shaped: Monster, donor: Monster, borrowed: list[Action], ctx: Context, names: Sequence[str]) -> tuple[LegendaryActions, str]:
     """The legendary actions for the hybrid and one line saying where they came from."""
     lent = donor.legendary_actions
     if lent is not None:
@@ -262,13 +283,15 @@ def _legendary(shaped: Monster, donor: Monster, borrowed: list[Action], ctx: Con
         ]
         if kept:
             return LegendaryActions(per_round=lent.per_round, options=kept), f"Legendary actions: {lent.per_round} a round, borrowed from {donor.name}"
-    return standard_legendary_actions(shaped, borrowed), "Legendary actions: 3 a round, built from its own attacks"
+    return standard_legendary_actions(shaped, borrowed, names), "Legendary actions: 3 a round, built from its own attacks"
 
 
 # --- grafting ---------------------------------------------------------------------------------------------
 
 
-def graft(base: Monster, donor: Monster, keys: list[str], level_up: bool = False, legendary: bool = False) -> RemixResult:
+def graft(
+    base: Monster, donor: Monster, keys: list[str], level_up: bool = False, legendary: bool = False, legendary_names: Sequence[str] = ()
+) -> RemixResult:
     """The base with the chosen features of the donor, and what changed. Raises ValueError for a key the donor cannot lend, or for
     legendary actions on a base that already has them."""
     if legendary and base.legendary_actions is not None:
@@ -315,7 +338,7 @@ def graft(base: Monster, donor: Monster, keys: list[str], level_up: bool = False
 
     shaped = shaped.model_copy(update={"speeds": speeds, "senses": senses, "traits": traits, "actions": actions, "damage_themes": themes})
     if legendary:
-        grant, line = _legendary(shaped, donor, borrowed_actions, ctx)
+        grant, line = _legendary(shaped, donor, borrowed_actions, ctx, legendary_names)
         shaped = shaped.model_copy(update={"legendary_actions": grant})
         changes.append(line)
     shaped = shaped.model_copy(update={"features": derive_features(shaped)})

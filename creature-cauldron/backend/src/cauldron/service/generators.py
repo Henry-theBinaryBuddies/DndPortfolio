@@ -47,6 +47,7 @@ class GeneratedName:
     move_name: str | None = None  # only for a remix that added a signature move
     renames: tuple[tuple[str, str], ...] = ()  # only for a reflavor: (old ability name, new ability name)
     picks: tuple[str, ...] = ()  # only for a polymorph the forge chooses: the keys of the features it picked
+    legendary_names: tuple[str, ...] = ()  # only for a polymorph with built legendary actions: names for the attack, move and special
 
 
 class MonsterGenerator(ABC):

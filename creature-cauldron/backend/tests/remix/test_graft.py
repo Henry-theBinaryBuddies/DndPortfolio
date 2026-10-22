@@ -201,3 +201,19 @@ def test_a_base_with_legendary_actions_cannot_be_given_more(named) -> None:
 
 def test_legendary_actions_are_off_unless_asked_for(named) -> None:
     assert graft(named("Goblin"), named("Giant Eagle"), ["speed:fly"]).monster.legendary_actions is None
+
+
+def test_the_ais_names_are_used_for_the_built_legendary_actions_by_role(named) -> None:
+    result = graft(named("Goblin"), named("Giant Eagle"), ["attack:Talons"], legendary=True, legendary_names=["Lightning Lunge", "Fade Away", "Rake"])
+    assert [o.name for o in result.monster.legendary_actions.options] == ["Lightning Lunge", "Fade Away", "Rake"]  # type: ignore[union-attr]
+
+
+def test_a_missing_repeated_or_too_long_name_falls_back_to_the_plain_one(named) -> None:
+    result = graft(named("Goblin"), named("Giant Eagle"), ["attack:Talons"], legendary=True, legendary_names=["Scimitar", "x" * 41])
+    names = [o.name for o in result.monster.legendary_actions.options]  # type: ignore[union-attr]
+    assert names == ["Scimitar Attack", "Move", "Talons"]  # "Scimitar" is the goblin's own action; the long one and the missing one are plain
+
+
+def test_the_ais_names_are_ignored_when_the_donors_own_legendary_actions_are_used(named) -> None:
+    result = graft(named("Goblin"), named("Adult Red Dragon"), ["attack:Tail"], legendary=True, legendary_names=["A", "B", "C"])
+    assert "Tail Attack" in [o.name for o in result.monster.legendary_actions.options]  # type: ignore[union-attr]

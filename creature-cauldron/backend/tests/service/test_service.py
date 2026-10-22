@@ -682,3 +682,15 @@ def test_legendary_actions_are_refused_for_a_base_that_already_has_them(make, sa
     result = rig.service.create_reskin(polymorph("already", donor.id, "speed:fly", legendary=True))
     assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID and "already has legendary" in result.message
     assert rig.generator.rename_calls == []
+
+
+def test_the_ai_names_the_built_legendary_actions_and_a_blocked_name_is_sent_back(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    first = GeneratedName(name="Stormwake Cutthroat", description="A blend.", generator="scripted", input_tokens=5, output_tokens=5, legendary_names=("Beholder Gaze", "Slip Away", "Zap"))
+    second = GeneratedName(name="Stormwake Cutthroat", description="A blend.", generator="scripted", input_tokens=5, output_tokens=5, legendary_names=("Salt Slash", "Slip Away", "Zap"))
+    rig = make(names=[first, second], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", legendary=True))
+    assert isinstance(result, GenerateSuccess)
+    assert rig.generator.rename_calls[0][0].legendary_names is True
+    assert any("not ours to use" in line for line in rig.generator.rename_calls[1][1])
+    assert [o.name for o in result.monster.legendary_actions.options][:2] == ["Salt Slash", "Slip Away"]  # type: ignore[union-attr]

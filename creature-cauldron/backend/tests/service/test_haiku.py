@@ -253,3 +253,15 @@ def test_a_polymorph_the_forge_chooses_returns_the_picks() -> None:
     result = generator(client).rename(graft, [])
     assert result.picks == ("speed:fly",)
     assert set(client.requests[0]["tools"][0]["input_schema"]["properties"]) == {"name", "description", "picks"}
+
+
+def test_legendary_names_are_asked_for_and_returned_alongside_the_picks() -> None:
+    graft = RenameContext(
+        "Wolf", "A grey hunter.", "beast", "medium", "1/4", (), donor_name="Giant Eagle", donor_description="A big bird.",
+        graft_options=(("speed:fly", "Fly 80 ft."),), legendary_names=True,
+    )
+    data = {"name": "Skywolf", "description": "A winged hunter.", "picks": ["speed:fly"], "legendary_names": ["Lunge", "Fade", "Rake"]}
+    client = FakeClient(reply("submit_name", data))
+    result = generator(client).rename(graft, [])
+    assert result.picks == ("speed:fly",) and result.legendary_names == ("Lunge", "Fade", "Rake")
+    assert set(client.requests[0]["tools"][0]["input_schema"]["properties"]) == {"name", "description", "picks", "legendary_names"}

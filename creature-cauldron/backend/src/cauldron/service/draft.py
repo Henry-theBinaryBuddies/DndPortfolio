@@ -94,19 +94,34 @@ class ReflavorNameDraft(NameDraft):
     renames: Annotated[list[Rename], Field(max_length=MAX_RENAMES)] = Field(default_factory=list)
 
 
+class LegendaryNameDraft(NameDraft):
+    """The same, plus names for the legendary actions of a polymorph (attack, move, special)."""
+
+    legendary_names: Annotated[list[Short], Field(max_length=3)] = Field(default_factory=list)
+
+
 class GraftNameDraft(NameDraft):
     """The same, plus the features the AI picked to borrow (a polymorph the forge chooses)."""
 
     picks: Annotated[list[Annotated[str, Field(max_length=120)]], Field(max_length=MAX_PICKS)] = Field(default_factory=list)
 
 
-def name_draft_type(with_move: bool = False, reflavor: bool = False, picks: bool = False) -> type[NameDraft]:
-    """The shape of the reply the AI is asked for: a name and description, plus a move name, ability renames or feature picks."""
-    return GraftNameDraft if picks else ReflavorNameDraft if reflavor else RemixNameDraft if with_move else NameDraft
+class GraftLegendaryNameDraft(GraftNameDraft, LegendaryNameDraft):
+    """Both: the forge picks the features and names the legendary actions."""
 
 
-def name_json_schema(with_move: bool = False, reflavor: bool = False, picks: bool = False) -> dict:
-    return name_draft_type(with_move, reflavor, picks).model_json_schema()
+def name_draft_type(with_move: bool = False, reflavor: bool = False, picks: bool = False, legendary: bool = False) -> type[NameDraft]:
+    """The shape of the reply the AI is asked for: a name and description, plus a move name, ability renames, feature picks or
+    legendary action names."""
+    if picks:
+        return GraftLegendaryNameDraft if legendary else GraftNameDraft
+    if legendary:
+        return LegendaryNameDraft
+    return ReflavorNameDraft if reflavor else RemixNameDraft if with_move else NameDraft
+
+
+def name_json_schema(with_move: bool = False, reflavor: bool = False, picks: bool = False, legendary: bool = False) -> dict:
+    return name_draft_type(with_move, reflavor, picks, legendary).model_json_schema()
 
 
 def _without_discriminator(node):

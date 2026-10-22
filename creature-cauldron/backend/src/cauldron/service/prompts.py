@@ -64,6 +64,7 @@ class RenameContext:
     donor_name: str | None = None  # a polymorph: the creature the features come from
     donor_description: str | None = None
     graft_options: tuple[tuple[str, str], ...] = ()  # (key, label) of what the AI may pick from when the forge chooses
+    legendary_names: bool = False  # a polymorph with built legendary actions: ask the AI to name them
 
 
 def clean_feedback(feedback: Sequence[str]) -> list[str]:
@@ -132,6 +133,12 @@ def _graft_prompt(context: RenameContext) -> str:
     else:
         lines.append(f"What it borrowed: {'; '.join(context.changes)}.")
         lines.append("Write a new name and a short description for the hybrid. Do not mention numbers.")
+    if context.legendary_names:
+        lines.append(
+            "It also gets legendary actions. Name them in `legendary_names`, in this order: a quick attack, a move, and a special "
+            "action (that one is used only if it borrowed a usable ability, but always give a name). One to three words each, "
+            "like a stat block's legendary action names, and each different from its other abilities."
+        )
     return "\n".join(lines)
 
 

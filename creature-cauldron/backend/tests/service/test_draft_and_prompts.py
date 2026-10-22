@@ -186,3 +186,9 @@ def test_when_the_forge_chooses_the_prompt_lists_the_options_to_pick_from() -> N
     options = (("speed:fly", "Fly 60 ft."), ("attack:Bite", "Bite (piercing, melee attack)"))
     prompt = rename_prompt(context(donor_name="Stormhide Drake", donor_description="A grey drake.", graft_options=options), [])
     assert "`picks`" in prompt.user and "- speed:fly: Fly 60 ft." in prompt.user and "- attack:Bite: Bite (piercing, melee attack)" in prompt.user
+
+
+def test_a_polymorph_with_built_legendary_actions_asks_for_their_names() -> None:
+    asked = rename_prompt(context(donor_name="Giant Eagle", donor_description="A bird.", legendary_names=True), [])
+    assert "`legendary_names`" in asked.user
+    assert "`legendary_names`" not in rename_prompt(context(donor_name="Giant Eagle", donor_description="A bird."), []).user
