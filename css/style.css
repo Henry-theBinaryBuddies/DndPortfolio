@@ -2444,23 +2444,25 @@ p {
   .dm-screen__panel--center
   .dm-screen__surface {
     grid-template-columns:
-      minmax(0, 1fr);
+      repeat(2, minmax(0, 1fr));
 
     grid-template-rows:
       auto
-      minmax(0, 1fr)
       minmax(0, 1fr);
 
-    gap: 2.5%;
+    gap: 3% 4%;
 
     padding:
-      4% 7% 5%;
+      10% 8% 8%;
   }
 
 
+  /* The two sealed covers sit side by side under the title, so the title and covers never crowd each other. */
   .dm-screen__panel--center
   .module-card {
-    --card-w: min(66vw, 27dvh);
+    --card-w: min(38vw, 27dvh);
+
+    --shift: 0%;
   }
 
 
@@ -2500,9 +2502,9 @@ p {
   .portfolio-title__subtitle {
     font-size:
       clamp(
-        0.75rem,
-        3.4vw,
-        1rem
+        1.2rem,
+        6.4vw,
+        1.8rem
       );
   }
 
@@ -2526,6 +2528,14 @@ p {
 
   .module-card:nth-of-type(even) {
     --shift: 9%;
+  }
+
+
+  .dm-screen__panel--center
+  .module-card:nth-of-type(odd),
+  .dm-screen__panel--center
+  .module-card:nth-of-type(even) {
+    --shift: 0%;
   }
 
 
