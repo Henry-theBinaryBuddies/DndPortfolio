@@ -296,49 +296,6 @@ textarea {
 }
 
 
-.dm-screen__surface::before,
-.dm-screen__surface::after {
-  transform-origin: 50% 0;
-
-  will-change: transform;
-}
-
-
-.dm-screen__surface::before {
-  animation:
-    paper-sway-rim 9s ease-in-out infinite;
-}
-
-
-.dm-screen__surface::after {
-  animation:
-    paper-sway-sheet 12s ease-in-out -4s infinite;
-}
-
-
-.dm-screen__panel--center
-.dm-screen__surface::before {
-  animation-delay: -2s;
-}
-
-.dm-screen__panel--right
-.dm-screen__surface::before {
-  animation-delay: -5s;
-}
-
-
-@keyframes paper-sway-rim {
-  0%, 100% { transform: rotate(-0.35deg) translate(-1px, 0); }
-  50%      { transform: rotate(0.45deg)  translate(2px, 1px); }
-}
-
-
-@keyframes paper-sway-sheet {
-  0%, 100% { transform: rotate(0.3deg)  translate(1px, 0); }
-  50%      { transform: rotate(-0.4deg) translate(-2px, 1px); }
-}
-
-
 .dm-screen__surface::before {
   inset: 0.6%;
 
