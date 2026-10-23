@@ -284,3 +284,15 @@ describe("an answer about what a donor could lend is not trusted blindly", () =>
     expect((calls[1].body as { borrow: string[] }).borrow).toHaveLength(10);
   });
 });
+
+describe("a failure the server explained is shown as the server explained it", () => {
+  it("uses the message in the body whatever the status, so a status Cloudflare passes through (424) still reads right", async () => {
+    const message = "The forge could not be reached just now. Try again in a little while.";
+    const { fn } = fakeFetch(() => json({ ok: false, reason: "error", message }, 424));
+    expect(await createLiveGenerator("http://x.test", { fetchFn: fn }).generate({ types: [], sizes: [], environments: [], roles: [], damageThemes: [], features: [], crMin: "1", crMax: "1" } as never)).toEqual({
+      ok: false,
+      reason: "error",
+      message,
+    });
+  });
+});
