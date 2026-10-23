@@ -350,12 +350,10 @@ textarea {
   background:
     radial-gradient(
       ellipse at 50% 108%,
-      rgba(255, 165, 70, 0.42),
-      rgba(255, 140, 50, 0.12) 45%,
-      rgba(255, 140, 50, 0) 70%
+      rgba(255, 150, 60, 0.2),
+      rgba(255, 130, 40, 0.06) 45%,
+      rgba(255, 130, 40, 0) 70%
     );
-
-  mix-blend-mode: soft-light;
 
   pointer-events: none;
 
@@ -387,29 +385,34 @@ textarea {
 
 
 .dm-screen__surface::before {
-  inset: 2.2%;
+  inset: 0.6%;
 
-  /* the torn fibres: grey-brown, not white */
+  /* the torn fibres and the sheet's shadow: a picture, one for each panel */
   background:
-    linear-gradient(
-      rgba(70, 48, 22, 0.35),
-      rgba(70, 48, 22, 0.35)
-    ),
-    #cdb98c;
-
-  filter:
-    url(#torn-rim)
-    drop-shadow(
-      0 3px 5px
-      rgba(0, 0, 0, 0.55)
-    );
+    url("../assets/textures/torn/rim-left.svg")
+    0 0 / 100% 100%
+    no-repeat;
 
   z-index: -2;
 }
 
 
+.dm-screen__panel--center
+.dm-screen__surface::before {
+  background-image:
+    url("../assets/textures/torn/rim-center.svg");
+}
+
+
+.dm-screen__panel--right
+.dm-screen__surface::before {
+  background-image:
+    url("../assets/textures/torn/rim-right.svg");
+}
+
+
 .dm-screen__surface::after {
-  inset: 3.6%;
+  inset: 3.8%;
 
   /*
     From the top down: grime in the corners, water stains, soot, fold
@@ -452,10 +455,24 @@ textarea {
     inset 0 0 60px rgba(40, 22, 8, 0.7),
     inset 0 0 6px rgba(30, 16, 6, 0.6);
 
-  filter:
-    url(#torn-paper);
+  clip-path:
+    url(#sheet-left);
 
   z-index: -1;
+}
+
+
+.dm-screen__panel--center
+.dm-screen__surface::after {
+  clip-path:
+    url(#sheet-center);
+}
+
+
+.dm-screen__panel--right
+.dm-screen__surface::after {
+  clip-path:
+    url(#sheet-right);
 }
 
 
