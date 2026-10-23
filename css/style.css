@@ -145,6 +145,38 @@ textarea {
 }
 
 
+/* The screen's shadow on the table: a soft dark band that falls toward the viewer. */
+.dm-screen::after {
+  content: "";
+
+  position: absolute;
+
+  left: 2.5%;
+  right: 2.5%;
+  top: 98%;
+
+  height: 17%;
+
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.9),
+      rgba(0, 0, 0, 0.6) 30%,
+      rgba(0, 0, 0, 0.22) 65%,
+      rgba(0, 0, 0, 0)
+    );
+
+  clip-path:
+    polygon(0 0, 100% 0, 97% 100%, 3% 100%);
+
+  filter: blur(6px);
+
+  pointer-events: none;
+
+  z-index: -1;
+}
+
+
 /* =========================================================
    PANEL FRAME
    ========================================================= */
@@ -264,10 +296,106 @@ textarea {
 }
 
 
+.dm-screen__surface::before,
+.dm-screen__surface::after {
+  transform-origin: 50% 0;
+
+  will-change: transform;
+}
+
+
+.dm-screen__surface::before {
+  animation:
+    paper-sway-rim 9s ease-in-out infinite;
+}
+
+
+.dm-screen__surface::after {
+  animation:
+    paper-sway-sheet 12s ease-in-out -4s infinite;
+}
+
+
+.dm-screen__panel--center
+.dm-screen__surface::before {
+  animation-delay: -2s;
+}
+
+.dm-screen__panel--right
+.dm-screen__surface::before {
+  animation-delay: -5s;
+}
+
+
+@keyframes paper-sway-rim {
+  0%, 100% { transform: rotate(-0.35deg) translate(-1px, 0); }
+  50%      { transform: rotate(0.45deg)  translate(2px, 1px); }
+}
+
+
+@keyframes paper-sway-sheet {
+  0%, 100% { transform: rotate(0.3deg)  translate(1px, 0); }
+  50%      { transform: rotate(-0.4deg) translate(-2px, 1px); }
+}
+
+
+/* The candle on the table lights the lower edge of each panel, and the light wavers. */
+.dm-screen__panel::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 108%,
+      rgba(255, 165, 70, 0.42),
+      rgba(255, 140, 50, 0.12) 45%,
+      rgba(255, 140, 50, 0) 70%
+    );
+
+  mix-blend-mode: soft-light;
+
+  pointer-events: none;
+
+  animation:
+    candle-flicker 3.7s ease-in-out infinite;
+
+  z-index: 4;
+}
+
+
+.dm-screen__panel--center::before {
+  animation-delay: -1.3s;
+}
+
+.dm-screen__panel--right::before {
+  animation-delay: -2.6s;
+}
+
+
+@keyframes candle-flicker {
+  0%   { opacity: 0.85; }
+  14%  { opacity: 0.55; }
+  29%  { opacity: 1; }
+  43%  { opacity: 0.7; }
+  61%  { opacity: 0.95; }
+  78%  { opacity: 0.6; }
+  100% { opacity: 0.85; }
+}
+
+
 .dm-screen__surface::before {
   inset: 2.2%;
 
-  background: #efe2bd;
+  /* the torn fibres: grey-brown, not white */
+  background:
+    linear-gradient(
+      rgba(70, 48, 22, 0.35),
+      rgba(70, 48, 22, 0.35)
+    ),
+    #cdb98c;
 
   filter:
     url(#torn-rim)
@@ -283,28 +411,46 @@ textarea {
 .dm-screen__surface::after {
   inset: 3.6%;
 
+  /*
+    From the top down: grime in the corners, water stains, soot, fold
+    creases (a long one down the middle and across), then the paper
+    texture under a heavy brown stain that darkens it.
+  */
   background:
-    radial-gradient(
-      ellipse at 50% 45%,
-      rgba(250, 240, 210, 0.35),
-      rgba(250, 240, 210, 0) 70%
-    ),
+    radial-gradient(ellipse at 0% 0%,     rgba(35, 20, 8, 0.5),  transparent 38%),
+    radial-gradient(ellipse at 100% 0%,   rgba(35, 20, 8, 0.42), transparent 34%),
+    radial-gradient(ellipse at 100% 100%, rgba(30, 16, 6, 0.55), transparent 42%),
+    radial-gradient(ellipse at 0% 100%,   rgba(30, 16, 6, 0.5),  transparent 40%),
+    radial-gradient(circle at 24% 34%, rgba(90, 55, 20, 0.34), transparent 18%),
+    radial-gradient(circle at 74% 62%, rgba(80, 48, 16, 0.3),  transparent 22%),
+    radial-gradient(circle at 58% 14%, rgba(60, 36, 14, 0.26), transparent 14%),
+    radial-gradient(ellipse at 40% 88%, rgba(70, 40, 14, 0.3), transparent 26%),
+    radial-gradient(circle at 82% 22%, transparent 8%, rgba(60, 34, 10, 0.38) 8.8%, rgba(60, 34, 10, 0.14) 10.5%, transparent 11.5%),
+    radial-gradient(circle at 18% 72%, transparent 6%, rgba(60, 34, 10, 0.34) 6.8%, rgba(60, 34, 10, 0.12) 8.4%, transparent 9.4%),
+    radial-gradient(ellipse at 88% 80%, rgba(40, 22, 8, 0.28), transparent 20%),
+    radial-gradient(ellipse at 10% 14%, rgba(50, 28, 10, 0.3), transparent 22%),
+    linear-gradient(90deg,  transparent 49.4%, rgba(30, 16, 6, 0.38) 49.9%, rgba(255, 235, 190, 0.18) 50.5%, transparent 51.2%),
+    linear-gradient(0deg,   transparent 49.5%, rgba(30, 16, 6, 0.3) 50%,    rgba(255, 235, 190, 0.14) 50.5%, transparent 51%),
+    linear-gradient(103deg, transparent 29.7%, rgba(30, 16, 6, 0.18) 30%,   transparent 30.5%),
+    linear-gradient(78deg,  transparent 71.7%, rgba(30, 16, 6, 0.16) 72%,   transparent 72.5%),
     linear-gradient(
-      rgba(242, 228, 192, 0.5),
-      rgba(242, 228, 192, 0.5)
+      rgba(118, 84, 42, 0.62),
+      rgba(118, 84, 42, 0.62)
     ),
     url("../assets/textures/aged-paper.png");
 
   background-size:
-    auto,
+    auto, auto, auto, auto, auto, auto, auto, auto,
+    auto, auto, auto, auto,
+    auto, auto, auto, auto,
     auto,
     cover;
 
   background-position: center;
 
   box-shadow:
-    inset 0 0 36px
-    rgba(120, 80, 36, 0.3);
+    inset 0 0 60px rgba(40, 22, 8, 0.7),
+    inset 0 0 6px rgba(30, 16, 6, 0.6);
 
   filter:
     url(#torn-paper);
@@ -331,8 +477,8 @@ textarea {
 
   gap: 2% 3%;
 
-  padding-top: 5%;
-  padding-bottom: 6%;
+  padding-top: 9%;
+  padding-bottom: 7%;
 }
 
 
@@ -342,11 +488,10 @@ textarea {
 }
 
 
-/* Side by side the covers are as wide as their column, so their height follows from their shape. */
+/* Side by side the covers are as wide as their column (about 13.6% of the window, never over 202px). */
 .dm-screen__panel--center
 .module-card {
-  width: 100%;
-  height: auto;
+  --card-w: min(13.6vw, 202px, 21.5vh);
 }
 
 
@@ -410,7 +555,7 @@ textarea {
   align-self: center;
   justify-self: center;
 
-  overflow: hidden;
+  overflow: visible;
 
   text-align: center;
 }
@@ -435,7 +580,11 @@ textarea {
 
   text-transform: uppercase;
 
-  color: #5b1f17;
+  color: #2b0e07;
+
+  text-shadow:
+    0 1px 0
+    rgba(255, 232, 180, 0.35);
 }
 
 
@@ -461,7 +610,11 @@ textarea {
 
   text-transform: uppercase;
 
-  color: #2a160c;
+  color: #1a0c06;
+
+  text-shadow:
+    0 1px 0
+    rgba(255, 232, 180, 0.3);
 
   overflow-wrap: normal;
   word-break: normal;
@@ -487,17 +640,17 @@ textarea {
 
   line-height: 1.1;
 
-  color: #3d1810;
+  color: #2a0c06;
 
   text-shadow:
     0 1px 0
-    rgba(255, 238, 190, 0.5);
+    rgba(255, 238, 190, 0.45);
 }
 
 
 /* =========================================================
    MODULE CARD: a book cover in the style of a classic
-   adventure module. Everything inside is sized in cqw (a
+   adventure module. Everything inside is sized in --cw (a
    percentage of the card's own width), so the whole cover
    scales together and the text stays in proportion.
    ========================================================= */
@@ -507,20 +660,23 @@ textarea {
   --tilt: 0deg;
   --shift: 0%;
 
+  /* The width of a cover, and 1% of it (the unit everything on the cover is measured in). */
+  --card-w: min(16vw, 21.5vh);
+  --cw: calc(var(--card-w) / 100);
+
   position: relative;
 
-  height: 94%;
+  width: var(--card-w);
+
+  height: auto;
 
   aspect-ratio:
     3 / 4;
 
-  max-height: 100%;
+  max-width: 100%;
 
   min-width: 0;
   min-height: 0;
-
-  container-type:
-    inline-size;
 
   transform:
     translateX(var(--shift))
@@ -587,7 +743,7 @@ textarea {
   bottom: 0;
   left: 0;
 
-  width: 4cqw;
+  width: calc(var(--cw) * 4);
 
   background:
     linear-gradient(
@@ -624,10 +780,10 @@ textarea {
   background: var(--accent);
 
   border:
-    0.9cqw solid #140a06;
+    calc(var(--cw) * 0.9) solid #140a06;
 
   border-radius:
-    1cqw 2cqw 2cqw 1cqw;
+    calc(var(--cw) * 1) calc(var(--cw) * 2) calc(var(--cw) * 2) calc(var(--cw) * 1);
 }
 
 
@@ -646,17 +802,17 @@ textarea {
 .module-card__art {
   position: absolute;
 
-  top: 2.4cqw;
-  right: 2.4cqw;
-  bottom: 2.4cqw;
-  left: 2.4cqw;
+  top: calc(var(--cw) * 2.4);
+  right: calc(var(--cw) * 2.4);
+  bottom: calc(var(--cw) * 2.4);
+  left: calc(var(--cw) * 2.4);
 
   overflow: hidden;
 
   background: #1a0f0a;
 
   border:
-    0.7cqw solid #d8b660;
+    calc(var(--cw) * 0.7) solid #d8b660;
 }
 
 
@@ -677,12 +833,12 @@ textarea {
 .module-card__text {
   position: absolute;
 
-  right: 3.1cqw;
-  bottom: 3.1cqw;
-  left: 3.1cqw;
+  right: calc(var(--cw) * 3.1);
+  bottom: calc(var(--cw) * 3.1);
+  left: calc(var(--cw) * 3.1);
 
   padding:
-    16cqw 3cqw 3.5cqw;
+    calc(var(--cw) * 16) calc(var(--cw) * 3) calc(var(--cw) * 3.5);
 
   text-align: center;
 
@@ -709,7 +865,7 @@ textarea {
   font-size:
     max(
       12px,
-      7cqw
+      calc(var(--cw) * 7)
     );
 
   line-height: 1.08;
@@ -738,7 +894,7 @@ textarea {
   max-width: 100%;
 
   margin:
-    1.6cqw 0 0;
+    calc(var(--cw) * 1.6) 0 0;
 
   font-family: var(--font-body);
   font-weight: 500;
@@ -747,7 +903,7 @@ textarea {
   font-size:
     max(
       12px,
-      5.3cqw
+      calc(var(--cw) * 5.3)
     );
 
   line-height: 1.15;
@@ -802,7 +958,7 @@ textarea {
 
   display: block;
 
-  height: 10cqw;
+  height: calc(var(--cw) * 10);
 
   transform:
     translateY(-50%)
@@ -815,10 +971,10 @@ textarea {
     );
 
   border-top:
-    0.6cqw dashed #b78e45;
+    calc(var(--cw) * 0.6) dashed #b78e45;
 
   border-bottom:
-    0.6cqw dashed #b78e45;
+    calc(var(--cw) * 0.6) dashed #b78e45;
 
   box-shadow:
     0 2px 4px
@@ -836,7 +992,7 @@ textarea {
 
   place-items: center;
 
-  width: 22cqw;
+  width: calc(var(--cw) * 22);
   aspect-ratio: 1;
 
   transform:
@@ -855,7 +1011,7 @@ textarea {
 
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 2cqw rgba(0, 0, 0, 0.12),
+    inset 0 0 0 calc(var(--cw) * 2) rgba(0, 0, 0, 0.12),
     inset 1px 1px 3px rgba(255, 255, 255, 0.3);
 
   z-index: 3;
@@ -865,7 +1021,7 @@ textarea {
 .module-card--sealed .module-card__pin::before {
   content: "\2726";
 
-  font-size: 9cqw;
+  font-size: calc(var(--cw) * 9);
   line-height: 1;
 
   color: rgba(40, 6, 4, 0.7);
@@ -892,9 +1048,9 @@ textarea {
 
   gap:
     clamp(
-      5rem,
-      5vw,
-      10rem
+      3rem,
+      4vw,
+      7rem
     );
 
   z-index: 10;
@@ -936,6 +1092,12 @@ textarea {
   overflow: visible;
 
   transform: rotateZ(3.5deg);
+
+  filter:
+    drop-shadow(
+      16px 24px 14px
+      rgba(0, 0, 0, 0.75)
+    );
 
   transition:
     transform 180ms ease,
@@ -994,8 +1156,8 @@ textarea {
 
   filter:
     drop-shadow(
-      0 10px 8px
-      rgba(0, 0, 0, 0.4)
+      16px 26px 14px
+      rgba(0, 0, 0, 0.55)
     );
 }
 
@@ -1021,9 +1183,9 @@ textarea {
 
   width:
     clamp(
-      190px,
-      15vw,
-      250px
+      140px,
+      11vw,
+      190px
     );
 
   flex:
@@ -1119,7 +1281,7 @@ textarea {
 .die__image {
   filter:
     drop-shadow(
-      0 10px 7px
+      2px 5px 3px
       rgba(0, 0, 0, 0.62)
     );
 }
@@ -1454,9 +1616,11 @@ p {
   overflow-y: auto;
 
   background:
+    radial-gradient(ellipse at 0% 100%, rgba(40, 22, 8, 0.3), transparent 45%),
+    radial-gradient(ellipse at 100% 0%, rgba(40, 22, 8, 0.24), transparent 40%),
     linear-gradient(
-      rgba(244, 231, 198, 0.5),
-      rgba(244, 231, 198, 0.5)
+      rgba(150, 112, 62, 0.46),
+      rgba(150, 112, 62, 0.46)
     ),
     url("../assets/textures/aged-paper.png");
 
@@ -1481,13 +1645,17 @@ p {
       rgba(70, 40, 16, 0.34),
       rgba(70, 40, 16, 0) 16%
     ),
+    radial-gradient(ellipse at 0% 100%, rgba(40, 22, 8, 0.3), transparent 45%),
+    radial-gradient(ellipse at 100% 0%, rgba(40, 22, 8, 0.24), transparent 40%),
     linear-gradient(
-      rgba(244, 231, 198, 0.5),
-      rgba(244, 231, 198, 0.5)
+      rgba(150, 112, 62, 0.46),
+      rgba(150, 112, 62, 0.46)
     ),
     url("../assets/textures/aged-paper.png");
 
   background-size:
+    auto,
+    auto,
     auto,
     auto,
     cover;
@@ -1513,13 +1681,17 @@ p {
       rgba(70, 40, 16, 0.34),
       rgba(70, 40, 16, 0) 16%
     ),
+    radial-gradient(ellipse at 0% 100%, rgba(40, 22, 8, 0.3), transparent 45%),
+    radial-gradient(ellipse at 100% 0%, rgba(40, 22, 8, 0.24), transparent 40%),
     linear-gradient(
-      rgba(244, 231, 198, 0.5),
-      rgba(244, 231, 198, 0.5)
+      rgba(150, 112, 62, 0.46),
+      rgba(150, 112, 62, 0.46)
     ),
     url("../assets/textures/aged-paper.png");
 
   background-size:
+    auto,
+    auto,
     auto,
     auto,
     cover;
@@ -2204,7 +2376,7 @@ p {
    PORTRAIT / MOBILE
    ========================================================= */
 
-@media (orientation: portrait) {
+@media (orientation: portrait), (max-height: 560px) {
 
   /* =======================================================
      MOBILE SCENE
@@ -2353,8 +2525,7 @@ p {
 
   .dm-screen__panel--center
   .module-card {
-    width: auto;
-    height: 92%;
+    --card-w: min(66vw, 27dvh);
   }
 
 
@@ -2409,7 +2580,7 @@ p {
      ======================================================= */
 
   .module-card {
-    height: 92%;
+    --card-w: min(66vw, 27dvh);
   }
 
 
@@ -2615,8 +2786,20 @@ p {
   }
 
 
+  .module-detail__spread {
+    perspective: none;
+  }
+
+
   .module-detail__spread::after {
     display: none;
+  }
+
+
+  .module-detail__page--right {
+    backface-visibility: visible;
+
+    transform-origin: center;
   }
 
 
@@ -2706,6 +2889,143 @@ p {
         24vw,
         7rem
       );
+  }
+
+}
+
+
+/* =========================================================
+   PHONES ON THEIR SIDE (short landscape screens)
+
+   The panels swipe like on a portrait phone, but each shows
+   its covers side by side, and the book and dice sit in a
+   slim bar underneath.
+   ========================================================= */
+
+@media (orientation: landscape) and (max-height: 560px) {
+
+  .table-scene {
+    grid-template-rows:
+      minmax(0, 1fr)
+      auto;
+
+    background:
+      #1a0f08
+      url("../assets/background.png")
+      center bottom / cover;
+  }
+
+
+  .module-card {
+    --card-w: min(24vw, 48dvh);
+  }
+
+
+  .dm-screen__panel--center
+  .module-card {
+    --card-w: min(24vw, 48dvh);
+  }
+
+
+  .module-card:nth-of-type(odd),
+  .module-card:nth-of-type(even) {
+    --shift: 0%;
+  }
+
+
+  .dm-screen__surface,
+  .dm-screen__panel--center
+  .dm-screen__surface {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    grid-template-rows:
+      minmax(0, 1fr);
+
+    gap: 4%;
+
+    padding:
+      6% 8%;
+  }
+
+
+  .dm-screen__panel--center
+  .dm-screen__surface {
+    grid-template-columns:
+      1.3fr 1fr 1fr;
+  }
+
+
+  .dm-screen__panel--center
+  .portfolio-title {
+    grid-column: auto;
+  }
+
+
+  .portfolio-title__main {
+    font-size:
+      clamp(0.9rem, 2.4vw, 1.4rem);
+  }
+
+
+  .portfolio-title__subtitle {
+    font-size:
+      clamp(1.1rem, 3vw, 1.9rem);
+  }
+
+
+  .tabletop-controls {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 2rem;
+
+    height: 64px;
+  }
+
+
+  .logbook {
+    flex: 0 0 auto;
+
+    width: 78px;
+
+    margin-top: -22px;
+
+    transform: rotateZ(3deg);
+
+    filter:
+      drop-shadow(
+        6px 8px 6px
+        rgba(0, 0, 0, 0.55)
+      );
+  }
+
+
+  .logbook__image--desktop {
+    display: block;
+  }
+
+
+  .logbook__image--mobile {
+    display: none;
+  }
+
+
+  .dice-tray {
+    position: static;
+
+    transform: none;
+
+    width: 210px;
+
+    z-index: auto;
+  }
+
+
+  .die {
+    width: 32px;
   }
 
 }
