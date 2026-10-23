@@ -44,43 +44,49 @@ Security updates now install themselves. Reboot when `full-upgrade` says the ker
 
 ### 2. SSH, with keys only
 
+`deploy/setup-ssh.sh` does the fiddly parts, so there is almost nothing to type. Replace `you` with your user name on the server (`whoami` shows it) and the address with the server's
+(`hostname -I` on the server, or its Tailscale address); everything else is typed exactly as shown.
+
+On the server, install SSH (the one command that needs `sudo`):
+
 ```bash
 sudo apt install -y openssh-server
 ```
 
-On the server, note two things: your user name (`whoami`) and its home-network address (`hostname -I`, the first one). Check SSH is running: `systemctl status ssh --no-pager` should say `active (running)`.
+On your laptop, make a key pair (press Enter at each question) and copy the key and the script to the server (it asks for the server's password this once). Run the `scp` from the `creature-cauldron` folder of the repository.
 
-On your laptop (PowerShell), make a key, send the public half to the server (it asks for your server password this once), and log in. Replace `you` and the address:
+In **PowerShell**:
 
 ```powershell
 ssh-keygen -t ed25519
-scp $env:USERPROFILE\.ssh\id_ed25519.pub you@192.168.1.50:
+scp $env:USERPROFILE\.ssh\id_ed25519.pub deploy\setup-ssh.sh you@192.168.1.50:
+```
+
+or in **Git Bash** or any Unix-style shell:
+
+```bash
+ssh-keygen -t ed25519
+scp ~/.ssh/id_ed25519.pub deploy/setup-ssh.sh you@192.168.1.50:
+```
+
+(The colon at the end matters. `$env:USERPROFILE` is typed exactly like that: it is a built-in variable, not a place to put your name. The two shells are not interchangeable: `$env:` and backslashes only work in PowerShell.)
+
+Then log in to the server and run the script (step 1 of 2: it allows your key):
+
+```bash
 ssh you@192.168.1.50
+bash setup-ssh.sh
 ```
 
-Then, in that session on the server, file the key and tidy it (the last command removes any Windows line ending from the key):
+It prints the key's fingerprint; it should match the one `ssh-keygen -lf ~/.ssh/id_ed25519.pub` shows on your laptop. Now, from a **new** window on the laptop, check that
+`ssh you@192.168.1.50` logs you in **without asking for the server's password** (it may ask for a key passphrase if you set one). **Only when that works**, turn passwords off (step 2 of 2), in your server session:
 
 ```bash
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-cat ~/id_ed25519.pub >> ~/.ssh/authorized_keys
-sed -i 's/\r$//' ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-rm ~/id_ed25519.pub
-exit
+sudo bash setup-ssh.sh --lock
 ```
 
-Now `ssh you@192.168.1.50` from the laptop should log you in **without a password**. **Only then** turn passwords off, on the server:
-
-```bash
-sudo tee /etc/ssh/sshd_config.d/00-hardening.conf >/dev/null <<'EOF'
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PermitRootLogin no
-EOF
-sudo sshd -t && sudo systemctl restart ssh
-```
-
-Keep your current session open, and check from a **second** window that `ssh you@192.168.1.50` still works before you close anything.
+The script refuses to do this unless your account already has a usable key, so it cannot lock you out of your own account, and it checks the SSH settings before applying them. It then prints two checks for a **new** window: the key login must still work, and
+`ssh -o PubkeyAuthentication=no you@192.168.1.50` must say `Permission denied (publickey)`. Keep your current session open until both pass. To go back to passwords: `sudo bash setup-ssh.sh --unlock`.
 
 ### 3. Tailscale: your VPN from outside the house
 
