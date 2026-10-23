@@ -1,0 +1,11 @@
+Artifact 3:
+
+Launch day. https://creaturecauldron.com is live.
+
+I had planned a Windows PC for the server, but it was a Linux machine, so the deployment was rebuilt for Ubuntu with a systemd service, nightly backups and Tailscale for remote access. Setting up SSH took the longest. Long commands typed by hand went wrong, the copied key never reached the server, and I used PowerShell syntax in Git Bash, so Claude wrote a short script and gave me one small command at a time instead. While locking things down I found remote desktop forwarded to the internet on my router. The log showed only failed logins, but I removed the forward, disabled the service and changed the password.
+
+Cloudflare: the Tunnel, the Pages site, the domain, HTTPS and TLS settings, a rate limit rule and a redirect from www. A launch bug: Cloudflare replaces any 502 or 504 from my server with its own error page, which hid the server's message, so the server now answers 424 for that case.
+
+Real key checks on the server cost fractions of a cent each: a generated monster about a third of a cent, a remix, reflavor or polymorph about two hundredths. The first generation was rejected because the AI left out a field, and the automatic retry fixed it. An uptime monitor now watches the API.
+
+Wrote the technical document (architecture, request flow, deployment, runbook, troubleshooting), took the gallery screenshots from the live site, and linked it all into this portfolio.

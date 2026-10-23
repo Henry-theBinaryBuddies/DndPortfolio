@@ -1,0 +1,7 @@
+Artifact 3:
+
+The rest of the front end, then the start of the Python back end.
+
+Front end: a party panel and the 2014 difficulty math (XP thresholds, the multiplier for the number of monsters), favorites, an encounter builder with a live difficulty rating and saved encounters, and a one-page layout. Exports: JSON, a Foundry VTT actor and a 5etools homebrew file. I dropped Roll20 on purpose, because every way into it needs a third-party script or a browser extension that can put a person's Roll20 account at risk, and I did not want to carry that. Added Generate and Reskin buttons that show an offline state, plus a demo mode so the whole flow can be clicked through without a server.
+
+Back end: the Python models, with the actions as a small class hierarchy (an attack, a saving throw, a multiattack, free text) where each class writes its own text, and the SRD rules tables. A test checks that the Python text and the web page's text for every action are word for word the same.

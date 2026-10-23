@@ -1,0 +1,9 @@
+Artifact 3:
+
+The biggest day. The back end took shape, then Remix, then a redesign.
+
+The validator: a set of rules every monster must pass (name, hit points, attack bonus, save DC, legendary actions, features, credit). The importer read in 333 SRD monsters. The check that a monster's challenge rating matches its numbers needed a table the SRD does not include, so Claude built an estimator calibrated from the SRD monsters themselves and measured its accuracy by leaving each monster out and estimating it (83 percent within one step overall, much better at low levels). Then the web service: a cache first, per-visitor rate limits, a daily cap kept in the database, uniform error messages, and the real Haiku generator that must answer by calling a tool with a fixed schema. If a monster fails the checks, the complaints go back to the model for another try.
+
+Remix: ten damage themes and 18 signature moves, all done by code from the monster's own numbers, with the AI only naming things. A test applies every move to every monster in the library, over six thousand remixes, and fails if any stops being valid or moves the challenge rating more than a step.
+
+Live testing found real bugs: the browser turned localhost into an address the server was not listening on, and Remix offered to change a damage type a monster never dealt. Also redesigned the whole page: a grim, dark witch theme with painted art and a light theme.

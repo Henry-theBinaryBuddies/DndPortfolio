@@ -1,0 +1,7 @@
+Artifact 3:
+
+Chose what to build and got the front end started. The placeholder said either a character creator or a monster creator; I picked a monster library and generator that doubles as an all-in-one tool for my own D&D party.
+
+Before any code, Claude wrote a requirements document and I reviewed it. The decisions that mattered: the 2014 rules; content from the System Reference Document (which is licensed so I can reuse it with credit) plus original AI-generated monsters, and nothing from copyrighted books; only structured filters, never typed prompts, so no text from a visitor can reach the AI; open to everyone with no sign-in, protected by caching, per-visitor limits, a daily cap and a spend limit in the Anthropic console; front end first against sample data, then a Python back end built test-first, then the launch.
+
+Built the Vite, React and TypeScript scaffold, the dice math and the code that writes a stat block's action text from structured data, 14 sample monsters covering every type, size and environment, and a filter panel with a sortable list.

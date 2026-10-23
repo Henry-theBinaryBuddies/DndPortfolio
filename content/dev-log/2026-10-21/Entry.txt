@@ -1,0 +1,11 @@
+Artifact 3:
+
+Review, three more features, 586 more monsters, and the road to launch.
+
+Code review: reviewers looked for bugs and a second pass checked each finding before anything was fixed. Reflavor, Polymorph (borrow features from another creature, fitted to the base so it stays fair) and optional legendary actions, with the AI naming them. I also tried to improve the estimator with smoother curves and with more monsters, and none of it beat the plain version, so I changed nothing.
+
+Asked what is legal to include. I weighed the licence and liability of several third-party monster books and did not include them. The A5E Monstrous Menagerie is offered under the Open Game License, so I added all 586 of its monsters, labelled A5E, with a Source filter and a Licences page, and kept them out of the estimator because they use their own challenge rating scale. The library is now 939 monsters. The code is MIT.
+
+A second review with a security focus before launch found real problems and all were fixed: every reskin of an A5E monster was being rejected, an IPv6 visitor could dodge the rate limit by changing addresses within their own network block, repeated ticks could force new AI calls, and the log never rotated.
+
+Wrote the deployment tooling and plan: the page on Cloudflare Pages, the API on a home server behind a Cloudflare Tunnel so no port is open at home, and a new API key made just before launch.
