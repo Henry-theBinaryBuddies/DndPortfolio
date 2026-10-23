@@ -125,7 +125,7 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-(Change `192.168.1.0/24` to your home network. Check from a second window that SSH still works, over the home network and over Tailscale.) If you used the subnet-router option and
+(`192.168.1.0/24` is only an example: use your own home network, which `ip -4 addr` shows next to the server's address. If the server is `10.0.0.63`, write `10.0.0.0/24`. A wrong network here locks your home computers out of SSH. Check from a second window that SSH still works, over the home network and over Tailscale.) If you used the subnet-router option and
 home devices become unreachable through Tailscale, tell me: forwarded traffic may need a `ufw route` rule.
 
 ### 5. Come back after a power cut
