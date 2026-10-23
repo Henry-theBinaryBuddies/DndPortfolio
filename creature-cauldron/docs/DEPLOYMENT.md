@@ -48,15 +48,28 @@ Security updates now install themselves. Reboot when `full-upgrade` says the ker
 sudo apt install -y openssh-server
 ```
 
-On your laptop (PowerShell), make a key and copy it to the server (replace `you` and the address; `ip a` on the server shows its home-network address):
+On the server, note two things: your user name (`whoami`) and its home-network address (`hostname -I`, the first one). Check SSH is running: `systemctl status ssh --no-pager` should say `active (running)`.
+
+On your laptop (PowerShell), make a key, send the public half to the server (it asks for your server password this once), and log in. Replace `you` and the address:
 
 ```powershell
 ssh-keygen -t ed25519
-type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh you@192.168.1.50 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+scp $env:USERPROFILE\.ssh\id_ed25519.pub you@192.168.1.50:
 ssh you@192.168.1.50
 ```
 
-The last command should log you in without a password. **Only then** turn passwords off, on the server:
+Then, in that session on the server, file the key and tidy it (the last command removes any Windows line ending from the key):
+
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+cat ~/id_ed25519.pub >> ~/.ssh/authorized_keys
+sed -i 's/\r$//' ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+rm ~/id_ed25519.pub
+exit
+```
+
+Now `ssh you@192.168.1.50` from the laptop should log you in **without a password**. **Only then** turn passwords off, on the server:
 
 ```bash
 sudo tee /etc/ssh/sshd_config.d/00-hardening.conf >/dev/null <<'EOF'
