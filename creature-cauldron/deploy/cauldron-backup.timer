@@ -1,0 +1,11 @@
+# Runs cauldron-backup.service every night at 03:00 (and once at the next start if the machine was off at 03:00).
+
+[Unit]
+Description=Nightly Creature Cauldron database backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
