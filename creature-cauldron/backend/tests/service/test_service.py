@@ -1,0 +1,734 @@
+"""The generation service: cache first, then the AI with a retry loop, all behind the daily cap.
+
+Every test uses the scripted generator, so nothing here costs money or needs the network.
+"""
+
+import json
+import random
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+
+from cauldron.monster import Challenge, LegendaryActions, LegendaryOption, Monster
+from cauldron.options import DamageType, Source
+from cauldron.rules import SRD_ATTRIBUTION, cr_value
+from cauldron.seed.importer import import_monster
+from cauldron.service.generators import BadOutput, GeneratedMonster, GeneratedName, GeneratorUnavailable, ScriptedGenerator
+from cauldron.service.limits import DailyCap
+from cauldron.service.models import FailureReason, GenerateFailure, GenerateRequest, GenerateSuccess, ReskinRequest
+from cauldron.service.service import GenerationService
+from cauldron.service.settings import Settings
+from cauldron.service.store import MonsterStore
+
+RAW = {m["index"]: m for m in json.loads((Path(__file__).parents[2] / "data" / "srd-2014" / "5e-SRD-Monsters.json").read_text(encoding="utf-8"))}
+DAY = datetime(2026, 10, 20, 12, tzinfo=UTC)
+
+
+@dataclass
+class Rig:
+    service: GenerationService
+    store: MonsterStore
+    generator: ScriptedGenerator
+    cap: DailyCap
+
+
+@pytest.fixture
+def make():
+    stores: list[MonsterStore] = []
+
+    def build(monsters=(), names=(), library=(), cap=100, **env) -> Rig:
+        settings = Settings.from_env({"CAULDRON_DATABASE": ":memory:", **env})
+        store = MonsterStore(":memory:")
+        stores.append(store)
+        generator = ScriptedGenerator(monsters=list(monsters), names=list(names))
+        daily = DailyCap(store, limit=cap, clock=lambda: DAY)
+        service = GenerationService(settings, store, generator, daily, {m.id: m for m in library}, rng=random.Random(1))
+        return Rig(service, store, generator, daily)
+
+    yield build
+    for s in stores:
+        s.close()
+
+
+def req(**fields) -> GenerateRequest:
+    return GenerateRequest.model_validate(fields)
+
+
+def made(monster: Monster, name: str | None = None, tokens: tuple[int, int] = (0, 0)) -> GeneratedMonster:
+    update = {"name": name} if name else {}
+    return GeneratedMonster(monster.model_copy(update=update), generator="scripted", input_tokens=tokens[0], output_tokens=tokens[1])
+
+
+def with_cr(monster: Monster, cr: str) -> Monster:
+    return monster.model_copy(update={"challenge": Challenge.for_cr(cr)})
+
+
+DRAGONS = dict(types=["dragon"], crMin=4, crMax=4)  # the Stormhide Drake is a CR 4 dragon
+
+
+# --- the cache ------------------------------------------------------------------------------------------
+
+
+def test_a_cached_match_is_returned_without_calling_the_ai(make, sample) -> None:
+    rig = make()
+    rig.store.add(sample("Stormhide Drake"))
+    found = rig.service.lookup(req(**DRAGONS))
+    assert found == sample("Stormhide Drake")
+    assert rig.generator.generate_calls == []
+    assert rig.cap.remaining() == 100
+
+
+def test_a_cached_monster_the_visitor_already_has_is_not_returned(make, sample) -> None:
+    rig = make()
+    rig.store.add(sample("Stormhide Drake"))
+    assert rig.service.lookup(req(**DRAGONS, excludeIds=[sample("Stormhide Drake").id])) is None
+
+
+def test_the_cache_is_empty_to_begin_with(make) -> None:
+    assert make().service.lookup(req()) is None
+
+
+# --- generating -----------------------------------------------------------------------------------------
+
+
+def test_a_good_monster_is_stored_and_returned(make, sample) -> None:
+    rig = make(monsters=[made(sample("Stormhide Drake"), "Gale Drake", tokens=(900, 700))])
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert monster.name == "Gale Drake" and monster.id.startswith("gen-")
+    assert monster.source is Source.AI and monster.validated is True and monster.generator == "scripted"
+    assert rig.store.get(monster.id) == monster
+    assert rig.cap.remaining() == 99
+    used = rig.store.usage("2026-10-20")
+    assert (used.calls, used.input_tokens, used.output_tokens) == (1, 900, 700)
+
+
+def test_the_generator_is_given_a_brief_that_respects_the_request(make, sample) -> None:
+    rig = make(monsters=[made(sample("Stormhide Drake"), "Gale Drake")])
+    rig.service.create(req(**DRAGONS))
+    brief, feedback = rig.generator.generate_calls[0]
+    assert brief.cr == "4" and brief.type.value == "dragon" and feedback == []
+
+
+def test_the_cap_on_challenge_rating_applies_when_none_is_given(make, sample) -> None:
+    rig = make(monsters=[made(sample("Cinderkite"), f"Spark Kite {i}") for i in range(30)])
+    for _ in range(30):
+        rig.service.create(req())
+    assert all(cr_value(brief.cr) <= 17 for brief, _ in rig.generator.generate_calls)
+
+
+def test_a_request_wholly_above_the_cap_is_refused_without_calling_the_ai(make) -> None:
+    rig = make()
+    result = rig.service.create(req(crMin=20))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert "17" in result.message
+    assert rig.generator.generate_calls == [] and rig.cap.remaining() == 100
+
+
+def test_automatic_corrections_are_reported_as_notes(make, sample) -> None:
+    drake = sample("Stormhide Drake").model_copy(update={"name": "Gale Drake", "challenge": sample("Stormhide Drake").challenge.model_copy(update={"xp": 1})})
+    result = make(monsters=[GeneratedMonster(drake, "scripted")]).service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateSuccess)
+    assert result.monster.challenge.xp == 1100
+    assert any("xp" in note for note in result.notes)
+
+
+def test_a_second_request_for_a_new_monster_generates_again(make, sample) -> None:
+    rig = make(monsters=[made(sample("Stormhide Drake"), "Gale Drake"), made(sample("Stormhide Drake"), "Squall Drake")])
+    first = rig.service.create(req(**DRAGONS))
+    assert isinstance(first, GenerateSuccess)
+    assert rig.service.lookup(req(**DRAGONS, excludeIds=[first.monster.id])) is None
+    second = rig.service.create(req(**DRAGONS))
+    assert isinstance(second, GenerateSuccess) and second.monster.id != first.monster.id
+    assert rig.store.count() == 2
+
+
+# --- the retry loop -------------------------------------------------------------------------------------
+
+
+def test_a_cr_that_does_not_fit_is_retried_with_the_problem_as_feedback(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(monsters=[made(with_cr(drake, "0"), "Bad Drake"), made(drake, "Good Drake")])
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateSuccess) and result.monster.name == "Good Drake"
+    assert rig.generator.generate_calls[0][1] == []
+    assert any("Claimed CR" in line for line in rig.generator.generate_calls[1][1])
+    assert rig.cap.remaining() == 98  # both attempts counted
+
+
+def test_the_reason_for_each_rejected_attempt_is_logged_for_the_operator(make, sample, caplog) -> None:
+    import logging
+
+    drake = sample("Stormhide Drake")
+    rig = make(monsters=[made(with_cr(drake, "0"), "Bad Drake"), made(drake, "Good Drake")])
+    with caplog.at_level(logging.INFO, logger="cauldron"):
+        rig.service.create(req(**DRAGONS))
+    messages = [r.getMessage() for r in caplog.records if r.name == "cauldron"]
+    assert messages[0].startswith("Designing: CR 4 ")  # what the AI was asked for is logged first
+    rejected = [m for m in messages if "was not accepted" in m]
+    assert len(rejected) == 1 and "attempt 1 of 3" in rejected[0] and "Claimed CR" in rejected[0]
+
+
+def test_a_monster_that_does_not_fit_the_request_is_retried(make, sample) -> None:
+    rig = make(monsters=[made(sample("Hollowvale Hexer"), "Wrong Kind"), made(sample("Stormhide Drake"), "Right Kind")])
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateSuccess) and result.monster.name == "Right Kind"
+    feedback = rig.generator.generate_calls[1][1]
+    assert any("type" in line.lower() or "challenge" in line.lower() for line in feedback)
+
+
+def test_a_blocked_name_is_retried(make, sample) -> None:
+    rig = make(monsters=[made(sample("Stormhide Drake"), "Beholder Drake"), made(sample("Stormhide Drake"), "Gale Drake")])
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateSuccess) and result.monster.name == "Gale Drake"
+    assert any("not ours to use" in line for line in rig.generator.generate_calls[1][1])
+
+
+def test_a_name_that_already_exists_is_retried(make, sample) -> None:
+    rig = make(monsters=[made(sample("Stormhide Drake"), "Gale Drake"), made(sample("Stormhide Drake"), "Squall Drake")])
+    rig.store.add(sample("Cinderkite").model_copy(update={"name": "Gale Drake"}))
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateSuccess) and result.monster.name == "Squall Drake"
+
+
+def test_output_the_ai_got_wrong_is_retried(make, sample) -> None:
+    rig = make(monsters=[BadOutput("The reply was not valid JSON."), made(sample("Stormhide Drake"), "Gale Drake")])
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateSuccess)
+    assert "not valid JSON" in rig.generator.generate_calls[1][1][0]
+
+
+def test_after_all_attempts_fail_the_monster_is_discarded(make, sample) -> None:
+    bad = made(with_cr(sample("Stormhide Drake"), "0"), "Bad Drake")
+    rig = make(monsters=[bad, bad, bad])
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.ERROR
+    assert len(rig.generator.generate_calls) == 3  # one try and two retries
+    assert rig.store.count() == 0
+    assert rig.cap.remaining() == 97
+
+
+def test_the_number_of_retries_comes_from_the_settings(make, sample) -> None:
+    bad = made(with_cr(sample("Stormhide Drake"), "0"), "Bad Drake")
+    rig = make(monsters=[bad, bad, bad], CAULDRON_MAX_RETRIES="0")
+    rig.service.create(req(**DRAGONS))
+    assert len(rig.generator.generate_calls) == 1
+
+
+def test_an_unreachable_ai_stops_at_once_with_an_error(make) -> None:
+    rig = make(monsters=[GeneratorUnavailable("connection refused")])
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.ERROR
+    assert len(rig.generator.generate_calls) == 1
+    assert rig.cap.remaining() == 99  # the attempt was made, so it counts
+
+
+# --- the daily cap --------------------------------------------------------------------------------------
+
+
+def test_with_the_cap_used_up_the_forge_is_resting(make, sample) -> None:
+    rig = make(monsters=[made(sample("Stormhide Drake"), "Gale Drake")], cap=1)
+    assert isinstance(rig.service.create(req(**DRAGONS)), GenerateSuccess)
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.RESTING
+    assert len(rig.generator.generate_calls) == 1
+    assert rig.service.resting()
+
+
+def test_the_cap_running_out_in_the_middle_of_retries_stops_them(make, sample) -> None:
+    bad = made(with_cr(sample("Stormhide Drake"), "0"), "Bad Drake")
+    rig = make(monsters=[bad, bad, bad], cap=2)
+    result = rig.service.create(req(**DRAGONS))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.RESTING
+    assert len(rig.generator.generate_calls) == 2
+
+
+def test_cached_answers_still_work_when_the_forge_is_resting(make, sample) -> None:
+    rig = make(cap=1)
+    rig.store.add(sample("Stormhide Drake"))
+    rig.cap.reserve()
+    assert rig.service.resting()
+    assert rig.service.lookup(req(**DRAGONS)) is not None
+
+
+# --- reskinning -----------------------------------------------------------------------------------------
+
+
+def swap(base_id: str, **extra) -> ReskinRequest:
+    return ReskinRequest.model_validate({"baseId": base_id, "theme": "cold", **extra})
+
+
+def named(name: str, text: str = "A frosty twist.") -> GeneratedName:
+    return GeneratedName(name=name, description=text, generator="scripted", input_tokens=50, output_tokens=40)
+
+
+def test_a_theme_is_applied_by_code_and_the_ai_only_names_it(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimestorm Drake")], library=[drake])
+    result = rig.service.create_reskin(swap(drake.id))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert monster.name == "Rimestorm Drake" and monster.description == "A frosty twist."
+    assert monster.source is Source.RESKIN and monster.parent_id == drake.id and monster.id.startswith("gen-")
+    assert DamageType.LIGHTNING not in monster.immunities + monster.resistances
+    prose = " ".join(a.describe(monster.name) for a in monster.all_actions())
+    assert "cold damage" in prose and "lightning damage" not in prose
+    assert monster.challenge == drake.challenge
+    assert rig.store.get(monster.id) == monster
+
+
+def test_a_damage_only_theme_leaves_the_defences_alone(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimestorm Drake")], library=[drake])
+    result = rig.service.create_reskin(swap(drake.id, damageOnly=True))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert (monster.immunities, monster.resistances, monster.vulnerabilities) == (drake.immunities, drake.resistances, drake.vulnerabilities)
+    assert any(c.startswith("Main damage") for c in monster.changes or [])
+    prose = " ".join(a.describe(monster.name) for a in monster.all_actions())
+    assert "cold damage" in prose and "lightning damage" not in prose
+
+
+def test_a_damage_only_theme_the_monster_already_has_changes_nothing_and_is_refused(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Same Drake")], library=[drake])
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": drake.id, "theme": "lightning", "damageOnly": True}))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == []
+
+
+def test_the_ai_is_told_what_changed_but_never_given_numbers_to_change(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimestorm Drake")], library=[drake])
+    rig.service.create_reskin(swap(drake.id, levelUp=True))
+    context, feedback = rig.generator.rename_calls[0]
+    assert context.base_name == "Stormhide Drake" and context.base_description == drake.description
+    assert any("lightning" in c and "cold" in c for c in context.changes)
+    assert any("Level up" in c for c in context.changes)
+    assert feedback == []
+
+
+def test_a_level_up_reskin_raises_the_challenge_rating_by_one_step(make, sample) -> None:
+    drake = sample("Stormhide Drake")  # CR 4
+    rig = make(names=[named("Level Name")], library=[drake])
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": drake.id, "levelUp": True}))
+    assert isinstance(result, GenerateSuccess) and result.monster.challenge.cr == "5"
+
+
+def test_a_reskin_of_an_srd_monster_keeps_the_srd_credit(make) -> None:
+    goblin = import_monster(RAW["goblin"]).monster
+    rig = make(names=[named("Ember Raider")], library=[goblin])
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": goblin.id, "levelUp": True}))
+    assert isinstance(result, GenerateSuccess) and result.monster.attribution == SRD_ATTRIBUTION
+
+
+def test_an_unknown_base_is_refused_without_calling_the_ai(make) -> None:
+    rig = make()
+    result = rig.service.create_reskin(swap("no-such-monster"))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == [] and rig.cap.remaining() == 100
+
+
+def test_a_reskin_speaks_of_itself_by_its_new_name(make, sample) -> None:
+    from cauldron.actions import TextAction
+
+    base = sample("Stormhide Drake")
+    fortitude = TextAction(name="Fortitude", text="If damage reduces the stormhide drake to 0 hit points, the stormhide drake drops to 1 hit point instead.")
+    library_monster = base.model_copy(update={"traits": [fortitude]})
+    rig = make(names=[named("Ironbound Revenant")], library=[library_monster])
+    result = rig.service.create_reskin(ReskinRequest.model_validate({"baseId": base.id, "levelUp": True}))
+    assert isinstance(result, GenerateSuccess)
+    text = result.monster.traits[0].text
+    assert "stormhide drake" not in text and text.count("ironbound revenant") == 2
+    assert result.monster.name == "Ironbound Revenant"
+
+
+def test_a_generated_monster_can_be_reskinned_too(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(monsters=[made(drake, "Gale Drake")], names=[named("Rimestorm Drake")])
+    first = rig.service.create(req(**DRAGONS))
+    assert isinstance(first, GenerateSuccess)
+    result = rig.service.create_reskin(swap(first.monster.id))
+    assert isinstance(result, GenerateSuccess) and result.monster.parent_id == first.monster.id
+
+
+def test_a_repeated_reskin_is_answered_from_the_store_for_free(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimestorm Drake")], library=[drake])
+    request = swap(drake.id)
+    assert rig.service.lookup_reskin(request) is None
+    first = rig.service.create_reskin(request)
+    assert isinstance(first, GenerateSuccess)
+    assert rig.service.lookup_reskin(request) == first.monster
+    assert rig.cap.remaining() == 99
+
+
+def test_a_blocked_new_name_is_retried(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Beholder Storm"), named("Rimestorm Drake")], library=[drake])
+    result = rig.service.create_reskin(swap(drake.id))
+    assert isinstance(result, GenerateSuccess) and result.monster.name == "Rimestorm Drake"
+    assert any("not ours to use" in line for line in rig.generator.rename_calls[1][1])
+
+
+def test_a_reskin_is_not_sent_back_over_the_base_monsters_own_cr(make, sample) -> None:
+    # The AI cannot change numbers in a reskin, so a base monster whose CR the estimator doubts must not fail it.
+    leviathan = sample("Dune Leviathan")
+    doubtful = with_cr(leviathan, "12").model_copy(update={"id": "doubtful"})
+    rig = make(names=[named("Sandsong Leviathan")], library=[doubtful])
+    request = ReskinRequest.model_validate({"baseId": "doubtful", "theme": "cold"})
+    assert isinstance(rig.service.create_reskin(request), GenerateSuccess)
+
+
+def test_a_reskin_needs_the_daily_cap_but_a_repeat_does_not(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimestorm Drake")], library=[drake], cap=1)
+    assert isinstance(rig.service.create_reskin(swap(drake.id)), GenerateSuccess)
+    other = ReskinRequest.model_validate({"baseId": drake.id, "levelUp": True})
+    result = rig.service.create_reskin(other)
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.RESTING
+    assert rig.service.lookup_reskin(swap(drake.id)) is not None
+
+
+def test_an_unreachable_ai_gives_an_error_for_a_reskin(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[GeneratorUnavailable("down")], library=[drake])
+    result = rig.service.create_reskin(swap(drake.id))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.ERROR
+
+
+def test_the_library_lists_everything_the_server_has_generated(make, sample) -> None:
+    rig = make(monsters=[made(sample("Stormhide Drake"), "Gale Drake")])
+    created = rig.service.create(req(**DRAGONS))
+    assert isinstance(created, GenerateSuccess)
+    assert rig.service.generated_monsters() == [created.monster]
+
+
+# --- remixing -------------------------------------------------------------------------------------------
+
+
+def remix_request(base_id: str, **extra) -> ReskinRequest:
+    return ReskinRequest.model_validate({"baseId": base_id, **extra})
+
+
+def named_move(name: str, move: str) -> GeneratedName:
+    return GeneratedName(name=name, description="A new look.", generator="scripted", input_tokens=50, output_tokens=40, move_name=move)
+
+
+def test_a_remix_changes_the_theme_and_adds_the_named_move(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named_move("Rimeclaw Drake", "Glacial Lunge")], library=[drake])
+    result = rig.service.create_reskin(remix_request(drake.id, theme="cold", move="lob"))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert monster.actions[-1].name == "Glacial Lunge" and len(monster.actions) == len(drake.actions) + 1
+    assert DamageType.COLD in monster.resistances + monster.immunities
+    assert any(note.startswith("Main damage:") for note in result.notes) and any("Glacial Lunge" in note for note in result.notes)
+    assert monster.challenge.cr == drake.challenge.cr
+
+
+def test_the_ai_is_told_the_theme_and_move_but_not_the_stand_in_name(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named_move("Rimeclaw Drake", "Glacial Lunge")], library=[drake])
+    rig.service.create_reskin(remix_request(drake.id, theme="cold", move="lob"))
+    context, _ = rig.generator.rename_calls[0]
+    assert context.theme == "cold" and context.move_label == "lob" and context.move_blurb
+    assert not any("Signature Move" in c for c in context.changes)
+
+
+def test_a_move_without_a_name_is_sent_back_for_one(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimeclaw Drake"), named_move("Rimeclaw Drake", "Glacial Lunge")], library=[drake])
+    result = rig.service.create_reskin(remix_request(drake.id, move="lob"))
+    assert isinstance(result, GenerateSuccess) and result.monster.actions[-1].name == "Glacial Lunge"
+    assert any("move_name" in line for line in rig.generator.rename_calls[1][1])
+
+
+def test_a_move_that_does_not_fit_is_refused_without_calling_the_ai(make, sample) -> None:
+    frog = import_monster(RAW["frog"]).monster
+    rig = make(library=[frog])
+    result = rig.service.create_reskin(remix_request(frog.id, move="burst"))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == [] and rig.cap.remaining() == 100
+
+
+def test_a_surprise_is_decided_by_the_server_and_then_cached_like_any_choice(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named_move("Wildmaw Drake", "Odd Lunge")], library=[drake])
+    settled = rig.service.settle(remix_request(drake.id, theme="surprise", move="surprise"))
+    assert not settled.has_surprise and settled.theme != "lightning" and settled.move is not None
+    assert rig.service.lookup_reskin(settled) is None
+    first = rig.service.create_reskin(settled)
+    assert isinstance(first, GenerateSuccess)
+    assert rig.service.lookup_reskin(settled) == first.monster
+
+
+def test_a_request_with_a_surprise_in_it_is_never_looked_up(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named("Rimeclaw Drake")], library=[drake])
+    assert rig.service.lookup_reskin(remix_request(drake.id, theme="surprise")) is None
+
+
+def test_a_remix_with_a_level_up_raises_the_challenge_rating_once(make, sample) -> None:
+    drake = sample("Stormhide Drake")  # CR 4
+    rig = make(names=[named("Rimeclaw Drake")], library=[drake])
+    result = rig.service.create_reskin(remix_request(drake.id, theme="cold", levelUp=True))
+    assert isinstance(result, GenerateSuccess) and result.monster.challenge.cr == "5"
+    assert any(note.startswith("Level up: CR 4") for note in result.notes)
+
+
+def test_a_reskin_remembers_what_it_changed(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[named_move("Rimeclaw Drake", "Glacial Lunge")], library=[drake])
+    result = rig.service.create_reskin(remix_request(drake.id, theme="cold", move="lob", levelUp=True))
+    assert isinstance(result, GenerateSuccess)
+    changes = result.monster.changes
+    assert changes is not None and changes[0].startswith("Main damage:") and changes[-1].startswith("Level up:")
+    assert any("Glacial Lunge" in c for c in changes)
+    assert rig.store.get(result.monster.id).changes == changes  # type: ignore[union-attr]
+
+
+def test_a_monster_that_was_not_reskinned_has_no_changes(sample) -> None:
+    assert sample("Stormhide Drake").changes is None
+
+
+def test_a_surprise_with_a_named_move_that_does_not_fit_is_refused_cleanly(make) -> None:
+    frog = import_monster(RAW["frog"]).monster
+    rig = make(library=[frog])
+    settled = rig.service.settle(remix_request(frog.id, theme="surprise", move="burst"))  # must not raise
+    result = rig.service.create_reskin(settled)
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == [] and rig.cap.remaining() == 100
+
+
+def test_the_tokens_of_a_reply_that_could_not_be_used_are_still_counted(make, sample) -> None:
+    drake = sample("Stormhide Drake")
+    rig = make(names=[BadOutput("not usable", 700, 400), named_move("Rimeclaw Drake", "Glacial Lunge")], library=[drake])
+    result = rig.service.create_reskin(remix_request(drake.id, move="lob"))
+    assert isinstance(result, GenerateSuccess)
+    used = rig.store.usage(DAY.date().isoformat())
+    assert used.input_tokens == 700 + 50 and used.output_tokens == 400 + 40  # the bad reply and the good one
+
+
+def test_a_generator_that_can_never_answer_does_not_spend_the_days_allowance(make, sample) -> None:
+    from cauldron.service.haiku import UnavailableGenerator
+
+    drake = sample("Stormhide Drake")
+    rig = make(library=[drake])
+    rig.service._generator = UnavailableGenerator()  # what the server uses when there is no API key
+    assert isinstance(rig.service.create(req(**DRAGONS)), GenerateFailure)
+    assert isinstance(rig.service.create_reskin(remix_request(drake.id, move="lob")), GenerateFailure)
+    assert rig.cap.remaining() == 100
+
+
+# --- reflavoring ----------------------------------------------------------------------------------------
+
+
+def flavored(name: str, *renames: tuple[str, str]) -> GeneratedName:
+    return GeneratedName(name=name, description="A new look.", generator="scripted", input_tokens=50, output_tokens=40, renames=renames)
+
+
+def test_a_reflavor_renames_the_abilities_and_leaves_every_number_alone(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Saltwind Duelist", ("Cutlass", "Saber Strike"))], library=[cutthroat])
+    result = rig.service.create_reskin(remix_request(cutthroat.id, reflavor=True))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert monster.name == "Saltwind Duelist" and "Saber Strike" in [a.name for a in monster.actions]
+    assert monster.hit_points == cutthroat.hit_points and monster.challenge == cutthroat.challenge
+    assert monster.armor_class == cutthroat.armor_class and monster.abilities == cutthroat.abilities
+    assert monster.changes is not None and monster.changes[0].startswith("Reflavored") and any(c.startswith("Renamed Cutlass") for c in monster.changes)
+    context = rig.generator.rename_calls[0][0]
+    assert context.reflavor and "Cutlass" in context.rename_candidates
+
+
+def test_the_first_three_reflavors_are_new_and_then_one_of_them_is_handed_back(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    names = [flavored("Look One"), flavored("Look Two"), flavored("Look Three")]
+    rig = make(names=names, library=[cutthroat])
+    request = remix_request(cutthroat.id, reflavor=True)
+    for _ in range(3):
+        assert rig.service.lookup_reskin(request) is None  # until there are three, each press makes a new one
+        assert isinstance(rig.service.create_reskin(request), GenerateSuccess)
+    handed_back = rig.service.lookup_reskin(request)
+    assert handed_back is not None and handed_back.name in {"Look One", "Look Two", "Look Three"}
+    assert len(rig.generator.rename_calls) == 3  # asking again cost nothing
+
+
+def test_each_new_reflavor_is_told_which_looks_already_exist(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Look One"), flavored("Look Two")], library=[cutthroat])
+    request = remix_request(cutthroat.id, reflavor=True)
+    rig.service.create_reskin(request)
+    rig.service.create_reskin(request)
+    assert rig.generator.rename_calls[0][0].avoid_names == ()
+    assert rig.generator.rename_calls[1][0].avoid_names == ("Look One",)
+
+
+def test_a_blocked_ability_name_is_sent_back_for_another(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Saltwind Duelist", ("Cutlass", "Beholder Gaze")), flavored("Saltwind Duelist", ("Cutlass", "Saber Strike"))], library=[cutthroat])
+    result = rig.service.create_reskin(remix_request(cutthroat.id, reflavor=True))
+    assert isinstance(result, GenerateSuccess) and "Saber Strike" in [a.name for a in result.monster.actions]
+    assert any("not ours to use" in line for line in rig.generator.rename_calls[1][1])
+
+
+def test_a_reflavor_with_no_usable_renames_still_gives_a_new_name_and_description(make, sample) -> None:
+    cutthroat = sample("Brinewrack Cutthroat")
+    rig = make(names=[flavored("Saltwind Duelist", ("Not An Ability", "Whatever"))], library=[cutthroat])
+    result = rig.service.create_reskin(remix_request(cutthroat.id, reflavor=True))
+    assert isinstance(result, GenerateSuccess) and result.monster.name == "Saltwind Duelist"
+    assert [a.name for a in result.monster.actions] == [a.name for a in cutthroat.actions]
+
+
+# --- polymorphing ---------------------------------------------------------------------------------------
+
+
+def polymorph(base_id: str, donor_id: str, *borrow: str, **extra) -> ReskinRequest:
+    body = {"baseId": base_id, "donorId": donor_id, **extra}
+    return ReskinRequest.model_validate({**body, "borrow": list(borrow)} if borrow else body)
+
+
+def hybrid(name: str, *picks: str) -> GeneratedName:
+    return GeneratedName(name=name, description="A strange blend.", generator="scripted", input_tokens=50, output_tokens=40, picks=picks)
+
+
+def test_a_polymorph_borrows_the_ticked_features_and_keeps_the_bases_own_numbers(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", "sense:darkvision"))
+    assert isinstance(result, GenerateSuccess)
+    monster = result.monster
+    assert monster.name == "Stormwake Cutthroat" and monster.source is Source.RESKIN and monster.parent_id == base.id
+    assert monster.speeds.fly == donor.speeds.fly and monster.senses.darkvision == donor.senses.darkvision
+    assert monster.hit_points == base.hit_points and monster.armor_class == base.armor_class and monster.abilities == base.abilities
+    assert monster.changes is not None and monster.changes[0] == "Polymorph: features borrowed from Stormhide Drake"
+    context = rig.generator.rename_calls[0][0]
+    assert context.donor_name == "Stormhide Drake" and context.graft_options == () and any("Fly" in c for c in context.changes)
+
+
+def test_the_same_polymorph_again_is_free(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    request = polymorph(base.id, donor.id, "speed:fly")
+    assert rig.service.lookup_reskin(request) is None
+    created = rig.service.create_reskin(request)
+    assert isinstance(created, GenerateSuccess)
+    assert rig.service.lookup_reskin(request) == created.monster
+    assert rig.service.lookup_reskin(polymorph(base.id, donor.id, "sense:darkvision")) is None
+
+
+def test_a_polymorph_can_also_level_up(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", levelUp=True))
+    assert isinstance(result, GenerateSuccess) and result.monster.challenge.cr != base.challenge.cr
+
+
+def test_when_the_forge_chooses_the_ai_picks_from_the_list_and_the_result_is_not_cached(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat", "speed:fly", "not-a-real-key")], library=[base, donor])
+    request = polymorph(base.id, donor.id, forgeChooses=True)
+    result = rig.service.create_reskin(request)
+    assert isinstance(result, GenerateSuccess) and result.monster.speeds.fly == donor.speeds.fly
+    context = rig.generator.rename_calls[0][0]
+    assert ("speed:fly", "Fly 60 ft.") in context.graft_options
+    assert rig.service.lookup_reskin(request) is None  # a forge's choice is made fresh each time
+
+
+def test_a_forge_choice_with_no_usable_pick_is_sent_back(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat", "nonsense"), hybrid("Stormwake Cutthroat", "speed:fly")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, forgeChooses=True))
+    assert isinstance(result, GenerateSuccess)
+    assert any("Pick at least one" in line for line in rig.generator.rename_calls[1][1])
+
+
+def test_a_polymorph_with_an_unknown_donor_itself_or_a_feature_not_offered_is_refused_without_the_ai(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[], library=[base, donor])
+    for request in (polymorph(base.id, "nobody", "speed:fly"), polymorph(base.id, base.id, "speed:fly"), polymorph(base.id, donor.id, "speed:burrow")):
+        result = rig.service.create_reskin(request)
+        assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID
+    assert rig.generator.rename_calls == []
+
+
+def test_graft_options_lists_what_the_donor_can_lend_for_free(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[], library=[base, donor])
+    keys = [b.key for b in rig.service.graft_options(base.id, donor.id)]
+    assert "speed:fly" in keys and "attack:Bite" in keys
+    failure = rig.service.graft_options(base.id, "nobody")
+    assert isinstance(failure, GenerateFailure) and failure.reason is FailureReason.INVALID
+
+
+def test_a_polymorph_can_ask_for_legendary_actions(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    rig = make(names=[hybrid("Stormwake Cutthroat")], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", legendary=True))
+    assert isinstance(result, GenerateSuccess)
+    assert result.monster.legendary_actions is not None and result.monster.legendary_actions.per_round == 3
+    assert any(c.startswith("Legendary actions") for c in rig.generator.rename_calls[0][0].changes)
+    assert rig.service.lookup_reskin(polymorph(base.id, donor.id, "speed:fly")) is None  # a different request, so a different answer
+
+
+def test_legendary_actions_are_refused_for_a_base_that_already_has_them(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    legendary_base = base.model_copy(update={"id": "already", "legendary_actions": LegendaryActions(per_round=3, options=[LegendaryOption(name="Move", cost=1, text="It moves.")])})
+    rig = make(names=[], library=[legendary_base, donor])
+    result = rig.service.create_reskin(polymorph("already", donor.id, "speed:fly", legendary=True))
+    assert isinstance(result, GenerateFailure) and result.reason is FailureReason.INVALID and "already has legendary" in result.message
+    assert rig.generator.rename_calls == []
+
+
+def test_the_ai_names_the_built_legendary_actions_and_a_blocked_name_is_sent_back(make, sample) -> None:
+    base, donor = sample("Brinewrack Cutthroat"), sample("Stormhide Drake")
+    first = GeneratedName(name="Stormwake Cutthroat", description="A blend.", generator="scripted", input_tokens=5, output_tokens=5, legendary_names=("Beholder Gaze", "Slip Away", "Zap"))
+    second = GeneratedName(name="Stormwake Cutthroat", description="A blend.", generator="scripted", input_tokens=5, output_tokens=5, legendary_names=("Salt Slash", "Slip Away", "Zap"))
+    rig = make(names=[first, second], library=[base, donor])
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, "speed:fly", legendary=True))
+    assert isinstance(result, GenerateSuccess)
+    assert rig.generator.rename_calls[0][0].legendary_names is True
+    assert any("not ours to use" in line for line in rig.generator.rename_calls[1][1])
+    assert [o.name for o in result.monster.legendary_actions.options][:2] == ["Salt Slash", "Slip Away"]  # type: ignore[union-attr]
+
+
+# --- credits travel with derived monsters ------------------------------------------------------------------
+
+
+def a5e_library() -> dict[str, Monster]:
+    import json
+
+    path = Path(__file__).parents[3] / "frontend" / "public" / "data" / "a5e-monsters.json"
+    return {m["id"]: Monster.model_validate(m) for m in json.loads(path.read_text(encoding="utf-8"))}
+
+
+def test_an_a5e_monster_can_be_reflavored_remixed_and_polymorphed_and_keeps_its_credit(make) -> None:
+    from cauldron.rules import A5E_ATTRIBUTION
+
+    library = a5e_library()
+    aboleth = library["a5e-aboleth"]
+    other = next(m for k, m in library.items() if k != "a5e-aboleth" and m.speeds.fly)
+    rig = make(names=[named("Deepglow Aboleth"), named("Murkglow Aboleth"), hybrid("Skyglow Aboleth")], library=[aboleth, other])
+    for request in (remix_request(aboleth.id, reflavor=True), remix_request(aboleth.id, theme="fire")):
+        result = rig.service.create_reskin(request)
+        assert isinstance(result, GenerateSuccess), result
+        assert result.monster.attribution == A5E_ATTRIBUTION
+    offered = [b.key for b in rig.service.graft_options(aboleth.id, other.id)]  # type: ignore[union-attr]
+    result = rig.service.create_reskin(polymorph(aboleth.id, other.id, offered[0]))
+    assert isinstance(result, GenerateSuccess) and result.monster.attribution == A5E_ATTRIBUTION
+
+
+def test_an_srd_monster_polymorphed_with_an_a5e_donor_carries_both_credits(make, sample) -> None:
+    from cauldron.rules import A5E_ATTRIBUTION, SRD_ATTRIBUTION
+
+    donor = a5e_library()["a5e-aboleth"]
+    base = sample("Brinewrack Cutthroat").model_copy(update={"source": Source.SRD, "attribution": SRD_ATTRIBUTION})
+    rig = make(names=[hybrid("Deepglow Cutthroat")], library=[base, donor])
+    offered = [b.key for b in rig.service.graft_options(base.id, donor.id)]  # type: ignore[union-attr]
+    result = rig.service.create_reskin(polymorph(base.id, donor.id, offered[0]))
+    assert isinstance(result, GenerateSuccess)
+    assert result.monster.attribution == f"{SRD_ATTRIBUTION} {A5E_ATTRIBUTION}"

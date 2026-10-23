@@ -1,0 +1,1562 @@
+:root {
+  /* Light theme: parchment. Every colour the page uses is one of these, so a theme is just a different set. */
+  --paper: #a99468;
+  --paper-glow: #c2ae82;
+  --ink: #1e1710;
+  --accent: #2d5a1c;
+  --on-accent: #eee4c8; /* text on an accent-coloured button */
+  --danger: #8a1c14; /* errors and the deadliest rating */
+  --panel-deep: #9c8453; /* the scorched rim of a paper panel */
+  --ember: #5f9a2e; /* the glow along a burnt edge: witchfire green */
+  --char: rgba(35, 25, 8, 0.78);
+  --muted: #4f4430;
+  --panel: #cfba88;
+  --panel-border: #8c7548;
+  --field: #e2d3a6; /* inputs, menus, small buttons */
+  --field-border: #8c7548;
+  --hover: #c3ad79;
+  --pressed: #b49d68;
+  --divider: #a99262;
+  --note: #d6c394;
+  /* Pictures */
+  --silhouette: #3a2a48;
+  --silhouette-edge: transparent;
+  --iron: #3a3a3f;
+  --iron-rim: #55555c;
+  --brew: #6fae5a;
+  --brew-glow: rgba(111, 174, 90, 0.35);
+  --moon: #c79a45;
+  --font-body: "Alegreya", Georgia, "Times New Roman", serif;
+  --font-display: "Cinzel", Georgia, serif; /* headings, buttons, labels */
+  --font-title: "Pirata One", "Cinzel Decorative", Georgia, serif; /* the page title and panel headings */
+  --font-flourish: "MedievalSharp", "Cinzel", Georgia, serif; /* small touches: counts, notes */
+  color-scheme: light;
+  font-family: var(--font-body);
+  /* Alegreya sets a little smaller than Georgia did, so everything (written in rem) grows with it. */
+  font-size: 106.25%;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+/* Dark theme: a candlelit desk. The stat block keeps its parchment (see StatBlock.css), like a page lying on the desk. */
+:root[data-theme="dark"] {
+  --paper: #080a07;
+  --paper-glow: #151b10;
+  --ink: #e2dcc6;
+  --accent: #86e05a;
+  --on-accent: #0b1006;
+  --danger: #ff7a66;
+  --muted: #a5a38a;
+  --panel: #1e2117;
+  --panel-deep: #0b0d08;
+  --panel-border: #5e4326;
+  --field: #11140c;
+  --field-border: #7a5a32;
+  --hover: #2c3121;
+  --pressed: #39422b;
+  --divider: #343824;
+  --note: #1f2417;
+  --ember: #6fe04a;
+  --char: rgba(0, 0, 0, 0.9);
+  --silhouette: #54396b;
+  --silhouette-edge: #a98ad0;
+  --iron: #26262b;
+  --iron-rim: #4a4a52;
+  --brew: #7fe05a;
+  --brew-glow: rgba(127, 224, 90, 0.4);
+  --moon: #d9b36a;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2 {
+  color: var(--accent);
+  /* Pirata One has one weight, so the browser must not fake a bold one. */
+  font-family: var(--font-title);
+  font-weight: 400;
+  margin: 0 0 0.4rem;
+}
+
+h1 {
+  font-size: 2.3rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-shadow: 0 0 0.9rem var(--ember);
+}
+
+h2 {
+  font-size: 1.5rem;
+  letter-spacing: 0.03em;
+}
+
+/* The difficulty pills and their label speak in the display face; buttons and running text use the readable one. */
+.pill,
+.difficulty legend {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+/* Hidden on screen but still read aloud by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: bold;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.detail-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  /* A long name with no spaces would otherwise spill out of its panel. */
+  overflow-wrap: anywhere;
+}
+
+/* ---- Shared controls ---- */
+
+.link-button {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* aria-disabled buttons stay focusable (they must keep keyboard focus) but look and act disabled. */
+.link-button:disabled,
+.link-button[aria-disabled="true"] {
+  color: var(--muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+.print-button {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.print-button:hover {
+  filter: brightness(1.15);
+}
+
+.action-button {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.action-button:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--hover);
+}
+
+.action-button[aria-pressed="true"] {
+  background: var(--pressed);
+  font-weight: bold;
+}
+
+.action-button:disabled,
+.action-button[aria-disabled="true"] {
+  border-color: var(--muted);
+  color: var(--muted);
+  cursor: default;
+}
+
+.star-button {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--field);
+  color: var(--accent);
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.star-button[aria-pressed="true"] {
+  background: var(--pressed);
+}
+
+select,
+.search-box,
+.encounter-name-input {
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: var(--field);
+  font: inherit;
+}
+
+select {
+  padding: 0.2rem;
+}
+
+/* A box of burnt paper: results, encounter and saved encounters (the paper itself is drawn in the "Grim dark" section). */
+.panel {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* ---- Page layout ---- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+}
+
+/* The light / dark switch, under the title. */
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 0.4rem var(--paper);
+  cursor: pointer;
+}
+
+.theme-switch__track {
+  position: relative;
+  width: 3rem;
+  height: 1.55rem;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: var(--field);
+  box-shadow: inset 0 0 0.4rem var(--char);
+}
+
+.theme-switch__thumb {
+  position: absolute;
+  top: 0.12rem;
+  left: 0.15rem;
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.theme-switch__thumb::before {
+  content: "\2600";
+}
+
+.theme-switch[aria-checked="true"] .theme-switch__thumb {
+  transform: translateX(1.4rem);
+}
+
+.theme-switch[aria-checked="true"] .theme-switch__thumb::before {
+  content: "\263e";
+}
+
+.theme-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch__thumb {
+    transition: none;
+  }
+}
+
+/* Text over the witch stays readable: a soft halo in the page colour. */
+.party-bar,
+.budgets {
+  text-shadow: 0 0 0.5rem var(--paper), 0 0 0.15rem var(--paper);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand h1 {
+  margin: 0;
+}
+
+.brand__mark {
+  width: 2.8rem;
+  height: auto;
+}
+
+/* The witch banner uses spare room in the top bar and steps aside when there is none. */
+.topbar__scene {
+  width: 13rem;
+  height: auto;
+  margin-left: auto;
+}
+
+@media (max-width: 1100px) {
+  .topbar__scene {
+    display: none;
+  }
+}
+
+/* The painted witch sits behind the whole top section, dimmed, so text and controls flow over her and she never pushes
+   anything around (she is out of the layout: absolutely placed, behind, and she takes no clicks). */
+.witch-art {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0.5rem;
+  display: block;
+  width: auto;
+  /* Taller than the section: her lower edge runs on under the filter bar below, which paints over it, so the picture never
+     ends in a visible line above the bar. */
+  height: calc(100% + 1.4rem);
+  margin: 0;
+  object-fit: contain;
+  opacity: 0.6;
+  pointer-events: none;
+  filter: drop-shadow(0 0 0.8rem var(--brew-glow));
+}
+
+/* Wide screens: the top section is made tall enough to show her properly, and she stands in the empty space left of the
+   Theme button instead of under it. */
+@media (min-width: 1100px) {
+  /* Room is kept on the right for her, so no text or control ever sits under the picture. */
+  .topbar {
+    min-height: 8.5rem;
+    align-items: center;
+    padding-right: 14rem;
+  }
+
+  .witch-art {
+    right: 0.5rem;
+    opacity: 0.85;
+  }
+}
+
+/* Phones: she fills the section behind the title and controls. */
+@media (max-width: 700px) {
+  .witch-art {
+    right: 0;
+    width: 100%;
+    object-fit: cover;
+    object-position: 50% 0%; /* anchored to the top, so the hat is never the part that gets cropped */
+    opacity: 0.3;
+  }
+}
+
+.empty-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.empty-scene__art {
+  width: 10rem;
+  height: auto;
+  opacity: 0.92;
+  filter: drop-shadow(0 0 1rem var(--brew-glow));
+}
+
+/* ---- Pictures: the cauldron and the witch (components/Illustrations.tsx) ---- */
+
+.cauldron {
+  overflow: visible;
+}
+
+.cauldron__iron {
+  fill: var(--iron);
+  color: var(--iron);
+}
+
+.cauldron__rim {
+  fill: var(--iron-rim);
+}
+
+.cauldron__brew {
+  fill: var(--brew);
+}
+
+.cauldron__glow {
+  fill: var(--brew-glow);
+  filter: blur(6px);
+}
+
+.cauldron__shine {
+  stroke: var(--iron-rim);
+}
+
+.bubble {
+  fill: var(--brew);
+  stroke: var(--paper);
+  stroke-width: 0.8;
+  opacity: 0.85;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.witch__figure {
+  fill: var(--silhouette);
+  stroke: var(--silhouette-edge);
+  stroke-width: 1.2;
+}
+
+.witch__stick {
+  stroke: var(--silhouette);
+}
+
+.witch__band {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.witch__moon {
+  fill: var(--moon);
+}
+
+.witch__star {
+  fill: var(--moon);
+}
+
+/* Animation: bubbles rise and fade, the brew glows. Off when the visitor's device asks for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .is-bubbling .bubble {
+    animation: bubble-rise 3.2s ease-in infinite;
+  }
+
+  .is-bubbling .b2 {
+    animation-delay: 0.8s;
+  }
+
+  .is-bubbling .b3 {
+    animation-delay: 1.6s;
+  }
+
+  .is-bubbling .b4 {
+    animation-delay: 2.3s;
+  }
+
+  .is-bubbling .cauldron__glow {
+    animation: brew-pulse 2.6s ease-in-out infinite;
+  }
+
+  .witch__star {
+    animation: twinkle 3s ease-in-out infinite;
+  }
+}
+
+/* ---- The brewing overlay ---- */
+
+.brew-overlay {
+  /* a popover starts with a margin, a border and a background of its own; none of that is wanted here */
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.brew-overlay:not(:popover-open) {
+  display: none;
+}
+
+.brew-overlay__pot {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 12rem;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 1.2rem var(--brew-glow));
+}
+
+/* The painted cauldron, scaled down by the browser (the same file the empty encounter box shows). */
+.brew-overlay__art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.brew-overlay__pot p {
+  margin: 0;
+  padding: 0.1rem 0.8rem;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--accent);
+  font-family: var(--font-flourish);
+}
+
+.brew-bubble {
+  position: absolute;
+  bottom: 8rem; /* up from the rim of the painted pot */
+  border-radius: 50%;
+  border: 2px solid var(--brew);
+  background: var(--brew-glow);
+  opacity: 0;
+}
+
+/* Reduced motion: no moving bubbles, but the cauldron and its label still say that something is happening. */
+@media (prefers-reduced-motion: no-preference) {
+  .brew-bubble {
+    animation-name: brew-rise;
+    animation-timing-function: ease-in;
+    animation-iteration-count: infinite;
+  }
+
+  .brew-overlay.is-popping .brew-bubble {
+    animation: brew-pop 0.6s ease-out forwards;
+  }
+
+  .brew-overlay.is-popping .brew-overlay__pot {
+    animation: brew-fade 0.7s ease-in forwards;
+  }
+}
+
+@keyframes brew-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0) scale(0.6);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(-45vh) translateX(1.2rem) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-95vh) translateX(-1rem) scale(1.25);
+  }
+}
+
+@keyframes brew-pop {
+  0% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@keyframes brew-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.5);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(1.15);
+  }
+}
+
+@keyframes brew-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.topbar {
+  position: relative; /* no isolation: the XP overlay must be able to rise above the filter bar below */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.4rem 1.5rem;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+/* The monster list can be very long, so it scrolls inside its box (on small screens too). */
+.monster-list {
+  max-height: 24rem;
+}
+
+/*
+ * One page, no page scrolling (desktop and large tablets): the window is split into the top bar,
+ * the filter bar and a board that takes all the rest of the height. Each board box scrolls inside itself.
+ */
+@media (min-width: 1000px) and (min-height: 600px) {
+  .app {
+    box-sizing: border-box;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .board {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.25fr) minmax(0, 0.9fr);
+  }
+
+  /* If the fixed parts of a box ever need more room than the window gives it, the box scrolls
+     instead of pushing its buttons out of reach. */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* The lists take the spare height and scroll, but never shrink to nothing. */
+  .monster-list,
+  .encounter-list,
+  .saved-list {
+    flex: 1 1 auto;
+    min-height: 6rem;
+    max-height: none;
+    overflow-y: auto;
+  }
+}
+
+/* ---- Party bar (in the top bar) ---- */
+
+.party-bar {
+  display: flex;
+  flex: 1 1 30rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.3rem 1rem;
+}
+
+.party-row,
+.party-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.party-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.difficulty {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.difficulty legend {
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.difficulty-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+}
+
+.pill {
+  position: relative;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: var(--field);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pill input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pill.selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.pill:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.band-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.budgets {
+  font-size: 0.85rem;
+}
+
+/* ---- Filter bar ---- */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
+.search-box {
+  box-sizing: border-box;
+  flex: 1 1 10rem;
+  max-width: 16rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.filter-menus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.menu-button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--field-border);
+  border-radius: 4px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.menu-button[aria-expanded="true"] {
+  background: var(--pressed);
+}
+
+/* The filter menus are DropMenus (see .dropmenu above); this is all that is special about them. */
+.menu-panel {
+  min-width: 12rem;
+}
+
+.filter-count {
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+
+.filter-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.cr-range {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cr-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+/* ---- Results ---- */
+
+.result-count {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: normal;
+}
+
+.results-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.9rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.monster-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.monster-button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.monster-button:hover {
+  background: var(--hover);
+}
+
+.monster-button span {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+/* ---- Encounter card ---- */
+
+.encounter-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* In a narrow box the Save button drops to a second row instead of squeezing the name box. */
+.encounter-name-input {
+  flex: 1 1 9rem;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  /* iOS Safari zooms the page when a text box smaller than 16px gets focus. */
+  font-size: 1rem;
+}
+
+.encounter-list,
+.saved-list {
+  list-style: none;
+  margin: 0.4rem 0;
+  padding: 0;
+}
+
+.encounter-row,
+.saved-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.encounter-name,
+.saved-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.encounter-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.encounter-meta.unavailable {
+  font-style: italic;
+}
+
+.encounter-controls,
+.saved-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* A monster's name in the encounter: a button that looks like a link and opens its stat block. */
+.monster-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.count-button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--field);
+  color: var(--accent);
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.count-button:disabled,
+.count-button[aria-disabled="true"] {
+  border-color: var(--muted);
+  color: var(--muted);
+  cursor: default;
+}
+
+.count {
+  min-width: 1.5rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* The rating is always written as a word; weight and these colours only reinforce it. */
+.encounter-rating {
+  min-height: 1.3rem;
+  margin: 0.5rem 0 0.25rem;
+  font-weight: bold;
+  color: var(--ink);
+}
+
+.rating-trivial {
+  color: var(--muted);
+}
+
+.rating-hard {
+  color: var(--accent);
+}
+
+.rating-deadly {
+  color: var(--danger);
+}
+
+.encounter-totals {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+/* A long value (the multiplier note) wraps under its label instead of squeezing beside it. */
+.encounter-totals div {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.5rem;
+}
+
+.encounter-totals dt {
+  min-width: 5.5rem;
+  color: var(--muted);
+}
+
+.encounter-totals dd {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+/* New encounter and Export sit side by side under the totals. */
+.encounter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+}
+
+/* ---- Saved encounters ---- */
+
+/* Saved rows: star, name, then Load and Delete, which wrap under the name when the box is narrow. */
+.saved-list li {
+  justify-content: flex-start;
+}
+
+.saved-list .saved-name {
+  flex: 1 1 6rem;
+}
+
+/* ---- Stat block pop-out ---- */
+
+.statblock-dialog {
+  overflow-x: hidden; /* an overlay near the edge must never add a sideways scroll bar */
+  box-sizing: border-box;
+  width: min(44rem, 96vw);
+  max-height: 92vh;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+}
+
+.statblock-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialog-body {
+  padding: 0.75rem;
+}
+
+/* The buttons stay in view while a long stat block scrolls underneath. */
+.dialog-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0 0.6rem;
+  background: var(--paper);
+}
+
+.close-button {
+  width: 2rem;
+  height: 2rem;
+  margin-left: auto;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Menus and overlays that open under a button in the stat block's button row (components/DropMenu.tsx). */
+.dropmenu {
+  position: relative;
+}
+
+.dropmenu__panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  z-index: 30;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(26rem, 92vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  /* A functional shadow: it separates the overlay from the stat block it covers. */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.dropmenu__panel[hidden] {
+  display: none;
+}
+
+.dropmenu__panel--left {
+  left: 0;
+}
+
+.dropmenu__panel--right {
+  right: 0;
+}
+
+.dropmenu__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dropmenu__item {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 1.2rem 0.35rem 0.4rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropmenu__item:hover,
+.dropmenu__item:focus-visible {
+  background: var(--hover);
+}
+
+/* The Favorite button is a star and nothing else. */
+.star-only {
+  min-width: 2.4rem;
+  padding-inline: 0.5rem;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* A small round "i": the help for importing what the Export menu makes. */
+.info-button {
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.info-button:hover,
+.info-button[aria-expanded="true"] {
+  background: var(--hover);
+}
+
+.export-help {
+  font-size: 0.85rem;
+}
+
+.export-help ol {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+
+/* The download notice takes no room until it has something to say (it stays on the page so it is still announced). */
+.export-status:empty {
+  position: absolute;
+}
+
+.export-status:not(:empty) {
+  flex-basis: 100%;
+}
+
+/* Phones: the pop-out fills the screen. */
+@media (max-width: 700px) {
+  .statblock-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
+/* Printing: only the open stat block, on plain white, using the full page. */
+@media print {
+  :root,
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .statblock-dialog[open] {
+    position: static;
+    width: auto;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    overflow: visible;
+    border: 0;
+    background: none;
+  }
+
+  .statblock-dialog::backdrop {
+    display: none;
+  }
+
+  .dialog-body {
+    padding: 0;
+  }
+
+  .statblock {
+    box-shadow: none;
+    border: 1px solid #999;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+/* ---- Generate and Reskin ---- */
+.generate-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.generate-bar p {
+  margin: 0;
+}
+
+.generate-prompt {
+  font-weight: bold;
+}
+
+.generate-bar .detail-note {
+  flex-basis: 100%;
+}
+
+.dropmenu__panel.reskin-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  width: min(26rem, 92vw);
+  font-size: 0.9rem;
+}
+
+.dropmenu__panel.reskin-panel[hidden] {
+  display: none;
+}
+
+.reskin-panel p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.reskin-kind {
+  display: flex;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reskin-panel .graft-options {
+  flex-basis: 100%;
+  max-height: 11rem;
+  overflow-y: auto;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line, currentColor);
+}
+
+.reskin-panel .graft-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  border: 0;
+}
+
+.reskin-panel .graft-group legend {
+  padding: 0;
+  font-weight: bold;
+}
+
+.reskin-panel input[type="text"] {
+  width: 100%;
+  max-width: 16rem;
+}
+
+.changes-note {
+  margin: 0 0 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--accent);
+  background: var(--note);
+  font-size: 0.85rem;
+}
+
+.changes-note h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.9rem;
+}
+
+.changes-note ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.source-note {
+  margin: 0 0 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--accent);
+  background: var(--note);
+  font-size: 0.85rem;
+}
+
+/* ---- Attribution footer ---- */
+.attribution {
+  flex: none;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+
+/* ---- Grim dark: scorched paper, embers ---- */
+
+/* The paper texture is a speck pattern made by the browser itself (an SVG noise filter), so there is no image to download. */
+:root {
+  /* Crumpled paper: the browser lights a fractal noise surface from one side, giving creases and folds. Tiles seamlessly. */
+  --crumple: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'><filter id='c' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.011 .016' numOctaves='5' seed='11' stitchTiles='stitch' result='t'/><feDiffuseLighting in='t' surfaceScale='5' diffuseConstant='1.05' lighting-color='%23ffffff'><feDistantLight azimuth='225' elevation='50'/></feDiffuseLighting></filter><rect width='100%' height='100%' filter='url(%23c)'/></svg>");
+  --paper-tex: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 -.12'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+@media screen {
+  body {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 25%, var(--paper-glow) 0%, var(--paper) 72%) fixed;
+  }
+}
+
+/* Panels and the filter bar are sheets of burnt paper. The picture of the paper is two layers drawn behind the content:
+   one with the sheet and its charred rim, one that glows like an ember and flickers. Both are run through a filter that
+   roughens the outline, so the edge looks burnt rather than cut. The text sits on top, untouched. */
+.panel,
+.filter-bar {
+  position: relative;
+  isolation: isolate;
+  padding: 0.8rem 1rem;
+}
+
+/* The filter bar sits above the boxes below it, so its open menus are not hidden behind the results and encounter cards. */
+.filter-bar {
+  z-index: 5;
+}
+
+.panel::before,
+.panel::after,
+.filter-bar::before,
+.filter-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 3px;
+  pointer-events: none;
+  filter: url(#smolder-edge);
+}
+
+.panel::before,
+.filter-bar::before {
+  background:
+    var(--crumple),
+    var(--paper-tex),
+    radial-gradient(ellipse at 50% 40%, var(--panel) 50%, var(--panel-deep) 100%);
+  background-size: 520px 520px, 220px 220px, auto;
+  background-blend-mode: soft-light, normal, normal;
+  box-shadow:
+    inset 0 0 0.2rem 0.05rem var(--ember),
+    inset 0 0 1.3rem 0.35rem var(--char);
+}
+
+.panel::after,
+.filter-bar::after {
+  box-shadow: inset 0 0 0.9rem 0.1rem var(--ember);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel::after,
+  .filter-bar::after {
+    animation: smolder 5s ease-in-out infinite alternate;
+  }
+
+  .filter-bar::after {
+    animation-duration: 6.5s;
+    animation-delay: -2s;
+  }
+
+  .panel:nth-child(2)::after {
+    animation-delay: -1.5s;
+  }
+
+  .panel:nth-child(3)::after {
+    animation-delay: -3.2s;
+  }
+}
+
+@keyframes smolder {
+  0% {
+    opacity: 0.25;
+  }
+  35% {
+    opacity: 0.7;
+  }
+  60% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+
+/* Embers drift up the whole page, behind everything. */
+.ember-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ember {
+  position: absolute;
+  bottom: -1rem;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 0.5rem 0.1rem var(--ember);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ember {
+    animation-name: ember-rise;
+    animation-timing-function: ease-out;
+    animation-iteration-count: infinite;
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+  10% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(2.5rem, -105vh) scale(0.3);
+  }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+}
+
+@media print {
+  .ember-field {
+    display: none;
+  }
+}
+
+/* Phones: an overlay opened from a button in the stat block's row spans the width of that row, just under the button, so it
+   can never run off either edge. (Placed last so it wins over the wider-screen widths above.) */
+@media (max-width: 700px) {
+  .dropmenu {
+    position: static;
+  }
+
+  .dropmenu__panel,
+  .dropmenu__panel.reskin-panel,
+  .dropmenu__panel.export-help {
+    top: auto;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+    margin-top: 0.35rem;
+  }
+}
+
+/* In the stat block's button row, the wide overlays (reskin options, Foundry help) line up with the left edge of the row and
+   open just under their button, at any window width. Lined up with their own buttons they would run past the edge of the
+   pop-out. (The small Export list still hangs from its button.) */
+.dialog-header .dropmenu:has(> .reskin-panel),
+.dialog-header .dropmenu:has(> .export-help) {
+  position: static;
+}
+
+.dialog-header .dropmenu__panel.reskin-panel,
+.dialog-header .dropmenu__panel.export-help {
+  top: auto;
+  right: auto;
+  left: 0.5rem;
+  margin-top: 0.35rem;
+  width: min(26rem, calc(100% - 1rem));
+  max-width: none;
+}

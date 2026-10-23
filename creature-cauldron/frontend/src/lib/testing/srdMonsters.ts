@@ -1,0 +1,155 @@
+// Test-only: three SRD monsters written in our own format, so tests can compare our exports with the
+// real versions of the same monsters (from the Foundry dnd5e pack and the 5etools data).
+import sample from "../../../public/data/sample-monsters.json";
+import type { AttackAction, Monster, TextAction } from "../../types/monster";
+
+const base = (sample as unknown as Monster[]).find((m) => m.name === "Stormhide Drake")!;
+
+const text = (name: string, t: string): TextAction => ({ kind: "text", name, text: t });
+
+const melee = (name: string, bonus: number, reach: number, dice: string, damageBonus: number, type: "piercing" | "slashing" | "bludgeoning"): AttackAction => ({
+  kind: "attack",
+  name,
+  attack: { mode: "melee_weapon", ability: "str", to_hit: bonus, reach, targets: "one target" },
+  damage: [{ dice, bonus: damageBonus, type }],
+});
+
+export const redDragon: Monster = {
+  ...base,
+  id: "adult-red-dragon-test",
+  name: "Adult Red Dragon",
+  source: "srd",
+  size: "huge",
+  type: "dragon",
+  subtypes: [],
+  alignment: "Chaotic Evil",
+  armor_class: { value: 19, note: "natural armor" },
+  hit_points: { average: 256, dice: "19d12+133" },
+  speeds: { walk: 40, climb: 40, fly: 80 },
+  abilities: { str: 27, dex: 10, con: 25, int: 16, wis: 13, cha: 21 },
+  saves: { dex: 6, con: 13, wis: 7, cha: 11 },
+  skills: { Perception: 13, Stealth: 6 },
+  vulnerabilities: [],
+  resistances: [],
+  immunities: ["fire"],
+  condition_immunities: [],
+  senses: { blindsight: 60, darkvision: 120, passive_perception: 23 },
+  languages: "Common, Draconic",
+  challenge: { cr: "17", cr_value: 17, xp: 18000, proficiency_bonus: 6 },
+  traits: [text("Legendary Resistance (3/Day)", "If the dragon fails a saving throw, it can choose to succeed instead.")],
+  actions: [
+    text("Multiattack", "The dragon can use its Frightful Presence. It then makes three attacks."),
+    {
+      ...melee("Bite", 14, 10, "2d10", 8, "piercing"),
+      damage: [
+        { dice: "2d10", bonus: 8, type: "piercing" },
+        { dice: "2d6", bonus: 0, type: "fire" },
+      ],
+    },
+    melee("Claw", 14, 5, "2d6", 8, "slashing"),
+    melee("Tail", 14, 15, "2d8", 8, "bludgeoning"),
+    {
+      kind: "save",
+      name: "Fire Breath",
+      recharge: { min: 5 },
+      save: { ability: "dex", dc: 21 },
+      area: { shape: "cone", size: 60 },
+      on_fail: [{ dice: "18d6", bonus: 0, type: "fire" }],
+      on_success: "half",
+    },
+  ],
+  bonus_actions: [],
+  reactions: [],
+  legendary_actions: {
+    per_round: 3,
+    options: [
+      { name: "Detect", cost: 1, text: "The dragon makes a Wisdom (Perception) check." },
+      { name: "Tail Attack", cost: 1, text: "The dragon makes a tail attack." },
+      { name: "Wing Attack", cost: 2, text: "The dragon beats its wings." },
+    ],
+  },
+  spellcasting: null,
+  environments: ["mountain", "hill"],
+  attribution: null,
+};
+
+export const goblin: Monster = {
+  ...base,
+  id: "goblin-test",
+  name: "Goblin",
+  source: "srd",
+  size: "small",
+  type: "humanoid",
+  subtypes: ["goblinoid"],
+  alignment: "neutral evil",
+  armor_class: { value: 15, note: "leather armor, shield" },
+  hit_points: { average: 7, dice: "2d6" },
+  speeds: { walk: 30 },
+  abilities: { str: 8, dex: 14, con: 10, int: 10, wis: 8, cha: 8 },
+  saves: {},
+  skills: { Stealth: 6 },
+  vulnerabilities: [],
+  resistances: [],
+  immunities: [],
+  condition_immunities: [],
+  senses: { darkvision: 60, passive_perception: 9 },
+  languages: "Common, Goblin",
+  challenge: { cr: "1/4", cr_value: 0.25, xp: 50, proficiency_bonus: 2 },
+  traits: [text("Nimble Escape", "The goblin can take the Disengage or Hide action as a bonus action on each of its turns.")],
+  actions: [
+    melee("Scimitar", 4, 5, "1d6", 2, "slashing"),
+    {
+      kind: "attack",
+      name: "Shortbow",
+      attack: { mode: "ranged_weapon", ability: "dex", to_hit: 4, range: { normal: 80, long: 320 }, targets: "one target" },
+      damage: [{ dice: "1d6", bonus: 2, type: "piercing" }],
+    },
+  ],
+  bonus_actions: [],
+  reactions: [],
+  legendary_actions: null,
+  spellcasting: null,
+  environments: ["underdark", "grassland", "forest", "hill"],
+  attribution: null,
+};
+
+export const hillGiant: Monster = {
+  ...base,
+  id: "hill-giant-test",
+  name: "Hill Giant",
+  source: "srd",
+  size: "huge",
+  type: "giant",
+  subtypes: [],
+  alignment: "chaotic evil",
+  armor_class: { value: 13, note: "natural armor" },
+  hit_points: { average: 105, dice: "10d12+40" },
+  speeds: { walk: 40 },
+  abilities: { str: 21, dex: 8, con: 19, int: 5, wis: 9, cha: 6 },
+  saves: {},
+  skills: { Perception: 2 },
+  vulnerabilities: [],
+  resistances: [],
+  immunities: [],
+  condition_immunities: [],
+  senses: { passive_perception: 12 },
+  languages: "Giant",
+  challenge: { cr: "5", cr_value: 5, xp: 1800, proficiency_bonus: 3 },
+  traits: [],
+  actions: [
+    { kind: "multiattack", name: "Multiattack", sequence: [{ action: "Greatclub", count: 2 }] },
+    melee("Greatclub", 8, 10, "3d8", 5, "bludgeoning"),
+    {
+      kind: "attack",
+      name: "Rock",
+      attack: { mode: "ranged_weapon", ability: "str", to_hit: 8, range: { normal: 60, long: 240 }, targets: "one target" },
+      damage: [{ dice: "3d10", bonus: 5, type: "bludgeoning" }],
+    },
+  ],
+  bonus_actions: [],
+  reactions: [],
+  legendary_actions: null,
+  spellcasting: null,
+  environments: ["hill"],
+  attribution: null,
+};

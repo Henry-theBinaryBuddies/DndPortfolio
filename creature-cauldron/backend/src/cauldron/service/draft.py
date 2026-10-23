@@ -1,0 +1,156 @@
+"""The draft: the part of a monster the AI is asked to write.
+
+The AI fills in a ``MonsterDraft`` (the creative and mechanical choices). Code then adds everything else, so the AI can never
+claim a source, mark itself validated, invent an attribution or pick its own feature tags. In particular the challenge
+block (XP, proficiency bonus) is computed from the challenge rating label by the SRD tables, and the feature tags are
+derived from the stat block.
+"""
+
+from typing import Annotated
+
+from pydantic import Field, field_validator
+
+from cauldron.actions import AnyAction, TextAction
+from cauldron.base import CauldronModel
+from cauldron.features import derive_features
+from cauldron.monster import (
+    Abilities,
+    ArmorClass,
+    Challenge,
+    HitPoints,
+    LegendaryActions,
+    Monster,
+    Senses,
+    Short,
+    Speeds,
+    Spellcasting,
+)
+from cauldron.actions import Prose
+from cauldron.options import Ability, CreatureType, DamageTheme, DamageType, Environment, Role, Size, Source
+from cauldron.remix.graft import MAX_PICKS
+from cauldron.remix.reflavor import MAX_RENAMES
+from cauldron.rules import CR_LABELS
+
+
+class MonsterDraft(CauldronModel):
+    name: Short
+    size: Size
+    type: CreatureType
+    subtypes: list[Short] = Field(default_factory=list)
+    alignment: Short
+    armor_class: ArmorClass
+    hit_points: HitPoints
+    speeds: Speeds
+    abilities: Abilities
+    saves: dict[Ability, int] = Field(default_factory=dict)
+    skills: dict[str, int] = Field(default_factory=dict)
+    vulnerabilities: list[DamageType] = Field(default_factory=list)
+    resistances: list[DamageType] = Field(default_factory=list)
+    immunities: list[DamageType] = Field(default_factory=list)
+    condition_immunities: list[Short] = Field(default_factory=list)
+    senses: Senses
+    languages: str = "—"
+    cr: str  # the challenge rating label, for example "5" or "1/4"
+    traits: list[TextAction] = Field(default_factory=list)
+    actions: list[AnyAction] = Field(default_factory=list)
+    bonus_actions: list[AnyAction] = Field(default_factory=list)
+    reactions: list[AnyAction] = Field(default_factory=list)
+    legendary_actions: LegendaryActions | None = None
+    spellcasting: Spellcasting | None = None
+    environments: list[Environment] = Field(default_factory=list)
+    role: Role
+    damage_themes: list[DamageTheme] = Field(default_factory=list)
+    description: Prose
+
+    @field_validator("cr")
+    @classmethod
+    def _a_real_challenge_rating(cls, value: str) -> str:
+        if value not in CR_LABELS:
+            raise ValueError("cr must be a challenge rating: 0, 1/8, 1/4, 1/2, or 1 to 30")
+        return value
+
+
+class NameDraft(CauldronModel):
+    """What the AI writes for a reskin: a new name and description, and nothing else. Never any numbers."""
+
+    name: Short
+    description: Prose
+
+
+class RemixNameDraft(NameDraft):
+    """The same, plus a name for the signature move a remix added."""
+
+    move_name: Short
+
+
+class Rename(CauldronModel):
+    old: Short
+    new: Short
+
+
+class ReflavorNameDraft(NameDraft):
+    """The same, plus new names for some of the monster's own abilities (a reflavor)."""
+
+    renames: Annotated[list[Rename], Field(max_length=MAX_RENAMES)] = Field(default_factory=list)
+
+
+class LegendaryNameDraft(NameDraft):
+    """The same, plus names for the legendary actions of a polymorph (attack, move, special)."""
+
+    legendary_names: Annotated[list[Short], Field(max_length=3)] = Field(default_factory=list)
+
+
+class GraftNameDraft(NameDraft):
+    """The same, plus the features the AI picked to borrow (a polymorph the forge chooses)."""
+
+    picks: Annotated[list[Annotated[str, Field(max_length=120)]], Field(max_length=MAX_PICKS)] = Field(default_factory=list)
+
+
+class GraftLegendaryNameDraft(GraftNameDraft, LegendaryNameDraft):
+    """Both: the forge picks the features and names the legendary actions."""
+
+
+def name_draft_type(with_move: bool = False, reflavor: bool = False, picks: bool = False, legendary: bool = False) -> type[NameDraft]:
+    """The shape of the reply the AI is asked for: a name and description, plus a move name, ability renames, feature picks or
+    legendary action names."""
+    if picks:
+        return GraftLegendaryNameDraft if legendary else GraftNameDraft
+    if legendary:
+        return LegendaryNameDraft
+    return ReflavorNameDraft if reflavor else RemixNameDraft if with_move else NameDraft
+
+
+def name_json_schema(with_move: bool = False, reflavor: bool = False, picks: bool = False, legendary: bool = False) -> dict:
+    return name_draft_type(with_move, reflavor, picks, legendary).model_json_schema()
+
+
+def _without_discriminator(node):
+    """Pydantic marks each choice of a union with an OpenAPI-only "discriminator" keyword that plain JSON Schema does not
+    define. Removing it keeps the schema standard; the "kind" field still tells the choices apart (each one fixes it to a
+    single value) and our own validation is what actually checks the reply."""
+    if isinstance(node, dict):
+        return {key: _without_discriminator(value) for key, value in node.items() if key != "discriminator"}
+    if isinstance(node, list):
+        return [_without_discriminator(item) for item in node]
+    return node
+
+
+def draft_json_schema() -> dict:
+    """The JSON schema the AI must follow, made from the draft model so the two can never drift apart."""
+    return _without_discriminator(MonsterDraft.model_json_schema())
+
+
+def monster_from_draft(draft: MonsterDraft, generator: str, new_id: str) -> Monster:
+    """A full Monster from a draft. Code supplies identity, provenance, the challenge block and the feature tags."""
+    data = draft.model_dump(exclude={"cr"})
+    monster = Monster(
+        **data,
+        id=new_id,
+        schema_version=1,
+        source=Source.AI,
+        validated=False,
+        generator=generator,
+        challenge=Challenge.for_cr(draft.cr),
+        features=[],
+    )
+    return monster.model_copy(update={"features": derive_features(monster)})

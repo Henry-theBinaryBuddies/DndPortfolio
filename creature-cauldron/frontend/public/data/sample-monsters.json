@@ -1,0 +1,1244 @@
+[
+  {
+    "id": "cinderkite-3a1f",
+    "schema_version": 1,
+    "name": "Cinderkite",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "small",
+    "type": "beast",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 13, "note": "natural armor" },
+    "hit_points": { "average": 7, "dice": "2d6" },
+    "speeds": { "walk": 10, "fly": 50 },
+    "abilities": { "str": 6, "dex": 16, "con": 10, "int": 2, "wis": 14, "cha": 6 },
+    "saves": {},
+    "skills": { "Perception": 4 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "passive_perception": 14 },
+    "languages": "—",
+    "challenge": { "cr": "1/8", "cr_value": 0.125, "xp": 25, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Keen Sight",
+        "text": "The cinderkite has advantage on Wisdom (Perception) checks that rely on sight."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Talons",
+        "attack": { "mode": "melee_weapon", "ability": "dex", "to_hit": 5, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d4", "bonus": 3, "type": "piercing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["grassland", "hill", "desert"],
+    "role": "skirmisher",
+    "damage_themes": [],
+    "features": ["flying"],
+    "description": "A small raptor whose rust-red feathers glow faintly at the tips, as though dipped in embers. It hunts above burnt fields and tends to nest in old campfire rings."
+  },
+  {
+    "id": "gloomcap-shambler-7c42",
+    "schema_version": 1,
+    "name": "Gloomcap Shambler",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "plant",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 11, "note": "natural armor" },
+    "hit_points": { "average": 26, "dice": "4d8+8" },
+    "speeds": { "walk": 20 },
+    "abilities": { "str": 14, "dex": 8, "con": 14, "int": 3, "wis": 10, "cha": 4 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": ["blinded", "deafened"],
+    "senses": { "blindsight": 30, "passive_perception": 10 },
+    "languages": "—",
+    "challenge": { "cr": "1/4", "cr_value": 0.25, "xp": 50, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "False Appearance",
+        "text": "While the shambler remains motionless, it is indistinguishable from a cluster of large pale mushrooms."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Slam",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 4, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d8", "bonus": 2, "type": "bludgeoning" }]
+      },
+      {
+        "kind": "save",
+        "name": "Spore Burst",
+        "recharge": { "min": 6 },
+        "save": { "ability": "con", "dc": 12 },
+        "area": { "shape": "radius", "size": 10 },
+        "on_fail": [{ "dice": "1d8", "bonus": 0, "type": "poison" }],
+        "on_success": "none",
+        "effects_text": "A creature that fails the save is also poisoned until the end of its next turn."
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["swamp", "underdark", "forest"],
+    "role": "controller",
+    "damage_themes": ["poison"],
+    "features": [],
+    "description": "A lumbering heap of pale caps and damp fibers that drags itself toward warmth and movement, shedding clouds of drifting spores."
+  },
+  {
+    "id": "murkmaw-lurker-b905",
+    "schema_version": 1,
+    "name": "Murkmaw Lurker",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "aberration",
+    "subtypes": [],
+    "alignment": "chaotic evil",
+    "armor_class": { "value": 12 },
+    "hit_points": { "average": 32, "dice": "5d8+10" },
+    "speeds": { "walk": 20, "swim": 40 },
+    "abilities": { "str": 15, "dex": 12, "con": 14, "int": 7, "wis": 10, "cha": 6 },
+    "saves": {},
+    "skills": { "Stealth": 3 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "darkvision": 60, "passive_perception": 10 },
+    "languages": "understands Deep Speech but can't speak",
+    "challenge": { "cr": "1/2", "cr_value": 0.5, "xp": 100, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Amphibious",
+        "text": "The lurker can breathe air and water."
+      },
+      {
+        "kind": "text",
+        "name": "Ambush Predator",
+        "text": "On the first round of combat, the lurker has advantage on attack rolls against any creature that hasn't taken a turn yet."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Bite",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 4, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "2d6", "bonus": 2, "type": "piercing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["underwater", "swamp", "coast"],
+    "role": "lurker",
+    "damage_themes": [],
+    "features": ["swimming"],
+    "description": "A pallid, wide-mouthed thing that waits just below the waterline with only its lidless eyes showing."
+  },
+  {
+    "id": "brinewrack-cutthroat-5de8",
+    "schema_version": 1,
+    "name": "Brinewrack Cutthroat",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "humanoid",
+    "subtypes": ["any race"],
+    "alignment": "any non-lawful alignment",
+    "armor_class": { "value": 14, "note": "studded leather" },
+    "hit_points": { "average": 33, "dice": "6d8+6" },
+    "speeds": { "walk": 30 },
+    "abilities": { "str": 14, "dex": 14, "con": 12, "int": 10, "wis": 10, "cha": 10 },
+    "saves": {},
+    "skills": { "Athletics": 4, "Intimidation": 2 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "passive_perception": 10 },
+    "languages": "Common",
+    "challenge": { "cr": "1/2", "cr_value": 0.5, "xp": 100, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Dirty Fighter",
+        "text": "Once on each of its turns, the cutthroat deals an extra 3 (1d6) damage when it hits a target with a weapon attack, if an ally of the cutthroat is within 5 feet of the target and isn't incapacitated."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Cutlass", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Cutlass",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 4, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d6", "bonus": 2, "type": "slashing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["coast", "urban"],
+    "role": "skirmisher",
+    "damage_themes": [],
+    "features": ["multiattack"],
+    "description": "A salt-stained pirate who fights dirty and always in a pack, trusting numbers and a sharp blade over honor."
+  },
+  {
+    "id": "gravewick-stalker-e13b",
+    "schema_version": 1,
+    "name": "Gravewick Stalker",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "undead",
+    "subtypes": [],
+    "alignment": "neutral evil",
+    "armor_class": { "value": 14, "note": "natural armor" },
+    "hit_points": { "average": 52, "dice": "8d8+16" },
+    "speeds": { "walk": 30 },
+    "abilities": { "str": 16, "dex": 14, "con": 15, "int": 8, "wis": 12, "cha": 6 },
+    "saves": {},
+    "skills": { "Stealth": 4 },
+    "vulnerabilities": ["radiant"],
+    "resistances": ["cold"],
+    "immunities": ["necrotic", "poison"],
+    "condition_immunities": ["exhaustion", "poisoned"],
+    "senses": { "darkvision": 60, "passive_perception": 11 },
+    "languages": "understands the languages it knew in life but can't speak",
+    "challenge": { "cr": "2", "cr_value": 2, "xp": 450, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Candle Skull",
+        "text": "A pale flame burns in the stalker's skull. It sheds dim light in a 10-foot radius, and the flame can't be extinguished by wind or water."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Claw", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Claw",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 5, "reach": 5, "targets": "one target" },
+        "damage": [
+          { "dice": "1d6", "bonus": 3, "type": "slashing" },
+          { "dice": "1d6", "bonus": 0, "type": "necrotic" }
+        ]
+      },
+      {
+        "kind": "save",
+        "name": "Lantern Glare",
+        "recharge": { "min": 5 },
+        "save": { "ability": "wis", "dc": 11 },
+        "area": { "shape": "cone", "size": 15 },
+        "on_fail": [{ "dice": "3d6", "bonus": 0, "type": "necrotic" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["dungeon", "underdark", "urban"],
+    "role": "brute",
+    "damage_themes": ["necrotic"],
+    "features": ["multiattack"],
+    "description": "A gaunt corpse that walks the halls of its own tomb, a cold flame burning where its eyes should be."
+  },
+  {
+    "id": "stormhide-drake-2f77",
+    "schema_version": 1,
+    "name": "Stormhide Drake",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "large",
+    "type": "dragon",
+    "subtypes": [],
+    "alignment": "neutral",
+    "armor_class": { "value": 15, "note": "natural armor" },
+    "hit_points": { "average": 85, "dice": "10d10+30" },
+    "speeds": { "walk": 40, "fly": 60 },
+    "abilities": { "str": 19, "dex": 12, "con": 17, "int": 6, "wis": 12, "cha": 8 },
+    "saves": { "dex": 3, "con": 5 },
+    "skills": { "Perception": 3, "Stealth": 3 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": ["lightning"],
+    "condition_immunities": [],
+    "senses": { "blindsight": 10, "darkvision": 60, "passive_perception": 13 },
+    "languages": "Draconic",
+    "challenge": { "cr": "4", "cr_value": 4, "xp": 1100, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Static Hide",
+        "text": "A creature that touches the drake or hits it with a melee attack while within 5 feet of it takes 2 (1d4) lightning damage."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [
+          { "action": "Bite", "count": 1 },
+          { "action": "Claw", "count": 2 }
+        ]
+      },
+      {
+        "kind": "attack",
+        "name": "Bite",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 10, "targets": "one target" },
+        "damage": [{ "dice": "2d8", "bonus": 4, "type": "piercing" }]
+      },
+      {
+        "kind": "attack",
+        "name": "Claw",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d8", "bonus": 4, "type": "slashing" }]
+      },
+      {
+        "kind": "save",
+        "name": "Stormbreath",
+        "recharge": { "min": 5 },
+        "save": { "ability": "con", "dc": 13 },
+        "area": { "shape": "line", "size": 30, "width": 5 },
+        "on_fail": [{ "dice": "6d6", "bonus": 0, "type": "lightning" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["mountain", "hill", "coast"],
+    "role": "brute",
+    "damage_themes": ["lightning"],
+    "features": ["flying", "multiattack", "breath-weapon"],
+    "description": "A lean, long-winged drake whose slate scales crackle with static whenever a storm gathers over the peaks."
+  },
+  {
+    "id": "dustmote-sprite-1b2c",
+    "schema_version": 1,
+    "name": "Dustmote Sprite",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "tiny",
+    "type": "fey",
+    "subtypes": [],
+    "alignment": "chaotic neutral",
+    "armor_class": { "value": 14 },
+    "hit_points": { "average": 7, "dice": "3d4" },
+    "speeds": { "walk": 10, "fly": 40, "hover": true },
+    "abilities": { "str": 3, "dex": 18, "con": 10, "int": 10, "wis": 12, "cha": 14 },
+    "saves": {},
+    "skills": { "Stealth": 6 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "passive_perception": 11 },
+    "languages": "Common, Sylvan",
+    "challenge": { "cr": "1/4", "cr_value": 0.25, "xp": 50, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Mote Form",
+        "text": "While motionless in dusty or dim surroundings, the sprite is indistinguishable from a drifting speck of dust."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Stinging Dart",
+        "attack": { "mode": "ranged_weapon", "ability": "dex", "to_hit": 6, "range": { "normal": 30, "long": 90 }, "targets": "one target" },
+        "damage": [{ "dice": "1d4", "bonus": 4, "type": "piercing" }]
+      },
+      {
+        "kind": "save",
+        "name": "Blinding Dust",
+        "recharge": { "min": 5 },
+        "save": { "ability": "con", "dc": 12 },
+        "on_fail": [],
+        "on_success": "none",
+        "effects_text": "On a failed save, the target is blinded until the end of its next turn."
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["forest", "grassland", "urban"],
+    "role": "artillery",
+    "damage_themes": [],
+    "features": ["flying"],
+    "description": "A palm-sized trickster in a cloak of cobweb who pelts travelers with thorn darts and flings blinding dust before slipping away."
+  },
+  {
+    "id": "clockwork-warden-4d5e",
+    "schema_version": 1,
+    "name": "Clockwork Warden",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "construct",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 16, "note": "natural armor" },
+    "hit_points": { "average": 52, "dice": "7d8+21" },
+    "speeds": { "walk": 30 },
+    "abilities": { "str": 17, "dex": 10, "con": 16, "int": 3, "wis": 10, "cha": 1 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": ["poison", "psychic"],
+    "condition_immunities": ["charmed", "exhaustion", "frightened", "paralyzed", "poisoned"],
+    "senses": { "darkvision": 60, "passive_perception": 10 },
+    "languages": "understands the language of its maker but can't speak",
+    "challenge": { "cr": "2", "cr_value": 2, "xp": 450, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Immutable Form",
+        "text": "The warden is immune to any spell or effect that would alter its form."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Slam", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Slam",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 5, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "2d6", "bonus": 3, "type": "bludgeoning" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["urban", "dungeon"],
+    "role": "brute",
+    "damage_themes": [],
+    "features": ["multiattack"],
+    "description": "A brass-plated sentry of gears and counterweights that patrols the same corridor long after its makers are gone."
+  },
+  {
+    "id": "rimehide-prowler-8f90",
+    "schema_version": 1,
+    "name": "Rimehide Prowler",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "large",
+    "type": "monstrosity",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 14, "note": "natural armor" },
+    "hit_points": { "average": 68, "dice": "8d10+24" },
+    "speeds": { "walk": 40, "climb": 20 },
+    "abilities": { "str": 18, "dex": 14, "con": 16, "int": 4, "wis": 14, "cha": 8 },
+    "saves": {},
+    "skills": { "Perception": 4, "Stealth": 4 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": ["cold"],
+    "condition_immunities": [],
+    "senses": { "darkvision": 60, "passive_perception": 14 },
+    "languages": "—",
+    "challenge": { "cr": "3", "cr_value": 3, "xp": 700, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Snow Camouflage",
+        "text": "The prowler has advantage on Dexterity (Stealth) checks made to hide in snowy terrain."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [
+          { "action": "Bite", "count": 1 },
+          { "action": "Claw", "count": 1 }
+        ]
+      },
+      {
+        "kind": "attack",
+        "name": "Bite",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 5, "targets": "one target" },
+        "damage": [
+          { "dice": "2d6", "bonus": 4, "type": "piercing" },
+          { "dice": "1d6", "bonus": 0, "type": "cold" }
+        ]
+      },
+      {
+        "kind": "attack",
+        "name": "Claw",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d8", "bonus": 4, "type": "slashing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["arctic", "mountain"],
+    "role": "skirmisher",
+    "damage_themes": ["cold"],
+    "features": ["multiattack"],
+    "description": "A shaggy, six-limbed hunter whose frost-caked hide blends into drifts until it is already upon its prey."
+  },
+  {
+    "id": "soot-fiend-a1b2",
+    "schema_version": 1,
+    "name": "Soot Fiend",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "small",
+    "type": "fiend",
+    "subtypes": [],
+    "alignment": "lawful evil",
+    "armor_class": { "value": 14 },
+    "hit_points": { "average": 18, "dice": "4d6+4" },
+    "speeds": { "walk": 30, "fly": 40 },
+    "abilities": { "str": 8, "dex": 16, "con": 12, "int": 10, "wis": 10, "cha": 12 },
+    "saves": {},
+    "skills": { "Stealth": 5 },
+    "vulnerabilities": [],
+    "resistances": ["cold"],
+    "immunities": ["fire", "poison"],
+    "condition_immunities": ["poisoned"],
+    "senses": { "darkvision": 60, "passive_perception": 10 },
+    "languages": "Infernal, Common",
+    "challenge": { "cr": "1", "cr_value": 1, "xp": 200, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Sooty Veil",
+        "text": "While in dim light or darkness, the fiend can take the Hide action as a bonus action."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Scorching Claw",
+        "attack": { "mode": "melee_weapon", "ability": "dex", "to_hit": 5, "reach": 5, "targets": "one target" },
+        "damage": [
+          { "dice": "1d4", "bonus": 3, "type": "slashing" },
+          { "dice": "1d6", "bonus": 0, "type": "fire" }
+        ]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["planar", "dungeon", "urban"],
+    "role": "skirmisher",
+    "damage_themes": ["fire"],
+    "features": ["flying"],
+    "description": "A bat-winged little devil streaked with ash, always trailing a thin thread of smoke from its claws."
+  },
+  {
+    "id": "cairnback-brute-c3d4",
+    "schema_version": 1,
+    "name": "Cairnback Brute",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "huge",
+    "type": "giant",
+    "subtypes": [],
+    "alignment": "chaotic evil",
+    "armor_class": { "value": 16, "note": "natural armor" },
+    "hit_points": { "average": 126, "dice": "11d12+55" },
+    "speeds": { "walk": 40 },
+    "abilities": { "str": 22, "dex": 8, "con": 20, "int": 6, "wis": 10, "cha": 6 },
+    "saves": { "con": 8 },
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "darkvision": 60, "passive_perception": 10 },
+    "languages": "Giant",
+    "challenge": { "cr": "6", "cr_value": 6, "xp": 2300, "proficiency_bonus": 3 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Cairn Carrier",
+        "text": "The brute carries a heap of stones lashed to its back. It has advantage on saving throws against being knocked prone."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Greatclub", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Greatclub",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 9, "reach": 15, "targets": "one target" },
+        "damage": [{ "dice": "3d8", "bonus": 6, "type": "bludgeoning" }]
+      },
+      {
+        "kind": "attack",
+        "name": "Boulder",
+        "attack": { "mode": "ranged_weapon", "ability": "str", "to_hit": 9, "range": { "normal": 60, "long": 240 }, "targets": "one target" },
+        "damage": [{ "dice": "3d10", "bonus": 6, "type": "bludgeoning" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["mountain", "hill"],
+    "role": "brute",
+    "damage_themes": [],
+    "features": ["multiattack"],
+    "description": "A stooped giant who piles a burial cairn's worth of rock on its back and hurls the stones at anything that climbs too near."
+  },
+  {
+    "id": "brightwing-sentinel-e5f6",
+    "schema_version": 1,
+    "name": "Brightwing Sentinel",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "celestial",
+    "subtypes": [],
+    "alignment": "lawful good",
+    "armor_class": { "value": 15, "note": "natural armor" },
+    "hit_points": { "average": 67, "dice": "9d8+27" },
+    "speeds": { "walk": 30, "fly": 60 },
+    "abilities": { "str": 16, "dex": 14, "con": 16, "int": 12, "wis": 16, "cha": 16 },
+    "saves": { "wis": 6, "cha": 6 },
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": ["radiant"],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "darkvision": 60, "passive_perception": 13 },
+    "languages": "Celestial, Common",
+    "challenge": { "cr": "5", "cr_value": 5, "xp": 1800, "proficiency_bonus": 3 },
+    "traits": [],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Radiant Spear", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Radiant Spear",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 10, "targets": "one target" },
+        "damage": [
+          { "dice": "1d8", "bonus": 3, "type": "piercing" },
+          { "dice": "2d8", "bonus": 0, "type": "radiant" }
+        ]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": {
+      "ability": "wis",
+      "dc": 14,
+      "attack_bonus": 6,
+      "innate": true,
+      "intro": "The sentinel's spellcasting ability is Wisdom (spell save DC 14). It can innately cast the following spells, requiring no material components.",
+      "cantrips": [],
+      "slots": [],
+      "at_will": [{"name":"light"},{"name":"thaumaturgy"}],
+      "per_day": [{"uses":1,"each":true,"spells":[{"name":"lesser restoration"},{"name":"protection from evil and good"}]}],
+      "footer": ""
+    },
+    "environments": ["planar", "mountain"],
+    "role": "leader",
+    "damage_themes": ["radiant"],
+    "features": ["flying", "multiattack", "spellcasting"],
+    "description": "A winged warden wreathed in steady golden light, sworn to guard a threshold no one remembers building."
+  },
+  {
+    "id": "gloamslick-ooze-0718",
+    "schema_version": 1,
+    "name": "Gloamslick Ooze",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "large",
+    "type": "ooze",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 8 },
+    "hit_points": { "average": 45, "dice": "6d10+12" },
+    "speeds": { "walk": 20, "climb": 20 },
+    "abilities": { "str": 16, "dex": 6, "con": 14, "int": 2, "wis": 6, "cha": 1 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": ["acid"],
+    "condition_immunities": ["blinded", "charmed", "deafened", "exhaustion", "frightened", "prone"],
+    "senses": { "blindsight": 60, "passive_perception": 8 },
+    "languages": "—",
+    "challenge": { "cr": "2", "cr_value": 2, "xp": 450, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Amorphous",
+        "text": "The ooze can move through a space as narrow as 1 inch wide without squeezing."
+      },
+      {
+        "kind": "text",
+        "name": "Regeneration",
+        "text": "The ooze regains 5 hit points at the start of its turn. If it takes fire or radiant damage, this trait doesn't function at the start of its next turn."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Acid Pseudopod",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 5, "reach": 5, "targets": "one target" },
+        "damage": [
+          { "dice": "1d6", "bonus": 3, "type": "bludgeoning" },
+          { "dice": "2d6", "bonus": 0, "type": "acid" }
+        ]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["dungeon", "underdark", "swamp"],
+    "role": "lurker",
+    "damage_themes": ["acid"],
+    "features": ["regeneration"],
+    "description": "A glistening black slick that pools on ceilings and drips onto anything warm, leaving bare bone and scorched stone behind."
+  },
+  {
+    "id": "emberwhirl-293a",
+    "schema_version": 1,
+    "name": "Emberwhirl",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "elemental",
+    "subtypes": [],
+    "alignment": "neutral",
+    "armor_class": { "value": 15 },
+    "hit_points": { "average": 52, "dice": "8d8+16" },
+    "speeds": { "fly": 50, "hover": true },
+    "abilities": { "str": 10, "dex": 18, "con": 14, "int": 6, "wis": 10, "cha": 6 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": ["fire", "poison"],
+    "condition_immunities": ["exhaustion", "grappled", "paralyzed", "petrified", "poisoned", "prone", "restrained", "unconscious"],
+    "senses": { "darkvision": 60, "passive_perception": 10 },
+    "languages": "Ignan",
+    "challenge": { "cr": "3", "cr_value": 3, "xp": 700, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Fire Form",
+        "text": "A creature that touches the emberwhirl or hits it with a melee attack while within 5 feet of it takes 3 (1d4 + 1) fire damage."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Fiery Lash", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Fiery Lash",
+        "attack": { "mode": "melee_weapon", "ability": "dex", "to_hit": 6, "reach": 10, "targets": "one target" },
+        "damage": [{ "dice": "2d6", "bonus": 4, "type": "fire" }]
+      },
+      {
+        "kind": "save",
+        "name": "Flame Burst",
+        "recharge": { "min": 5 },
+        "save": { "ability": "dex", "dc": 12 },
+        "area": { "shape": "radius", "size": 10 },
+        "on_fail": [{ "dice": "4d6", "bonus": 0, "type": "fire" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["planar", "desert"],
+    "role": "skirmisher",
+    "damage_themes": ["fire"],
+    "features": ["flying", "multiattack"],
+    "description": "A knee-high spinning column of sparks and hot ash that drifts across scorched ground, lashing out with whips of flame."
+  },
+  {
+    "id": "voidbloom-seer-4b5c",
+    "schema_version": 1,
+    "name": "Voidbloom Seer",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "large",
+    "type": "aberration",
+    "subtypes": [],
+    "alignment": "lawful evil",
+    "armor_class": { "value": 15, "note": "natural armor" },
+    "hit_points": { "average": 114, "dice": "12d10+48" },
+    "speeds": { "fly": 20, "hover": true },
+    "abilities": { "str": 10, "dex": 12, "con": 18, "int": 20, "wis": 16, "cha": 18 },
+    "saves": { "int": 8, "wis": 6 },
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": ["psychic"],
+    "immunities": [],
+    "condition_immunities": ["prone"],
+    "senses": { "darkvision": 120, "passive_perception": 13 },
+    "languages": "Deep Speech, telepathy 120 ft.",
+    "challenge": { "cr": "7", "cr_value": 7, "xp": 2900, "proficiency_bonus": 3 },
+    "traits": [],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Mind Lash", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Mind Lash",
+        "attack": { "mode": "ranged_spell", "ability": "int", "to_hit": 8, "range": { "normal": 60, "long": 60 }, "targets": "one creature" },
+        "damage": [{ "dice": "3d8", "bonus": 5, "type": "psychic" }]
+      },
+      {
+        "kind": "save",
+        "name": "Dread Pulse",
+        "recharge": { "min": 5 },
+        "save": { "ability": "wis", "dc": 16 },
+        "area": { "shape": "cone", "size": 30 },
+        "on_fail": [{ "dice": "8d6", "bonus": 0, "type": "psychic" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": {
+      "per_round": 3,
+      "options": [
+        { "name": "Mind Lash", "cost": 1, "text": "The seer makes one Mind Lash attack." },
+        { "name": "Drift", "cost": 1, "text": "The seer moves up to its flying speed without provoking opportunity attacks." },
+        {
+          "name": "Unsettling Gaze",
+          "cost": 2,
+          "text": "One creature the seer can see within 60 feet must succeed on a DC 16 Wisdom saving throw or be frightened until the end of its next turn."
+        }
+      ]
+    },
+    "spellcasting": {
+      "ability": "int",
+      "dc": 16,
+      "attack_bonus": 8,
+      "innate": true,
+      "intro": "The seer's innate spellcasting ability is Intelligence (spell save DC 16). It can innately cast the following spells, requiring no components.",
+      "cantrips": [],
+      "slots": [],
+      "at_will": [{"name":"detect thoughts"},{"name":"mage hand"}],
+      "per_day": [{"uses":1,"each":false,"spells":[{"name":"confusion"}]}],
+      "footer": ""
+    },
+    "environments": ["underdark", "planar"],
+    "role": "solo",
+    "damage_themes": ["psychic"],
+    "features": ["flying", "multiattack", "legendary", "spellcasting"],
+    "description": "A drifting mass of petal-like flesh around a single unblinking eye, humming a tune only the dying can hear."
+  },
+  {
+    "id": "dune-leviathan-6d7e",
+    "schema_version": 1,
+    "name": "Dune Leviathan",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "gargantuan",
+    "type": "monstrosity",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 18, "note": "natural armor" },
+    "hit_points": { "average": 350, "dice": "20d20+140" },
+    "speeds": { "walk": 40, "burrow": 40 },
+    "abilities": { "str": 26, "dex": 8, "con": 24, "int": 3, "wis": 12, "cha": 5 },
+    "saves": { "con": 12 },
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": ["blinded"],
+    "senses": { "tremorsense": 120, "passive_perception": 11 },
+    "languages": "—",
+    "challenge": { "cr": "16", "cr_value": 16, "xp": 15000, "proficiency_bonus": 5 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Earth Glide",
+        "text": "The leviathan can burrow through sand and loose earth without disturbing the ground, leaving no tunnel behind."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [
+          { "action": "Bite", "count": 1 },
+          { "action": "Tail", "count": 1 }
+        ]
+      },
+      {
+        "kind": "attack",
+        "name": "Bite",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 13, "reach": 15, "targets": "one target" },
+        "damage": [{ "dice": "3d10", "bonus": 8, "type": "piercing" }]
+      },
+      {
+        "kind": "attack",
+        "name": "Tail",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 13, "reach": 20, "targets": "one target" },
+        "damage": [{ "dice": "2d8", "bonus": 8, "type": "bludgeoning" }]
+      },
+      {
+        "kind": "save",
+        "name": "Sand Geyser",
+        "recharge": { "min": 5 },
+        "save": { "ability": "dex", "dc": 20 },
+        "area": { "shape": "line", "size": 60, "width": 10 },
+        "on_fail": [{ "dice": "10d10", "bonus": 0, "type": "bludgeoning" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["desert"],
+    "role": "solo",
+    "damage_themes": [],
+    "features": ["multiattack"],
+    "description": "A vast, armored worm that surfaces without warning, swallowing caravans in a rolling wave of sand."
+  },
+  {
+    "id": "cellar-scrabbler-8f01",
+    "schema_version": 1,
+    "name": "Cellar Scrabbler",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "tiny",
+    "type": "beast",
+    "subtypes": [],
+    "alignment": "unaligned",
+    "armor_class": { "value": 12 },
+    "hit_points": { "average": 2, "dice": "1d4" },
+    "speeds": { "walk": 20, "climb": 20 },
+    "abilities": { "str": 2, "dex": 14, "con": 10, "int": 2, "wis": 12, "cha": 4 },
+    "saves": {},
+    "skills": { "Stealth": 4 },
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "darkvision": 30, "passive_perception": 11 },
+    "languages": "—",
+    "challenge": { "cr": "0", "cr_value": 0, "xp": 10, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "Skittish",
+        "text": "The scrabbler has advantage on Dexterity (Stealth) checks made in cluttered or cramped spaces."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Nibble",
+        "attack": { "mode": "melee_weapon", "ability": "dex", "to_hit": 4, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d4", "bonus": 0, "type": "piercing" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["urban", "dungeon"],
+    "role": "lurker",
+    "damage_themes": [],
+    "features": [],
+    "description": "A mouse-sized, long-fingered scavenger that rustles through grain stores and pockets small shiny things."
+  },
+  {
+    "id": "hollowvale-hexer-2a3b",
+    "schema_version": 1,
+    "name": "Hollowvale Hexer",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "medium",
+    "type": "humanoid",
+    "subtypes": ["any race"],
+    "alignment": "neutral evil",
+    "armor_class": { "value": 12, "note": "15 with mage armor" },
+    "hit_points": { "average": 38, "dice": "7d8+7" },
+    "speeds": { "walk": 30 },
+    "abilities": { "str": 9, "dex": 12, "con": 12, "int": 14, "wis": 12, "cha": 16 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "passive_perception": 11 },
+    "languages": "Common, Sylvan",
+    "challenge": { "cr": "2", "cr_value": 2, "xp": 450, "proficiency_bonus": 2 },
+    "traits": [],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Dagger",
+        "attack": { "mode": "melee_weapon", "ability": "dex", "to_hit": 3, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d4", "bonus": 1, "type": "piercing" }]
+      },
+      {
+        "kind": "attack",
+        "name": "Hex Bolt",
+        "attack": { "mode": "ranged_spell", "ability": "cha", "to_hit": 5, "range": { "normal": 120, "long": 120 }, "targets": "one target" },
+        "damage": [{ "dice": "2d8", "bonus": 0, "type": "force" }]
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": {
+      "ability": "cha",
+      "dc": 13,
+      "attack_bonus": 5,
+      "innate": false,
+      "intro": "The hexer is a 4th-level spellcaster. Its spellcasting ability is Charisma (spell save DC 13, +5 to hit with spell attacks).",
+      "cantrips": [{"name":"minor illusion"},{"name":"poison spray"}],
+      "slots": [{"level":1,"slots":4,"spells":[{"name":"charm person"},{"name":"ray of sickness"}]},{"level":2,"slots":3,"spells":[{"name":"hold person"},{"name":"misty step"}]}],
+      "at_will": [],
+      "per_day": [],
+      "footer": ""
+    },
+    "environments": ["swamp", "forest"],
+    "role": "controller",
+    "damage_themes": ["force"],
+    "features": ["spellcasting"],
+    "description": "A hermit in a coat of knotted charms who trades curses for favors and favors for worse curses."
+  },
+  {
+    "id": "hoarfrost-drakeling-4c5d",
+    "schema_version": 1,
+    "name": "Hoarfrost Drakeling",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "small",
+    "type": "dragon",
+    "subtypes": [],
+    "alignment": "neutral",
+    "armor_class": { "value": 13, "note": "natural armor" },
+    "hit_points": { "average": 22, "dice": "5d6+5" },
+    "speeds": { "walk": 30, "fly": 40 },
+    "abilities": { "str": 12, "dex": 14, "con": 12, "int": 6, "wis": 12, "cha": 8 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": [],
+    "resistances": [],
+    "immunities": ["cold"],
+    "condition_immunities": [],
+    "senses": { "darkvision": 60, "passive_perception": 11 },
+    "languages": "understands Draconic but can't speak",
+    "challenge": { "cr": "1/2", "cr_value": 0.5, "xp": 100, "proficiency_bonus": 2 },
+    "traits": [],
+    "actions": [
+      {
+        "kind": "attack",
+        "name": "Bite",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 3, "reach": 5, "targets": "one target" },
+        "damage": [{ "dice": "1d6", "bonus": 1, "type": "piercing" }]
+      },
+      {
+        "kind": "save",
+        "name": "Frost Puff",
+        "recharge": { "min": 5 },
+        "save": { "ability": "con", "dc": 11 },
+        "area": { "shape": "cone", "size": 15 },
+        "on_fail": [{ "dice": "2d6", "bonus": 0, "type": "cold" }],
+        "on_success": "half"
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["arctic", "mountain"],
+    "role": "artillery",
+    "damage_themes": ["cold"],
+    "features": ["flying", "breath-weapon"],
+    "description": "A fox-sized dragonet with pale blue scales that exhales needles of frost whenever it is startled."
+  },
+  {
+    "id": "thornwarden-6e7f",
+    "schema_version": 1,
+    "name": "Thornwarden",
+    "source": "curated",
+    "validated": false,
+    "parent_id": null,
+    "generator": null,
+    "attribution": null,
+    "size": "large",
+    "type": "plant",
+    "subtypes": [],
+    "alignment": "neutral",
+    "armor_class": { "value": 14, "note": "natural armor" },
+    "hit_points": { "average": 76, "dice": "9d10+27" },
+    "speeds": { "walk": 30 },
+    "abilities": { "str": 18, "dex": 8, "con": 16, "int": 8, "wis": 12, "cha": 8 },
+    "saves": {},
+    "skills": {},
+    "vulnerabilities": ["fire"],
+    "resistances": [],
+    "immunities": [],
+    "condition_immunities": [],
+    "senses": { "darkvision": 60, "passive_perception": 11 },
+    "languages": "understands Common and Sylvan but can't speak",
+    "challenge": { "cr": "3", "cr_value": 3, "xp": 700, "proficiency_bonus": 2 },
+    "traits": [
+      {
+        "kind": "text",
+        "name": "False Appearance",
+        "text": "While the warden remains motionless, it is indistinguishable from a normal thicket of thorny trees."
+      }
+    ],
+    "actions": [
+      {
+        "kind": "multiattack",
+        "name": "Multiattack",
+        "sequence": [{ "action": "Thorn Lash", "count": 2 }]
+      },
+      {
+        "kind": "attack",
+        "name": "Thorn Lash",
+        "attack": { "mode": "melee_weapon", "ability": "str", "to_hit": 6, "reach": 15, "targets": "one target" },
+        "damage": [{ "dice": "2d6", "bonus": 4, "type": "piercing" }]
+      },
+      {
+        "kind": "save",
+        "name": "Entangling Roots",
+        "recharge": { "min": 5 },
+        "save": { "ability": "str", "dc": 14 },
+        "area": { "shape": "radius", "size": 20 },
+        "on_fail": [],
+        "on_success": "none",
+        "effects_text": "On a failed save, a creature is restrained until the end of the warden's next turn."
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "spellcasting": null,
+    "environments": ["forest", "hill", "swamp"],
+    "role": "controller",
+    "damage_themes": [],
+    "features": ["multiattack"],
+    "description": "A hedge of living briars grown into a rough giant's shape, guarding a grove it has long since outlived."
+  }
+]

@@ -4,3 +4,12 @@
 node_modules
 dist
 .cache
+# Secrets never go in the repository
+.env
+*.env
+.env.local
+.env.*.local
+chronomancer/.env*
+!chronomancer/.env*.example
+secrets/
+

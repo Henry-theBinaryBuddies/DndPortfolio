@@ -1,0 +1,457 @@
+[
+  {
+    "name": "Cinderkite",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Keen Sight",
+        "prose": "The cinderkite has advantage on Wisdom (Perception) checks that rely on sight."
+      },
+      {
+        "section": "action",
+        "display_name": "Talons",
+        "prose": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 5 (1d4 + 3) piercing damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Gloomcap Shambler",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "False Appearance",
+        "prose": "While the shambler remains motionless, it is indistinguishable from a cluster of large pale mushrooms."
+      },
+      {
+        "section": "action",
+        "display_name": "Slam",
+        "prose": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) bludgeoning damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Spore Burst (Recharge 6)",
+        "prose": "Each creature in a 10-foot radius must make a DC 12 Constitution saving throw, taking 4 (1d8) poison damage on a failed save. A creature that fails the save is also poisoned until the end of its next turn."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Murkmaw Lurker",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Amphibious",
+        "prose": "The lurker can breathe air and water."
+      },
+      {
+        "section": "trait",
+        "display_name": "Ambush Predator",
+        "prose": "On the first round of combat, the lurker has advantage on attack rolls against any creature that hasn't taken a turn yet."
+      },
+      {
+        "section": "action",
+        "display_name": "Bite",
+        "prose": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 9 (2d6 + 2) piercing damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Brinewrack Cutthroat",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Dirty Fighter",
+        "prose": "Once on each of its turns, the cutthroat deals an extra 3 (1d6) damage when it hits a target with a weapon attack, if an ally of the cutthroat is within 5 feet of the target and isn't incapacitated."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The brinewrack cutthroat makes two cutlass attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Cutlass",
+        "prose": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Gravewick Stalker",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Candle Skull",
+        "prose": "A pale flame burns in the stalker's skull. It sheds dim light in a 10-foot radius, and the flame can't be extinguished by wind or water."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The gravewick stalker makes two claw attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Claw",
+        "prose": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) slashing damage plus 3 (1d6) necrotic damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Lantern Glare (Recharge 5–6)",
+        "prose": "Each creature in a 15-foot cone must make a DC 11 Wisdom saving throw, taking 10 (3d6) necrotic damage on a failed save, or half as much damage on a successful one."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Stormhide Drake",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Static Hide",
+        "prose": "A creature that touches the drake or hits it with a melee attack while within 5 feet of it takes 2 (1d4) lightning damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The stormhide drake makes three attacks: one with its bite and two with its claws."
+      },
+      {
+        "section": "action",
+        "display_name": "Bite",
+        "prose": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 13 (2d8 + 4) piercing damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Claw",
+        "prose": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 8 (1d8 + 4) slashing damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Stormbreath (Recharge 5–6)",
+        "prose": "Each creature in a 30-foot line that is 5 feet wide must make a DC 13 Constitution saving throw, taking 21 (6d6) lightning damage on a failed save, or half as much damage on a successful one."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Dustmote Sprite",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Mote Form",
+        "prose": "While motionless in dusty or dim surroundings, the sprite is indistinguishable from a drifting speck of dust."
+      },
+      {
+        "section": "action",
+        "display_name": "Stinging Dart",
+        "prose": "Ranged Weapon Attack: +6 to hit, range 30/90 ft., one target. Hit: 6 (1d4 + 4) piercing damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Blinding Dust (Recharge 5–6)",
+        "prose": "The target must make a DC 12 Constitution saving throw. On a failed save, the target is blinded until the end of its next turn."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Clockwork Warden",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Immutable Form",
+        "prose": "The warden is immune to any spell or effect that would alter its form."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The clockwork warden makes two slam attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Slam",
+        "prose": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) bludgeoning damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Rimehide Prowler",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Snow Camouflage",
+        "prose": "The prowler has advantage on Dexterity (Stealth) checks made to hide in snowy terrain."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The rimehide prowler makes two attacks: one with its bite and one with its claw."
+      },
+      {
+        "section": "action",
+        "display_name": "Bite",
+        "prose": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) piercing damage plus 3 (1d6) cold damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Claw",
+        "prose": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 8 (1d8 + 4) slashing damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Soot Fiend",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Sooty Veil",
+        "prose": "While in dim light or darkness, the fiend can take the Hide action as a bonus action."
+      },
+      {
+        "section": "action",
+        "display_name": "Scorching Claw",
+        "prose": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 5 (1d4 + 3) slashing damage plus 3 (1d6) fire damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Cairnback Brute",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Cairn Carrier",
+        "prose": "The brute carries a heap of stones lashed to its back. It has advantage on saving throws against being knocked prone."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The cairnback brute makes two greatclub attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Greatclub",
+        "prose": "Melee Weapon Attack: +9 to hit, reach 15 ft., one target. Hit: 19 (3d8 + 6) bludgeoning damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Boulder",
+        "prose": "Ranged Weapon Attack: +9 to hit, range 60/240 ft., one target. Hit: 22 (3d10 + 6) bludgeoning damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Brightwing Sentinel",
+    "entries": [
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The brightwing sentinel makes two radiant spear attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Radiant Spear",
+        "prose": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 7 (1d8 + 3) piercing damage plus 9 (2d8) radiant damage."
+      }
+    ],
+    "spellcasting": "The sentinel's spellcasting ability is Wisdom (spell save DC 14). It can innately cast the following spells, requiring no material components. At will: light, thaumaturgy. 1/day each: lesser restoration, protection from evil and good.",
+    "legendary_intro": null
+  },
+  {
+    "name": "Gloamslick Ooze",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Amorphous",
+        "prose": "The ooze can move through a space as narrow as 1 inch wide without squeezing."
+      },
+      {
+        "section": "trait",
+        "display_name": "Regeneration",
+        "prose": "The ooze regains 5 hit points at the start of its turn. If it takes fire or radiant damage, this trait doesn't function at the start of its next turn."
+      },
+      {
+        "section": "action",
+        "display_name": "Acid Pseudopod",
+        "prose": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) bludgeoning damage plus 7 (2d6) acid damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Emberwhirl",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Fire Form",
+        "prose": "A creature that touches the emberwhirl or hits it with a melee attack while within 5 feet of it takes 3 (1d4 + 1) fire damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The emberwhirl makes two fiery lash attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Fiery Lash",
+        "prose": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 11 (2d6 + 4) fire damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Flame Burst (Recharge 5–6)",
+        "prose": "Each creature in a 10-foot radius must make a DC 12 Dexterity saving throw, taking 14 (4d6) fire damage on a failed save, or half as much damage on a successful one."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Voidbloom Seer",
+    "entries": [
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The voidbloom seer makes two mind lash attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Mind Lash",
+        "prose": "Ranged Spell Attack: +8 to hit, range 60 ft., one creature. Hit: 18 (3d8 + 5) psychic damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Dread Pulse (Recharge 5–6)",
+        "prose": "Each creature in a 30-foot cone must make a DC 16 Wisdom saving throw, taking 28 (8d6) psychic damage on a failed save, or half as much damage on a successful one."
+      }
+    ],
+    "spellcasting": "The seer's innate spellcasting ability is Intelligence (spell save DC 16). It can innately cast the following spells, requiring no components. At will: detect thoughts, mage hand. 1/day: confusion.",
+    "legendary_intro": "The voidbloom seer can take 3 legendary actions, choosing from the options below. Only one legendary action can be used at a time and only at the end of another creature's turn. The voidbloom seer regains spent legendary actions at the start of its turn."
+  },
+  {
+    "name": "Dune Leviathan",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Earth Glide",
+        "prose": "The leviathan can burrow through sand and loose earth without disturbing the ground, leaving no tunnel behind."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The dune leviathan makes two attacks: one with its bite and one with its tail."
+      },
+      {
+        "section": "action",
+        "display_name": "Bite",
+        "prose": "Melee Weapon Attack: +13 to hit, reach 15 ft., one target. Hit: 24 (3d10 + 8) piercing damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Tail",
+        "prose": "Melee Weapon Attack: +13 to hit, reach 20 ft., one target. Hit: 17 (2d8 + 8) bludgeoning damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Sand Geyser (Recharge 5–6)",
+        "prose": "Each creature in a 60-foot line that is 10 feet wide must make a DC 20 Dexterity saving throw, taking 55 (10d10) bludgeoning damage on a failed save, or half as much damage on a successful one."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Cellar Scrabbler",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "Skittish",
+        "prose": "The scrabbler has advantage on Dexterity (Stealth) checks made in cluttered or cramped spaces."
+      },
+      {
+        "section": "action",
+        "display_name": "Nibble",
+        "prose": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 2 (1d4) piercing damage."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Hollowvale Hexer",
+    "entries": [
+      {
+        "section": "action",
+        "display_name": "Dagger",
+        "prose": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 3 (1d4 + 1) piercing damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Hex Bolt",
+        "prose": "Ranged Spell Attack: +5 to hit, range 120 ft., one target. Hit: 9 (2d8) force damage."
+      }
+    ],
+    "spellcasting": "The hexer is a 4th-level spellcaster. Its spellcasting ability is Charisma (spell save DC 13, +5 to hit with spell attacks). Cantrips (at will): minor illusion, poison spray. 1st level (4 slots): charm person, ray of sickness. 2nd level (3 slots): hold person, misty step.",
+    "legendary_intro": null
+  },
+  {
+    "name": "Hoarfrost Drakeling",
+    "entries": [
+      {
+        "section": "action",
+        "display_name": "Bite",
+        "prose": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) piercing damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Frost Puff (Recharge 5–6)",
+        "prose": "Each creature in a 15-foot cone must make a DC 11 Constitution saving throw, taking 7 (2d6) cold damage on a failed save, or half as much damage on a successful one."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  },
+  {
+    "name": "Thornwarden",
+    "entries": [
+      {
+        "section": "trait",
+        "display_name": "False Appearance",
+        "prose": "While the warden remains motionless, it is indistinguishable from a normal thicket of thorny trees."
+      },
+      {
+        "section": "action",
+        "display_name": "Multiattack",
+        "prose": "The thornwarden makes two thorn lash attacks."
+      },
+      {
+        "section": "action",
+        "display_name": "Thorn Lash",
+        "prose": "Melee Weapon Attack: +6 to hit, reach 15 ft., one target. Hit: 11 (2d6 + 4) piercing damage."
+      },
+      {
+        "section": "action",
+        "display_name": "Entangling Roots (Recharge 5–6)",
+        "prose": "Each creature in a 20-foot radius must make a DC 14 Strength saving throw. On a failed save, a creature is restrained until the end of the warden's next turn."
+      }
+    ],
+    "spellcasting": null,
+    "legendary_intro": null
+  }
+]

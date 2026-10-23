@@ -1,0 +1,286 @@
+import { describe, expect, it } from "vitest";
+import sample from "../../public/data/sample-monsters.json";
+import type { Monster } from "../types/monster";
+import { UNREACHABLE_MESSAGE, type GenerateRequest, type ReskinRequest } from "./generatorApi";
+import { apiUrl, createLiveGenerator, retryAfterMessage } from "./liveGenerator";
+
+const drake = (sample as unknown as Monster[]).find((m) => m.name === "Stormhide Drake")!;
+
+const REQUEST: GenerateRequest = {
+  crMin: 4,
+  crMax: 4,
+  types: ["dragon"],
+  sizes: [],
+  environments: [],
+  roles: [],
+  damageThemes: [],
+  features: [],
+};
+
+interface Call {
+  url: string;
+  init: RequestInit;
+  body: Record<string, unknown>;
+}
+
+/** A fetch that records what it was asked and answers with a prepared Response. */
+function fakeFetch(respond: (call: Call) => Response | Promise<Response>) {
+  const calls: Call[] = [];
+  const fn: typeof fetch = async (input, init) => {
+    const call: Call = { url: String(input), init: init ?? {}, body: init?.body ? JSON.parse(String(init.body)) : {} };
+    calls.push(call);
+    return respond(call);
+  };
+  return { fn, calls };
+}
+
+const json = (data: unknown, status = 200, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", ...headers } });
+
+describe("apiUrl", () => {
+  it("joins the server address and the path without doubling slashes", () => {
+    expect(apiUrl("http://localhost:8000", "/health")).toBe("http://localhost:8000/api/v1/health");
+    expect(apiUrl("http://localhost:8000/", "/health")).toBe("http://localhost:8000/api/v1/health");
+    expect(apiUrl("https://forge.example.com//", "/generate")).toBe("https://forge.example.com/api/v1/generate");
+  });
+});
+
+describe("retryAfterMessage", () => {
+  it("says how long to wait when the server said", () => {
+    expect(retryAfterMessage("45")).toBe("Slow down a little: try again in about 45 seconds.");
+    expect(retryAfterMessage("1")).toBe("Slow down a little: try again in about 1 second.");
+  });
+
+  it("rounds long waits to minutes", () => {
+    expect(retryAfterMessage("600")).toBe("Slow down a little: try again in about 10 minutes.");
+  });
+
+  it("falls back to a general message for a missing or odd value", () => {
+    for (const bad of [null, "", "soon", "-5", "0"]) expect(retryAfterMessage(bad)).toBe("Slow down a little: try again in a minute.");
+  });
+});
+
+describe("the live generator: generating", () => {
+  it("posts the filters, plus the ids to leave out, to the generate endpoint", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    await createLiveGenerator("http://localhost:8000", { fetchFn: fn }).generate({ ...REQUEST, excludeIds: ["a", "b"] });
+    const [call] = calls;
+    expect(call.url).toBe("http://localhost:8000/api/v1/generate");
+    expect(call.init.method).toBe("POST");
+    expect((call.init.headers as Record<string, string>)["content-type"]).toBe("application/json");
+    expect(call.body).toEqual({ ...REQUEST, excludeIds: ["a", "b"] });
+  });
+
+  it("sends an empty exclude list when there is none", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST);
+    expect(calls[0].body.excludeIds).toEqual([]);
+  });
+
+  it("is in live mode", () => {
+    expect(createLiveGenerator("http://x.test", { fetchFn: fakeFetch(() => json({})).fn }).mode).toBe("live");
+  });
+
+  it("returns the monster and the notes from a success", async () => {
+    const { fn } = fakeFetch(() => json({ ok: true, monster: drake, notes: ["Fixed a number."] }));
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST);
+    expect(result).toEqual({ ok: true, monster: drake, notes: ["Fixed a number."] });
+  });
+
+  it("treats a missing or odd notes list as no notes", async () => {
+    const { fn } = fakeFetch(() => json({ ok: true, monster: drake, notes: [5, null, "kept"] }));
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST);
+    expect(result).toMatchObject({ ok: true, notes: ["kept"] });
+    const { fn: second } = fakeFetch(() => json({ ok: true, monster: drake }));
+    expect(await createLiveGenerator("http://x.test", { fetchFn: second }).generate(REQUEST)).toMatchObject({ ok: true, notes: [] });
+  });
+
+  it("refuses a monster that the page could not show", async () => {
+    const { fn } = fakeFetch(() => json({ ok: true, monster: { name: "Broken" }, notes: [] }));
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST);
+    expect(result).toMatchObject({ ok: false, reason: "error" });
+  });
+
+  it.each(["resting", "invalid", "error", "offline"] as const)("passes on the failure reason %s and its message", async (reason) => {
+    const { fn } = fakeFetch(() => json({ ok: false, reason, message: "From the server." }, 422));
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST);
+    expect(result).toEqual({ ok: false, reason, message: "From the server." });
+  });
+
+  it("turns a rate limit into a message with the wait time", async () => {
+    const { fn } = fakeFetch(() => json({ ok: false, reason: "rate-limited", message: "Slow down a little: try again in a minute." }, 429, { "retry-after": "30" }));
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST);
+    expect(result).toEqual({ ok: false, reason: "rate-limited", message: "Slow down a little: try again in about 30 seconds." });
+  });
+
+  it("treats a reason it does not know as an error", async () => {
+    const { fn } = fakeFetch(() => json({ ok: false, reason: "on-fire", message: "?" }, 500));
+    expect(await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST)).toMatchObject({ ok: false, reason: "error" });
+  });
+
+  it.each([
+    [429, "rate-limited"],
+    [503, "resting"],
+    [422, "invalid"],
+    [502, "error"],
+    [500, "error"],
+  ] as const)("falls back to the status %i when the body cannot be read (%s)", async (status, reason) => {
+    const { fn } = fakeFetch(() => new Response("<html>Bad gateway</html>", { status, headers: { "content-type": "text/html" } }));
+    expect(await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST)).toMatchObject({ ok: false, reason });
+  });
+
+  it("says the generator is offline when the server cannot be reached", async () => {
+    const fn: typeof fetch = async () => {
+      throw new TypeError("Failed to fetch");
+    };
+    expect(await createLiveGenerator("http://x.test", { fetchFn: fn }).generate(REQUEST)).toEqual({ ok: false, reason: "offline", message: UNREACHABLE_MESSAGE });
+  });
+
+  it("gives up and says offline when the server takes too long", async () => {
+    const fn: typeof fetch = (_input, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+      });
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn, timeoutMs: 20 }).generate(REQUEST);
+    expect(result).toMatchObject({ ok: false, reason: "offline" });
+  });
+});
+
+describe("the live generator: reskinning", () => {
+  const reskin: ReskinRequest = { base: drake, theme: "cold", damageOnly: true, levelUp: true };
+
+  it("sends only the id of the monster, never the monster", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin(reskin);
+    expect(calls[0].url).toBe("http://x.test/api/v1/reskin");
+    expect(calls[0].body).toEqual({
+      baseId: drake.id,
+      theme: "cold",
+      damageOnly: true,
+      move: null,
+      levelUp: true,
+      reflavor: false,
+      donorId: null,
+      borrow: [],
+      forgeChooses: false,
+    legendary: false,
+    });
+    expect(JSON.stringify(calls[0].body)).not.toContain(drake.name);
+  });
+
+  it("sends null for the parts that were not chosen", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, levelUp: true });
+    expect(calls[0].body).toEqual({ baseId: drake.id, theme: null, damageOnly: false, move: null, levelUp: true, reflavor: false, donorId: null, borrow: [], forgeChooses: false, legendary: false });
+  });
+
+  it("sends a remix as a theme and a move, and passes surprise through for the server to decide", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    const live = createLiveGenerator("http://x.test", { fetchFn: fn });
+    await live.reskin({ base: drake, theme: "cold", move: "lob" });
+    await live.reskin({ base: drake, theme: "surprise", move: "surprise", levelUp: false });
+    expect(calls[0].body).toEqual({ baseId: drake.id, theme: "cold", damageOnly: false, move: "lob", levelUp: false, reflavor: false, donorId: null, borrow: [], forgeChooses: false, legendary: false });
+    expect(calls[1].body).toEqual({ baseId: drake.id, theme: "surprise", damageOnly: false, move: "surprise", levelUp: false, reflavor: false, donorId: null, borrow: [], forgeChooses: false, legendary: false });
+  });
+
+  it("sends a reflavor on its own", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin({ base: drake, reflavor: true });
+    expect(calls[0].body).toEqual({ baseId: drake.id, theme: null, damageOnly: false, move: null, levelUp: false, reflavor: true, donorId: null, borrow: [], forgeChooses: false, legendary: false });
+  });
+
+  it("sends a polymorph as a donor and the keys to borrow, or lets the forge choose", async () => {
+    const { fn, calls } = fakeFetch(() => json({ ok: true, monster: drake, notes: [] }));
+    const live = createLiveGenerator("http://x.test", { fetchFn: fn });
+    await live.reskin({ base: drake, donorId: "srd-wolf", borrow: ["speed:fly"], levelUp: true, legendary: true });
+    await live.reskin({ base: drake, donorId: "srd-wolf", forgeChooses: true });
+    expect(calls[0].body).toMatchObject({ baseId: drake.id, donorId: "srd-wolf", borrow: ["speed:fly"], forgeChooses: false, levelUp: true, legendary: true });
+    expect(calls[1].body).toMatchObject({ donorId: "srd-wolf", borrow: [], forgeChooses: true });
+  });
+
+  it("asks what a donor could lend and keeps only well-formed options", async () => {
+    const answer = { ok: true, options: [{ key: "speed:fly", kind: "movement", label: "Fly 60 ft." }, { key: "x", kind: "nonsense", label: "?" }, "junk"] };
+    const { fn, calls } = fakeFetch(() => json(answer));
+    const result = await createLiveGenerator("http://x.test", { fetchFn: fn }).graftOptions("base-id", "donor-id");
+    expect(calls[0].url).toBe("http://x.test/api/v1/graft/options");
+    expect(calls[0].body).toEqual({ baseId: "base-id", donorId: "donor-id" });
+    expect(result).toEqual({ ok: true, options: [{ key: "speed:fly", kind: "movement", label: "Fly 60 ft." }] });
+  });
+
+  it("passes a refusal about the donor through, and reports an unreachable server as offline", async () => {
+    const refusal = fakeFetch(() => json({ ok: false, reason: "invalid", message: "A creature cannot borrow from itself." }, 422));
+    expect(await createLiveGenerator("http://x.test", { fetchFn: refusal.fn }).graftOptions("a", "a")).toEqual({
+      ok: false,
+      reason: "invalid",
+      message: "A creature cannot borrow from itself.",
+    });
+    const down = await createLiveGenerator("http://x.test", { fetchFn: () => Promise.reject(new Error("down")) }).graftOptions("a", "b");
+    expect(down).toMatchObject({ ok: false, reason: "offline" });
+  });
+
+  it("maps answers the same way as generating", async () => {
+    const { fn } = fakeFetch(() => json({ ok: false, reason: "invalid", message: "That monster is not known to the forge." }, 422));
+    expect(await createLiveGenerator("http://x.test", { fetchFn: fn }).reskin(reskin)).toEqual({
+      ok: false,
+      reason: "invalid",
+      message: "That monster is not known to the forge.",
+    });
+  });
+});
+
+describe("the live generator: status", () => {
+  const status = async (respond: () => Response | Promise<Response>) => {
+    const { fn } = fakeFetch(respond);
+    return createLiveGenerator("http://x.test", { fetchFn: fn }).status!();
+  };
+
+  it("reads ok and resting from the health endpoint", async () => {
+    expect(await status(() => json({ status: "ok" }))).toBe("ok");
+    expect(await status(() => json({ status: "resting" }))).toBe("resting");
+  });
+
+  it("calls the health endpoint with GET", async () => {
+    const { fn, calls } = fakeFetch(() => json({ status: "ok" }));
+    await createLiveGenerator("http://x.test/", { fetchFn: fn }).status!();
+    expect(calls[0].url).toBe("http://x.test/api/v1/health");
+    expect(calls[0].init.method ?? "GET").toBe("GET");
+  });
+
+  it("says offline when the server cannot be reached or answers oddly", async () => {
+    const down: typeof fetch = async () => {
+      throw new TypeError("Failed to fetch");
+    };
+    expect(await createLiveGenerator("http://x.test", { fetchFn: down }).status!()).toBe("offline");
+    expect(await status(() => new Response("nope", { status: 500 }))).toBe("offline");
+    expect(await status(() => json({ status: "weird" }))).toBe("offline");
+  });
+});
+
+describe("a server that stalls", () => {
+  it("is given up on even after its headers arrived, so the page is never left waiting", async () => {
+    const stalled: typeof fetch = async (_input, init) => {
+      // headers arrive at once; the body then never finishes, until the page aborts the request
+      const body = new ReadableStream({
+        start(controller) {
+          init?.signal?.addEventListener("abort", () => controller.error(new Error("aborted")));
+        },
+      });
+      return new Response(body, { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const result = await createLiveGenerator("http://x.test", { fetchFn: stalled, timeoutMs: 30 }).generate(REQUEST);
+    expect(result).toMatchObject({ ok: false, reason: "offline" });
+  });
+});
+
+describe("an answer about what a donor could lend is not trusted blindly", () => {
+  it("drops repeated keys and caps the list, and never sends more than ten ticks", async () => {
+    const many = Array.from({ length: 150 }, (_, i) => ({ key: `trait:T${i}`, kind: "trait", label: `T${i}` }));
+    const { fn, calls } = fakeFetch((call) => (call.url.endsWith("/graft/options") ? json({ ok: true, options: [many[0], many[0], ...many] }) : json({ ok: true, monster: drake, notes: [] })));
+    const live = createLiveGenerator("http://x.test", { fetchFn: fn });
+    const result = await live.graftOptions("a", "b");
+    expect(result.ok && result.options).toHaveLength(100);
+    expect(result.ok && new Set(result.options.map((o) => o.key)).size).toBe(100);
+    await live.reskin({ base: drake, donorId: "b", borrow: many.map((o) => o.key) });
+    expect((calls[1].body as { borrow: string[] }).borrow).toHaveLength(10);
+  });
+});
