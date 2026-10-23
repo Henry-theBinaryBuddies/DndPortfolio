@@ -15,7 +15,7 @@ Endpoints (all under /api/v1):
 
 Failures always have the same body, ``{"ok": false, "reason": ..., "message": ...}``, which is what the web page already
 knows how to show. The HTTP status says the same thing for anything else that reads it: 422 invalid, 429 rate-limited
-(with a Retry-After header), 503 resting, 502 the AI could not be reached or gave up, 500 anything unexpected.
+(with a Retry-After header), 503 resting, 424 the AI could not be reached or gave up, 500 anything unexpected.
 """
 
 import json
@@ -55,7 +55,9 @@ _STATUS = {
     FailureReason.RATE_LIMITED: 429,
     FailureReason.RESTING: 503,
     FailureReason.OFFLINE: 503,
-    FailureReason.ERROR: 502,
+    # Not 502: Cloudflare, which sits in front of the server, replaces any 502 or 504 from the server with its own plain error page. That page
+    # carries no CORS headers, so the browser would hide it and the visitor would see "can't reach the server" in place of the real message.
+    FailureReason.ERROR: 424,
 }
 
 

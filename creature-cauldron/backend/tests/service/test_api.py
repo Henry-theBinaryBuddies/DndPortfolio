@@ -129,10 +129,11 @@ def test_a_request_above_the_challenge_rating_cap_is_invalid(make) -> None:
     assert response.status_code == 422 and response.json()["reason"] == "invalid"
 
 
-def test_the_ai_being_unreachable_gives_a_gateway_error(make) -> None:
+def test_the_ai_being_unreachable_is_never_answered_with_a_status_cloudflare_replaces(make) -> None:
+    # Cloudflare swaps any 502 or 504 from the server for its own error page, which hides the message from the browser.
     rig = make(monsters=[GeneratorUnavailable("down")])
     response = rig.client.post("/api/v1/generate", json=DRAGONS)
-    assert response.status_code == 502
+    assert response.status_code == 424 and response.status_code not in (502, 504)
     assert response.json()["reason"] == "error"
 
 

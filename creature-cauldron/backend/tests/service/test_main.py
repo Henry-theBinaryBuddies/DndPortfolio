@@ -19,14 +19,14 @@ def test_the_server_starts_without_a_key_and_serves_the_library_endpoints(tmp_pa
 def test_without_a_key_generation_says_the_forge_cannot_be_reached(tmp_path) -> None:
     client = TestClient(create_default_app(env(tmp_path)))
     response = client.post("/api/v1/generate", json={"types": ["undead"], "crMin": 3, "crMax": 3})
-    assert response.status_code == 502
+    assert response.status_code == 424
     assert response.json()["reason"] == "error" and "could not be reached" in response.json()["message"]
 
 
 def test_reskinning_a_known_srd_monster_reaches_the_ai_step_and_fails_the_same_way(tmp_path) -> None:
     client = TestClient(create_default_app(env(tmp_path)))
     response = client.post("/api/v1/reskin", json={"baseId": "srd-goblin", "levelUp": True})
-    assert response.status_code == 502  # the base was found in the static library; only the naming step is unavailable
+    assert response.status_code == 424  # the base was found in the static library; only the naming step is unavailable
 
 
 def test_the_database_file_is_created_where_the_settings_say(tmp_path) -> None:
