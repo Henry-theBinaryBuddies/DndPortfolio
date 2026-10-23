@@ -1,0 +1,18 @@
+# Makes one safe copy of the database (run each night by cauldron-backup.timer, or by hand: sudo systemctl start cauldron-backup).
+# Copies go to /var/lib/cauldron/backups; the newest 14 are kept.
+
+[Unit]
+Description=Back up the Creature Cauldron database
+
+[Service]
+Type=oneshot
+User=cauldron
+Group=cauldron
+ExecStart=/opt/DndPortfolio/creature-cauldron/backend/.venv/bin/python /opt/DndPortfolio/creature-cauldron/deploy/backup_db.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=CAULDRON_DATABASE=/var/lib/cauldron/cauldron.sqlite3
+StateDirectory=cauldron
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

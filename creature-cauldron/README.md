@@ -42,4 +42,4 @@ npm run dev
 
 ## Deploying
 
-See `docs/DEPLOYMENT.md`: the page on Cloudflare Pages, the server on a home PC behind a Cloudflare Tunnel, key safety and a launch checklist. The licences are in `LICENSES.md`.
+See `docs/DEPLOYMENT.md`: the page on Cloudflare Pages, the server on a home Ubuntu machine (systemd) behind a Cloudflare Tunnel, remote access over Tailscale, key safety and a launch checklist. The licences are in `LICENSES.md`.

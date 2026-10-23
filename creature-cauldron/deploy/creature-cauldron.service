@@ -1,0 +1,47 @@
+# The Creature Cauldron server as a systemd service. Install it with the commands in docs/DEPLOYMENT.md.
+#
+# It runs as its own unprivileged user, listens on 127.0.0.1:8000 only (the Cloudflare tunnel is the one way in), restarts itself if it
+# stops, and logs to the journal (journalctl -u creature-cauldron). The API key is NOT in this file: systemd reads it from
+# /etc/cauldron/secrets.env (owned by root, readable by root only) and hands it to the process's environment.
+
+[Unit]
+Description=Creature Cauldron server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cauldron
+Group=cauldron
+WorkingDirectory=/opt/DndPortfolio/creature-cauldron/backend
+ExecStart=/opt/DndPortfolio/creature-cauldron/backend/.venv/bin/python -m cauldron.service
+Restart=always
+RestartSec=5
+
+# Production settings that are not secret. The secrets file is read after these, so it may override any of them.
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=CAULDRON_ALLOWED_ORIGINS=https://creaturecauldron.com
+Environment=CAULDRON_TRUSTED_PROXY_HEADER=CF-Connecting-IP
+Environment=CAULDRON_DAILY_CAP=100
+Environment=CAULDRON_DATABASE=/var/lib/cauldron/cauldron.sqlite3
+EnvironmentFile=/etc/cauldron/secrets.env
+
+# /var/lib/cauldron is created for the service user and is the only place it may write.
+StateDirectory=cauldron
+
+# Hardening: the server needs the network and its own database folder, and nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

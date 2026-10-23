@@ -13,13 +13,14 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = PROJECT / "backend" / "data" / "cauldron.sqlite3"
-DEFAULT_TO = Path(r"C:\cauldron\backups")
-DEFAULT_SECRETS = Path(r"C:\cauldron\secrets.env")
+# Where the server keeps things on Ubuntu (see deploy/creature-cauldron.service); a Windows machine would use C:\cauldron.
+DEFAULT_TO = Path("/var/lib/cauldron/backups") if os.name != "nt" else Path(r"C:\cauldron\backups")
+DEFAULT_SECRETS = Path("/etc/cauldron/secrets.env") if os.name != "nt" else Path(r"C:\cauldron\secrets.env")
 
 
 def database_in_use(secrets_file: Path = DEFAULT_SECRETS, env: dict[str, str] | None = None) -> Path:
-    """The database the server uses: CAULDRON_DATABASE from the environment or the secrets file (the same file run-server.ps1
-    reads), else the default. A backup of the wrong file would look fine and protect nothing."""
+    """The database the server uses: CAULDRON_DATABASE from the environment or the secrets file (the file the
+    server's service reads), else the default. A backup of the wrong file would look fine and protect nothing."""
     env = dict(os.environ if env is None else env)
     if "CAULDRON_DATABASE" not in env and secrets_file.exists():
         for line in secrets_file.read_text(encoding="utf-8-sig").splitlines():

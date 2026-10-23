@@ -13,3 +13,5 @@ chronomancer/.env*
 !chronomancer/.env*.example
 secrets/
 
+
+__pycache__/

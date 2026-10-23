@@ -192,3 +192,7 @@ Procfile    text
 ## EXECUTABLES
 *.exe binary
 *.pyc binary
+
+## SERVER FILES (systemd reads these on Linux: always LF)
+*.service text eol=lf
+*.timer   text eol=lf
