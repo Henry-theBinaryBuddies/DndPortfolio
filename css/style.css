@@ -164,6 +164,18 @@ textarea {
   border-image-slice: 30;
   border-image-repeat: stretch;
 
+  /* The board the paper is pinned to, a little darker than the frame. */
+  background:
+    linear-gradient(
+      rgba(20, 10, 5, 0.42),
+      rgba(20, 10, 5, 0.42)
+    ),
+    url("../assets/textures/wood-frame.png");
+
+  background-size:
+    auto,
+    cover;
+
   box-shadow:
     0 8px 18px
     rgba(0, 0, 0, 0.35);
@@ -212,6 +224,10 @@ textarea {
    ========================================================= */
 
 .dm-screen__surface {
+  position: relative;
+
+  isolation: isolate;
+
   display: grid;
 
   width: 100%;
@@ -228,24 +244,72 @@ textarea {
   gap: 3%;
 
   padding:
-    4% 5%;
+    6% 8%;
+}
 
-  overflow: hidden;
+
+/*
+  The paper is two layers drawn behind the covers. Each is torn
+  along its edge by an SVG filter (see the <svg> at the top of
+  the page): the lower, paler layer is the torn fibres, the upper
+  is the sheet. The soft wash over the paper texture lightens it.
+*/
+.dm-screen__surface::before,
+.dm-screen__surface::after {
+  content: "";
+
+  position: absolute;
+
+  pointer-events: none;
+}
+
+
+.dm-screen__surface::before {
+  inset: 2.2%;
+
+  background: #efe2bd;
+
+  filter:
+    url(#torn-rim)
+    drop-shadow(
+      0 3px 5px
+      rgba(0, 0, 0, 0.55)
+    );
+
+  z-index: -2;
+}
+
+
+.dm-screen__surface::after {
+  inset: 3.6%;
 
   background:
+    radial-gradient(
+      ellipse at 50% 45%,
+      rgba(250, 240, 210, 0.35),
+      rgba(250, 240, 210, 0) 70%
+    ),
     linear-gradient(
-      rgba(185, 154, 99, 0.20),
-      rgba(185, 154, 99, 0.20)
+      rgba(242, 228, 192, 0.5),
+      rgba(242, 228, 192, 0.5)
     ),
     url("../assets/textures/aged-paper.png");
 
-  background-size: cover;
+  background-size:
+    auto,
+    auto,
+    cover;
+
   background-position: center;
 
   box-shadow:
-    inset
-    0 0 24px
-    rgba(60, 35, 18, 0.35);
+    inset 0 0 36px
+    rgba(120, 80, 36, 0.3);
+
+  filter:
+    url(#torn-paper);
+
+  z-index: -1;
 }
 
 
@@ -513,38 +577,6 @@ textarea {
 .module-card[data-code="A7"] { --accent: #17435b; }
 
 
-/* The module code in its box, top left, like B2 or S1. */
-.module-card::before {
-  content: attr(data-code);
-
-  position: absolute;
-
-  top: 1.4cqw;
-  left: 1.4cqw;
-
-  display: grid;
-
-  place-items: center;
-
-  width: 17cqw;
-  height: 12cqw;
-
-  font-family: var(--font-title);
-  font-weight: 800;
-  font-size: 6.4cqw;
-  line-height: 1;
-
-  color: var(--accent);
-
-  background: #f2dda2;
-
-  border:
-    0.7cqw solid #140a06;
-
-  z-index: 3;
-}
-
-
 /* The binding down the left edge. */
 .module-card::after {
   content: "";
@@ -607,44 +639,6 @@ textarea {
 }
 
 
-/* The series band across the top. */
-.module-card__cover::before {
-  content: "Agentic Development";
-
-  position: absolute;
-
-  top: 0;
-  left: 0;
-  right: 0;
-
-  display: block;
-
-  height: 13.5cqw;
-
-  padding:
-    4.2cqw 3cqw 0 20cqw;
-
-  font-family: var(--font-title);
-  font-weight: 600;
-  font-size: 3.7cqw;
-  line-height: 1;
-
-  letter-spacing: 0.2em;
-
-  text-align: center;
-  text-transform: uppercase;
-
-  color: #f2dda2;
-
-  background: var(--accent);
-
-  border-bottom:
-    0.8cqw solid #d8b660;
-
-  z-index: 2;
-}
-
-
 /* =========================================================
    MODULE ART
    ========================================================= */
@@ -652,7 +646,7 @@ textarea {
 .module-card__art {
   position: absolute;
 
-  top: 13.5cqw;
+  top: 2.4cqw;
   right: 2.4cqw;
   bottom: 2.4cqw;
   left: 2.4cqw;
@@ -797,11 +791,6 @@ textarea {
 
 
 /* A leather strap across the cover. */
-.module-card--sealed .module-card__cover::before {
-  content: "Sealed Module";
-}
-
-
 .module-card--sealed .module-card__art::after {
   content: "";
 
@@ -1466,32 +1455,215 @@ p {
 
   background:
     linear-gradient(
-      rgba(205, 184, 137, 0.15),
-      rgba(205, 184, 137, 0.15)
+      rgba(244, 231, 198, 0.5),
+      rgba(244, 231, 198, 0.5)
     ),
     url("../assets/textures/aged-paper.png");
 
   background-size: cover;
   background-position: center;
-
-  box-shadow:
-    inset
-    0 0 30px
-    rgba(65, 39, 20, 0.22);
 }
 
 
+/*
+  THE OPEN BOOK. Each page darkens towards the spine, and a stack
+  of page edges shows beside it. The leather cover is drawn behind
+  the book, and on opening the right-hand page swings in from the
+  spine.
+*/
 .module-detail__page--left {
-  border-right:
-    1px solid
-    rgba(63, 39, 22, 0.4);
+  border-radius:
+    6px 0 0 6px;
+
+  background-image:
+    linear-gradient(
+      to left,
+      rgba(70, 40, 16, 0.34),
+      rgba(70, 40, 16, 0) 16%
+    ),
+    linear-gradient(
+      rgba(244, 231, 198, 0.5),
+      rgba(244, 231, 198, 0.5)
+    ),
+    url("../assets/textures/aged-paper.png");
+
+  background-size:
+    auto,
+    auto,
+    cover;
+
+  box-shadow:
+    inset 8px 0 14px -8px rgba(65, 39, 20, 0.35),
+    -3px 2px 0 -1px #eadcb6,
+    -3px 2px 0 0 rgba(70, 45, 20, 0.45),
+    -6px 4px 0 -1px #dccba0,
+    -6px 4px 0 0 rgba(70, 45, 20, 0.45),
+    -9px 6px 0 -1px #cdbb8e,
+    -9px 6px 0 0 rgba(70, 45, 20, 0.45);
 }
 
 
 .module-detail__page--right {
-  border-left:
-    1px solid
-    rgba(255, 255, 255, 0.18);
+  border-radius:
+    0 6px 6px 0;
+
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(70, 40, 16, 0.34),
+      rgba(70, 40, 16, 0) 16%
+    ),
+    linear-gradient(
+      rgba(244, 231, 198, 0.5),
+      rgba(244, 231, 198, 0.5)
+    ),
+    url("../assets/textures/aged-paper.png");
+
+  background-size:
+    auto,
+    auto,
+    cover;
+
+  box-shadow:
+    inset -8px 0 14px -8px rgba(65, 39, 20, 0.35),
+    3px 2px 0 -1px #eadcb6,
+    3px 2px 0 0 rgba(70, 45, 20, 0.45),
+    6px 4px 0 -1px #dccba0,
+    6px 4px 0 0 rgba(70, 45, 20, 0.45),
+    9px 6px 0 -1px #cdbb8e,
+    9px 6px 0 0 rgba(70, 45, 20, 0.45);
+
+  transform-origin:
+    left center;
+
+  backface-visibility: hidden;
+}
+
+
+/* The leather cover behind the open book, tooled with a gold line. */
+.module-detail {
+  isolation: isolate;
+}
+
+
+.module-detail::before {
+  content: "";
+
+  position: absolute;
+
+  inset: -1.1rem -1.5rem -1.5rem;
+
+  border-radius: 12px;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 40%,
+      rgba(150, 90, 50, 0.35),
+      rgba(0, 0, 0, 0) 75%
+    ),
+    linear-gradient(
+      #4a2a18,
+      #2e180e
+    );
+
+  box-shadow:
+    inset 0 0 0 3px #1c0e07,
+    inset 0 0 0 6px rgba(206, 168, 92, 0.65),
+    inset 0 0 40px rgba(0, 0, 0, 0.55);
+
+  z-index: -1;
+}
+
+
+/* The gutter: the dark crease down the middle where the pages meet. */
+.module-detail__spread {
+  position: relative;
+
+  perspective: 2400px;
+}
+
+
+.module-detail__spread::after {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  bottom: 0;
+  left: 50%;
+
+  width: 56px;
+
+  transform:
+    translateX(-50%);
+
+  background:
+    linear-gradient(
+      to right,
+      rgba(40, 22, 8, 0),
+      rgba(40, 22, 8, 0.28) 42%,
+      rgba(25, 12, 4, 0.45) 50%,
+      rgba(40, 22, 8, 0.28) 58%,
+      rgba(40, 22, 8, 0)
+    );
+
+  pointer-events: none;
+
+  z-index: 2;
+}
+
+
+/* Opening: the book rises, then the right page swings in from the spine. */
+@keyframes book-rise {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(24px)
+      scale(0.96);
+  }
+}
+
+
+@keyframes page-swing {
+  from {
+    opacity: 0;
+
+    transform:
+      rotateY(-95deg);
+  }
+
+  35% {
+    opacity: 1;
+  }
+}
+
+
+@keyframes page-settle {
+  from {
+    opacity: 0;
+  }
+}
+
+
+.module-overlay:not([hidden])
+.module-detail {
+  animation:
+    book-rise 420ms ease-out both;
+}
+
+
+.module-overlay:not([hidden])
+.module-detail__page--right {
+  animation:
+    page-swing 760ms cubic-bezier(0.22, 0.7, 0.25, 1) 180ms both;
+}
+
+
+.module-overlay:not([hidden])
+.module-detail__page--left {
+  animation:
+    page-settle 500ms ease-out 120ms both;
 }
 
 
@@ -2158,7 +2330,7 @@ p {
     gap: 3%;
 
     padding:
-      5% 7%;
+      7% 9%;
   }
 
 
@@ -2421,8 +2593,37 @@ p {
 
   .module-detail__page--left,
   .module-detail__page--right {
-    border-left: none;
-    border-right: none;
+    border-radius: 4px;
+
+    box-shadow: none;
+
+    background-image:
+      linear-gradient(
+        rgba(244, 231, 198, 0.5),
+        rgba(244, 231, 198, 0.5)
+      ),
+      url("../assets/textures/aged-paper.png");
+
+    background-size:
+      auto,
+      cover;
+  }
+
+
+  .module-detail::before {
+    inset: -0.5rem;
+  }
+
+
+  .module-detail__spread::after {
+    display: none;
+  }
+
+
+  .module-overlay:not([hidden])
+  .module-detail__page--right {
+    animation:
+      page-settle 500ms ease-out 120ms both;
   }
 
 

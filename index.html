@@ -20,6 +20,66 @@
 
 <body>
 
+<!--
+  Two filters that roughen the edge of a shape, used to tear the paper on the DM screen.
+  Nothing is drawn here: the styles refer to them by name (url(#torn-rim), url(#torn-paper)).
+-->
+<svg
+  width="0"
+  height="0"
+  style="position: absolute"
+  aria-hidden="true"
+  focusable="false"
+>
+
+  <filter
+    id="torn-rim"
+    x="-4%"
+    y="-4%"
+    width="108%"
+    height="108%"
+  >
+    <feTurbulence
+      type="fractalNoise"
+      baseFrequency="0.012 0.018"
+      numOctaves="5"
+      seed="11"
+      result="noise"
+    />
+    <feDisplacementMap
+      in="SourceGraphic"
+      in2="noise"
+      scale="26"
+      xChannelSelector="R"
+      yChannelSelector="G"
+    />
+  </filter>
+
+  <filter
+    id="torn-paper"
+    x="-4%"
+    y="-4%"
+    width="108%"
+    height="108%"
+  >
+    <feTurbulence
+      type="fractalNoise"
+      baseFrequency="0.02 0.03"
+      numOctaves="5"
+      seed="4"
+      result="noise"
+    />
+    <feDisplacementMap
+      in="SourceGraphic"
+      in2="noise"
+      scale="12"
+      xChannelSelector="R"
+      yChannelSelector="G"
+    />
+  </filter>
+
+</svg>
+
 <main class="table-scene">
 
   <!-- =====================================================
