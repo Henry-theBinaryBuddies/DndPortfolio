@@ -1,3 +1,16 @@
-Artifact 3:
-Reflection
-To be continued...
+This project is the one I'm most proud of so far. It was even more ambitious than the last.
+I think I ended up with a product I'll end up using forever.
+
+Main skills developed were primarily administrative and IT skills:
+setting up my home server to host the backend for the application, OGL and ORC licensing,
+integrating monster sheets for Foundry, JSON and Plutonium compatibility,
+AI integration using Claude API, and programming to ensure Claude
+tokens remained affordable. Many of the calculations to generate and
+build monsters are handled by the backend/business logic, and querying the
+AI is primarily for flavor text. This allows me to use Haiku model and
+keep costs at a fraction of a penny per generation.
+
+CR calculation for new monsters is done by a statistical averaging of the SRD monsters sourced,
+but unfortunately this only has about an 85% accuracy due to the SRD containing
+major gaps and outliers in the dataset.
+
