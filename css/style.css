@@ -339,51 +339,6 @@ textarea {
 }
 
 
-/* The candle on the table lights the lower edge of each panel, and the light wavers. */
-.dm-screen__panel::before {
-  content: "";
-
-  position: absolute;
-
-  inset: 0;
-
-  background:
-    radial-gradient(
-      ellipse at 50% 108%,
-      rgba(255, 150, 60, 0.2),
-      rgba(255, 130, 40, 0.06) 45%,
-      rgba(255, 130, 40, 0) 70%
-    );
-
-  pointer-events: none;
-
-  animation:
-    candle-flicker 3.7s ease-in-out infinite;
-
-  z-index: 4;
-}
-
-
-.dm-screen__panel--center::before {
-  animation-delay: -1.3s;
-}
-
-.dm-screen__panel--right::before {
-  animation-delay: -2.6s;
-}
-
-
-@keyframes candle-flicker {
-  0%   { opacity: 0.85; }
-  14%  { opacity: 0.55; }
-  29%  { opacity: 1; }
-  43%  { opacity: 0.7; }
-  61%  { opacity: 0.95; }
-  78%  { opacity: 0.6; }
-  100% { opacity: 0.85; }
-}
-
-
 .dm-screen__surface::before {
   inset: 0.6%;
 
