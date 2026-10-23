@@ -51,6 +51,21 @@ const logBookIndexPath =
    STATE
    ========================================================= */
 
+const logBookBackButton =
+  document.getElementById(
+    "logbook-back"
+  );
+
+/*
+  On a phone (or any narrow or short screen) the list of
+  entries and the entry itself are stacked in one column,
+  so picking an entry has to scroll down to it.
+*/
+const logBookSingleColumn =
+  window.matchMedia(
+    "(orientation: portrait), (max-height: 560px)"
+  );
+
 let logBookInitialized =
   false;
 
@@ -137,6 +152,19 @@ document.addEventListener(
 /* =========================================================
    OPEN
    ========================================================= */
+
+logBookBackButton.addEventListener(
+  "click",
+  () => {
+
+    logBookEntries.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+
+  }
+);
+
 
 function openLogBook() {
 
@@ -373,11 +401,21 @@ function buildEntryNavigation(
 
       button.addEventListener(
         "click",
-        () => {
+        async () => {
 
-          loadJournalEntry(
+          /* Wait for the entry to fill in, so the scroll lands at its top. */
+          await loadJournalEntry(
             date
           );
+
+          if (logBookSingleColumn.matches) {
+
+            logBookEntryContent.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+
+          }
 
         }
       );

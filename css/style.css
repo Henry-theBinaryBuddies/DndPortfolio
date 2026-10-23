@@ -1508,6 +1508,12 @@ textarea {
 }
 
 
+/* Only shown where the entries and the entry are stacked (phones). */
+.logbook-back {
+  display: none;
+}
+
+
 .logbook-entry-content
 time {
   font-style: italic;
@@ -2863,6 +2869,33 @@ p {
         4vw,
         1.05rem
       );
+  }
+
+
+  .logbook-back {
+    display: block;
+
+    margin-top: 1.5rem;
+
+    padding:
+      0.7rem 1rem;
+
+    border:
+      1px solid #25140e;
+
+    background: #65251d;
+
+    color: #ead8ad;
+
+    font-family: var(--font-title);
+    font-weight: 600;
+    font-size: 0.9rem;
+
+    letter-spacing: 0.06em;
+
+    text-transform: uppercase;
+
+    cursor: pointer;
   }
 
 
