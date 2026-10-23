@@ -153,6 +153,209 @@ moduleGallery.addEventListener(
 
 
 /* =========================================================
+   LIGHTBOX (the gallery picture, enlarged)
+   ========================================================= */
+
+const lightbox =
+  document.getElementById("lightbox");
+
+const lightboxImage =
+  document.getElementById("lightbox-image");
+
+const lightboxCaption =
+  document.getElementById("lightbox-caption");
+
+const lightboxCounter =
+  document.getElementById("lightbox-counter");
+
+const lightboxPrevious =
+  document.getElementById("lightbox-previous");
+
+const lightboxNext =
+  document.getElementById("lightbox-next");
+
+const lightboxClose =
+  document.getElementById("lightbox-close");
+
+
+/*
+  The small picture is a button for the keyboard too:
+  Enter or Space opens the lightbox.
+*/
+moduleGalleryImage.tabIndex =
+  0;
+
+moduleGalleryImage.setAttribute(
+  "role",
+  "button"
+);
+
+moduleGalleryImage.setAttribute(
+  "aria-label",
+  "Enlarge screenshot"
+);
+
+moduleGalleryImage.addEventListener(
+  "click",
+  openLightbox
+);
+
+moduleGalleryImage.addEventListener(
+  "keydown",
+  (event) => {
+
+    if (
+      event.key === "Enter" ||
+      event.key === " "
+    ) {
+
+      event.preventDefault();
+
+      openLightbox();
+
+    }
+
+  }
+);
+
+lightboxPrevious.addEventListener(
+  "click",
+  () => showGalleryPhoto(galleryIndex - 1)
+);
+
+lightboxNext.addEventListener(
+  "click",
+  () => showGalleryPhoto(galleryIndex + 1)
+);
+
+lightboxClose.addEventListener(
+  "click",
+  closeLightbox
+);
+
+
+/* A click on the dark background (not on the picture or a button) closes it. */
+lightbox.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      event.target === lightbox ||
+      event.target.classList.contains(
+        "lightbox__figure"
+      )
+    ) {
+
+      closeLightbox();
+
+    }
+
+  }
+);
+
+
+/*
+  Escape and the arrow keys. This listener is on the window and
+  runs first (capture), and stops the event, so that while the
+  lightbox is open Escape closes only the lightbox (not the
+  artifact panel behind it) and an arrow moves one photo, not two.
+*/
+window.addEventListener(
+  "keydown",
+  (event) => {
+
+    if (lightbox.hidden) {
+      return;
+    }
+
+    if (event.key === "Escape") {
+
+      event.preventDefault();
+
+      event.stopImmediatePropagation();
+
+      closeLightbox();
+
+    }
+    else if (
+      event.key === "ArrowLeft" ||
+      event.key === "ArrowRight"
+    ) {
+
+      event.preventDefault();
+
+      event.stopImmediatePropagation();
+
+      if (galleryPhotos.length > 1) {
+
+        showGalleryPhoto(
+          galleryIndex +
+          (event.key === "ArrowRight" ? 1 : -1)
+        );
+
+      }
+
+    }
+
+  },
+  true
+);
+
+
+/* A swipe moves one photo here too. */
+let lightboxTouchStartX = null;
+
+let lightboxTouchStartY = null;
+
+lightbox.addEventListener(
+  "touchstart",
+  (event) => {
+
+    lightboxTouchStartX =
+      event.changedTouches[0].clientX;
+
+    lightboxTouchStartY =
+      event.changedTouches[0].clientY;
+
+  },
+  { passive: true }
+);
+
+lightbox.addEventListener(
+  "touchend",
+  (event) => {
+
+    if (lightboxTouchStartX === null) {
+      return;
+    }
+
+    const moveX =
+      event.changedTouches[0].clientX -
+      lightboxTouchStartX;
+
+    const moveY =
+      event.changedTouches[0].clientY -
+      lightboxTouchStartY;
+
+    lightboxTouchStartX = null;
+
+    if (
+      Math.abs(moveX) > 50 &&
+      Math.abs(moveX) > Math.abs(moveY) * 1.5
+    ) {
+
+      showGalleryPhoto(
+        galleryIndex + (moveX < 0 ? 1 : -1)
+      );
+
+    }
+
+  },
+  { passive: true }
+);
+
+
+/* =========================================================
    LOCATE CONTENT SECTIONS
    ========================================================= */
 
@@ -680,6 +883,9 @@ function showGalleryPhoto(
     `${galleryIndex + 1} / ${galleryPhotos.length}`;
 
 
+  renderLightbox();
+
+
   /* Start loading the next photo so it is ready. */
   new Image().src =
     galleryPhotos[
@@ -698,6 +904,8 @@ function showGalleryPhoto(
 function setGallery(
   photos
 ) {
+
+  closeLightbox();
 
   galleryPhotos =
     photos;
@@ -746,6 +954,80 @@ function setGallery(
 
     moduleGalleryCounter.textContent =
       "";
+
+  }
+
+}
+
+
+/* Copy the current gallery photo into the lightbox. */
+function renderLightbox() {
+
+  const photo =
+    galleryPhotos[galleryIndex];
+
+  if (!photo) {
+    return;
+  }
+
+  const hasSeveral =
+    galleryPhotos.length > 1;
+
+  lightboxImage.src =
+    photo.src;
+
+  lightboxImage.alt =
+    photo.alt;
+
+  lightboxCaption.textContent =
+    photo.caption;
+
+  lightboxCounter.textContent =
+    `${galleryIndex + 1} / ${galleryPhotos.length}`;
+
+  lightboxPrevious.hidden =
+    !hasSeveral;
+
+  lightboxNext.hidden =
+    !hasSeveral;
+
+  lightboxCounter.hidden =
+    !hasSeveral;
+
+}
+
+
+function openLightbox() {
+
+  if (galleryPhotos.length === 0) {
+    return;
+  }
+
+  renderLightbox();
+
+  lightbox.hidden =
+    false;
+
+  lightboxClose.focus();
+
+}
+
+
+function closeLightbox() {
+
+  if (lightbox.hidden) {
+    return;
+  }
+
+  lightbox.hidden =
+    true;
+
+  lightboxImage.removeAttribute("src");
+
+  /* Put the keyboard back on the small picture, if it is still there. */
+  if (!moduleGallery.hidden) {
+
+    moduleGalleryImage.focus();
 
   }
 
