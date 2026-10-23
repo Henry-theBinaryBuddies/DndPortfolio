@@ -1,4 +1,11 @@
-Artifact 3:
-AI Inside of it
+Artifact 3
 
-Current speculation is it will either be a player character creator or a NPC/Monster creator.
+Creature Cauldron
+
+A monster library and generator for the 2014 rules of Dungeons & Dragons, built as a tool for my own party. It holds 939 monsters (20 hand-written, 333 from the System Reference Document and 586 from the A5E Monstrous Menagerie) that can be filtered by type, challenge rating, size, environment, role, damage and source, and read as printable 2014-style stat blocks. Enter your party and pick a difficulty and the list narrows to monsters of that difficulty; add monsters to an encounter and it rates the fight live. Monsters and encounters export as JSON, as a Foundry VTT actor, or as a 5etools homebrew file.
+
+The AI is inside it in two places. Generate asks Claude Haiku for a brand new monster from structured filters, and Reskin changes an existing one three ways: Reflavor (a new name and description with every number kept), Remix (a new damage theme, a signature move, an optional level up) and Polymorph (borrow features from a second creature). The AI only writes words. Plain code does every number, and a validator checks each monster against the rules and an estimate of its challenge rating before anyone sees it. Everything the AI makes is cached and shared, and daily and per-visitor limits keep the cost fixed.
+
+Built with a Python (FastAPI, SQLite) back end running on my home server behind a Cloudflare Tunnel, and a React and TypeScript front end on Cloudflare Pages. The technical document covers the architecture, deployment, runbook and troubleshooting.
+
+Live: https://creaturecauldron.com
