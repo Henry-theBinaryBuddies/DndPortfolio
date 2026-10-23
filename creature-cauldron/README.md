@@ -1,10 +1,12 @@
 # Creature Cauldron
 
-A 2014-rules D&D monster library and generator. See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for the plan.
+A 2014-rules D&D monster library and generator. **Live at https://creaturecauldron.com.** See [docs/TECHNICAL.md](docs/TECHNICAL.md) for the full technical document
+(architecture, request flow, deployment, runbook, troubleshooting) and [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for the original plan.
 
 ## Status
 
-Phase 1 (front end, no back end) is in progress. Steps 1 to 7 are done:
+Launched on 22 October 2026: the page is on Cloudflare Pages and the Python service runs on a home server behind a Cloudflare Tunnel, calling Claude Haiku for new monsters and reskins.
+The notes below describe what the page does:
 
 - The Vite + React + TypeScript app runs, and the monster schema exists as TypeScript types.
 - The library is 20 hand-written sample monsters, 333 monsters from the System Reference Document 5.1 and 586 from the A5E Monstrous Menagerie (each made by a back-end importer and credited with its source's exact statement, shown in the page footer and under each stat block; see `docs/A5E.md` and `LICENSES.md`). All load from static JSON, and a Source filter narrows the list. The code is MIT; the monster data is under the licences on the Licences page. Clicking one opens its 2014-style stat block in a pop-out (with print support).
@@ -37,8 +39,9 @@ npm run dev
 ## Layout
 
 - `frontend/` Vite + React + TypeScript app. The sample library is `frontend/public/data/sample-monsters.json`.
-- `docs/` requirements and design notes.
-- `backend/` Python API (not started).
+- `docs/` the technical document, requirements and design notes.
+- `backend/` Python API (FastAPI, SQLite, Claude Haiku), with its own tests.
+- `deploy/` systemd units, backup script and server setup helpers.
 
 ## Deploying
 
