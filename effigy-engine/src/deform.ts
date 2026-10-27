@@ -135,11 +135,14 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     push(Math.exp(-((cord / 0.04) ** 2)) * smooth((-0.45 - y0) / 0.1), (0.005 + 0.01 * Math.max(0, gender) + 0.006 * (p.muscle - 0.45)) * (0.6 + 0.5 * k.angularity));
 
     // Lips: fuller lips grow taller about the mouth line and push forward; thinner ones only flatten
-    // (squashing them toward the mouth line pinches the corners open). The base sculpt already has a real
-    // mouth (the cupid's bow, the philtrum, tapered corners), so nothing else is added.
+    // (squashing them toward the mouth line pinches the corners open). Half the fullness is in the red of
+    // the lips: spread evenly over the area around the mouth it raised a triangle above the upper lip and
+    // a shelf below the lower one, and all in the red it looked like pads stuck on. The base sculpt already has a real mouth (the cupid's bow, the
+    // philtrum, tapered corners), so nothing else is added.
     const lips = blob(0, stomion, 0.16, 0.2, 0.06, 0.2);
-    dy += (y0 - stomion) * Math.max(0, lipScale - 1) * 0.28 * lips;
-    push(lips, (lipScale - 1) * 0.03);
+    const red = base.masks.lipsSoft[i];
+    dy += (y0 - stomion) * Math.max(0, lipScale - 1) * 0.28 * lips * (0.4 + 0.6 * red);
+    push(0.5 * lips + 0.5 * red, (lipScale - 1) * 0.03);
     dx += x0 * (k.mouthWidth - 1) * 0.8 * lips;
     // Tusks press up behind the lower lip, so it bulges a little over each one
     if (k.tusks > 0) push(blob(TUSK_X, stomion - 0.03, 0.16, 0.025, 0.025, 0.06), 0.012 * k.tusks);

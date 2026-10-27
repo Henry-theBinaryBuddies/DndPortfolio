@@ -46,7 +46,8 @@ export interface HeadBase {
   bottom: Uint32Array; // the vertices on that underside, used to centre the bust on its plinth
   // Per-vertex landmark weights (0..1) measured on the undeformed head, so paint stays on the lips,
   // mouth line, brows and nostrils however the face is reshaped
-  masks: { lips: Float32Array; mouthLine: Float32Array; brows: Float32Array; nostrils: Float32Array };
+  // (lipsSoft is the red of the lips with a gentle edge, for fullness and paint that blend into the skin)
+  masks: { lips: Float32Array; lipsSoft: Float32Array; mouthLine: Float32Array; brows: Float32Array; nostrils: Float32Array };
   neck: { x: number; z: number }; // centre line of the neck
   // The same vertices with the shoulders and chest wrapped onto a sculpted female body instead of a male
   // one (see tools/export_head.py). The build blends between the two.
@@ -169,6 +170,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     return c * c * (3 - 2 * c);
   };
   const lips = new Float32Array(vertexCount);
+  const lipsSoft = new Float32Array(vertexCount);
   const mouthLine = new Float32Array(vertexCount);
   const brows = new Float32Array(vertexCount);
   const nostrils = new Float32Array(vertexCount);
@@ -180,6 +182,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     const mouthWindow = (1 - smooth((x - 0.125) / 0.02)) * smooth((z - 0.06) / 0.06);
     // The red of the lips, between the lip border above and below the mouth line
     lips[i] = smooth((y - (LANDMARK.stomion - 0.062)) / 0.01) * (1 - smooth((y - (LANDMARK.stomion + 0.062)) / 0.01)) * mouthWindow;
+    lipsSoft[i] = smooth((y - (LANDMARK.stomion - 0.08)) / 0.04) * (1 - smooth((y - (LANDMARK.stomion + 0.04)) / 0.04)) * mouthWindow;
     mouthLine[i] = Math.exp(-(((y - LANDMARK.stomion) / 0.008) ** 2)) * (1 - smooth((x - 0.13) / 0.02)) * smooth((z - 0.06) / 0.06);
     brows[i] = Math.exp(-(((x - 0.18) / 0.17) ** 2) - ((y - 0.125) / 0.04) ** 2) * smooth((z + 0.1) / 0.2);
     // The underside of the nose, where the nostrils open
@@ -196,7 +199,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     eyes: { left: [half, 0, 0], right: [-half, 0, 0], radius: SOURCE.eyeRadius * SCALE },
     baseY,
     bottom: Uint32Array.from(underside),
-    masks: { lips, mouthLine, brows, nostrils },
+    masks: { lips, lipsSoft, mouthLine, brows, nostrils },
     neck: { x: neckX / neckCount, z: neckZ / neckCount },
     feminine: { positions: femininePositions, normals: normalsOf(femininePositions) },
   };

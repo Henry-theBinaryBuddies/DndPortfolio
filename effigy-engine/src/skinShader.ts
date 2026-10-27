@@ -110,9 +110,9 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
   // Between larger cells run the fine furrows that give skin its cross-hatched look
   vec3 furrow = worley(p * 120.0);
   h -= (1.0 - smoothstep(0.0, 0.09, furrow.y - furrow.x)) * 0.0004 * fine;
-  h += (vnoise(p * 210.0) - 0.5) * 0.0005 * fine;
+  h += (vnoise(p * 210.0) - 0.5) * 0.0003 * fine;
   // Broader unevenness so the skin is never perfectly smooth
-  h += (vnoise(p * 28.0) - 0.5) * 0.0016;
+  h += (vnoise(p * 28.0) - 0.5) * 0.001;
 
   float facing = smoothstep(0.1, 0.6, n.z);
   float ax = abs(p.x);
@@ -238,5 +238,5 @@ export function applySkinDetail(material: THREE.MeshStandardMaterial, p: Params)
       .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${ROUGHNESS}`)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${PERTURB}`);
   };
-  material.customProgramCacheKey = () => "effigy-skin-v6";
+  material.customProgramCacheKey = () => "effigy-skin-v7";
 }

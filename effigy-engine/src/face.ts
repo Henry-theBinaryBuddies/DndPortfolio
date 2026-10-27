@@ -110,7 +110,9 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
   const skin = new THREE.Color(p.skin);
   const grimeTone = new THREE.Color(0x15110c);
   const browTone = new THREE.Color(p.hairColor);
-  const lipTone = skin.clone().lerp(new THREE.Color(0xa85a60), 0.5);
+  // Lips are a little darker and redder than the skin, not a separate colour (on green or red skin a
+  // strong pink reads as two rolls stuck on)
+  const lipTone = skin.clone().multiplyScalar(0.92).lerp(new THREE.Color(0xa85a60), 0.35);
   const stubbleTone = new THREE.Color(p.hairColor).lerp(skin, 0.55);
   const blushTone = skin.clone().lerp(new THREE.Color(0xa0473c), 0.35);
   const { eyeX } = LANDMARK;
@@ -131,7 +133,8 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     // The neck is a smooth column: let its creases shade less so it does not look hatched
     const neckEase = 1 - 0.55 * smooth((-0.55 - y) / 0.25);
     const shade = Math.min(1, Math.max(-0.4, hollows[i] * 55 * neckEase));
-    color.copy(skin).multiplyScalar(1 - 0.7 * Math.max(0, shade) + 0.2 * Math.max(0, -shade));
+    // (Gentle: the lights shade the hollows too, and doubled up the face read dark and dirty)
+    color.copy(skin).multiplyScalar(1 - 0.45 * Math.max(0, shade) + 0.15 * Math.max(0, -shade));
     if (!full) {
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
@@ -157,7 +160,7 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
       creaseLid = Math.max(creaseLid, gauss(x - sign * eyeX, 0.1, y - 0.058, 0.008, z - 0.07, 0.2));
     }
     color.lerp(browTone, base.masks.brows[i] * Math.min(1, p.eyebrows * 2.2) * head * front);
-    color.multiplyScalar(1 - 0.35 * bags * (0.3 + p.age) * head * front);
+    color.multiplyScalar(1 - 0.35 * bags * (0.1 + 0.9 * Math.max(0, p.age - 0.2)) * head * front);
     color.multiplyScalar(1 - 0.4 * lines * Math.max(0, p.age - 0.15) * head * front);
     color.multiplyScalar(1 - 0.28 * creaseLid * head * front);
     for (const band of [0.28, 0.36, 0.44]) {
@@ -166,10 +169,9 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     }
 
     // Lips and the mouth line
-    // The lips are the red between the lip borders, with a slightly darker rim at the edge
-    const lip = base.masks.lips[i];
-    color.lerp(lipTone, lip * 0.9 * head * front);
-    color.multiplyScalar(1 - 0.16 * 4 * lip * (1 - lip) * head * front);
+    // The lips are the red between the lip borders, fading softly into the skin at the edge
+    const lip = base.masks.lipsSoft[i];
+    color.lerp(lipTone, lip * 0.85 * head * front);
     color.lerp(grimeTone, base.masks.mouthLine[i] * 0.3 * head * front);
     // The nostrils are dark openings under the tip of the nose
     color.lerp(grimeTone, base.masks.nostrils[i] * 1.0 * head);
@@ -190,7 +192,7 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
 
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   // Where the lips are, for the skin shader (a wet highlight and fine vertical lines)
-  geometry.setAttribute("lip", new THREE.BufferAttribute(base.masks.lips, 1));
+  geometry.setAttribute("lip", new THREE.BufferAttribute(base.masks.lipsSoft, 1));
   // The bust's underside: where it stands on the plinth, and the middle of that footprint
   let footX = 0;
   let footZ = 0;

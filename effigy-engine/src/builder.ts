@@ -254,8 +254,11 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
       if (!lip) continue;
       const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), material);
       tusk.scale.set(side * size, size, size);
-      tusk.quaternion.setFromUnitVectors(UP, new THREE.Vector3(side * 0.12, 1, 0.18).normalize());
-      tusk.position.copy(lip.position).addScaledVector(lip.normal, -0.035).add(new THREE.Vector3(0, -0.035, 0));
+      // Leaning forward so it rises in front of the upper lip, with its root set into the front of the lower
+      // lip, deeper the bigger the tusk so its flared base never stands proud (buried straight down, a big
+      // tusk's base comes out under the lip; buried far back, the tusk runs inside the upper lip)
+      tusk.quaternion.setFromUnitVectors(UP, new THREE.Vector3(side * 0.12, 1, 0.32).normalize());
+      tusk.position.copy(lip.position).addScaledVector(lip.normal, -0.15 * size).add(new THREE.Vector3(0, -0.12 * size, 0));
       head.add(tusk);
     }
   }
