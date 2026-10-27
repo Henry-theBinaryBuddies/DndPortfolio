@@ -11,6 +11,8 @@ What it does to GEO-head_sculpting_realistic:
   2b. wraps those rings onto the bundle's sculpted male and female bodies (cut like a classic bust: flat
      through the deltoids, level below the chest), so the chest has real pectorals or a real bust. The
      male wrap is written to head.bin and the female wrap to feminine.bin (same vertices, other positions),
+  2c. gives feminine.bin a feminine face: the broad male-to-female change between the bundle's two body
+     heads (brow, jaw, chin, cheeks), added to this head with the eyes and ears locked,
   3. turns the axes into the app's (Y up, face toward +Z),
   4. caps the open base so the bust is a closed solid, and triangulates,
   5. writes head.bin: uint32 vertexCount, uint32 triangleCount, float32 xyz per vertex, uint32 abc per triangle,
@@ -19,12 +21,13 @@ What it does to GEO-head_sculpting_realistic:
 The app moves the origin to the midpoint between the eyes and scales it (see src/headMesh.ts).
 """
 
+import math
 import struct
 import sys
 
 import bmesh
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Vector, interpolate
 from mathutils.bvhtree import BVHTree
 
 out_dir = sys.argv[-1]
@@ -50,6 +53,9 @@ centre.x = HEAD_CENTRE_X
 # Where the bust ends: this far below the eyes, under the pectorals and the bust
 EYE_Z = 0.7659
 BOTTOM = 0.42
+# How far the feminine face's offsets are smoothed (passes over neighbouring vertices): enough to drop
+# feature-sized mismatches (a nostril, a lid edge), not so much that the jaw and brow forms are lost
+FACE_SMOOTHING = 60
 # (drop below the cut in metres, width scale, depth scale), each relative to the cut ring. The rings only
 # need to be roughly the right shape: step 2b wraps them onto a sculpted body.
 PROFILE = [(0.0, 1.0, 1.0), (0.03, 1.22, 1.25), (0.06, 1.45, 1.5), (0.09, 1.58, 1.65), (0.12, 1.62, 1.72), (0.15, 1.6, 1.75), (0.18, 1.55, 1.75), (1.0, 1.55, 1.75)]
@@ -205,6 +211,70 @@ relax(feminine, weights, 4)
 for v, co in zip(mesh.vertices, masculine):
     v.co = co
 mesh.update()
+
+
+# 2c. A feminine face. The bundle's male and female bodies share one topology, so the same point on each
+# head can be compared: the difference is the sculptor's own male-to-female change (a softer brow, a
+# narrower jaw and smaller chin, fuller cheeks), free of every other way the heads differ. Both heads are
+# moved and scaled so their eyes sit on this head's eyes; each vertex here finds its nearest point on the
+# male head and takes the offset to the matching point on the female one. The offsets are then smoothed
+# across the surface so only the broad forms come across, and the eyes and ears are locked so the lids
+# still fit the eyeballs.
+EYE_HALF = 0.03214
+EYE_Y = -0.1251
+
+
+def aligned_head(name):
+    body = bpy.data.objects[name]
+    eyes = [bpy.data.objects[f"{name}.eye.{side}"] for side in "LR"]
+    centres = [sum((e.matrix_world @ v.co for v in e.data.vertices), Vector()) / len(e.data.vertices) for e in eyes]
+    eye_mid = (centres[0] + centres[1]) / 2
+    scale = 2 * EYE_HALF / (centres[0] - centres[1]).length
+    head = bpy.data.meshes.new_from_object(body.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    head.transform(Matrix.Translation(Vector((HEAD_CENTRE_X, EYE_Y, EYE_Z))) @ Matrix.Scale(scale, 4) @ Matrix.Translation(-eye_mid) @ body.matrix_world)
+    return head
+
+
+male_head = aligned_head("GEO-body_male_realistic")
+female_head = aligned_head("GEO-body_female_realistic")
+assert len(male_head.vertices) == len(female_head.vertices)
+male_tree = BVHTree.FromPolygons([v.co for v in male_head.vertices], [p.vertices for p in male_head.polygons])
+
+
+def smoothstep(t):
+    t = min(1.0, max(0.0, t))
+    return t * t * (3 - 2 * t)
+
+
+def face_weight(co):
+    dx = abs(co.x - HEAD_CENTRE_X)
+    eye = min((co - Vector((HEAD_CENTRE_X + s * EYE_HALF, EYE_Y, EYE_Z))).length for s in (-1, 1))
+    lids = smoothstep((eye - 0.013) / 0.01)
+    ear = math.exp(-(((dx - 0.088) / 0.027) ** 2) - (((co.z - (EYE_Z - 0.016)) / 0.06) ** 2) - (((co.y + 0.035) / 0.048) ** 2))
+    height = smoothstep((co.z - (EYE_Z - 0.15)) / 0.04)
+    return lids * (1 - ear) * height
+
+
+offsets = []
+for v in mesh.vertices:
+    if v.co.z < EYE_Z - 0.17:
+        offsets.append(Vector())
+        continue
+    location, _, face, _ = male_tree.find_nearest(v.co)
+    corners = male_head.polygons[face].vertices
+    weights = interpolate.poly_3d_calc([male_head.vertices[c].co for c in corners], location)
+    offsets.append(sum((female_head.vertices[c].co * w for c, w in zip(corners, weights)), Vector()) - location)
+neighbours = [[] for _ in mesh.vertices]
+for e in mesh.edges:
+    a, b = e.vertices
+    neighbours[a].append(b)
+    neighbours[b].append(a)
+for _ in range(FACE_SMOOTHING):
+    offsets = [offsets[i].lerp(sum((offsets[j] for j in n), Vector()) / len(n), 0.5) if n else offsets[i] for i, n in enumerate(neighbours)]
+for i, v in enumerate(mesh.vertices):
+    feminine[i] = feminine[i] + offsets[i] * face_weight(v.co)
+moved = [offsets[i].length * face_weight(v.co) for i, v in enumerate(mesh.vertices)]
+print("feminine face: largest move %.1f mm, mean %.1f mm" % (1000 * max(moved), 1000 * sum(moved) / len(moved)))
 
 # 3. Blender is Z-up with the face toward -Y; the app is Y-up with the face toward +Z.
 mesh.transform(Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1))))

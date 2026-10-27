@@ -145,6 +145,18 @@ describe("deformation", () => {
     expect(extent(masc, -0.85, -0.7).x).toBeGreaterThan(extent(fem, -0.85, -0.7).x);
   });
 
+  it("gives feminine busts a narrower jaw and a bust that projects beyond the masculine chest", () => {
+    const masc = shape(params({ body: "masculine" }));
+    const fem = shape(params({ body: "feminine" }));
+    expect(extent(masc, -0.5, -0.4, 0).x).toBeGreaterThan(extent(fem, -0.5, -0.4, 0).x);
+    const front = (positions: Float32Array) => {
+      let z = -Infinity;
+      for (let i = 0; i < positions.length; i += 3) if (positions[i + 1] < -1.6 && positions[i + 1] > -1.9) z = Math.max(z, positions[i + 2]);
+      return z;
+    };
+    expect(front(fem)).toBeGreaterThan(front(masc));
+  });
+
   it("makes a muscular bust broader through the shoulders than a slight one", () => {
     expect(extent(shape(params({ muscle: 1 })), -1.2, -1.0).x).toBeGreaterThan(extent(shape(params({ muscle: 0 })), -1.2, -1.0).x);
   });

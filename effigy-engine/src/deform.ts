@@ -76,8 +76,9 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
       dz += nz * a;
     };
 
-    // Brow ridge, heavier on masculine heads, and the bump between the brows
-    push(blob(0.13, 0.13, 0.19, 0.17, 0.06, 0.12), (-0.01 + 0.075 * k.brow) * (0.7 + 0.6 * m) + 0.015 * k.socketDepth);
+    // Brow ridge, heavier on masculine heads, and the bump between the brows. (The feminine build's softer
+    // brow, narrower jaw and smaller chin come from its sculpted face, so these only add masculine weight.)
+    push(blob(0.13, 0.13, 0.19, 0.17, 0.06, 0.12), (-0.01 + 0.075 * k.brow) * (0.9 + 0.4 * m) + 0.015 * k.socketDepth);
     push(blob(0, 0.12, 0.2, 0.08, 0.06, 0.1), 0.03 * k.brow * m);
 
     // Cheekbones, the hollow beneath them, and the temples
@@ -146,9 +147,9 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     push(blob(0, -0.451, 0.14, 0.12, 0.014, 0.1), -0.016);
 
     // Chin projection and jaw breadth (the jaw runs from just below the cheeks to the chin)
-    push(blob(0, -0.5, 0.1, 0.14, 0.09, 0.14), (k.chin - 0.4) * 0.2 + 0.04 * m);
+    push(blob(0, -0.5, 0.1, 0.14, 0.09, 0.14), (k.chin - 0.4) * 0.2 + 0.02 + 0.02 * m);
     const jaw = smooth((-0.18 - y0) / 0.14) * (1 - smooth((-0.66 - y0) / 0.12));
-    dx += x0 * (k.jawWidth - 1 + 0.06 * gender) * jaw;
+    dx += x0 * (k.jawWidth - 1 + 0.06 * Math.max(0, gender)) * jaw;
 
     // Ears: scaled, and swept up into a point for elven ears
     const ear = blob(0.44, -0.08, -0.45, 0.09, 0.2, 0.16);
@@ -161,7 +162,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // Neck: thicker with muscle and weight (the sculpted bodies already give the build's neck); an
     // Adam's apple on masculine ones
     const neckBand = smooth((-0.62 - y0) / 0.12) * (1 - smooth((-0.95 - y0) / 0.12));
-    const girth = k.neckGirth - 1 + 0.04 * gender;
+    const girth = k.neckGirth - 1 + 0.04 * Math.max(0, gender);
     dx += (x0 - axis.x) * girth * neckBand;
     dz += (z0 - axis.z) * girth * neckBand;
     const adamsApple = Math.exp(-((ax / 0.07) ** 2) - (((y0 + 0.8) / 0.06) ** 2)) * Math.max(0, nz);
