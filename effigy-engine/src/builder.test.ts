@@ -461,6 +461,45 @@ describe("buildBust", () => {
     expect(onLips).toBe(0);
   }, 120000);
 
+  it("closes every hair and beard shell: each edge is shared by exactly two triangles, so no open underside", () => {
+    const openEdges = (geometry: THREE.BufferGeometry) => {
+      const index = geometry.index!;
+      const pos = geometry.attributes.position;
+      // Weld by position, since the shell's outer and inner surfaces meet along its walls
+      const key = (i: number) => `${pos.getX(i).toFixed(6)},${pos.getY(i).toFixed(6)},${pos.getZ(i).toFixed(6)}`;
+      const id = new Map<string, number>();
+      const weld = (i: number) => {
+        const k = key(i);
+        if (!id.has(k)) id.set(k, id.size);
+        return id.get(k)!;
+      };
+      const uses = new Map<string, number>();
+      for (let t = 0; t < index.count; t += 3) {
+        const v = [weld(index.getX(t)), weld(index.getX(t + 1)), weld(index.getX(t + 2))];
+        for (let e = 0; e < 3; e++) {
+          const a = v[e];
+          const b = v[(e + 1) % 3];
+          if (a === b) continue;
+          const k = a < b ? `${a},${b}` : `${b},${a}`;
+          uses.set(k, (uses.get(k) ?? 0) + 1);
+        }
+      }
+      let open = 0;
+      for (const n of uses.values()) if (n !== 2) open++;
+      return open;
+    };
+    for (const hairStyle of ["cropped", "swept", "mohawk", "long"] as const) {
+      const p = params({ hairStyle });
+      const bust = sculptBust(p, base);
+      expect(openEdges(buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array)!), hairStyle).toBe(0);
+    }
+    for (const beardStyle of ["goatee", "short", "full"] as const) {
+      const p = params({ beardStyle });
+      const bust = sculptBust(p, base);
+      expect(openEdges(buildBeard(p, bust.positions, bust.normals, base)!), beardStyle).toBe(0);
+    }
+  }, 120000);
+
   it("grows real eyebrow and eyelash strands, more for bushier brows", () => {
     const fine = (p: Params) => {
       const bust = sculptBust(p, base);

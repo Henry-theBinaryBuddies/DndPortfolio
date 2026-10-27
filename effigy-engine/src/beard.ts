@@ -15,7 +15,8 @@ const smooth = (t: number) => {
 // nose, the top of the moustache, which arches with the base of the nose (rising a little beside the
 // nostrils) before dropping to meet the cheek line (a flat top read as a band across the lip)
 function topLine(ax: number): number {
-  const cheek = -0.27 + 0.25 * smooth((ax - 0.2) / 0.22);
+  // (with a little irregularity, as a beard's edge has: one smooth contour read as a painted border)
+  const cheek = -0.27 + 0.25 * smooth((ax - 0.2) / 0.22) + (0.012 * Math.sin(ax * 55) + 0.006 * Math.sin(ax * 131 + 1)) * smooth((ax - 0.16) / 0.06);
   const moustache = -0.256 + 0.012 * smooth((ax - 0.02) / 0.07) - 0.03 * smooth((ax - 0.1) / 0.09);
   return ax < 0.2 ? Math.min(moustache, cheek + 0.03) : cheek;
 }
