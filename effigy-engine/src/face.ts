@@ -151,14 +151,14 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     for (const sign of [-1, 1]) {
       // (the eyebrows come from the brow mask below)
       bags = Math.max(bags, gauss(x - sign * eyeX, 0.13, y + 0.1, 0.035, z - 0.1, 0.18));
-      const fold = distanceToSegment2(x, y, [sign * 0.09, -0.25], [sign * 0.14, -0.37]);
-      lines = Math.max(lines, Math.exp(-((fold / 0.025) ** 2)));
+      const fold = distanceToSegment2(x, y, [sign * 0.095, -0.24], [sign * 0.135, -0.33]);
+      lines = Math.max(lines, Math.exp(-((fold / 0.03) ** 2)) * smooth((y + 0.37) / 0.05));
       // The crease of the upper eyelid
       creaseLid = Math.max(creaseLid, gauss(x - sign * eyeX, 0.1, y - 0.058, 0.008, z - 0.07, 0.2));
     }
     color.lerp(browTone, base.masks.brows[i] * Math.min(1, p.eyebrows * 2.2) * head * front);
     color.multiplyScalar(1 - 0.35 * bags * (0.3 + p.age) * head * front);
-    color.multiplyScalar(1 - 0.4 * lines * (0.35 + p.age) * head * front);
+    color.multiplyScalar(1 - 0.4 * lines * Math.max(0, p.age - 0.15) * head * front);
     color.multiplyScalar(1 - 0.28 * creaseLid * head * front);
     for (const band of [0.28, 0.36, 0.44]) {
       const crease = Math.exp(-(((y - band) / 0.016) ** 2)) * (1 - smooth((ax - 0.35) / 0.12));

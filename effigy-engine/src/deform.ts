@@ -96,10 +96,12 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     push(blob(0, -0.03, 0.17, 0.05, 0.14, 0.1), k.noseBridge * 0.05);
     push(blob(0.11, -0.23, 0.14, 0.025, 0.05, 0.06), -0.014);
 
-    // Nasolabial folds: a groove from the side of the nose down past the corner of the mouth, deeper
-    // with age and with a heavy face
-    const foldDistance = distanceToSegment2(ax, y0, 0.09, -0.25, 0.145, -0.37);
-    push(Math.exp(-((foldDistance / 0.02) ** 2)) * Math.max(0, nz), -(0.012 + 0.026 * p.age + 0.01 * k.fullness) * (0.8 + 0.4 * k.angularity));
+    // Nasolabial folds: a soft groove from the side of the nose toward the corner of the mouth, ending
+    // above it. Young faces barely have one; it deepens with age and with a heavy face. (Carved deep at
+    // every age, and run past the corner, it read as trenches beside the mouth.)
+    const foldDistance = distanceToSegment2(ax, y0, 0.095, -0.24, 0.135, -0.33);
+    const foldEnd = smooth((y0 + 0.37) / 0.05);
+    push(Math.exp(-((foldDistance / 0.03) ** 2)) * Math.max(0, nz) * foldEnd, -(0.002 + 0.022 * Math.max(0, p.age - 0.2) + 0.006 * k.fullness) * (0.8 + 0.4 * k.angularity));
 
     // Forehead recession (a sloped brow for an orc) and a jutting lower face (a heavy jaw)
     const forehead = smooth((y0 - 0.15) / 0.2) * (1 - smooth((y0 - 0.5) / 0.1)) * smooth((z0 + 0.1) / 0.2);
@@ -119,7 +121,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     const jawEdge = Math.min(distanceToSegment3(ax, y0, z0, 0.38, -0.22, -0.38, 0.33, -0.46, -0.12), distanceToSegment3(ax, y0, z0, 0.33, -0.46, -0.12, 0.1, -0.58, 0.12));
     push(Math.exp(-((jawEdge / 0.04) ** 2)), (0.008 + 0.03 * k.angularity) * (0.5 + 0.6 * m));
     push(blob(0.36, -0.32, -0.2, 0.07, 0.12, 0.12), 0.025 * Math.max(0, gender) * (0.5 + k.angularity));
-    push(blob(0.26, -0.43, 0.1, 0.07, 0.05, 0.1), 0.02 * p.age + 0.025 * k.fullness);
+    push(blob(0.26, -0.43, 0.1, 0.07, 0.05, 0.1), 0.03 * Math.max(0, p.age - 0.45) + 0.025 * k.fullness);
     // The wings of the nose and the ridge of the nasal bones
     push(blob(0.1, -0.21, 0.15, 0.03, 0.035, 0.05), 0.008 + 0.01 * edge);
     push(blob(0, -0.06, 0.17, 0.026, 0.1, 0.08), 0.008 * edge + k.noseBridge * 0.02);
