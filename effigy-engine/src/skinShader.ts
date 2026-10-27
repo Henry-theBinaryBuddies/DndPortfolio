@@ -148,8 +148,8 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
     h -= (1.0 - plate) * 0.0042 * uScales * scaleCover(p);
   }
 
-  // Lips: fine vertical lines across the red, and a soft pillow
-  h -= vLip * pow(abs(sin(p.x * 150.0 + sin(p.y * 40.0) * 0.6)), 24.0) * 0.0009;
+  // Lips: faint, irregular vertical lines across the red (regular ones read as ribbing), and a soft pillow
+  h -= vLip * pow(abs(sin(p.x * 190.0 + vnoise(p * 60.0) * 3.0)), 12.0) * 0.00025;
   h += vLip * 0.0008;
 
   // Cloth has a weave instead of pores
@@ -238,5 +238,5 @@ export function applySkinDetail(material: THREE.MeshStandardMaterial, p: Params)
       .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${ROUGHNESS}`)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${PERTURB}`);
   };
-  material.customProgramCacheKey = () => "effigy-skin-v5";
+  material.customProgramCacheKey = () => "effigy-skin-v6";
 }

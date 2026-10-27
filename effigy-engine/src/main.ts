@@ -87,6 +87,7 @@ function resize() {
 new ResizeObserver(resize).observe(stage);
 
 let yaw = -0.5;
+let turntable = true;
 let dragging = false;
 let lastX = 0;
 canvas.addEventListener("pointerdown", (e) => {
@@ -118,9 +119,63 @@ canvas.addEventListener("pointermove", (e) => {
 
 function frame() {
   requestAnimationFrame(frame);
-  if (!dragging && performance.now() > hold) yaw += 0.003;
+  if (turntable && !dragging && performance.now() > hold) yaw += 0.003;
+  draw();
+}
+
+// Clay shows the bare form in one plain grey material: no paint, no skin detail, no garment
+const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75 });
+let clayOn = false;
+
+function draw() {
   pivot.rotation.y = yaw;
+  scene.overrideMaterial = clayOn ? clay : null;
   renderer.render(scene, camera);
+}
+
+// The viewport toolbar: fixed views for comparing shapes at matching angles, bust or face framing, the
+// turntable and the clay view
+const toolbar = document.getElementById("toolbar") as HTMLElement;
+const rotateButton = document.getElementById("rotate") as HTMLButtonElement;
+const clayButton = document.getElementById("clay") as HTMLButtonElement;
+const setTurntable = (on: boolean) => {
+  turntable = on;
+  rotateButton.setAttribute("aria-pressed", String(on));
+};
+for (const button of toolbar.querySelectorAll<HTMLButtonElement>("[data-yaw]")) {
+  button.addEventListener("click", () => {
+    yaw = Number(button.dataset.yaw);
+    setTurntable(false);
+  });
+}
+for (const button of toolbar.querySelectorAll<HTMLButtonElement>("[data-distance]")) {
+  button.addEventListener("click", () => {
+    distance = Number(button.dataset.distance);
+    placeCamera();
+  });
+}
+rotateButton.addEventListener("click", () => setTurntable(!turntable));
+clayButton.addEventListener("click", () => {
+  clayOn = !clayOn;
+  clayButton.setAttribute("aria-pressed", String(clayOn));
+});
+
+// In development, a page script can render a frame on demand and read it back (for checking the look
+// from a script even when the page is in a background tab and animation frames are paused)
+if (import.meta.env.DEV) {
+  (window as unknown as { effigy: unknown }).effigy = {
+    render(view?: { yaw?: number; clay?: boolean; distance?: number }) {
+      if (view?.yaw !== undefined) yaw = view.yaw;
+      if (view?.clay !== undefined) clayOn = view.clay;
+      if (view?.distance !== undefined) {
+        distance = view.distance;
+        placeCamera();
+      }
+      setTurntable(false);
+      draw();
+      return canvas.toDataURL("image/jpeg", 0.88);
+    },
+  };
 }
 
 const initial = defaultParams();

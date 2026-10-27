@@ -40,6 +40,23 @@ body {
   touch-action: none;
 }
 
+.toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toolbar .segmented button {
+  flex: none;
+  padding: 6px 10px;
+  color: var(--ink);
+  background: rgba(13, 11, 10, 0.75);
+}
+
 .hint {
   position: absolute;
   left: 16px;

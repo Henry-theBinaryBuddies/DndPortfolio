@@ -9,7 +9,22 @@
     <main class="app">
       <section class="stage" id="stage">
         <canvas id="view"></canvas>
-        <p class="hint">Drag to turn</p>
+        <div class="toolbar" id="toolbar">
+          <div class="segmented" id="views">
+            <button data-yaw="0">Front</button>
+            <button data-yaw="0.785">Three-quarter</button>
+            <button data-yaw="1.571">Profile</button>
+          </div>
+          <div class="segmented" id="framing">
+            <button data-distance="7.4">Bust</button>
+            <button data-distance="3.2">Face</button>
+          </div>
+          <div class="segmented">
+            <button id="rotate" aria-pressed="true">Turntable</button>
+            <button id="clay" aria-pressed="false">Clay</button>
+          </div>
+        </div>
+        <p class="hint">Drag to turn, scroll to zoom</p>
       </section>
       <aside class="panel" id="panel">
         <h1>Effigy Engine</h1>
