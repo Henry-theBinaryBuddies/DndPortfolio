@@ -162,6 +162,32 @@ input[type="range"] {
   accent-color: var(--ember);
 }
 
+.with-button {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.with-button select {
+  flex: 1;
+  min-width: 0;
+}
+
+button.inline {
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--edge);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button.inline:hover {
+  border-color: var(--ember);
+}
+
 select {
   padding: 6px 8px;
   font: inherit;

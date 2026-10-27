@@ -19,15 +19,28 @@ scene.background = new THREE.Color(0x14110f);
 scene.fog = new THREE.Fog(0x14110f, 5, 10);
 
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
-// Scrolling zooms. Close in, the camera aims at the face instead of the whole bust.
-let distance = 7.4;
+// Scrolling zooms. Close in, the camera aims at the face instead of the whole bust. "Face" framing fits
+// everything from the chin to the highest point of the head (the skull, horns or a mohawk), so it is
+// worked out from each new bust.
+const faceButton = document.querySelector<HTMLButtonElement>('#framing [data-distance="face"]')!;
+const BUST_DISTANCE = 7.4;
+const CHIN_Y = 1.4; // just under the chin, as a height above the plinth
+let faceTop = 2.7;
+let distance = BUST_DISTANCE;
+function faceDistance() {
+  // (with room to spare: the face sits in front of the turntable's centre, so it looks bigger than it is)
+  const halfHeight = ((faceTop - CHIN_Y) / 2) * 1.5;
+  return Math.min(BUST_DISTANCE - 1, Math.max(2.6, halfHeight / Math.tan(THREE.MathUtils.degToRad(16))));
+}
 function placeCamera() {
-  const t = Math.min(1, Math.max(0, (7.4 - distance) / 4.4)); // 0 = full bust, 1 = close on the face
-  const targetY = 1.2 + 0.65 * t;
-  camera.position.set(0, targetY + 0.5 - 0.35 * t, distance);
+  const face = faceDistance();
+  const t = Math.min(1, Math.max(0, (BUST_DISTANCE - distance) / (BUST_DISTANCE - face))); // 0 = full bust, 1 = the face
+  const targetY = 1.2 + ((faceTop + CHIN_Y) / 2 - 1.2) * t;
+  camera.position.set(0, targetY + 0.5 - 0.5 * t, distance);
   camera.lookAt(0, targetY, 0);
 }
 placeCamera();
+faceButton.dataset.distance = String(faceDistance());
 
 // Newer Three.js uses physical light units, so intensities need a ~PI boost to match older looks.
 scene.add(new THREE.HemisphereLight(0x6a5860, 0x1a1412, 1.1 * Math.PI));
@@ -68,6 +81,12 @@ function swap(params: Params, full: boolean) {
   }
   figure = buildBust(params, assets, full);
   pivot.add(figure);
+  // Refit the face framing to this bust's height (keeping the camera where it was if it is framing the face)
+  const framingFace = Math.abs(distance - faceDistance()) < 0.01;
+  faceTop = new THREE.Box3().setFromObject(figure).max.y;
+  faceButton.dataset.distance = String(faceDistance());
+  if (framingFace) distance = faceDistance();
+  placeCamera();
 }
 
 // Every edit shows a quick draft (shape and shading only), and the full paint replaces it once the
@@ -121,6 +140,7 @@ function frame() {
   requestAnimationFrame(frame);
   if (turntable && !dragging && performance.now() > hold) yaw += 0.003;
   draw();
+  syncToolbar();
 }
 
 // Clay shows the bare form in one plain grey material: no paint, no skin detail, no garment
@@ -130,11 +150,12 @@ let clayOn = false;
 function draw() {
   pivot.rotation.y = yaw;
   scene.overrideMaterial = clayOn ? clay : null;
-  // In clay the clear corneas would turn solid grey and hide the eyes, so see-through parts are left out
+  // Clay shows the bare form: the clear corneas (which would turn solid grey and hide the eyes), hair,
+  // brows and lashes are left out
   const hidden: THREE.Object3D[] = [];
   if (clayOn) {
     pivot.traverse((o) => {
-      if (o instanceof THREE.Mesh && o.visible && (o.material as THREE.Material).transparent) {
+      if (o instanceof THREE.Mesh && o.visible && ((o.material as THREE.Material).transparent || o.userData.strands)) {
         o.visible = false;
         hidden.push(o);
       }
@@ -166,6 +187,19 @@ for (const button of toolbar.querySelectorAll<HTMLButtonElement>("[data-distance
   });
 }
 rotateButton.addEventListener("click", () => setTurntable(!turntable));
+
+// The view and framing buttons light up while the camera is at their setting
+const viewButtons = [...toolbar.querySelectorAll<HTMLButtonElement>("[data-yaw]")];
+const framingButtons = [...toolbar.querySelectorAll<HTMLButtonElement>("[data-distance]")];
+let shown = "";
+function syncToolbar() {
+  const still = !turntable && !dragging && performance.now() > hold;
+  const state = `${still ? yaw.toFixed(3) : "moving"} ${distance.toFixed(2)}`;
+  if (state === shown) return;
+  shown = state;
+  for (const button of viewButtons) button.setAttribute("aria-pressed", String(still && Math.abs(Number(button.dataset.yaw) - yaw) < 0.002));
+  for (const button of framingButtons) button.setAttribute("aria-pressed", String(Math.abs(Number(button.dataset.distance) - distance) < 0.01));
+}
 clayButton.addEventListener("click", () => {
   clayOn = !clayOn;
   clayButton.setAttribute("aria-pressed", String(clayOn));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NUMERIC_DEFS, PRESETS, RACES, applyPreset, applyRace, clampParams, defaultParams, derive, randomParams } from "./params";
+import { NUMERIC_DEFS, PRESETS, RACES, applyPreset, applyRace, clampParams, defaultParams, derive, randomParams, switchRace } from "./params";
 
 // Small deterministic generator so the random tests give the same answer every run.
 function seeded(seed: number) {
@@ -86,6 +86,15 @@ describe("races", () => {
     expect(elf.earSize).toBe(1);
     expect(dwarf.headWidth).toBeGreaterThan(elf.headWidth);
     expect(dwarf.shoulders).toBeGreaterThan(elf.shoulders);
+  });
+
+  it("keeps every edit when switching race, and changes only the race's anatomy", () => {
+    const edited = { ...defaultParams(), weight: 0.85, muscle: 0.9, lips: 0.25, lids: 0.1, eyebrows: 0, hairStyle: "none" as const, skin: "#123456" };
+    const orc = switchRace(edited, "half-orc");
+    expect({ ...orc, race: "human" }).toEqual(edited);
+    expect(orc.race).toBe("half-orc");
+    expect(derive(orc).tusks).toBeGreaterThan(0);
+    expect(derive(orc).jawWidth).toBeGreaterThan(derive(edited).jawWidth);
   });
 
   it("starts each race with its own fantasy features, and resets them on switching", () => {

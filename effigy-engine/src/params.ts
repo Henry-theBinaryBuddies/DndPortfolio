@@ -35,6 +35,7 @@ export type EyeStyle = (typeof EYE_STYLES)[number];
 export const HORN_STYLES = ["none", "ram", "goat", "bull", "demon", "antelope", "stubby"] as const;
 export type HornStyle = (typeof HORN_STYLES)[number];
 
+// (Long hair is still rough, so no race starts with it; it is there to choose.)
 export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long"] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
@@ -217,7 +218,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     skin: skin("Elven pale"),
     skeleton: { ...HUMAN, angularity: 0.45, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.86, noseBridge: 0.35, mouthWidth: 0.95, jaw: 0.86, chin: 0.3, browBase: -0.2, cheekBase: 0.25, lipBase: -0.1, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
     hornStyle: "none",
-    hairStyle: "long",
+    hairStyle: "swept",
     defaults: { eyebrows: 0.4 },
   },
   "half-elf": {
@@ -225,7 +226,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     skin: skin("Pale"),
     skeleton: { ...HUMAN, angularity: 0.4, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, noseWidth: 0.95, noseBridge: 0.15, jaw: 0.94, browBase: -0.08, cheekBase: 0.12, gaunt: 0.2, shoulders: 0.94 },
     hornStyle: "none",
-    hairStyle: "long",
+    hairStyle: "swept",
     defaults: {},
   },
   // Broad head, heavy brow, wide strong nose, full cheeks, a thick jaw and chin, a thick neck
@@ -270,7 +271,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     skin: skin("Infernal red"),
     skeleton: { ...HUMAN, angularity: 0.78, earSize: 0.55, noseWidth: 0.92, noseBridge: 0.2, jaw: 0.95, chin: 0.5, browBase: 0.15, cheekBase: 0.3, gaunt: 0.3, shoulders: 0.98 },
     hornStyle: "demon",
-    hairStyle: "long",
+    hairStyle: "swept",
     defaults: { horns: 0.85 },
   },
 };
@@ -456,8 +457,14 @@ export function derive(p: Params): Derived {
   };
 }
 
-// Picking a race resets every slider to its starting point and applies the race's own defaults and
-// skin. Build, clothing, eye style and colours, and hair colour carry over.
+// Switching race changes only the race: its bone structure (and fantasy anatomy such as tusks) comes
+// from the race, and every slider, style and colour the user has set is kept.
+export function switchRace(current: Params, race: Race): Params {
+  return { ...current, race };
+}
+
+// Applying a race's defaults resets every slider to its starting point and applies the race's own
+// defaults, skin, hair style and horns. Build, clothing, eye style and colours, and hair colour carry over.
 export function applyRace(current: Params, race: Race): Params {
   const info = RACE_INFO[race];
   const next = defaultParams();

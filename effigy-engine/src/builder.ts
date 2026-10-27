@@ -263,13 +263,17 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   // Hair: sculpted clumps combed along the style's flow
   const hairGeometry = buildHair(p, bust.positions, bust.normals, base.neck.z);
   if (hairGeometry) {
-    head.add(new THREE.Mesh(hairGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 })));
+    const hair = new THREE.Mesh(hairGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 }));
+    hair.userData.strands = true; // the clay view leaves hair out
+    head.add(hair);
   }
 
   // Eyebrows and eyelashes as real strands
   const fineHair = buildFineHair(p, bust.positions, bust.normals, bust.eyes, base);
   if (fineHair) {
-    head.add(new THREE.Mesh(fineHair, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 })));
+    const strands = new THREE.Mesh(fineHair, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 }));
+    strands.userData.strands = true;
+    head.add(strands);
   }
 
   return root;

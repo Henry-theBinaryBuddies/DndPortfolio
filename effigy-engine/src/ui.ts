@@ -13,6 +13,7 @@ import {
   SKIN_TONES,
   applyPreset,
   applyRace,
+  switchRace,
   defaultParams,
   randomParams,
   type Body,
@@ -99,8 +100,21 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     option.textContent = RACE_INFO[race].label;
     raceSelect.append(option);
   }
-  raceSelect.addEventListener("change", () => update(applyRace(params, raceSelect.value as Race)));
-  raceRow.append(raceSelect);
+  raceSelect.addEventListener("change", () => update(switchRace(params, raceSelect.value as Race)));
+  // Switching race keeps every edit; this applies the race's suggested sliders, skin, hair and horns
+  const raceDefaults = document.createElement("button");
+  raceDefaults.type = "button";
+  raceDefaults.className = "inline";
+  raceDefaults.textContent = "Race defaults";
+  raceDefaults.title = "Reset the sliders, skin, hair and horns to this race's defaults";
+  raceDefaults.addEventListener("click", (e) => {
+    e.preventDefault();
+    update(applyRace(params, params.race));
+  });
+  const raceControls = document.createElement("div");
+  raceControls.className = "with-button";
+  raceControls.append(raceSelect, raceDefaults);
+  raceRow.append(raceControls);
 
   const presetRow = document.createElement("label");
   presetRow.className = "row select";
