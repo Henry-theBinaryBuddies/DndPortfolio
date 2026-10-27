@@ -134,7 +134,7 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     const neckEase = 1 - 0.55 * smooth((-0.55 - y) / 0.25);
     const shade = Math.min(1, Math.max(-0.4, hollows[i] * 55 * neckEase));
     // (Gentle: the lights shade the hollows too, and doubled up the face read dark and dirty)
-    color.copy(skin).multiplyScalar(1 - 0.45 * Math.max(0, shade) + 0.15 * Math.max(0, -shade));
+    color.copy(skin).multiplyScalar(1 - 0.3 * Math.max(0, shade) + 0.12 * Math.max(0, -shade));
     if (!full) {
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
@@ -159,7 +159,8 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
       // The crease of the upper eyelid
       creaseLid = Math.max(creaseLid, gauss(x - sign * eyeX, 0.1, y - 0.058, 0.008, z - 0.07, 0.2));
     }
-    color.lerp(browTone, base.masks.brows[i] * Math.min(1, p.eyebrows * 2.2) * head * front);
+    // (a light shadow under the brow hairs; strong, it read as a painted bar)
+    color.lerp(browTone, base.masks.brows[i] * 0.45 * Math.min(1, p.eyebrows * 1.5) * head * front);
     color.multiplyScalar(1 - 0.35 * bags * (0.1 + 0.9 * Math.max(0, p.age - 0.2)) * head * front);
     color.multiplyScalar(1 - 0.4 * lines * Math.max(0, p.age - 0.15) * head * front);
     color.multiplyScalar(1 - 0.28 * creaseLid * head * front);

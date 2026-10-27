@@ -198,7 +198,7 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   const base = assets.head;
 
   // The sculpted head reads its colour from per-vertex paint (shading, grime, tunic), so its material is white.
-  const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.62 });
+  const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.7 });
   applySkinDetail(skinMaterial, p);
   const glow = new THREE.MeshBasicMaterial({ color: p.eyes });
 

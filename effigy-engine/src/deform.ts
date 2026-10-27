@@ -144,6 +144,9 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     const red = base.masks.lipsSoft[i];
     dy += (y0 - stomion) * Math.max(0, lipScale - 1) * 0.28 * lips * (0.4 + 0.6 * red);
     push(0.5 * lips + 0.5 * red, (lipScale - 1) * 0.03);
+    // The crease under the lower lip fills in as the lip grows fuller, so a full lip eases into the chin
+    // instead of ending in a shelf
+    push(blob(0, stomion - 0.085, 0.15, 0.1, 0.028, 0.1), 0.004 + 0.015 * Math.max(0, lipScale - 1));
     dx += x0 * (k.mouthWidth - 1) * 0.8 * lips;
     // Tusks come up out of the mouth: the lower lip swells a little over each one, and the upper lip is
     // lifted and pushed forward where the tusk passes in front of it

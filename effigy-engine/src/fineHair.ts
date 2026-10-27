@@ -84,23 +84,28 @@ export function buildFineHair(
   // Eyebrows: short strands rooted in the brow mask, combed up and outward along the inner half of the brow
   // and down and outward along the tail
   if (p.eyebrows > 0.05) {
-    const rootTone = hair.clone().multiplyScalar(0.6);
-    const per = Math.round(520 * p.eyebrows);
+    const rootTone = hair.clone().multiplyScalar(0.75);
+    const per = Math.round(650 * p.eyebrows);
     for (const sign of [-1, 1]) {
       const candidates: number[] = [];
       for (let i = 0; i < count; i++) {
         if (masks.brows[i] > 0.4 && positions[i * 3] * sign > 0 && normals[i * 3 + 2] > -0.1) candidates.push(i);
       }
       if (candidates.length === 0) continue;
-      for (let n = 0; n < per; n++) {
+      // Densest along the middle of the brow and thinning toward its edges and its tail, so it reads as
+      // hair rather than a solid bar
+      for (let n = 0, tries = 0; n < per && tries < per * 6; tries++) {
         const i = candidates[Math.floor(rand() * candidates.length)];
+        const tail = 1 - 0.6 * Math.max(0, Math.min(1, (Math.abs(positions[i * 3]) - 0.22) / 0.12));
+        if (rand() > masks.brows[i] ** 2 * tail) continue;
+        n++;
         point.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
         normal.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]).normalize();
         const flow = new THREE.Vector3(sign, Math.abs(point.x) < 0.2 ? 0.55 : -0.4, 0).normalize();
         const tangent = flow.clone().addScaledVector(normal, -flow.dot(normal)).normalize();
         // Brow hairs leave the skin at a shallow angle and bend back down along it, so they lie flat
         const dir = tangent.clone().addScaledVector(normal, 0.08).normalize();
-        const length = 0.05 * (0.7 + 0.5 * rand());
+        const length = 0.04 * (0.7 + 0.5 * rand());
         const path = [point.clone().addScaledVector(normal, 0.001)];
         const p0 = path[0].clone();
         for (let s = 0; s < 4; s++) {
@@ -110,7 +115,7 @@ export function buildFineHair(
           p0.addScaledVector(dir, length / 4);
           path.push(p0.clone());
         }
-        strands.add(path, normal, 0.0018 * (0.8 + 0.4 * rand()), 1.3, rootTone, hair);
+        strands.add(path, normal, 0.0011 * (0.8 + 0.4 * rand()), 1.3, rootTone, hair);
       }
     }
   }

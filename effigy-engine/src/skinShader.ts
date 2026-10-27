@@ -108,10 +108,10 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
   float fine = 1.0 - smoothstep(0.0008, 0.0026, pixelSize);
   // Pores sit evenly spaced: a pit at the centre of each cell of a fine cellular pattern
   vec3 pore = worley(p * 260.0);
-  float h = -(1.0 - smoothstep(0.0, 0.25, pore.x)) * 0.0007 * fine;
+  float h = -(1.0 - smoothstep(0.0, 0.25, pore.x)) * 0.00045 * fine;
   // Between larger cells run the fine furrows that give skin its cross-hatched look
   vec3 furrow = worley(p * 120.0);
-  h -= (1.0 - smoothstep(0.0, 0.09, furrow.y - furrow.x)) * 0.0004 * fine;
+  h -= (1.0 - smoothstep(0.0, 0.09, furrow.y - furrow.x)) * 0.00025 * fine;
   h += (vnoise(p * 210.0) - 0.5) * 0.0003 * fine;
   // Broader unevenness so the skin is never perfectly smooth. (Smooth waves rather than lattice noise:
   // at this scale the noise's cells could line up into a short dark dash on the cheek.)
@@ -190,7 +190,7 @@ const ROUGHNESS = /* glsl */ `
   // The oily T-zone (forehead, bridge and tip of the nose) is shinier than the cheeks
   vec3 tp = vObjPos;
   float tzone = smoothstep(0.12, 0.0, abs(tp.x)) * smoothstep(-0.28, -0.1, tp.y) * (1.0 - smoothstep(0.5, 0.6, tp.y)) * (1.0 - cloth);
-  roughnessFactor = mix(roughnessFactor, 0.4, tzone * 0.55);
+  roughnessFactor = mix(roughnessFactor, 0.45, tzone * 0.4);
 }
 `;
 
@@ -242,5 +242,5 @@ export function applySkinDetail(material: THREE.MeshStandardMaterial, p: Params)
       .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${ROUGHNESS}`)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${PERTURB}`);
   };
-  material.customProgramCacheKey = () => "effigy-skin-v10";
+  material.customProgramCacheKey = () => "effigy-skin-v11";
 }
