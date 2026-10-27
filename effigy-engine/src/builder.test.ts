@@ -5,7 +5,7 @@ import { buildBust, fitSphere, socketFit } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
 import { buildFineHair } from "./fineHair";
-import { buildHairShell } from "./hairShell";
+import { buildHairShell, buildHangingHair } from "./hairShell";
 import { applySkinDetail } from "./skinShader";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
@@ -394,6 +394,32 @@ describe("buildBust", () => {
       }
     }
     expect(buildHairShell(params({ hairStyle: "none" }), new Float32Array(), new Float32Array(), base, new Float32Array())).toBeNull();
+  }, 120000);
+
+  it("drapes long hair as one solid curtain that hangs outside the head and body, for long hair only", () => {
+    for (const body of ["masculine", "feminine"] as const) {
+      const p = params({ hairStyle: "long", body });
+      const bust = sculptBust(p, base);
+      const curtain = buildHangingHair(p, bust.positions, base)!;
+      expect(curtain, body).not.toBeNull();
+      const pos = curtain.attributes.position;
+      // Every point of the curtain is outside the body: further from the neck's axis than the body's own
+      // surface at the same height and angle (checked against the body vertices close to it)
+      for (let i = 0; i < pos.count; i += 7) {
+        const dx = pos.getX(i) - base.neck.x;
+        const dz = pos.getZ(i) - base.neck.z;
+        const r = Math.hypot(dx, dz);
+        const a = Math.atan2(dx, -dz);
+        for (let j = 0; j < bust.positions.length; j += 3) {
+          if (Math.abs(bust.positions[j + 1] - pos.getY(i)) > 0.01) continue;
+          const bx = bust.positions[j] - base.neck.x;
+          const bz = bust.positions[j + 2] - base.neck.z;
+          if (Math.abs(Math.atan2(bx, -bz) - a) > 0.02) continue;
+          expect(r, body).toBeGreaterThan(Math.hypot(bx, bz) - 0.004);
+        }
+      }
+    }
+    expect(buildHangingHair(params({ hairStyle: "swept" }), new Float32Array(), base)).toBeNull();
   }, 120000);
 
   it("grows real eyebrow and eyelash strands, more for bushier brows", () => {

@@ -17,7 +17,7 @@ The head, neck and shoulders are a **hand-sculpted CC0 base mesh** (Blender Stud
 
 Shading comes from cavity (a vertex below the average of its neighbours is darkened); grime, scars, eyebrows, lips, age lines, scales and a tunic are painted on as vertex colours, positioned with landmarks measured on the real head.
 
-Eyes (solid colour or realistic with sclera, iris, pupil and cornea), horns, tusks and hair are separate meshes seated on the surface by ray casting. Horns and tusks are sculpted assets (`tools/export_horns.py`); hair is a sculpted shell raised from the scalp with strand grooves carved by its shader (`src/hairShell.ts`; long hair adds hanging strands from `src/hair.ts`). Tusks belong to half-orcs only. Scales (the Scales slider) are raised plates with grooves, drawn in the skin shader.
+Eyes (solid colour or realistic with sclera, iris, pupil and cornea), horns, tusks and hair are separate meshes seated on the surface by ray casting. Horns and tusks are sculpted assets (`tools/export_horns.py`); hair is a sculpted shell raised from the scalp with strand grooves carved by its shader (`src/hairShell.ts`; long hair adds a draped curtain for its hanging lengths). Tusks belong to half-orcs only. Scales (the Scales slider) are raised plates with grooves, drawn in the skin shader.
 
 ## Layout
 

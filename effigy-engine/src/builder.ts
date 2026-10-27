@@ -3,8 +3,7 @@ import { shapeGeometry, type Assets } from "./assets";
 import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildFineHair } from "./fineHair";
-import { buildHair } from "./hair";
-import { applyHairDetail, buildHairShell } from "./hairShell";
+import { applyHairDetail, buildHairShell, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { derive, type Params } from "./params";
 import { applySkinDetail } from "./skinShader";
@@ -299,12 +298,12 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
     applyHairDetail(material, p);
     head.add(new THREE.Mesh(shell, material));
   }
-  // and, for long hair, strands for the lengths that hang free
-  const hairGeometry = buildHair(p, bust.positions, bust.normals, base.neck.z);
-  if (hairGeometry) {
-    const hair = new THREE.Mesh(hairGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 }));
-    hair.userData.strands = true; // the clay view leaves hair out
-    head.add(hair);
+  // and, for long hair, a draped curtain for the lengths that hang free
+  const hanging = buildHangingHair(p, bust.positions, base);
+  if (hanging) {
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
+    applyHairDetail(material, p, true);
+    head.add(new THREE.Mesh(hanging, material));
   }
 
   // Eyebrows and eyelashes as real strands

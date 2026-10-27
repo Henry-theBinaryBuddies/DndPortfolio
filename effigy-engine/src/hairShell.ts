@@ -39,7 +39,7 @@ const STYLES: Record<"cropped" | "swept" | "mohawk" | "long", Style> = {
     },
     flow: [0, 0.3, -1],
   },
-  // Long hair: a cap over the scalp (the hanging lengths are drawn as strands in hair.ts)
+  // Long hair: a cap over the scalp (the hanging lengths are a draped curtain, see buildHangingHair)
   long: { thickness: (_x, y) => 0.025 + 0.02 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1] },
 };
 
@@ -139,6 +139,173 @@ export function buildHairShell(
   return geometry;
 }
 
+// Long hair's hanging lengths: a curtain draped from the scalp around the sides and back of the head down
+// to the upper back, sculpted as one solid mass like the rest of the hair. At every height and angle around
+// the neck it hangs just outside the body, and it can only drift inward slowly as it falls, so it drapes
+// from the widest part of the skull past the neck and rests on the upper back without cutting into it. It
+// is thick near the head and thins toward uneven, layered ends.
+const CURTAIN_ANGLE = 1.4; // how far round from the back toward the face it reaches, either side (radians)
+const CURTAIN_TOP = 0.32; // where it starts under the cap at the back of the head (lower at the sides)
+const ACROSS = 72;
+const DOWN = 40;
+
+export function buildHangingHair(p: Params, positions: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+  if (p.hairStyle !== "long") return null;
+  const ax = base.neck.x;
+  const az = base.neck.z;
+  const count = positions.length / 3;
+
+  // The body's outline: the furthest the surface reaches from the neck's axis, by angle and height
+  const ANGLE_BINS = 64;
+  const HEIGHT_BINS = 100;
+  const lowest = -1.6;
+  const angleBin = (a: number) => Math.floor(((a + CURTAIN_ANGLE + 0.3) / (2 * (CURTAIN_ANGLE + 0.3))) * ANGLE_BINS);
+  const heightBin = (y: number) => Math.floor(((CURTAIN_TOP + 0.3 - y) / (CURTAIN_TOP + 0.3 - lowest)) * HEIGHT_BINS);
+  let outline = new Float32Array(ANGLE_BINS * HEIGHT_BINS);
+  for (let i = 0; i < count; i++) {
+    const dx = positions[i * 3] - ax;
+    const dz = positions[i * 3 + 2] - az;
+    const a = Math.atan2(dx, -dz);
+    const ai = angleBin(a);
+    const hi = heightBin(positions[i * 3 + 1]);
+    if (ai < 0 || ai >= ANGLE_BINS || hi < 0 || hi >= HEIGHT_BINS) continue;
+    outline[hi * ANGLE_BINS + ai] = Math.max(outline[hi * ANGLE_BINS + ai], Math.hypot(dx, dz));
+  }
+  // Grown a little in every direction, so the curtain clears the surface between samples too
+  for (let pass = 0; pass < 2; pass++) {
+    const next = new Float32Array(outline);
+    for (let h = 0; h < HEIGHT_BINS; h++) {
+      for (let a = 0; a < ANGLE_BINS; a++) {
+        let m = outline[h * ANGLE_BINS + a];
+        for (const [dh, da] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const hh = h + dh;
+          const aa = a + da;
+          if (hh >= 0 && hh < HEIGHT_BINS && aa >= 0 && aa < ANGLE_BINS) m = Math.max(m, outline[hh * ANGLE_BINS + aa]);
+        }
+        next[h * ANGLE_BINS + a] = m;
+      }
+    }
+    outline = next;
+  }
+  const bodyAt = (a: number, y: number) => {
+    const ai = Math.min(ANGLE_BINS - 1, Math.max(0, angleBin(a)));
+    const hi = Math.min(HEIGHT_BINS - 1, Math.max(0, heightBin(y)));
+    return outline[hi * ANGLE_BINS + ai];
+  };
+
+  const rand = (() => {
+    let seed = 4242;
+    return () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+  })();
+  // Uneven ends: shorter toward the sides, with a little layering
+  const ends: number[] = [];
+  for (let u = 0; u <= ACROSS; u++) {
+    const a = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
+    ends.push(-1.05 - 0.3 * Math.cos(a * 0.8) - 0.06 * rand());
+  }
+  for (let pass = 0; pass < 2; pass++) for (let u = 1; u < ACROSS; u++) ends[u] = (ends[u - 1] + 2 * ends[u] + ends[u + 1]) / 4;
+
+  // Where it starts: high on the back of the head under the cap, down to the tops of the ears at the sides
+  const topAt = (a: number) => 0.05 + (CURTAIN_TOP - 0.05) * Math.cos(a * 0.9) ** 2;
+
+  // How far out the drape hangs at each point: just off the body, and only drifting inward slowly as it
+  // falls (so it hangs from the widest part of the skull instead of shrinking onto the neck)
+  const columns = ACROSS + 1;
+  const rows = DOWN + 1;
+  let reach = new Float32Array(columns * rows);
+  const floor = new Float32Array(columns * rows);
+  for (let u = 0; u <= ACROSS; u++) {
+    const a = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
+    for (let v = 0; v <= DOWN; v++) {
+      const t = v / DOWN;
+      const y = topAt(a) + (ends[u] - topAt(a)) * t;
+      const body = bodyAt(a, y);
+      floor[u * rows + v] = body + 0.012;
+      // (starting just under the cap's surface, so no edge stands proud of it, then swelling to full depth)
+      const wanted = body + 0.03 + 0.035 * smooth(t / 0.25) - 0.02 * t;
+      reach[u * rows + v] = v === 0 ? wanted : Math.max(wanted, reach[u * rows + v - 1] * 0.985);
+    }
+  }
+  // Smoothed in both directions, so it falls in clean sweeps instead of following every bump beneath it,
+  // and then kept clear of the body
+  for (let pass = 0; pass < 6; pass++) {
+    const next = new Float32Array(reach);
+    for (let u = 0; u <= ACROSS; u++) {
+      for (let v = 0; v <= DOWN; v++) {
+        const k = u * rows + v;
+        let sum = reach[k] * 2;
+        let n = 2;
+        if (u > 0) (sum += reach[k - rows]), n++;
+        if (u < ACROSS) (sum += reach[k + rows]), n++;
+        if (v > 0) (sum += reach[k - 1]), n++;
+        if (v < DOWN) (sum += reach[k + 1]), n++;
+        next[k] = Math.max(floor[k], sum / n);
+      }
+    }
+    reach = next;
+  }
+
+  const hair = new THREE.Color(p.hairColor);
+  const outer: number[] = [];
+  const inner: number[] = [];
+  const colors: number[] = [];
+  const c = new THREE.Color();
+  for (let u = 0; u <= ACROSS; u++) {
+    const a = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
+    const sa = Math.sin(a);
+    const ca = Math.cos(a);
+    const band = 0.88 + 0.24 * rand(); // locks of slightly different shade
+    // Thin at the side edges, so the curtain ends in soft edges rather than flat panels
+    const edge = smooth(Math.min(u, ACROSS - u) / 6);
+    for (let v = 0; v <= DOWN; v++) {
+      const t = v / DOWN;
+      const y = topAt(a) + (ends[u] - topAt(a)) * t;
+      const r = reach[u * rows + v];
+      // Grows out from nothing under the cap, full through the length, thinning to the tips
+      const thick = (0.05 + 0.02 * (1 - t)) * smooth(t / 0.15) * (1 - smooth((t - 0.8) / 0.2)) * edge;
+      const r0 = Math.max(r - thick, floor[u * rows + v] - 0.006);
+      outer.push(ax + sa * r, y, az - ca * r);
+      inner.push(ax + sa * Math.min(r, r0), y, az - ca * Math.min(r, r0));
+      c.copy(hair).multiplyScalar(band * (0.82 + 0.18 * t));
+      colors.push(c.r, c.g, c.b);
+    }
+  }
+
+  // Outer and inner surfaces, closed along the top and the two sides (the ends meet at the tips)
+  const half = (ACROSS + 1) * rows;
+  const vertices = new Float32Array(half * 6);
+  vertices.set(outer, 0);
+  vertices.set(inner, half * 3);
+  const vertexColors = new Float32Array(half * 6);
+  vertexColors.set(colors, 0);
+  vertexColors.set(colors.map((value) => value * 0.6), half * 3);
+  const index: number[] = [];
+  const at = (u: number, v: number, side: 0 | 1) => side * half + u * rows + v;
+  for (let u = 0; u < ACROSS; u++) {
+    for (let v = 0; v < DOWN; v++) {
+      index.push(at(u, v, 0), at(u + 1, v, 0), at(u, v + 1, 0), at(u + 1, v, 0), at(u + 1, v + 1, 0), at(u, v + 1, 0));
+      index.push(at(u, v, 1), at(u, v + 1, 1), at(u + 1, v, 1), at(u + 1, v, 1), at(u, v + 1, 1), at(u + 1, v + 1, 1));
+    }
+    index.push(at(u, 0, 0), at(u, 0, 1), at(u + 1, 0, 0), at(u + 1, 0, 0), at(u, 0, 1), at(u + 1, 0, 1));
+  }
+  for (const u of [0, ACROSS]) {
+    for (let v = 0; v < DOWN; v++) {
+      const flip = u === 0;
+      const quad = [at(u, v, 0), at(u, v + 1, 0), at(u, v, 1), at(u, v + 1, 0), at(u, v + 1, 1), at(u, v, 1)];
+      index.push(...(flip ? quad : [quad[0], quad[2], quad[1], quad[3], quad[5], quad[4]]));
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(vertexColors, 3));
+  geometry.setIndex(index);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 // Strand relief for the shell: a fine noise stretched along the combing direction reads as grooves between
 // strands, as carved into a sculpted bust. It bends the surface normal (bump) and shades the grooves a
 // little darker. The hair's colour comes from the vertex colours.
@@ -165,10 +332,11 @@ float strands(vec3 p, vec3 flow) {
 }
 `;
 
-export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params): void {
+export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params, hanging = false): void {
   // One fixed combing direction per style (stretching the noise along each vertex's own direction scrambled
-  // the pattern into specks wherever that direction turned)
-  const flow = { value: new THREE.Vector3(...STYLES[p.hairStyle === "none" ? "swept" : p.hairStyle].flow).normalize() };
+  // the pattern into specks wherever that direction turned); hanging hair runs straight down
+  const direction: [number, number, number] = hanging ? [0, -1, -0.1] : STYLES[p.hairStyle === "none" ? "swept" : p.hairStyle].flow;
+  const flow = { value: new THREE.Vector3(...direction).normalize() };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uFlow = flow;
     shader.vertexShader = shader.vertexShader
@@ -199,5 +367,5 @@ export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params)
 }`,
       );
   };
-  material.customProgramCacheKey = () => "effigy-hair-v3";
+  material.customProgramCacheKey = () => `effigy-hair-v3-${hanging ? "hanging" : "scalp"}`;
 }
