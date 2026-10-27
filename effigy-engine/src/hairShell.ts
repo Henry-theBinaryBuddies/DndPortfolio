@@ -155,11 +155,12 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   const az = base.neck.z;
   const count = positions.length / 3;
 
-  // The body's outline: the furthest the surface reaches from the neck's axis, by angle and height
-  const ANGLE_BINS = 64;
+  // The body's outline: the furthest the surface reaches from the neck's axis, by angle (all the way round,
+  // 0 straight behind) and height
+  const ANGLE_BINS = 128;
   const HEIGHT_BINS = 100;
   const lowest = -1.6;
-  const angleBin = (a: number) => Math.floor(((a + CURTAIN_ANGLE + 0.3) / (2 * (CURTAIN_ANGLE + 0.3))) * ANGLE_BINS);
+  const angleBin = (a: number) => ((Math.floor(((a + Math.PI) / (2 * Math.PI)) * ANGLE_BINS) % ANGLE_BINS) + ANGLE_BINS) % ANGLE_BINS;
   const heightBin = (y: number) => Math.floor(((CURTAIN_TOP + 0.3 - y) / (CURTAIN_TOP + 0.3 - lowest)) * HEIGHT_BINS);
   let outline = new Float32Array(ANGLE_BINS * HEIGHT_BINS);
   for (let i = 0; i < count; i++) {
@@ -168,7 +169,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     const a = Math.atan2(dx, -dz);
     const ai = angleBin(a);
     const hi = heightBin(positions[i * 3 + 1]);
-    if (ai < 0 || ai >= ANGLE_BINS || hi < 0 || hi >= HEIGHT_BINS) continue;
+    if (hi < 0 || hi >= HEIGHT_BINS) continue;
     outline[hi * ANGLE_BINS + ai] = Math.max(outline[hi * ANGLE_BINS + ai], Math.hypot(dx, dz));
   }
   // Grown a little in every direction, so the curtain clears the surface between samples too
@@ -179,8 +180,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
         let m = outline[h * ANGLE_BINS + a];
         for (const [dh, da] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const hh = h + dh;
-          const aa = a + da;
-          if (hh >= 0 && hh < HEIGHT_BINS && aa >= 0 && aa < ANGLE_BINS) m = Math.max(m, outline[hh * ANGLE_BINS + aa]);
+          const aa = (a + da + ANGLE_BINS) % ANGLE_BINS;
+          if (hh >= 0 && hh < HEIGHT_BINS) m = Math.max(m, outline[hh * ANGLE_BINS + aa]);
         }
         next[h * ANGLE_BINS + a] = m;
       }
@@ -188,7 +189,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     outline = next;
   }
   const bodyAt = (a: number, y: number) => {
-    const ai = Math.min(ANGLE_BINS - 1, Math.max(0, angleBin(a)));
+    const ai = angleBin(a);
     const hi = Math.min(HEIGHT_BINS - 1, Math.max(0, heightBin(y)));
     return outline[hi * ANGLE_BINS + ai];
   };
@@ -298,9 +299,85 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       index.push(...(flip ? quad : [quad[0], quad[2], quad[1], quad[3], quad[5], quad[4]]));
     }
   }
+  // A lock on each side frames the face: it carries on from the curtain's side edge under the cap, runs down
+  // behind the ear as if tucked there, then sweeps forward past the jaw and neck and comes over the front of the shoulder onto the chest,
+  // lying close to the body all the way (it drifts in quickly, so it does not hang off the cheek). It is a flattened band, thick near the head and tapering to a point.
+  const lockVertices: number[] = [];
+  const lockColors: number[] = [];
+  const LOCK_ROWS = 36;
+  const LOCK_SIDES = 12;
+  const lockGrow = (t: number) => smooth(t / 0.15) * (1 - 0.85 * smooth((t - 0.6) / 0.4));
+  // The body's outline across the whole width of the band at that height (its edges reach round to where
+  // the jaw or an ear may stand further out than at its middle)
+  const bodyAcross = (a: number, y: number, halfWidth: number) => {
+    const spread = halfWidth / Math.max(0.2, bodyAt(a, y));
+    let most = 0;
+    for (let n = -4; n <= 4; n++) most = Math.max(most, bodyAt(a + (spread * n) / 4, y));
+    return most;
+  };
+  for (const side of [-1, 1]) {
+    const first = half * 2 + lockVertices.length / 3;
+    const reachAlong: number[] = [];
+    const path: { a: number; y: number }[] = [];
+    let drift = 0;
+    for (let k = 0; k <= LOCK_ROWS; k++) {
+      const t = k / LOCK_ROWS;
+      // Behind the ear until below it, then sweeping forward (passing over the ear pushed it out like a fin)
+      const a = side * (1.2 + 1.35 * smooth((t - 0.3) / 0.6));
+      const y = 0.28 + (-1.3 - 0.28) * t;
+      const wanted = bodyAcross(a, y, 0.11 * lockGrow(t)) + 0.03;
+      drift = k === 0 ? wanted : Math.max(wanted, drift * 0.95);
+      reachAlong.push(drift);
+      path.push({ a, y });
+    }
+    // Smoothed along its length so it falls in one sweep, never closer to the body than it may be
+    for (let pass = 0; pass < 6; pass++) {
+      for (let k = 1; k < LOCK_ROWS; k++) {
+        const minimum = bodyAcross(path[k].a, path[k].y, 0.11 * lockGrow(k / LOCK_ROWS)) + 0.03;
+        reachAlong[k] = Math.max(minimum, (reachAlong[k - 1] + 2 * reachAlong[k] + reachAlong[k + 1]) / 4);
+      }
+    }
+    const band = 0.92 + 0.12 * rand();
+    for (let k = 0; k <= LOCK_ROWS; k++) {
+      const t = k / LOCK_ROWS;
+      const { a, y } = path[k];
+      const r = reachAlong[k];
+      const cx = ax + Math.sin(a) * r;
+      const cz = az - Math.cos(a) * r;
+      // Across the band runs around the neck; through it runs out from the neck
+      const grow = lockGrow(t);
+      const halfWidth = 0.11 * grow;
+      const halfThick = 0.026 * grow;
+      for (let j = 0; j < LOCK_SIDES; j++) {
+        const angle = (2 * Math.PI * j) / LOCK_SIDES;
+        const across = Math.cos(angle) * halfWidth;
+        const out = Math.sin(angle) * halfThick;
+        lockVertices.push(cx + Math.cos(a) * across + Math.sin(a) * out, y, cz + Math.sin(a) * across - Math.cos(a) * out);
+        c.copy(hair).multiplyScalar(band * (0.85 + 0.15 * t) * (0.8 + 0.2 * Math.max(0, Math.sin(angle))));
+        lockColors.push(c.r, c.g, c.b);
+      }
+    }
+    for (let k = 0; k < LOCK_ROWS; k++) {
+      for (let j = 0; j < LOCK_SIDES; j++) {
+        const q0 = first + k * LOCK_SIDES + j;
+        const q1 = first + k * LOCK_SIDES + ((j + 1) % LOCK_SIDES);
+        const q2 = q0 + LOCK_SIDES;
+        const q3 = q1 + LOCK_SIDES;
+        if (side > 0) index.push(q0, q2, q1, q1, q2, q3);
+        else index.push(q0, q1, q2, q1, q3, q2);
+      }
+    }
+  }
+
+  const all = new Float32Array(vertices.length + lockVertices.length);
+  all.set(vertices, 0);
+  all.set(lockVertices, vertices.length);
+  const allColors = new Float32Array(vertexColors.length + lockColors.length);
+  allColors.set(vertexColors, 0);
+  allColors.set(lockColors, vertexColors.length);
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(vertexColors, 3));
+  geometry.setAttribute("position", new THREE.BufferAttribute(all, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(allColors, 3));
   geometry.setIndex(index);
   geometry.computeVertexNormals();
   return geometry;
