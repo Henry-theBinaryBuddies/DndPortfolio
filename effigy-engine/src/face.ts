@@ -40,6 +40,9 @@ function bumps(p: Params): Bump[] {
     { centre: [0, -0.24, 1], size: [0.12 * p.noseWidth, 0.07, 0.18], amount: 0.08 * p.noseLength, mirror: false },
     { centre: [0, -0.5, 0.86], size: [0.22 * p.mouthWidth, 0.03, 0.3], amount: -0.06, mirror: false },
     { centre: [0, -0.88, 0.55], size: [0.22, 0.14, 0.5], amount: 0.04 + 0.14 * p.chin, mirror: false },
+    // Snout (dragonborn): the whole mid-face and upper jaw pushes forward into a muzzle
+    { centre: [0, -0.3, 1], size: [0.34, 0.36, 0.45], amount: 0.3 * p.snout, mirror: false },
+    { centre: [0, -0.62, 0.9], size: [0.3, 0.2, 0.4], amount: 0.18 * p.snout, mirror: false },
   ];
 }
 
@@ -79,6 +82,10 @@ function noise3(x: number, y: number, z: number): number {
     w,
   );
 }
+
+// A 3D gaussian blob weight: 1 at the centre, fading to 0 by roughly one `s` away on each axis.
+const gauss = (dx: number, sx: number, dy: number, sy: number, dz: number, sz: number) =>
+  Math.exp(-((dx / sx) ** 2 + (dy / sy) ** 2 + (dz / sz) ** 2));
 
 function distanceToSegment(p: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3): number {
   const abx = b.x - a.x;
@@ -159,6 +166,15 @@ export function buildHeadGeometry(p: Params): THREE.BufferGeometry {
   const scarTone = base.clone().lerp(new THREE.Color(0x6a1f1c), 0.85);
   const grimeTone = new THREE.Color(0x15110c);
   const rimTone = base.clone().lerp(new THREE.Color(0xe6d2c4), 0.55);
+  const browTone = new THREE.Color(p.hairColor);
+  const lipTone = base.clone().lerp(new THREE.Color(0x5a1f22), 0.5).multiplyScalar(0.8);
+  // Nasolabial folds: the creases running from each nostril down past the mouth corner
+  const folds = [
+    {
+      a: (side: number) => new THREE.Vector3(side * 0.17, -0.22, 0.96).normalize(),
+      b: (side: number) => new THREE.Vector3(side * 0.36, -0.56, 0.82).normalize(),
+    },
+  ];
 
   const u = new THREE.Vector3();
   const color = new THREE.Color();
@@ -176,6 +192,38 @@ export function buildHeadGeometry(p: Params): THREE.BufferGeometry {
     const n = noise3(u.x * 3 + 5, u.y * 3, u.z * 3) * 0.6 + noise3(u.x * 9, u.y * 9 + 3, u.z * 9) * 0.4;
     const grime = smooth((n - 0.38) / 0.28) * p.grime * 0.8 + occlusion * p.grime * 0.35;
     color.lerp(grimeTone, Math.min(0.9, grime));
+
+    // Facial detail painted straight onto the skin
+    const eyeX = 0.3 * p.eyeSpacing;
+    let brow = 0;
+    let bags = 0;
+    let lines = 0;
+    for (const sign of [-1, 1]) {
+      const bx = u.x - sign * (eyeX + 0.06);
+      brow = Math.max(brow, gauss(bx, 0.2, u.y - 0.37, 0.03 + 0.035 * p.eyebrows, u.z - 0.82, 0.3));
+      bags = Math.max(bags, gauss(u.x - sign * eyeX, 0.15, u.y - 0.0, 0.05, u.z - 0.95, 0.2));
+      const fold = distanceToSegment(u, folds[0].a(sign), folds[0].b(sign));
+      lines = Math.max(lines, Math.exp(-((fold / 0.035) ** 2)));
+    }
+    color.lerp(browTone, brow * Math.min(1, p.eyebrows * 1.4));
+    color.multiplyScalar(1 - 0.35 * bags * (0.3 + p.age));
+    color.multiplyScalar(1 - 0.4 * lines * p.age);
+    // Forehead creases: three horizontal bands that fade toward the temples
+    for (const band of [0.58, 0.5, 0.42]) {
+      const crease = Math.exp(-(((u.y - band) / 0.022) ** 2)) * smooth((u.z - 0.5) / 0.2) * (1 - smooth((Math.abs(u.x) - 0.5) / 0.15));
+      color.multiplyScalar(1 - 0.4 * crease * p.age * (0.5 + noise3(u.x * 6 + band * 10, 0, 1)));
+    }
+    // Lips: a flushed, darker band along the mouth line
+    const lipWeight = gauss(u.x, 0.2 * p.mouthWidth, u.y + 0.5, 0.045, u.z - 0.88, 0.3);
+    color.lerp(lipTone, lipWeight * 0.7);
+    // Scales: diamond cell pattern with dark seams
+    if (p.scales > 0.02) {
+      const g1 = Math.sin((u.x + u.y * 0.5) * 46);
+      const g2 = Math.sin((u.x - u.y * 0.5) * 46);
+      const seam = 1 - smooth(Math.abs(g1 * g2) / 0.22);
+      color.multiplyScalar(1 - 0.5 * seam * p.scales);
+      color.multiplyScalar(1 + 0.12 * p.scales * (noise3(u.x * 30, u.y * 30, u.z * 30) - 0.5));
+    }
 
     color.lerp(rimTone, s.scarRim * 0.85);
     color.lerp(scarTone, s.scarMix);
@@ -215,6 +263,16 @@ export function stitchPlacements(p: Params): Stitch[] {
     }
   }
   return out;
+}
+
+// A point on the finished face at the given horizontal/vertical position on the unit sphere, with its
+// outward normal. Used to seat mouth, nostrils, tusks, moustache and beard on the real surface.
+export function surfacePoint(p: Params, ux: number, uy: number): { position: THREE.Vector3; normal: THREE.Vector3 } {
+  const { sample, radii } = makeSampler(p);
+  const uz = Math.sqrt(Math.max(0, 1 - ux * ux - uy * uy));
+  const unit = new THREE.Vector3(ux, uy, uz);
+  const normal = new THREE.Vector3(unit.x / radii.rx, unit.y / radii.ry, unit.z / radii.rz).normalize();
+  return { position: sample(unit).position, normal };
 }
 
 // Where an eyeball sits: on the surface at the socket centre, sunk in slightly.

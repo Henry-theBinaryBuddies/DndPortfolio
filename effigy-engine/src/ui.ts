@@ -1,26 +1,38 @@
 import {
   CLOTH_COLORS,
   EYE_COLORS,
+  HAIR_COLORS,
   NUMERIC_DEFS,
+  PRESETS,
+  RACES,
+  RACE_INFO,
   SKIN_TONES,
+  applyPreset,
+  applyRace,
   defaultParams,
   randomParams,
   type NumericKey,
   type Params,
+  type Race,
   type Swatch,
 } from "./params";
 
-type Colorkey = "skin" | "cloth" | "eyes";
+type ColorKey = "skin" | "cloth" | "eyes" | "hairColor";
 
-// Builds the slider panel and calls onChange with a fresh Params copy on every edit.
+// Builds the control panel and calls onChange with a fresh Params copy on every edit.
 export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void): void {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement }>();
-  const swatchRows = new Map<Colorkey, { swatch: Swatch; button: HTMLButtonElement }[]>();
+  const swatchRows = new Map<ColorKey, { swatch: Swatch; button: HTMLButtonElement }[]>();
+  const raceSelect = document.createElement("select");
+  const presetSelect = document.createElement("select");
+  const hoodBox = document.createElement("input");
 
   const emit = () => onChange({ ...params });
 
   const syncUI = () => {
+    raceSelect.value = params.race;
+    hoodBox.checked = params.hood;
     for (const [key, { input, out }] of sliders) {
       input.value = String(params[key]);
       out.textContent = params[key].toFixed(2);
@@ -31,6 +43,61 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
       }
     }
   };
+
+  const update = (next: Params) => {
+    params = next;
+    syncUI();
+    emit();
+  };
+
+  // Character section: race, archetype preset and the hood toggle
+  const character = document.createElement("section");
+  character.innerHTML = "<h2>Character</h2>";
+
+  const raceRow = document.createElement("label");
+  raceRow.className = "row select";
+  raceRow.innerHTML = "<span>Race</span>";
+  for (const race of RACES) {
+    const option = document.createElement("option");
+    option.value = race;
+    option.textContent = RACE_INFO[race].label;
+    raceSelect.append(option);
+  }
+  raceSelect.addEventListener("change", () => update(applyRace(params, raceSelect.value as Race)));
+  raceRow.append(raceSelect);
+
+  const presetRow = document.createElement("label");
+  presetRow.className = "row select";
+  presetRow.innerHTML = "<span>Archetype</span>";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Choose a preset";
+  presetSelect.append(blank);
+  for (const preset of PRESETS) {
+    const option = document.createElement("option");
+    option.value = preset.name;
+    option.textContent = preset.name;
+    presetSelect.append(option);
+  }
+  presetSelect.addEventListener("change", () => {
+    const preset = PRESETS.find((entry) => entry.name === presetSelect.value);
+    presetSelect.value = "";
+    if (preset) update(applyPreset(params, preset));
+  });
+  presetRow.append(presetSelect);
+
+  const hoodRow = document.createElement("label");
+  hoodRow.className = "row select";
+  hoodRow.innerHTML = "<span>Hood</span>";
+  hoodBox.type = "checkbox";
+  hoodBox.addEventListener("change", () => {
+    params.hood = hoodBox.checked;
+    emit();
+  });
+  hoodRow.append(hoodBox);
+
+  character.append(raceRow, presetRow, hoodRow);
+  panel.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];
   for (const group of groups) {
@@ -61,7 +128,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
 
   const colorSection = document.createElement("section");
   colorSection.innerHTML = "<h2>Colors</h2>";
-  const addSwatches = (label: string, key: Colorkey, list: Swatch[]) => {
+  const addSwatches = (label: string, key: ColorKey, list: Swatch[]) => {
     const row = document.createElement("div");
     row.className = "row swatches";
     const name = document.createElement("span");
@@ -88,6 +155,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     colorSection.append(row);
   };
   addSwatches("Skin", "skin", SKIN_TONES);
+  addSwatches("Hair", "hairColor", HAIR_COLORS);
   addSwatches("Cloth", "cloth", CLOTH_COLORS);
   addSwatches("Eyes", "eyes", EYE_COLORS);
   panel.append(colorSection);
@@ -97,19 +165,11 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const randomize = document.createElement("button");
   randomize.type = "button";
   randomize.textContent = "Randomize";
-  randomize.addEventListener("click", () => {
-    params = randomParams();
-    syncUI();
-    emit();
-  });
+  randomize.addEventListener("click", () => update(randomParams()));
   const reset = document.createElement("button");
   reset.type = "button";
   reset.textContent = "Reset";
-  reset.addEventListener("click", () => {
-    params = defaultParams();
-    syncUI();
-    emit();
-  });
+  reset.addEventListener("click", () => update(defaultParams()));
   actions.append(randomize, reset);
   panel.append(actions);
 

@@ -33,6 +33,35 @@ describe("buildBust", () => {
     expect(noScars).toBe(unstitched);
   });
 
+  it("removes the hood when it is toggled off", () => {
+    const hooded = countObjects(buildBust({ ...defaultParams(), hood: true, hair: 0 }));
+    const bare = countObjects(buildBust({ ...defaultParams(), hood: false, hair: 0 }));
+    expect(bare).toBeLessThan(hooded);
+  });
+
+  it("shows hair only when the hood is off", () => {
+    const hooded = countObjects(buildBust({ ...defaultParams(), hood: true, hair: 1 }));
+    const hoodedBald = countObjects(buildBust({ ...defaultParams(), hood: true, hair: 0 }));
+    const bare = countObjects(buildBust({ ...defaultParams(), hood: false, hair: 1 }));
+    const bald = countObjects(buildBust({ ...defaultParams(), hood: false, hair: 0 }));
+    expect(hooded).toBe(hoodedBald);
+    expect(bare).toBeGreaterThan(bald);
+  });
+
+  it("grows a moustache and then a full beard as the slider rises", () => {
+    const none = countObjects(buildBust({ ...defaultParams(), beard: 0 }));
+    const moustache = countObjects(buildBust({ ...defaultParams(), beard: 0.2 }));
+    const full = countObjects(buildBust({ ...defaultParams(), beard: 0.9 }));
+    expect(moustache).toBeGreaterThan(none);
+    expect(full).toBeGreaterThan(moustache);
+  });
+
+  it("drops the ears when the ear slider is zero", () => {
+    const some = countObjects(buildBust({ ...defaultParams(), earSize: 0.5 }));
+    const none = countObjects(buildBust({ ...defaultParams(), earSize: 0 }));
+    expect(none).toBeLessThan(some);
+  });
+
   it("adds tusks only when the slider is raised", () => {
     const none = countObjects(buildBust({ ...defaultParams(), tusks: 0 }));
     const some = countObjects(buildBust({ ...defaultParams(), tusks: 0.8 }));
@@ -47,6 +76,12 @@ describe("buildHeadGeometry", () => {
     const short = extent(buildHeadGeometry({ ...defaultParams(), noseLength: 0 }));
     const long = extent(buildHeadGeometry({ ...defaultParams(), noseLength: 1 }));
     expect(long.z).toBeGreaterThan(short.z);
+  });
+
+  it("pushes the muzzle forward with the snout slider", () => {
+    const flat = extent(buildHeadGeometry({ ...defaultParams(), snout: 0 }));
+    const snouted = extent(buildHeadGeometry({ ...defaultParams(), snout: 1 }));
+    expect(snouted.z).toBeGreaterThan(flat.z);
   });
 
   it("widens the head with the skull width slider", () => {

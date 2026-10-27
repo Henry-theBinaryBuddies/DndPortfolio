@@ -105,7 +105,27 @@ input[type="range"] {
 
 .swatches div {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.select {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.select input[type="checkbox"] {
+  justify-self: start;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ember);
+}
+
+select {
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--edge);
 }
 
 .swatch {

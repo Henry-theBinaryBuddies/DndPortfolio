@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { buildHeadGeometry, eyePosition, headRadii, stitchPlacements } from "./face";
+import { buildHeadGeometry, eyePosition, headRadii, stitchPlacements, surfacePoint } from "./face";
 import type { Params } from "./params";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
@@ -10,6 +10,33 @@ import type { Params } from "./params";
 
 type Vec3 = [number, number, number];
 type Rot = Partial<Record<"x" | "y" | "z", number>>;
+
+interface Drape {
+  base: number; // fold depth at the top
+  hang: number; // extra depth toward the bottom
+  fine: number; // small high-frequency ripples
+}
+
+// A shell is a lathe (a profile spun around the vertical axis) with a wedge cut from the front,
+// then rippled so it hangs like cloth or strands of hair. Hood and hair share it.
+function shellGeometry(controls: [number, number][], rx: number, ry: number, radiusScale: number, gap: number, drape: Drape): THREE.BufferGeometry {
+  // A spline through the control points gives a smooth silhouette instead of straight segments.
+  const spline = new THREE.CatmullRomCurve3(controls.map(([r, y]) => new THREE.Vector3(r * rx * radiusScale, y * ry, 0)));
+  const profile = spline.getPoints(28).map((v) => new THREE.Vector2(Math.max(0.001, v.x), v.y));
+  const geometry = new THREE.LatheGeometry(profile, 44, gap / 2, Math.PI * 2 - gap);
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const angle = Math.atan2(x, z);
+    const hang = Math.min(1, Math.max(0, (0.6 * ry - y) / (1.5 * ry)));
+    const fold = 1 + (drape.base + drape.hang * hang) * Math.sin(angle * 7 + y * 3.5) + drape.fine * Math.sin(angle * 13 - y * 5);
+    pos.setXYZ(i, x * fold, y, z * fold);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 export function buildBust(p: Params): THREE.Group {
   const root = new THREE.Group();
@@ -22,6 +49,8 @@ export function buildBust(p: Params): THREE.Group {
   const armour = new THREE.MeshStandardMaterial({ color: 0x34343b, roughness: 0.5, metalness: 0.7 });
   const bone = new THREE.MeshStandardMaterial({ color: 0xcfc6b0, roughness: 0.6, flatShading: true });
   const dark = new THREE.MeshStandardMaterial({ color: 0x0b0908, roughness: 1 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: p.hairColor, roughness: 0.95, side: THREE.DoubleSide });
+  const beardMat = new THREE.MeshStandardMaterial({ color: p.hairColor, roughness: 1, flatShading: true, side: THREE.DoubleSide });
   const glow = new THREE.MeshBasicMaterial({ color: p.eyes });
 
   const add = (parent: THREE.Object3D, geometry: THREE.BufferGeometry, material: THREE.Material, position: Vec3, scale?: Vec3, rotation?: Rot) => {
@@ -34,7 +63,7 @@ export function buildBust(p: Params): THREE.Group {
   };
 
   const b = p.bulk;
-  const { rx, ry, rz } = headRadii(p);
+  const { rx, ry } = headRadii(p);
 
   // Shoulders: the upper half of a squashed sphere, so it sits flat on the plinth.
   add(root, new THREE.SphereGeometry(1, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), armour, [0, 0, 0], [0.82 * b, 0.62, 0.46]);
@@ -59,8 +88,7 @@ export function buildBust(p: Params): THREE.Group {
 
   add(head, buildHeadGeometry(p), face, [0, 0, 0]);
 
-  // Eyes: glowing orbs partly hidden inside the sockets
-  // Each eye is a glowing iris with a dark slit pupil and a heavy upper lid. The lid is a skin-coloured
+  // Eyes: each is a glowing iris with a dark slit pupil and a heavy upper lid. The lid is a skin-coloured
   // cap that covers more of the iris as the slider rises, so low settings stare and high settings glower.
   const eyeRadius = 0.05 * p.eyeSize;
   const lidTone = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.skin).multiplyScalar(0.55), roughness: 0.9 });
@@ -77,7 +105,7 @@ export function buildBust(p: Params): THREE.Group {
     add(eye, new THREE.SphereGeometry(eyeRadius * 1.14, 16, 8, 0, Math.PI * 2, 0, cover), lidTone, [0, 0, 0], undefined, { x: 0.35 });
   }
   const eyeLight = new THREE.PointLight(p.eyes, 0.04 * Math.PI, 0.7);
-  eyeLight.position.set(0, 0.1 * ry, rz + 0.2);
+  eyeLight.position.set(0, 0.1 * ry, headRadii(p).rz + 0.2);
   head.add(eyeLight);
 
   // Stitches: a dark thread across each scar, with a small knot at either end
@@ -92,60 +120,71 @@ export function buildBust(p: Params): THREE.Group {
     }
   }
 
-  // Mouth: a dark slit set into the indent, with tusks rising from the jaw
-  const mouthY = -0.5 * ry;
-  const mouthZ = rz * Math.sqrt(1 - 0.25) * 0.98;
-  add(head, new THREE.BoxGeometry(0.2 * p.mouthWidth, 0.018, 0.02), dark, [0, mouthY, mouthZ - 0.005]);
+  // Nostrils: two dark slits sunk into the underside of the nose
+  for (const side of [-1, 1]) {
+    const nostril = surfacePoint(p, side * 0.075 * p.noseWidth, -0.3);
+    const at = nostril.position.addScaledVector(nostril.normal, -0.004);
+    add(head, new THREE.SphereGeometry(0.014 * p.noseWidth, 8, 6), dark, [at.x, at.y, at.z], [1, 0.55, 0.8], { z: side * 0.4 });
+  }
+
+  // Mouth: a dark slit set into the indent, with tusks rising from the lower lip
+  const mouth = surfacePoint(p, 0, -0.5);
+  add(head, new THREE.BoxGeometry(0.2 * p.mouthWidth, 0.018, 0.02), dark, [mouth.position.x, mouth.position.y, mouth.position.z + 0.004]);
   if (p.tusks > 0.03) {
-    // Each tusk's base sits on the lower lip and it rises from there, so the centre is half its length up.
     const length = 0.07 + p.tusks * 0.16;
     for (const side of [-1, 1]) {
-      add(
-        head,
-        new THREE.ConeGeometry(0.03, length, 6),
-        bone,
-        [side * 0.12 * p.mouthWidth * p.jawWidth, mouthY - 0.02 + length / 2, mouthZ + 0.005],
-        undefined,
-        { z: side * 0.1 },
-      );
+      const lip = surfacePoint(p, side * 0.12 * p.mouthWidth * p.jawWidth / rx, -0.5).position;
+      add(head, new THREE.ConeGeometry(0.03, length, 6), bone, [lip.x, lip.y - 0.02 + length / 2, lip.z + 0.005], undefined, { z: side * 0.1 });
     }
   }
 
-  // Ears: a stubby ellipsoid when small, a swept-back spike when large
-  for (const side of [-1, 1]) {
-    const length = 0.08 + p.earSize * 0.3;
-    add(head, new THREE.ConeGeometry(0.05, length, 6), skin, [side * (rx * 0.97 + length * 0.35), 0.02 * ry, -0.04], [1, 1, 0.5], { z: -side * (Math.PI / 2 - 0.5) });
+  // Moustache and beard share the hair colour. The beard hangs from the jaw as faceted tapered masses.
+  if (p.beard > 0.1) {
+    const nose = surfacePoint(p, 0, -0.32).position;
+    for (const side of [-1, 1]) {
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(side * 0.012, nose.y - 0.03, nose.z - 0.005),
+        new THREE.Vector3(side * 0.07, nose.y - 0.045, nose.z + 0.005),
+        new THREE.Vector3(side * 0.13, nose.y - 0.12 - 0.05 * p.beard, nose.z - 0.025),
+      ]);
+      add(head, new THREE.TubeGeometry(curve, 10, 0.02 + 0.012 * p.beard, 6), beardMat, [0, 0, 0]);
+    }
+  }
+  if (p.beard > 0.3) {
+    // One mass wrapping the jaw below the mouth, open at the back, rippled into strands with a torn lower edge.
+    const bottom = -0.68 - (0.1 + 0.6 * p.beard) / ry;
+    const controls: [number, number][] = [[0.8, -0.56], [0.92, -0.7], [0.74, (-0.7 + bottom) / 2], [0.42, bottom + 0.15], [0.14, bottom]];
+    const beardGeo = shellGeometry(controls, rx, ry, 1, Math.PI * 0.45, { base: 0.03, hang: 0.05, fine: 0.03 });
+    const bp = beardGeo.attributes.position;
+    for (let i = 0; i < bp.count; i++) {
+      if (bp.getY(i) < bottom * ry + 0.003) bp.setY(i, bp.getY(i) - (Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.1);
+    }
+    beardGeo.computeVertexNormals();
+    // The shell's cut-out faces the front by default, so it is turned half way round to open at the back.
+    add(head, beardGeo, beardMat, [0, 0, -0.01], [1, 1, 0.92], { y: Math.PI });
   }
 
-  // Hood: a lathe (a profile spun around the vertical axis) with a wedge cut from the front.
-  // Deeper hood means a narrower opening and a taller peak.
-  const gap = Math.PI * (0.85 - 0.6 * p.hoodDepth);
-  const controls: [number, number][] = [
-    [0.62, -0.95],
-    [0.98, -0.6],
-    [1.12, -0.1],
-    [1.04, 0.45],
-    [0.74, 0.95],
-    [0.36, 1.25],
-    [0.05, 1.33 + p.hoodDepth * 0.4],
-  ];
-  // A spline through the control points gives a smooth silhouette instead of straight segments.
-  const spline = new THREE.CatmullRomCurve3(controls.map(([r, y]) => new THREE.Vector3(r * rx * 1.12, y * ry, 0)));
-  const profile = spline.getPoints(28).map((v) => new THREE.Vector2(Math.max(0.001, v.x), v.y));
-  const hoodGeo = new THREE.LatheGeometry(profile, 44, gap / 2, Math.PI * 2 - gap);
-  // Drape: radial folds that grow toward the bottom, like heavy cloth hanging from the crown.
-  const hp = hoodGeo.attributes.position;
-  for (let i = 0; i < hp.count; i++) {
-    const x = hp.getX(i);
-    const y = hp.getY(i);
-    const z = hp.getZ(i);
-    const angle = Math.atan2(x, z);
-    const hang = Math.min(1, Math.max(0, (0.6 * ry - y) / (1.5 * ry)));
-    const fold = 1 + (0.025 + 0.05 * hang) * Math.sin(angle * 7 + y * 3.5) + 0.02 * Math.sin(angle * 13 - y * 5);
-    hp.setXYZ(i, x * fold, y, z * fold);
+  // Ears: a stubby ellipsoid when small, a swept-back spike when large; none at all when the slider is zero
+  if (p.earSize > 0.03) {
+    for (const side of [-1, 1]) {
+      const length = 0.08 + p.earSize * 0.3;
+      add(head, new THREE.ConeGeometry(0.05, length, 6), skin, [side * (rx * 0.97 + length * 0.35), 0.02 * ry, -0.04], [1, 1, 0.5], { z: -side * (Math.PI / 2 - 0.5) });
+    }
   }
-  hoodGeo.computeVertexNormals();
-  add(head, hoodGeo, cloth, [0, 0, -0.05], [1, 1, 1.05]);
+
+  if (p.hood) {
+    // Deeper hood means a narrower opening and a taller peak.
+    const peak = 1.33 + p.hoodDepth * 0.4;
+    const controls: [number, number][] = [[0.62, -0.95], [0.98, -0.6], [1.12, -0.1], [1.04, 0.45], [0.74, 0.95], [0.36, 1.25], [0.05, peak]];
+    const gap = Math.PI * (0.85 - 0.6 * p.hoodDepth);
+    add(head, shellGeometry(controls, rx, ry, 1.12, gap, { base: 0.025, hang: 0.05, fine: 0.02 }), cloth, [0, 0, -0.05], [1, 1, 1.05]);
+  } else if (p.hair > 0.03) {
+    // Hair hugs the skull. Past a third of the slider it grows down past the neck.
+    const long = Math.min(1, Math.max(0, (p.hair - 0.35) / 0.65));
+    const y0 = Math.max(-0.95, -0.15 - long * 0.8);
+    const controls: [number, number][] = [[1.02 - 0.25 * long, y0], [1.06 - 0.06 * long, (y0 + 0.2) / 2], [1.08, 0.2], [0.89, 0.6], [0.37, 0.95], [0.03, 1.07]];
+    add(head, shellGeometry(controls, rx, ry, 1, Math.PI * 0.7, { base: 0.012, hang: 0.04, fine: 0.03 }), hairMat, [0, 0.005, -0.02], [1.02, 1.0, 1.04]);
+  }
 
   if (p.horns > 0.03) {
     const scale = 0.5 + p.horns * 1.6;
