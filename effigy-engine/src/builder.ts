@@ -18,9 +18,93 @@ const smooth = (t: number) => {
   return c * c * (3 - 2 * c);
 };
 
+// The eyeball's radius in each direction, so it fills its socket. The sculpt's lids were made for an eye
+// with a bulging cornea, so a plain sphere leaves a gap behind the lids (a dark wedge in profile, and lids
+// that look thick and detached). Behind the lids the eye grows to just short of the skin (and shrinks
+// wherever skin comes closer), so the lids rest on it all round; in the open part of the eye it is a
+// sphere with a corneal bulge, raised to meet the edge of the lids. It never reaches past the skin.
+interface EyeFit {
+  shape: (direction: THREE.Vector3) => number; // the radius the eye would like
+  limit: (direction: THREE.Vector3) => number; // the most it may have without touching skin
+}
+
+export function socketFit(positions: Float32Array, centre: THREE.Vector3, radius: number): EyeFit {
+  const near: number[] = [];
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i] - centre.x;
+    const y = positions[i + 1] - centre.y;
+    const z = positions[i + 2] - centre.z;
+    const d = Math.sqrt(x * x + y * y + z * z);
+    if (d < 1.8 * radius && d > 1e-6) near.push(x / d, y / d, z / d, d);
+  }
+  const cone = Math.cos(0.14);
+  // The skin straight out in this direction, or the nearest skin anywhere around it (the edge of the lids)
+  const skinAlong = (u: THREE.Vector3) => {
+    let along = Infinity;
+    let edge = Infinity;
+    let closest = -1;
+    for (let j = 0; j < near.length; j += 4) {
+      const dot = near[j] * u.x + near[j + 1] * u.y + near[j + 2] * u.z;
+      if (dot > cone) along = Math.min(along, near[j + 3]);
+      if (dot > closest) {
+        closest = dot;
+        edge = near[j + 3];
+      }
+    }
+    return { along, edge };
+  };
+  return {
+    shape(u) {
+      const cornea = radius * (1 + 0.24 * Math.max(0, u.z) ** 6);
+      const { along, edge } = skinAlong(u);
+      if (along === Infinity) return Math.max(cornea, Math.min(1.3 * radius, 0.96 * edge));
+      return Math.max(0.8 * radius, Math.min(0.96 * along, Math.max(cornea, 1.4 * radius)));
+    },
+    limit(u) {
+      const { along } = skinAlong(u);
+      return along === Infinity ? Infinity : Math.max(0.8 * radius, 0.96 * along);
+    },
+  };
+}
+
+// Reshapes a sphere centred on the origin to the fitted radius: the wanted shape is evened out over the
+// surface (so no single skin vertex dents it), then held inside the skin limit
+export function fitSphere(geometry: THREE.BufferGeometry, fit: EyeFit, scale = 1): void {
+  const pos = geometry.attributes.position as THREE.BufferAttribute;
+  const u = new THREE.Vector3();
+  let r = new Float32Array(pos.count);
+  const limit = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) {
+    u.fromBufferAttribute(pos, i).normalize();
+    r[i] = fit.shape(u) * scale;
+    limit[i] = fit.limit(u) * scale;
+  }
+  const index = geometry.index!;
+  for (let pass = 0; pass < 8; pass++) {
+    const sum = new Float32Array(pos.count);
+    const n = new Float32Array(pos.count);
+    for (let t = 0; t < index.count; t++) {
+      const a = index.getX(t);
+      const b = index.getX(t % 3 === 2 ? t - 2 : t + 1);
+      sum[a] += r[b];
+      n[a]++;
+      sum[b] += r[a];
+      n[b]++;
+    }
+    const next = new Float32Array(pos.count);
+    for (let i = 0; i < pos.count; i++) next[i] = n[i] ? (r[i] + sum[i] / n[i]) / 2 : r[i];
+    r = next;
+  }
+  for (let i = 0; i < pos.count; i++) {
+    u.fromBufferAttribute(pos, i).normalize().multiplyScalar(Math.min(r[i], limit[i]));
+    pos.setXYZ(i, u.x, u.y, u.z);
+  }
+  geometry.computeVertexNormals();
+}
+
 // A realistic eyeball: a white sclera with faint veins, an iris with radial fibres and a darker rim
 // (the limbal ring), a black pupil, and a clear glossy cornea over the front. It is built facing +z.
-function realisticEye(radius: number, irisHex: string): THREE.Group {
+function realisticEye(radius: number, irisHex: string, fit: EyeFit): THREE.Group {
   const group = new THREE.Group();
   const geometry = new THREE.SphereGeometry(radius, 48, 36);
   geometry.rotateX(Math.PI / 2); // spheres have their poles on y; turn one to face the front
@@ -68,11 +152,13 @@ function realisticEye(radius: number, irisHex: string): THREE.Group {
     colors[i * 3 + 2] = Math.min(1, c.b);
   }
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  fitSphere(geometry, fit);
   group.add(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.32 })));
 
   // The cornea: a thin transparent dome over the iris that catches the light
   const dome = new THREE.SphereGeometry(radius * 1.03, 32, 20, 0, Math.PI * 2, 0, 0.78);
   dome.rotateX(Math.PI / 2);
+  fitSphere(dome, fit, 1.01);
   const cornea = new THREE.Mesh(
     dome,
     new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, roughness: 0.03, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false }),
@@ -107,20 +193,22 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   head.position.set(-bust.footprint.x, -bust.baseY, -bust.footprint.z);
   head.updateMatrixWorld(true);
 
-  // Eyes. The base head's eyelids are modelled around an eyeball of this size, so both styles sit
-  // snugly in the sockets.
+  // Eyes, each fitted to its socket (see socketFit), so both styles sit snugly against the lids.
   const pupilTone = new THREE.MeshBasicMaterial({ color: 0x050303, side: THREE.DoubleSide });
   const eyeR = bust.eyes.radius;
   for (const side of [bust.eyes.left, bust.eyes.right]) {
     const eye = new THREE.Group();
     eye.position.set(...side);
     head.add(eye);
+    const fit = socketFit(bust.positions, eye.position, eyeR);
     if (p.eyeStyle === "realistic") {
-      eye.add(realisticEye(eyeR, p.eyes));
+      eye.add(realisticEye(eyeR, p.eyes, fit));
     } else {
-      eye.add(new THREE.Mesh(new THREE.SphereGeometry(eyeR, 24, 16), glow));
+      const ball = new THREE.SphereGeometry(eyeR, 24, 16);
+      fitSphere(ball, fit);
+      eye.add(new THREE.Mesh(ball, glow));
       const pupil = new THREE.Mesh(new THREE.CircleGeometry(eyeR * 0.55, 10), pupilTone);
-      pupil.position.z = eyeR * 0.98;
+      pupil.position.z = fit.shape(new THREE.Vector3(0, 0, 1)) * 0.99;
       pupil.scale.set(0.28, 1, 1);
       eye.add(pupil);
     }
@@ -175,7 +263,7 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   }
 
   // Eyebrows and eyelashes as real strands
-  const fineHair = buildFineHair(p, bust.positions, bust.normals, bust.eyes, base.masks);
+  const fineHair = buildFineHair(p, bust.positions, bust.normals, bust.eyes, base);
   if (fineHair) {
     head.add(new THREE.Mesh(fineHair, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 })));
   }

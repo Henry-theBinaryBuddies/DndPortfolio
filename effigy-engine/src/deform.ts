@@ -113,9 +113,10 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // beneath it, the temporal line up the side of the forehead, the edge of the jaw, the bulge of the
     // chewing muscle on masculine faces, and heavier jowls with age and weight
     const edge = 0.35 + 0.65 * k.angularity;
-    const rim = Math.exp(-(((eyeDistance - 0.115) / 0.02) ** 2)) * (0.4 + 0.6 * Math.max(0, nz));
+    // (Only above and beside the eye: run under the lower lid it raised a ridge with a trough behind it.)
+    const rim = Math.exp(-(((eyeDistance - 0.115) / 0.02) ** 2)) * (0.4 + 0.6 * Math.max(0, nz)) * smooth((y0 + 0.04) / 0.08);
     push(rim, (0.006 + 0.022 * k.angularity) * (0.7 + 0.5 * m));
-    push(blob(0.2, -0.17, 0.09, 0.09, 0.035, 0.1), -0.02 * k.angularity);
+    push(blob(0.2, -0.17, 0.09, 0.09, 0.035, 0.1), -0.01 * k.angularity);
     const temporal = distanceToSegment3(ax, y0, z0, 0.3, 0.2, 0.02, 0.28, 0.5, -0.3);
     push(Math.exp(-((temporal / 0.03) ** 2)), 0.006 + 0.014 * k.angularity);
     const jawEdge = Math.min(distanceToSegment3(ax, y0, z0, 0.38, -0.22, -0.38, 0.33, -0.46, -0.12), distanceToSegment3(ax, y0, z0, 0.33, -0.46, -0.12, 0.1, -0.58, 0.12));
@@ -181,7 +182,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
       const near = 1 - smooth((eyeDistance - 1.05 * eyeR) / (0.9 * eyeR));
       const upper = smooth((y0 + 0.1 * eyeR) / (0.5 * eyeR));
       const corners = Math.max(0, 1 - (rx / (1.3 * eyeR)) ** 2);
-      const turn = (0.05 + 0.22 * p.lids) * near * upper * corners;
+      const turn = (0.02 + 0.36 * p.lids) * near * upper * corners;
       const c = Math.cos(turn);
       const s = Math.sin(turn);
       dy += y0 * c - z0 * s - y0;

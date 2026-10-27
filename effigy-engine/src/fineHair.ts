@@ -71,8 +71,9 @@ export function buildFineHair(
   positions: Float32Array,
   normals: Float32Array,
   eyes: { left: [number, number, number]; right: [number, number, number]; radius: number },
-  masks: HeadBase["masks"],
+  base: HeadBase,
 ): THREE.BufferGeometry | null {
+  const masks = base.masks;
   const strands = new Strands();
   const rand = random(77);
   const count = positions.length / 3;
@@ -117,20 +118,27 @@ export function buildFineHair(
   // Eyelashes: rooted along the edge of each eyelid. The edge is found by angle around the eye: in each
   // slice, the skin vertex just in front of the eyeball that is closest to the eye's front axis (the rim
   // of the opening). The sculpt's lids were made for an eye with a bulging cornea, so the upper lid's edge
-  // sits up to about 1.4 eyeball radii from the centre. Upper lashes are longer and curl up, lower ones are short and point down and out; both
-  // grow longer toward the outer corner.
+  // sits up to about 1.4 eyeball radii from the centre. The edge is found on the undeformed head and the
+  // lashes grow from where those same vertices end up, so they follow the lid as it is lowered. Upper
+  // lashes are longer and curl up, lower ones are short and point down and out; both grow longer toward
+  // the outer corner.
   {
     const dark = hair.clone().lerp(new THREE.Color(0x050403), 0.8);
     const BINS = 72;
-    for (const eye of [eyes.left, eyes.right]) {
+    const at = (i: number) => new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+    for (const [eye, baseEye] of [
+      [eyes.left, base.eyes.left],
+      [eyes.right, base.eyes.right],
+    ] as const) {
       const centre = new THREE.Vector3(...eye);
-      const radius = eyes.radius;
       const outward = Math.sign(centre.x) || 1;
       const rim: (THREE.Vector3 | null)[] = new Array(BINS).fill(null);
       const best = new Array(BINS).fill(Infinity);
       const rel = new THREE.Vector3();
+      const radius = base.eyes.radius;
+      const bp = base.positions;
       for (let i = 0; i < count; i++) {
-        rel.set(positions[i * 3] - centre.x, positions[i * 3 + 1] - centre.y, positions[i * 3 + 2] - centre.z);
+        rel.set(bp[i * 3] - baseEye[0], bp[i * 3 + 1] - baseEye[1], bp[i * 3 + 2] - baseEye[2]);
         const distance = rel.length();
         if (distance < radius * 0.85 || distance > radius * 1.45 || rel.z < radius * 0.3) continue;
         const angle = Math.atan2(rel.y, rel.x * outward);
@@ -138,7 +146,7 @@ export function buildFineHair(
         const fromAxis = Math.hypot(rel.x, rel.y);
         if (fromAxis < best[bin]) {
           best[bin] = fromAxis;
-          rim[bin] = new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+          rim[bin] = at(i);
         }
       }
       for (let bin = 0; bin < BINS; bin++) {

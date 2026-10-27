@@ -130,7 +130,18 @@ let clayOn = false;
 function draw() {
   pivot.rotation.y = yaw;
   scene.overrideMaterial = clayOn ? clay : null;
+  // In clay the clear corneas would turn solid grey and hide the eyes, so see-through parts are left out
+  const hidden: THREE.Object3D[] = [];
+  if (clayOn) {
+    pivot.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.visible && (o.material as THREE.Material).transparent) {
+        o.visible = false;
+        hidden.push(o);
+      }
+    });
+  }
   renderer.render(scene, camera);
+  for (const o of hidden) o.visible = true;
 }
 
 // The viewport toolbar: fixed views for comparing shapes at matching angles, bust or face framing, the

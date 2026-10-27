@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildBust } from "./builder";
+import { buildBust, fitSphere, socketFit } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
 import { buildFineHair } from "./fineHair";
@@ -112,6 +112,35 @@ describe("deformation", () => {
           expect(nearest, `${race} ${v}`).toBeGreaterThan(eyes.radius * 0.9);
         }
       }
+    }
+  }, 120000);
+
+  it("fits each eyeball to its socket: up against the lids, bulging at the cornea, never through the skin", () => {
+    for (const lids of [0.1, 0.75]) {
+      const { positions, eyes } = deformHead(base, params({ lids }));
+      const centre = new THREE.Vector3(...eyes.left);
+      const ball = new THREE.SphereGeometry(eyes.radius, 48, 36);
+      ball.rotateX(Math.PI / 2);
+      fitSphere(ball, socketFit(positions, centre, eyes.radius));
+      const pos = ball.attributes.position;
+      const v = new THREE.Vector3();
+      let front = 0;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        front = Math.max(front, v.z);
+        // No skin vertex lies closer to the eye's centre in this vertex's direction
+        const r = v.length();
+        const u = v.clone().normalize();
+        for (let j = 0; j < positions.length; j += 3) {
+          const x = positions[j] - centre.x;
+          const y = positions[j + 1] - centre.y;
+          const z = positions[j + 2] - centre.z;
+          const d = Math.hypot(x, y, z);
+          if (d > 2 * eyes.radius || (x * u.x + y * u.y + z * u.z) / d < Math.cos(0.05)) continue;
+          expect(d, `lids ${lids}`).toBeGreaterThan(r);
+        }
+      }
+      expect(front).toBeGreaterThan(eyes.radius * 1.1);
     }
   }, 120000);
 
@@ -351,7 +380,7 @@ describe("buildBust", () => {
   it("grows real eyebrow and eyelash strands, more for bushier brows", () => {
     const fine = (p: Params) => {
       const bust = sculptBust(p, base);
-      return buildFineHair(p, bust.positions, bust.normals, bust.eyes, base.masks);
+      return buildFineHair(p, bust.positions, bust.normals, bust.eyes, base);
     };
     const human = fine(params({ eyebrows: 0.2 }));
     const bushy = fine(params({ eyebrows: 1 }));
