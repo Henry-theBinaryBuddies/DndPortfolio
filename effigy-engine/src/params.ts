@@ -75,10 +75,10 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("lips", "Lips", "Face", 0.5),
   def("jaw", "Jaw", "Face", 0.5),
   def("lids", "Heavy lids", "Face", 0.4),
-  def("eyebrows", "Eyebrows", "Face", 0.45),
+  def("eyebrows", "Eyebrows", "Face", 0.5),
   def("horns", "Horns", "Fantasy", 0),
   def("tusks", "Tusks", "Fantasy", 0),
-  def("scars", "Scars", "Skin", 0.3),
+  def("scars", "Scars", "Skin", 0),
   def("stitches", "Stitches", "Skin", 0),
   def("grime", "Grime", "Skin", 0.3),
   def("pauldrons", "Pauldrons", "Garb", 0.5),
@@ -152,8 +152,6 @@ export interface Skeleton {
   headWidth: number; // skull breadth
   headHeight: number;
   earSize: number; // 0 none, ~0.3 human, 1 long and pointed
-  eyeSpacing: number;
-  eyeSize: number;
   noseLength: number; // 0..1 baseline
   noseWidth: number;
   mouthWidth: number;
@@ -174,56 +172,56 @@ export interface RaceInfo {
   defaults: Values;
 }
 
-const HUMAN: Skeleton = { headWidth: 1, headHeight: 1, earSize: 0.3, eyeSpacing: 1, eyeSize: 1, noseLength: 0.4, noseWidth: 1, mouthWidth: 1, jaw: 1, chin: 0.4, snout: 0, scales: 0, socketDepth: 0.45, gaunt: 0.15, shoulders: 1 };
+const HUMAN: Skeleton = { headWidth: 1, headHeight: 1, earSize: 0.3, noseLength: 0.4, noseWidth: 1, mouthWidth: 1, jaw: 1, chin: 0.4, snout: 0, scales: 0, socketDepth: 0.45, gaunt: 0.15, shoulders: 1 };
 
 export const RACE_INFO: Record<Race, RaceInfo> = {
   human: { label: "Human", skin: skin("Tan"), skeleton: HUMAN, defaults: {} },
   elf: {
     label: "Elf",
     skin: skin("Elven pale"),
-    skeleton: { ...HUMAN, headWidth: 0.93, headHeight: 1.04, earSize: 1, eyeSpacing: 1.04, eyeSize: 1.08, noseLength: 0.35, noseWidth: 0.88, mouthWidth: 0.95, jaw: 0.88, chin: 0.3, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
+    skeleton: { ...HUMAN, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.88, mouthWidth: 0.95, jaw: 0.88, chin: 0.3, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
     defaults: {},
   },
   "half-elf": {
     label: "Half-elf",
     skin: skin("Pale"),
-    skeleton: { ...HUMAN, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, eyeSpacing: 1.02, eyeSize: 1.04, noseWidth: 0.95, jaw: 0.95, gaunt: 0.2, shoulders: 0.94 },
+    skeleton: { ...HUMAN, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, noseWidth: 0.95, jaw: 0.95, gaunt: 0.2, shoulders: 0.94 },
     defaults: {},
   },
   dwarf: {
     label: "Dwarf",
     skin: skin("Ruddy"),
     skeleton: { ...HUMAN, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.25, jaw: 1.15, chin: 0.55, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
-    defaults: { eyebrows: 0.85, muscle: 0.7 },
+    defaults: { eyebrows: 0.85, muscle: 0.7, brow: 0.8, cheekbones: 0.6 },
   },
   halfling: {
     label: "Halfling",
     skin: skin("Tan"),
-    skeleton: { ...HUMAN, headWidth: 1.04, headHeight: 0.97, earSize: 0.5, eyeSize: 1.12, noseLength: 0.25, noseWidth: 0.9, jaw: 0.9, chin: 0.25, gaunt: 0, shoulders: 0.8 },
+    skeleton: { ...HUMAN, headWidth: 1.04, headHeight: 0.97, earSize: 0.5, noseLength: 0.25, noseWidth: 0.9, jaw: 0.9, chin: 0.25, gaunt: 0, shoulders: 0.8 },
     defaults: { muscle: 0.3 },
   },
   gnome: {
     label: "Gnome",
     skin: skin("Ruddy"),
-    skeleton: { ...HUMAN, headWidth: 1.03, headHeight: 0.98, earSize: 0.6, eyeSize: 1.2, noseLength: 0.75, noseWidth: 1.15, chin: 0.3, gaunt: 0.1, shoulders: 0.78 },
+    skeleton: { ...HUMAN, headWidth: 1.03, headHeight: 0.98, earSize: 0.6, noseLength: 0.75, noseWidth: 1.15, chin: 0.3, gaunt: 0.1, shoulders: 0.78 },
     defaults: { muscle: 0.3 },
   },
   "half-orc": {
     label: "Half-orc",
     skin: skin("Orc grey-green"),
     skeleton: { ...HUMAN, headWidth: 1.08, headHeight: 1.0, earSize: 0.35, noseLength: 0.3, noseWidth: 1.15, mouthWidth: 1.12, jaw: 1.22, chin: 0.8, socketDepth: 0.5, shoulders: 1.3 },
-    defaults: { tusks: 0.6, muscle: 0.75 },
+    defaults: { tusks: 0.6, muscle: 0.75, brow: 0.92, cheekbones: 0.7, lids: 0.65, eyebrows: 0.8, noseSize: 0.6 },
   },
   tiefling: {
     label: "Tiefling",
     skin: skin("Infernal red"),
-    skeleton: { ...HUMAN, earSize: 0.55, eyeSize: 1.06, noseWidth: 0.92, jaw: 0.95, chin: 0.5, gaunt: 0.3, shoulders: 0.98 },
+    skeleton: { ...HUMAN, earSize: 0.55, noseWidth: 0.92, jaw: 0.95, chin: 0.5, gaunt: 0.3, shoulders: 0.98 },
     defaults: { horns: 0.85 },
   },
   dragonborn: {
     label: "Dragonborn",
     skin: skin("Bronze scale"),
-    skeleton: { ...HUMAN, headWidth: 1.05, earSize: 0, eyeSpacing: 1.15, eyeSize: 0.95, noseLength: 0.2, noseWidth: 1.2, mouthWidth: 1.4, jaw: 1.15, snout: 0.85, scales: 0.9, gaunt: 0.05, shoulders: 1.3 },
+    skeleton: { ...HUMAN, headWidth: 1.05, earSize: 0, noseLength: 0.2, noseWidth: 1.2, mouthWidth: 1.4, jaw: 1.15, snout: 0.85, scales: 0.9, gaunt: 0.05, shoulders: 1.3 },
     defaults: { horns: 0.55, muscle: 0.7 },
   },
 };
@@ -335,6 +333,11 @@ export function clampParams(params: Params): Params {
   return out;
 }
 
+// 1 for masculine, 0 for feminine, halfway for neutral. Used to blend proportions.
+export function masculinity(p: Params): number {
+  return p.body === "masculine" ? 1 : p.body === "feminine" ? 0 : 0.5;
+}
+
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 // Everything the sculpt actually reads: the race's skeleton adjusted by the sliders, each kept
@@ -343,8 +346,6 @@ export interface Derived {
   headWidth: number;
   headHeight: number;
   earSize: number;
-  eyeSpacing: number;
-  eyeSize: number;
   socketDepth: number;
   noseLength: number;
   noseWidth: number;
@@ -366,8 +367,6 @@ export function derive(p: Params): Derived {
     headWidth: sk.headWidth,
     headHeight: sk.headHeight,
     earSize: sk.earSize,
-    eyeSpacing: sk.eyeSpacing,
-    eyeSize: sk.eyeSize,
     socketDepth: clamp01(sk.socketDepth + 0.35 * p.age + 0.3 * (0.5 - p.weight) + 0.15 * (p.brow - 0.5)),
     noseLength: clamp01(sk.noseLength + (p.noseSize - 0.5) * 0.5),
     noseWidth: sk.noseWidth * (0.86 + 0.28 * p.noseSize),
@@ -378,7 +377,7 @@ export function derive(p: Params): Derived {
     scales: sk.scales,
     gaunt: clamp01(sk.gaunt + 0.35 * p.age + 0.9 * (0.5 - p.weight)),
     fullness: clamp01((p.weight - 0.5) * 2),
-    lipFull: 0.6 + 0.8 * p.lips,
+    lipFull: 0.7 + 1.0 * p.lips,
     shoulders: sk.shoulders * (0.9 + 0.28 * p.muscle + 0.14 * (p.weight - 0.5)),
     neckGirth: 1 + 0.25 * (p.muscle - 0.45) + 0.2 * (p.weight - 0.5),
   };

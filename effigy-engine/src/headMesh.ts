@@ -1,0 +1,114 @@
+import * as THREE from "three";
+
+// The sculpted base head the whole app deforms. It is a CC0 mesh (see public/models/README.md), exported
+// to a small binary file. Everything downstream works in "head-local" units: the origin is the midpoint
+// between the eyes, +y is up, +z is the way the face points, and one unit is 20 cm.
+
+export const SCALE = 5;
+
+// Where the eyes sit in the source file's own units (metres): the midpoint between the eyes, and the
+// eyeball radius that fits this head's eyelids. The bundle's own eyeball mesh is larger (12.4 mm), but the
+// head's lids are modelled around a smaller eye: its skin comes within 8.7 mm of the eye's centre, so a
+// 9.4 mm eyeball sits snugly against the lids without poking through. The head is symmetric about x = EYE_X.
+const SOURCE = { eyeX: 1.785735, eyeY: 0.76586, eyeZ: 0.12507, eyeRadius: 0.0094, eyeHalfSpacing: 0.03214 };
+
+// Landmarks measured along the face's centre line, in head-local units. Used to place paint and
+// features on the real anatomy instead of guessing.
+export const LANDMARK = {
+  top: 0.565,
+  nasion: 0.006, // the dip between the eyes
+  noseTip: -0.168,
+  subnasale: -0.25, // where the nose meets the upper lip
+  upperLip: -0.326,
+  stomion: -0.363, // the mouth line
+  lowerLip: -0.4,
+  mentolabial: -0.451, // the crease under the lower lip
+  pogonion: -0.493, // front of the chin
+  menton: -0.59, // bottom of the chin
+  eyeX: SOURCE.eyeHalfSpacing * SCALE,
+  eyeRadius: SOURCE.eyeRadius * SCALE,
+} as const;
+
+export type Vec3 = [number, number, number];
+
+export interface HeadBase {
+  positions: Float32Array;
+  normals: Float32Array;
+  indices: Uint32Array;
+  // Which vertices touch which: neighbours of vertex i are neighbours[offsets[i] .. offsets[i + 1]]
+  offsets: Uint32Array;
+  neighbours: Uint32Array;
+  eyes: { left: Vec3; right: Vec3; radius: number };
+  baseY: number; // the flat underside the bust stands on
+  neck: { x: number; z: number }; // centre line of the neck
+}
+
+// Turns the raw file into a normalised mesh with normals and connectivity.
+export function parseHead(buffer: ArrayBuffer): HeadBase {
+  const header = new Uint32Array(buffer, 0, 2);
+  const vertexCount = header[0];
+  const triangleCount = header[1];
+  const raw = new Float32Array(buffer, 8, vertexCount * 3);
+  const indices = new Uint32Array(buffer.slice(8 + vertexCount * 12, 8 + vertexCount * 12 + triangleCount * 12));
+
+  const positions = new Float32Array(vertexCount * 3);
+  for (let i = 0; i < vertexCount; i++) {
+    positions[i * 3] = (raw[i * 3] - SOURCE.eyeX) * SCALE;
+    positions[i * 3 + 1] = (raw[i * 3 + 1] - SOURCE.eyeY) * SCALE;
+    positions[i * 3 + 2] = (raw[i * 3 + 2] - SOURCE.eyeZ) * SCALE;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.computeVertexNormals();
+  const normals = new Float32Array((geometry.attributes.normal as THREE.BufferAttribute).array);
+  geometry.dispose();
+
+  const sets: Set<number>[] = Array.from({ length: vertexCount }, () => new Set<number>());
+  for (let t = 0; t < indices.length; t += 3) {
+    const a = indices[t];
+    const b = indices[t + 1];
+    const c = indices[t + 2];
+    sets[a].add(b).add(c);
+    sets[b].add(a).add(c);
+    sets[c].add(a).add(b);
+  }
+  const offsets = new Uint32Array(vertexCount + 1);
+  for (let i = 0; i < vertexCount; i++) offsets[i + 1] = offsets[i] + sets[i].size;
+  const neighbours = new Uint32Array(offsets[vertexCount]);
+  for (let i = 0; i < vertexCount; i++) neighbours.set([...sets[i]], offsets[i]);
+
+  let baseY = Infinity;
+  let neckX = 0;
+  let neckZ = 0;
+  let neckCount = 0;
+  for (let i = 0; i < vertexCount; i++) {
+    const y = positions[i * 3 + 1];
+    baseY = Math.min(baseY, y);
+    if (y > -0.8 && y < -0.7) {
+      neckX += positions[i * 3];
+      neckZ += positions[i * 3 + 2];
+      neckCount++;
+    }
+  }
+
+  const half = SOURCE.eyeHalfSpacing * SCALE;
+  return {
+    positions,
+    normals,
+    indices,
+    offsets,
+    neighbours,
+    eyes: { left: [half, 0, 0], right: [-half, 0, 0], radius: SOURCE.eyeRadius * SCALE },
+    baseY,
+    neck: { x: neckX / neckCount, z: neckZ / neckCount },
+  };
+}
+
+// Loads the head in the browser. The file sits next to the page, under models/.
+export async function loadHead(): Promise<HeadBase> {
+  const response = await fetch(`${import.meta.env.BASE_URL}models/head.bin`);
+  if (!response.ok) throw new Error(`Could not load the head model (${response.status})`);
+  return parseHead(await response.arrayBuffer());
+}

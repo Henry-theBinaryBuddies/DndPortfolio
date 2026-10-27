@@ -13,20 +13,22 @@ npm run build
 
 ## How the bust is made
 
-The head, neck and shoulders are **sculpted with a signed distance field** (SDF): a function that says how far any point is from the surface. Anatomical shapes (skull, jaw, brow, nose, lips, eyelids, ears, neck, shoulders) are blended with smooth unions and subtractions, then a surface-nets mesher turns the field into one smooth, watertight mesh. Watertight means it is already printable. The Masculine / Neutral / Feminine toggle changes the proportions inside the sculpt itself.
+The head, neck and shoulders are a **hand-sculpted CC0 base mesh** (Blender Studio's Human Base Meshes, see `public/models/README.md`), so the lips, nostrils, eyelids, ears and collarbones are real anatomy. Every slider, race and build is a small, smooth **deformation of that mesh**: push the brow outward, hollow the cheek, lengthen the nose tip, scale the lips about the mouth line, widen the jaw, stretch the ears. Nothing moves right around the eyes, so the lids always fit the eyeballs. The mesh is a closed solid, so it is already printable.
 
-Hood, hair, beard, horns, pauldrons, eyes and stitches are separate meshes placed on the sculpted surface.
+Shading comes from cavity (a vertex below the average of its neighbours is darkened); grime, scars, eyebrows, lips, age lines, scales and a tunic are painted on as vertex colours, positioned with landmarks measured on the real head.
+
+Eyes (solid colour or realistic with sclera, iris, pupil and cornea), tusks, horns, stitches and pauldrons are separate meshes seated on the surface by ray casting.
 
 ## Layout
 
-- `src/params.ts` - the character as one plain object, plus slider definitions, palettes, races, presets, randomize
-- `src/sdf.ts` - distance-field shapes, smooth blending, ray casting
-- `src/anatomy.ts` - the sculpt itself, with the gender-dependent proportions
-- `src/mesher.ts` - surface nets: field to triangle mesh, skipping empty space for speed
-- `src/face.ts` - paints the mesh (ambient occlusion, grime, scars, brows, lips, tunic) and places stitches
-- `src/builder.ts` - assembles the sculpt, eyes, hood, hair, beard, horns and armour into a Three.js group
+- `public/models/head.bin` - the base head (13,212 vertices), with its source and license in the README beside it
+- `src/headMesh.ts` - loads the head, moves it to the eyes' midpoint, computes normals and connectivity, and holds the measured landmarks
+- `src/params.ts` - the character as one plain object: sliders, races (each with a skeleton), presets, colours, and `derive`, which turns sliders into anatomy
+- `src/deform.ts` - every slider as a regional displacement of the base head
+- `src/face.ts` - shading, painting, and surface lookups by ray casting
+- `src/builder.ts` - assembles the head, eyes, tusks, horns, stitches and pauldrons into a Three.js group
 - `src/ui.ts` - the control panel
-- `src/main.ts` - scene, camera, lights, draft-then-final rendering, drag to rotate, double-click to face front
+- `src/main.ts` - scene, camera, lights, drag to rotate, scroll to zoom, double-click to face front
 
 ## Roadmap
 

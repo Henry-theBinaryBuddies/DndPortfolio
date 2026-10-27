@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import "./style.css";
 import { buildBust, disposeObject } from "./builder";
-import type { Quality } from "./face";
+import { loadHead, type HeadBase } from "./headMesh";
 import { defaultParams, type Params } from "./params";
 import { mountPanel } from "./ui";
 
@@ -44,7 +44,7 @@ scene.add(rim);
 
 // The miniature's base: 25 mm in print terms, and the footprint a token ring wraps around.
 const base = new THREE.Mesh(
-  new THREE.CylinderGeometry(1.5, 1.62, 0.1, 14),
+  new THREE.CylinderGeometry(1.15, 1.25, 0.1, 14),
   new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.95, flatShading: true }),
 );
 base.position.y = -0.05;
@@ -54,23 +54,18 @@ const pivot = new THREE.Group();
 scene.add(pivot);
 
 let figure: THREE.Group | null = null;
-let refine: number | undefined;
+let headBase: HeadBase | null = null;
 
-function swap(params: Params, quality: Quality) {
+// Rebuilds the bust from the current settings. The sculpt is a deformed copy of a real head mesh, so
+// this is fast enough to run on every slider movement.
+function show(params: Params) {
+  if (!headBase) return;
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildBust(params, quality);
+  figure = buildBust(params, headBase);
   pivot.add(figure);
-}
-
-// Sculpting a fine mesh takes a moment, so every edit first shows a quick coarse draft, and the
-// detailed version replaces it once the sliders have been still for a beat.
-function show(params: Params) {
-  swap(params, "draft");
-  window.clearTimeout(refine);
-  refine = window.setTimeout(() => swap(params, "final"), 220);
 }
 
 function resize() {
@@ -119,7 +114,16 @@ function frame() {
 }
 
 const initial = defaultParams();
-show(initial);
 mountPanel(panel, initial, show);
 resize();
 frame();
+
+loadHead()
+  .then((base) => {
+    headBase = base;
+    show(initial);
+  })
+  .catch((error) => {
+    console.error(error);
+    stage.insertAdjacentHTML("beforeend", '<p class="hint">Could not load the head model</p>');
+  });
