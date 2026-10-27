@@ -155,7 +155,7 @@ function draw() {
   const hidden: THREE.Object3D[] = [];
   if (clayOn) {
     pivot.traverse((o) => {
-      if (o instanceof THREE.Mesh && o.visible && ((o.material as THREE.Material).transparent || o.userData.strands)) {
+      if (o instanceof THREE.Mesh && o.visible && (((o.material as THREE.Material).transparent && !o.userData.form) || o.userData.strands)) {
         o.visible = false;
         hidden.push(o);
       }

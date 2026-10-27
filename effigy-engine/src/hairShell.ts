@@ -10,8 +10,9 @@ import type { Params } from "./params";
 // grooves stretched along the direction the hair is combed.
 //
 // Every shell vertex is a copy of a head vertex, raised along the head's normal. At the hairline the
-// thickness tapers to almost nothing and the colour fades from the head's own paint into the hair colour,
-// so the hairline blends instead of ending in a stepped edge.
+// thickness tapers to almost nothing and the shell fades to transparent, so the real skin shows through
+// with its own shading and the hairline blends instead of ending in a stepped edge. (Colouring the edge to
+// match the skin left a lighter, stepped band: it was lit as hair, not as skin.)
 
 const smooth = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
@@ -34,13 +35,16 @@ const STYLES: Record<"cropped" | "swept" | "mohawk" | "long", Style> = {
     flow: [0, 0.3, -1],
     lean: 0.6,
   },
-  // A crest along the middle of the head, rounded across and swept back, with a gently clumped top line
-  // (a crest that rose straight up to a narrow edge read as a single fin or horn)
+  // A crest along the middle of the head, swept back and built from a row of distinct clumps, each rising
+  // to its own peak, narrower toward the top (a crest that rose straight up to a narrow edge read as a
+  // single fin or horn, and a smooth one as a single hump)
   mohawk: {
     thickness: (x, y, z) => {
-      const across = 1 - smooth(Math.abs(x) / STRIP_HALF_WIDTH);
-      const clumps = 0.88 + 0.12 * Math.sin(z * 38 + 1.3) * Math.sin(z * 17);
-      return 0.02 + 0.13 * Math.sqrt(across) * smooth((y + 0.2) / 0.5) * clumps;
+      const wave = 0.5 + 0.5 * Math.cos(z * 16 + 0.6); // one clump about every 8 cm
+      const clump = 0.55 + 0.45 * wave * wave;
+      const halfWidth = STRIP_HALF_WIDTH * (0.75 + 0.25 * wave);
+      const across = 1 - smooth(Math.abs(x) / halfWidth);
+      return 0.02 + 0.15 * Math.pow(across, 0.7) * smooth((y + 0.2) / 0.5) * clump;
     },
     flow: [0, 0.3, -1],
     lean: 0.35, // (leaning a tall crest further folded its surface over where it curves down the back)
@@ -57,7 +61,7 @@ export function buildHairShell(
   positions: Float32Array,
   normals: Float32Array,
   base: HeadBase,
-  skinColors: Float32Array,
+  _skinColors: Float32Array,
 ): THREE.BufferGeometry | null {
   const indices = base.indices;
   if (p.hairStyle === "none") return null;
@@ -113,13 +117,12 @@ export function buildHairShell(
 
   const hair = new THREE.Color(p.hairColor);
   const out = new Float32Array(order.length * 3);
-  const colors = new Float32Array(order.length * 3);
+  const colors = new Float32Array(order.length * 4);
   const amount = new Float32Array(order.length);
   const n = new THREE.Vector3();
   const comb = new THREE.Vector3(...style.flow).normalize();
   const lean = new THREE.Vector3();
   const c = new THREE.Color();
-  const skin = new THREE.Color();
   order.forEach((v, j) => {
     const x = positions[v * 3];
     const y = positions[v * 3 + 1];
@@ -135,20 +138,19 @@ export function buildHairShell(
     out[j * 3] = x + n.x * lift + lean.x;
     out[j * 3 + 1] = y + n.y * lift + lean.y;
     out[j * 3 + 2] = z + n.z * lift + lean.z;
-    // Darker near the roots (where the hair is thin and shadowed), and fading into the skin at the hairline
-    skin.setRGB(skinColors[v * 3], skinColors[v * 3 + 1], skinColors[v * 3 + 2]);
+    // Darker near the roots (where the hair is thin and shadowed), and fading out at the hairline
     c.copy(hair).multiplyScalar(0.75 + 0.25 * smooth((w - 0.3) / 0.7));
     const hairy = smooth((Math.min(w, soft[v] * 1.6) - 0.02) / 0.5);
-    c.lerp(skin, 1 - hairy);
     amount[j] = hairy;
-    colors[j * 3] = c.r;
-    colors[j * 3 + 1] = c.g;
-    colors[j * 3 + 2] = c.b;
+    colors[j * 4] = c.r;
+    colors[j * 4 + 1] = c.g;
+    colors[j * 4 + 2] = c.b;
+    colors[j * 4 + 3] = hairy;
   });
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(out, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 4));
   // How much is hair rather than the skin-coloured edge, so the shader leaves strand grooves off the skin
   geometry.setAttribute("hairAmount", new THREE.BufferAttribute(amount, 1));
   geometry.setIndex(triangles);
@@ -256,7 +258,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     const a0 = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
     start.push(a0);
     top.push(0.05 + (CURTAIN_TOP - 0.05) * Math.cos(a0 * 0.9) ** 2);
-    ends.push(-1.1 - 0.15 * Math.cos(a0) - 0.06 * rand());
+    // A curved, layered hem: longest down the middle of the back, with locks of slightly different length
+    ends.push(-0.95 - 0.3 * Math.cos(a0 * 1.1) - 0.1 * rand());
   }
   for (let pass = 0; pass < 2; pass++) for (let u = 1; u < ACROSS; u++) ends[u] = (ends[u - 1] + 2 * ends[u] + ends[u + 1]) / 4;
   const angleOf = (u: number, _t: number) => start[u];
@@ -272,7 +275,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       floor[u * rows + v] = body + 0.012;
       // (starting just under the cap's surface, so no edge stands proud of it, then swelling to full depth)
       // (standing off the back with some volume, rather than shrink-wrapped onto it)
-      const wanted = body + 0.03 + 0.07 * smooth(t / 0.25) - 0.03 * t;
+      const wanted = body + 0.03 + 0.09 * smooth(t / 0.25) - 0.03 * t;
       reach[u * rows + v] = v === 0 ? wanted : Math.max(wanted, reach[u * rows + v - 1] * 0.985);
     }
   }
@@ -303,14 +306,15 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   for (let u = 0; u <= ACROSS; u++) {
     const band = 0.88 + 0.24 * rand(); // locks of slightly different shade
     // Rounded at the side edges: the outer and inner surfaces close together over the last few columns
-    const edge = Math.sqrt(smooth(Math.min(u, ACROSS - u) / 3));
+    // (rounded over a wide span, so the sides end full and round instead of in a thin line)
+    const edge = Math.sqrt(Math.max(0, 1 - (1 - Math.min(1, Math.min(u, ACROSS - u) / 10)) ** 2));
     for (let v = 0; v <= DOWN; v++) {
       const t = v / DOWN;
       const a = angleOf(u, t);
       const y = heightOf(u, t);
       const r = reach[u * rows + v];
       // Grows out from nothing under the cap, full through the length, thinning to the tips
-      const thick = (0.07 + 0.03 * (1 - t)) * smooth(t / 0.15) * (1 - smooth((t - 0.8) / 0.2));
+      const thick = (0.09 + 0.03 * (1 - t)) * smooth(t / 0.15) * (1 - smooth((t - 0.65) / 0.35));
       const middle = Math.max(r - thick / 2, floor[u * rows + v] - 0.006 + (thick / 2) * edge);
       const ro = middle + (thick / 2) * edge;
       const ri = middle - (thick / 2) * edge;
@@ -369,9 +373,9 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     for (let k = 0; k <= LOCK_ROWS; k++) {
       const t = k / LOCK_ROWS;
       // Behind the ear until below it, then sweeping forward (passing over the ear pushed it out like a fin)
-      const a = side * (1.1 + 1.45 * smooth((t - 0.3) / 0.6));
-      const y = 0.15 + (-1.3 - 0.15) * t;
-      const wanted = bodyAcross(a, y, 0.11 * lockGrow(t)) + 0.03;
+      const a = side * (0.95 + 1.6 * smooth((t - 0.3) / 0.6));
+      const y = 0.12 + (-1.3 - 0.12) * t;
+      const wanted = bodyAcross(a, y, 0.075 * lockGrow(t)) + 0.05;
       drift = k === 0 ? wanted : Math.max(wanted, drift * 0.95);
       reachAlong.push(drift);
       path.push({ a, y });
@@ -379,7 +383,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     // Smoothed along its length so it falls in one sweep, never closer to the body than it may be
     for (let pass = 0; pass < 6; pass++) {
       for (let k = 1; k < LOCK_ROWS; k++) {
-        const minimum = bodyAcross(path[k].a, path[k].y, 0.11 * lockGrow(k / LOCK_ROWS)) + 0.03;
+        const minimum = bodyAcross(path[k].a, path[k].y, 0.075 * lockGrow(k / LOCK_ROWS)) + 0.05;
         reachAlong[k] = Math.max(minimum, (reachAlong[k - 1] + 2 * reachAlong[k] + reachAlong[k + 1]) / 4);
       }
     }
@@ -392,8 +396,9 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       const cz = az - Math.cos(a) * r;
       // Across the band runs around the neck; through it runs out from the neck
       const grow = lockGrow(t);
-      const halfWidth = 0.11 * grow;
-      const halfThick = 0.026 * grow;
+      // A rounded tress (a flat band read as a strap)
+      const halfWidth = 0.075 * grow;
+      const halfThick = 0.045 * grow;
       for (let j = 0; j < LOCK_SIDES; j++) {
         const angle = (2 * Math.PI * j) / LOCK_SIDES;
         const across = Math.cos(angle) * halfWidth;

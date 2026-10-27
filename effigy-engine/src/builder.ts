@@ -294,9 +294,12 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   // since it is form)
   const shell = buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array);
   if (shell) {
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
+    // (transparent only so its edge can fade out at the hairline)
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, transparent: true });
     applyHairDetail(material, p);
-    head.add(new THREE.Mesh(shell, material));
+    const shellMesh = new THREE.Mesh(shell, material);
+    shellMesh.userData.form = true; // sculpted form: the clay view keeps it
+    head.add(shellMesh);
   }
   // and, for long hair, a draped curtain for the lengths that hang free
   const hanging = buildHangingHair(p, bust.positions, base);
