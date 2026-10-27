@@ -17,12 +17,15 @@ The head, neck and shoulders are a **hand-sculpted CC0 base mesh** (Blender Stud
 
 Shading comes from cavity (a vertex below the average of its neighbours is darkened); grime, scars, eyebrows, lips, age lines, scales and a tunic are painted on as vertex colours, positioned with landmarks measured on the real head.
 
-Eyes (solid colour or realistic with sclera, iris, pupil and cornea), tusks, horns, stitches and pauldrons are separate meshes seated on the surface by ray casting.
+Eyes (solid colour or realistic with sclera, iris, pupil and cornea), horns, tusks and hair are separate meshes seated on the surface by ray casting. Horns and tusks are sculpted assets (`tools/export_horns.py`); hair is hundreds of combed clumps that lie along the scalp (`src/hair.ts`). Tusks belong to half-orcs only. Dragonborn scales are raised plates with grooves, drawn in the skin shader.
 
 ## Layout
 
-- `public/models/head.bin` - the base head (52,842 vertices), with its source and license in the README beside it
-- `tools/export_head.py` - the Blender script that produced `head.bin` from the CC0 bundle
+- `public/models/head.bin` - the base head (53,347 vertices), with its source and license in the README beside it
+- `tools/export_head.py` - the Blender script that produced `head.bin` from the CC0 bundle (including the filled-out shoulders and chest)
+- `tools/export_horns.py` - generates the horn and tusk assets in `public/models/horns/`
+- `src/assets.ts` - loads the head, horns and tusk
+- `src/hair.ts` - combs hair clumps along the scalp
 - `src/headMesh.ts` - loads the head, moves it to the eyes' midpoint, computes normals and connectivity, and holds the measured landmarks
 - `src/params.ts` - the character as one plain object: sliders, races (each with a skeleton), presets, colours, and `derive`, which turns sliders into anatomy
 - `src/deform.ts` - every slider as a regional displacement of the base head

@@ -18,10 +18,8 @@ export type NumericKey =
   | "eyebrows"
   | "horns"
   | "tusks"
-  | "scars"
-  | "stitches"
-  | "grime"
-  | "pauldrons";
+  | "scales"
+  | "grime";
 
 export const RACES = ["human", "elf", "half-elf", "dwarf", "halfling", "gnome", "half-orc", "tiefling", "dragonborn"] as const;
 export type Race = (typeof RACES)[number];
@@ -33,10 +31,19 @@ export type Body = (typeof BODIES)[number];
 export const EYE_STYLES = ["glow", "realistic"] as const;
 export type EyeStyle = (typeof EYE_STYLES)[number];
 
+// Horns are sculpted assets (see tools/export_horns.py); the Horn size slider scales whichever is chosen.
+export const HORN_STYLES = ["none", "ram", "goat", "bull", "demon", "antelope", "stubby"] as const;
+export type HornStyle = (typeof HORN_STYLES)[number];
+
+export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long"] as const;
+export type HairStyle = (typeof HAIR_STYLES)[number];
+
 export interface Params extends Record<NumericKey, number> {
   race: Race;
   body: Body;
   eyeStyle: EyeStyle;
+  hornStyle: HornStyle;
+  hairStyle: HairStyle;
   skin: string;
   cloth: string;
   eyes: string;
@@ -76,12 +83,10 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("jaw", "Jaw", "Face", 0.5),
   def("lids", "Heavy lids", "Face", 0.4),
   def("eyebrows", "Eyebrows", "Face", 0.5),
-  def("horns", "Horns", "Fantasy", 0),
-  def("tusks", "Tusks", "Fantasy", 0),
-  def("scars", "Scars", "Skin", 0),
-  def("stitches", "Stitches", "Skin", 0),
+  def("horns", "Horn size", "Fantasy", 0.5),
+  def("tusks", "Tusk size", "Fantasy", 0.5),
+  def("scales", "Scales", "Fantasy", 0),
   def("grime", "Grime", "Skin", 0.3),
-  def("pauldrons", "Pauldrons", "Garb", 0.5),
 ];
 
 export interface Swatch {
@@ -166,7 +171,6 @@ export interface Skeleton {
   cheekBase: number;
   lipBase: number;
   snout: number;
-  scales: number;
   socketDepth: number;
   gaunt: number;
   shoulders: number; // shoulder breadth
@@ -176,7 +180,9 @@ export interface RaceInfo {
   label: string;
   skin: string;
   skeleton: Skeleton;
-  // Slider values this race starts with (horns for a tiefling, tusks for a half-orc)
+  hornStyle: HornStyle;
+  hairStyle: HairStyle;
+  // Slider values this race starts with (a heavy brow for a half-orc, heavy eyebrows for a dwarf)
   defaults: Values;
 }
 
@@ -197,25 +203,28 @@ const HUMAN: Skeleton = {
   cheekBase: 0,
   lipBase: 0,
   snout: 0,
-  scales: 0,
   socketDepth: 0.45,
   gaunt: 0.15,
   shoulders: 1,
 };
 
 export const RACE_INFO: Record<Race, RaceInfo> = {
-  human: { label: "Human", skin: skin("Tan"), skeleton: HUMAN, defaults: {} },
+  human: { label: "Human", skin: skin("Tan"), skeleton: HUMAN, hornStyle: "none", hairStyle: "swept", defaults: {} },
   // Narrow, long face with high cheekbones, a fine straight nose, delicate lips and a light brow
   elf: {
     label: "Elf",
     skin: skin("Elven pale"),
     skeleton: { ...HUMAN, angularity: 0.45, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.86, noseBridge: 0.35, mouthWidth: 0.95, jaw: 0.86, chin: 0.3, browBase: -0.2, cheekBase: 0.25, lipBase: -0.1, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
+    hornStyle: "none",
+    hairStyle: "long",
     defaults: { eyebrows: 0.4 },
   },
   "half-elf": {
     label: "Half-elf",
     skin: skin("Pale"),
     skeleton: { ...HUMAN, angularity: 0.4, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, noseWidth: 0.95, noseBridge: 0.15, jaw: 0.94, browBase: -0.08, cheekBase: 0.12, gaunt: 0.2, shoulders: 0.94 },
+    hornStyle: "none",
+    hairStyle: "long",
     defaults: {},
   },
   // Broad head, heavy brow, wide strong nose, full cheeks, a thick jaw and chin, a thick neck
@@ -223,6 +232,8 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     label: "Dwarf",
     skin: skin("Ruddy"),
     skeleton: { ...HUMAN, angularity: 0.7, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.25, noseBridge: 0.3, jaw: 1.15, chin: 0.55, browBase: 0.3, cheekBase: 0.1, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
+    hornStyle: "none",
+    hairStyle: "cropped",
     defaults: { eyebrows: 0.85, muscle: 0.7, weight: 0.6 },
   },
   // Round, soft face: full cheeks, a small button nose, a gentle brow
@@ -230,6 +241,8 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     label: "Halfling",
     skin: skin("Tan"),
     skeleton: { ...HUMAN, angularity: 0.12, headWidth: 1.04, headHeight: 0.97, earSize: 0.5, noseLength: 0.2, noseWidth: 0.9, noseBridge: -0.2, jaw: 0.9, chin: 0.25, browBase: -0.15, cheekBase: 0.2, lipBase: 0.1, gaunt: 0, shoulders: 0.8 },
+    hornStyle: "none",
+    hairStyle: "cropped",
     defaults: { muscle: 0.3, weight: 0.58 },
   },
   // Big expressive nose, pointed ears, full cheeks and a small chin
@@ -237,6 +250,8 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     label: "Gnome",
     skin: skin("Ruddy"),
     skeleton: { ...HUMAN, angularity: 0.3, headWidth: 1.03, headHeight: 0.98, earSize: 0.6, noseLength: 0.85, noseWidth: 1.15, noseBridge: 0.2, chin: 0.25, browBase: 0.05, cheekBase: 0.15, gaunt: 0.1, shoulders: 0.78 },
+    hornStyle: "none",
+    hairStyle: "cropped",
     defaults: { muscle: 0.3 },
   },
   // Sloped forehead, a very heavy brow, a broad flat nose, high cheekbones, and a heavy jutting jaw
@@ -244,6 +259,8 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     label: "Half-orc",
     skin: skin("Orc grey-green"),
     skeleton: { ...HUMAN, angularity: 0.95, headWidth: 1.08, headHeight: 1, earSize: 0.4, noseLength: 0.3, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.12, jaw: 1.22, chin: 0.8, prognathism: 0.55, slope: 0.6, browBase: 0.4, cheekBase: 0.25, lipBase: -0.15, socketDepth: 0.55, shoulders: 1.3 },
+    hornStyle: "none",
+    hairStyle: "mohawk",
     defaults: { tusks: 0.6, muscle: 0.75, lids: 0.65, eyebrows: 0.8 },
   },
   // Angular: sharp cheekbones, a defined jaw, an arched brow and slightly pointed ears
@@ -251,14 +268,18 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     label: "Tiefling",
     skin: skin("Infernal red"),
     skeleton: { ...HUMAN, angularity: 0.78, earSize: 0.55, noseWidth: 0.92, noseBridge: 0.2, jaw: 0.95, chin: 0.5, browBase: 0.15, cheekBase: 0.3, gaunt: 0.3, shoulders: 0.98 },
+    hornStyle: "demon",
+    hairStyle: "long",
     defaults: { horns: 0.85 },
   },
   // A muzzle with a heavy brow ridge, a broad jaw and no ears
   dragonborn: {
     label: "Dragonborn",
     skin: skin("Bronze scale"),
-    skeleton: { ...HUMAN, angularity: 0.85, headWidth: 1.05, earSize: 0, noseLength: 0.2, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.4, jaw: 1.15, slope: 0.4, browBase: 0.35, cheekBase: 0.1, snout: 0.85, scales: 0.9, gaunt: 0.05, shoulders: 1.3 },
-    defaults: { horns: 0.55, muscle: 0.7, eyebrows: 0 },
+    skeleton: { ...HUMAN, angularity: 0.85, headWidth: 1.05, earSize: 0, noseLength: 0.2, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.4, jaw: 1.15, chin: 0.3, lipBase: -0.4, slope: 0.4, browBase: 0.35, cheekBase: 0.1, snout: 0.85, gaunt: 0.05, shoulders: 1.3 },
+    hornStyle: "bull",
+    hairStyle: "none",
+    defaults: { horns: 0.55, muscle: 0.7, eyebrows: 0, scales: 0.55 },
   },
 };
 
@@ -267,6 +288,8 @@ export interface Preset {
   race: Race;
   body?: Body;
   eyeStyle?: EyeStyle;
+  hornStyle?: HornStyle;
+  hairStyle?: HairStyle;
   values: Values;
   skin?: string;
   cloth?: string;
@@ -277,44 +300,49 @@ export interface Preset {
 export const PRESETS: Preset[] = [
   {
     name: "Revenant",
+    hairStyle: "long",
     race: "human",
     eyeStyle: "glow",
     skin: skin("Ash"),
     cloth: cloth("Soot"),
     eyes: eyes("Frost"),
-    values: { age: 0.7, weight: 0.08, muscle: 0.3, brow: 0.6, cheekbones: 0.8, lids: 0.6, scars: 0.75, stitches: 0.5, grime: 0.7, eyebrows: 0.1, noseSize: 0.35 },
+    values: { age: 0.7, weight: 0.08, muscle: 0.3, brow: 0.6, cheekbones: 0.8, lids: 0.6, grime: 0.7, eyebrows: 0.1, noseSize: 0.35 },
   },
   {
     name: "Cultist",
+    hairStyle: "none",
     race: "human",
     body: "neutral",
     eyeStyle: "glow",
     skin: skin("Pale"),
     cloth: cloth("Bruise"),
     eyes: eyes("Ember"),
-    values: { age: 0.4, weight: 0.35, muscle: 0.25, brow: 0.4, lids: 0.5, scars: 0.2, stitches: 0, grime: 0.5, pauldrons: 0 },
+    values: { age: 0.4, weight: 0.35, muscle: 0.25, brow: 0.4, lids: 0.5, grime: 0.5 },
   },
   {
     name: "Ghoul",
+    hairStyle: "none",
     race: "human",
     eyeStyle: "glow",
     skin: skin("Rot green"),
     cloth: cloth("Moss"),
     eyes: eyes("Wisp"),
-    values: { age: 1, weight: 0, muscle: 0.15, brow: 0.3, lips: 0.15, jaw: 0.2, noseSize: 0.1, tusks: 0.7, lids: 0.1, scars: 0.9, stitches: 0, grime: 0.9, eyebrows: 0, pauldrons: 0.2 },
+    values: { age: 1, weight: 0, muscle: 0.15, brow: 0.3, lips: 0.15, jaw: 0.2, noseSize: 0.1, lids: 0.1, grime: 0.9, eyebrows: 0 },
   },
   {
     name: "Warlord",
+    hairStyle: "mohawk",
     race: "half-orc",
     eyeStyle: "realistic",
     skin: skin("Orc grey-green"),
     cloth: cloth("Soot"),
     eyes: eyes("Amber"),
     hairColor: hairColor("Coal"),
-    values: { age: 0.4, weight: 0.6, muscle: 0.9, brow: 0.95, scars: 1, stitches: 0.8, grime: 0.6, tusks: 0.85, pauldrons: 1 },
+    values: { age: 0.4, weight: 0.6, muscle: 0.9, brow: 0.95, grime: 0.6, tusks: 0.75 },
   },
   {
     name: "Crone",
+    hairStyle: "long",
     race: "human",
     body: "feminine",
     eyeStyle: "glow",
@@ -322,10 +350,12 @@ export const PRESETS: Preset[] = [
     cloth: cloth("Moss"),
     eyes: eyes("Wisp"),
     hairColor: hairColor("Ash"),
-    values: { age: 1, weight: 0.2, muscle: 0.05, brow: 0.3, noseSize: 1, jaw: 0.85, eyebrows: 1, scars: 0, stitches: 0, grime: 0.7, pauldrons: 0 },
+    values: { age: 1, weight: 0.2, muscle: 0.05, brow: 0.3, noseSize: 1, jaw: 0.85, eyebrows: 1, grime: 0.7 },
   },
   {
     name: "Infernal",
+    hairStyle: "long",
+    hornStyle: "demon",
     race: "tiefling",
     body: "feminine",
     eyeStyle: "glow",
@@ -333,17 +363,18 @@ export const PRESETS: Preset[] = [
     cloth: cloth("Dried blood"),
     eyes: eyes("Amber"),
     hairColor: hairColor("Coal"),
-    values: { age: 0.2, horns: 1, lids: 0.5, scars: 0.3, stitches: 0, grime: 0.2, pauldrons: 0.8 },
+    values: { age: 0.2, horns: 1, lids: 0.5, grime: 0.2 },
   },
   {
     name: "Slayer",
+    hairStyle: "cropped",
     race: "dwarf",
     eyeStyle: "realistic",
     skin: skin("Ruddy"),
     cloth: cloth("Tallow"),
     eyes: eyes("Brown"),
     hairColor: hairColor("Rust"),
-    values: { age: 0.5, muscle: 0.8, brow: 1, lids: 0.6, eyebrows: 1, scars: 0.85, stitches: 0, grime: 0.55, pauldrons: 0.85 },
+    values: { age: 0.5, muscle: 0.8, brow: 1, lids: 0.6, eyebrows: 1, grime: 0.55 },
   },
 ];
 
@@ -352,6 +383,8 @@ export function defaultParams(): Params {
     race: "human" as Race,
     body: "masculine" as Body,
     eyeStyle: "realistic" as EyeStyle,
+    hornStyle: "none" as HornStyle,
+    hairStyle: "swept" as HairStyle,
     skin: RACE_INFO.human.skin,
     cloth: CLOTH_COLORS[0].value,
     eyes: eyes("Hazel"),
@@ -392,6 +425,7 @@ export interface Derived {
   prognathism: number;
   slope: number;
   angularity: number;
+  tusks: number; // only half-orcs have tusks; zero for everyone else
   brow: number; // brow ridge: the slider plus the race's baseline
   cheek: number;
   snout: number;
@@ -422,7 +456,8 @@ export function derive(p: Params): Derived {
     brow: clamp01(p.brow + sk.browBase),
     cheek: clamp01(p.cheekbones + sk.cheekBase),
     snout: sk.snout,
-    scales: sk.scales,
+    scales: p.scales,
+    tusks: p.race === "half-orc" ? p.tusks : 0,
     gaunt: clamp01(sk.gaunt + 0.35 * p.age + 0.9 * (0.5 - p.weight)),
     fullness: clamp01((p.weight - 0.5) * 2),
     lipFull: 0.7 + 1.0 * clamp01(p.lips + sk.lipBase),
@@ -442,6 +477,8 @@ export function applyRace(current: Params, race: Race): Params {
   next.cloth = current.cloth;
   next.eyes = current.eyes;
   next.eyeStyle = current.eyeStyle;
+  next.hornStyle = info.hornStyle;
+  next.hairStyle = info.hairStyle;
   next.hairColor = current.hairColor;
   Object.assign(next, info.defaults);
   return clampParams(next);
@@ -451,6 +488,8 @@ export function applyPreset(current: Params, preset: Preset): Params {
   const next = applyRace(current, preset.race);
   if (preset.body) next.body = preset.body;
   if (preset.eyeStyle) next.eyeStyle = preset.eyeStyle;
+  if (preset.hornStyle) next.hornStyle = preset.hornStyle;
+  if (preset.hairStyle) next.hairStyle = preset.hairStyle;
   if (preset.skin) next.skin = preset.skin;
   if (preset.cloth) next.cloth = preset.cloth;
   if (preset.eyes) next.eyes = preset.eyes;
@@ -468,6 +507,7 @@ export function randomParams(rng: () => number = Math.random): Params {
   params.skin = pick(SKIN_TONES).value;
   params.cloth = pick(CLOTH_COLORS).value;
   params.eyes = pick(EYE_COLORS).value;
+  params.hairStyle = race === "dragonborn" ? "none" : pick(HAIR_STYLES);
   params.hairColor = pick(HAIR_COLORS).value;
   // Fantasy features belong to the race, so only the anatomical sliders are randomized.
   const keep: NumericKey[] = ["horns", "tusks"];

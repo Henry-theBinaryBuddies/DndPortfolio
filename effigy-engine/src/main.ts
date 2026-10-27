@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import "./style.css";
 import { buildBust, disposeObject } from "./builder";
-import { loadHead, type HeadBase } from "./headMesh";
+import { loadAssets, type Assets } from "./assets";
 import { defaultParams, type Params } from "./params";
 import { mountPanel } from "./ui";
 
@@ -20,10 +20,10 @@ scene.fog = new THREE.Fog(0x14110f, 5, 10);
 
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
 // Scrolling zooms. Close in, the camera aims at the face instead of the whole bust.
-let distance = 5.9;
+let distance = 7.4;
 function placeCamera() {
-  const t = Math.min(1, Math.max(0, (5.9 - distance) / 3.6)); // 0 = full bust, 1 = close on the face
-  const targetY = 0.95 + 0.5 * t;
+  const t = Math.min(1, Math.max(0, (7.4 - distance) / 4.4)); // 0 = full bust, 1 = close on the face
+  const targetY = 1.2 + 0.65 * t;
   camera.position.set(0, targetY + 0.5 - 0.35 * t, distance);
   camera.lookAt(0, targetY, 0);
 }
@@ -44,7 +44,7 @@ scene.add(rim);
 
 // The miniature's base: 25 mm in print terms, and the footprint a token ring wraps around.
 const base = new THREE.Mesh(
-  new THREE.CylinderGeometry(1.15, 1.25, 0.1, 14),
+  new THREE.CylinderGeometry(1.75, 1.9, 0.1, 18),
   new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.95, flatShading: true }),
 );
 base.position.y = -0.05;
@@ -54,19 +54,19 @@ const pivot = new THREE.Group();
 scene.add(pivot);
 
 let figure: THREE.Group | null = null;
-let headBase: HeadBase | null = null;
+let assets: Assets | null = null;
 
 // Rebuilds the bust from the current settings. The sculpt is a deformed copy of a real head mesh, so
 // this is fast enough to run on every slider movement.
 let settle: number | undefined;
 
 function swap(params: Params, full: boolean) {
-  if (!headBase) return;
+  if (!assets) return;
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildBust(params, headBase, full);
+  figure = buildBust(params, assets, full);
   pivot.add(figure);
 }
 
@@ -99,7 +99,7 @@ canvas.addEventListener(
   "wheel",
   (e) => {
     e.preventDefault();
-    distance = Math.min(7, Math.max(2.3, distance * (1 + e.deltaY * 0.001)));
+    distance = Math.min(9.5, Math.max(2.3, distance * (1 + e.deltaY * 0.001)));
     placeCamera();
   },
   { passive: false },
@@ -128,9 +128,9 @@ mountPanel(panel, initial, show);
 resize();
 frame();
 
-loadHead()
-  .then((base) => {
-    headBase = base;
+loadAssets()
+  .then((loaded) => {
+    assets = loaded;
     show(initial);
   })
   .catch((error) => {

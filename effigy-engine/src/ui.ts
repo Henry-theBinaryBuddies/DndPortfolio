@@ -4,6 +4,8 @@ import {
   EYE_COLORS,
   EYE_STYLES,
   HAIR_COLORS,
+  HAIR_STYLES,
+  HORN_STYLES,
   NUMERIC_DEFS,
   PRESETS,
   RACES,
@@ -15,6 +17,8 @@ import {
   randomParams,
   type Body,
   type EyeStyle,
+  type HairStyle,
+  type HornStyle,
   type NumericKey,
   type Params,
   type Race,
@@ -26,10 +30,12 @@ type ColorKey = "skin" | "cloth" | "eyes" | "hairColor";
 // Builds the control panel and calls onChange with a fresh Params copy on every edit.
 export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void): void {
   let params = { ...initial };
-  const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement }>();
+  const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
   const swatchRows = new Map<ColorKey, { swatch: Swatch; button: HTMLButtonElement }[]>();
   const raceSelect = document.createElement("select");
   const presetSelect = document.createElement("select");
+  const hornSelect = document.createElement("select");
+  const hairSelect = document.createElement("select");
   const eyeButtons = new Map<EyeStyle, HTMLButtonElement>();
   const bodyButtons = new Map<Body, HTMLButtonElement>();
 
@@ -39,9 +45,13 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     raceSelect.value = params.race;
     for (const [style, button] of eyeButtons) button.setAttribute("aria-pressed", String(style === params.eyeStyle));
     for (const [body, button] of bodyButtons) button.setAttribute("aria-pressed", String(body === params.body));
-    for (const [key, { input, out }] of sliders) {
+    hornSelect.value = params.hornStyle;
+    hairSelect.value = params.hairStyle;
+    for (const [key, { input, out, row }] of sliders) {
       input.value = String(params[key]);
       out.textContent = params[key].toFixed(2);
+      // Tusks belong to half-orcs; the other races have no tusk control
+      if (key === "tusks") row.style.display = params.race === "half-orc" ? "" : "none";
     }
     for (const [key, entries] of swatchRows) {
       for (const { swatch, button } of entries) {
@@ -132,7 +142,28 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   }
   eyeRow.append(eyeGroup);
 
-  character.append(bodyRow, raceRow, presetRow, eyeRow);
+  // Hair and horn styles
+  const styleRow = (label: string, select: HTMLSelectElement, names: readonly string[], apply: (value: string) => void) => {
+    const row = document.createElement("label");
+    row.className = "row select";
+    row.innerHTML = `<span>${label}</span>`;
+    for (const name of names) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name[0].toUpperCase() + name.slice(1);
+      select.append(option);
+    }
+    select.addEventListener("change", () => {
+      apply(select.value);
+      emit();
+    });
+    row.append(select);
+    return row;
+  };
+  const hairRow = styleRow("Hair", hairSelect, HAIR_STYLES, (value) => (params.hairStyle = value as HairStyle));
+  const hornRow = styleRow("Horns", hornSelect, HORN_STYLES, (value) => (params.hornStyle = value as HornStyle));
+
+  character.append(bodyRow, raceRow, presetRow, eyeRow, hairRow, hornRow);
   panel.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];
@@ -157,7 +188,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
       });
       row.append(name, input, out);
       section.append(row);
-      sliders.set(def.key, { input, out });
+      sliders.set(def.key, { input, out, row });
     }
     panel.append(section);
   }
@@ -191,7 +222,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     colorSection.append(row);
   };
   addSwatches("Skin", "skin", SKIN_TONES);
-  addSwatches("Brows", "hairColor", HAIR_COLORS);
+  addSwatches("Hair", "hairColor", HAIR_COLORS);
   addSwatches("Cloth", "cloth", CLOTH_COLORS);
   addSwatches("Eyes", "eyes", EYE_COLORS);
   panel.append(colorSection);

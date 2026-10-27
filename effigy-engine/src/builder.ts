@@ -1,18 +1,16 @@
 import * as THREE from "three";
-import { frontPoint, sculptBust, stitchPlacements, topPoint } from "./face";
-import type { HeadBase } from "./headMesh";
-import { applySkinDetail } from "./skinShader";
+import { shapeGeometry, type Assets } from "./assets";
+import { frontPoint, sculptBust, topPoint } from "./face";
+import { buildHair } from "./hair";
 import { derive, type Params } from "./params";
+import { applySkinDetail } from "./skinShader";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
 // (how light hits it). Meshes are parented into Groups, so the whole bust can
 // be rotated, scaled and exported as one object.
 //
-// The bust's origin is the top of its plinth: y = 0 is the base. The sculpted head lives in a group
-// lifted so that the head's flat underside lands on y = 0.
-
-type Vec3 = [number, number, number];
-type Rot = Partial<Record<"x" | "y" | "z", number>>;
+// The bust's origin is the middle of its plinth: y = 0 is the top of the base, and the sculpted head
+// is shifted so the centre of its underside lands on the plinth's centre.
 
 const smooth = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
@@ -79,34 +77,30 @@ function realisticEye(radius: number, irisHex: string): THREE.Group {
   return group;
 }
 
-export function buildBust(p: Params, base: HeadBase, full = true): THREE.Group {
+const UP = new THREE.Vector3(0, 1, 0);
+
+export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   const root = new THREE.Group();
   const k = derive(p);
+  const base = assets.head;
 
-  // The sculpted head reads its colour from per-vertex paint (shading, grime, scars, tunic), so its material is white.
+  // The sculpted head reads its colour from per-vertex paint (shading, grime, tunic), so its material is white.
   const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.62 });
   applySkinDetail(skinMaterial, p);
-  const iron = new THREE.MeshStandardMaterial({ color: 0x3b3b42, roughness: 0.45, metalness: 0.75, flatShading: true });
-  const bone = new THREE.MeshStandardMaterial({ color: 0xcfc6b0, roughness: 0.6, flatShading: true });
   const glow = new THREE.MeshBasicMaterial({ color: p.eyes });
 
-  const add = (parent: THREE.Object3D, geometry: THREE.BufferGeometry, material: THREE.Material, position: Vec3, scale?: Vec3, rotation?: Rot) => {
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(...position);
-    if (scale) mesh.scale.set(...scale);
-    if (rotation) Object.assign(mesh.rotation, rotation);
-    parent.add(mesh);
-    return mesh;
-  };
-
   const head = new THREE.Group();
-  head.position.y = -base.baseY;
   root.add(head);
 
   const bust = sculptBust(p, base, full);
   const skin = new THREE.Mesh(bust.geometry, skinMaterial);
   head.add(skin);
-  skin.updateMatrixWorld(true);
+  // Surface lookups (horns, tusks) happen in the head's own space, so they use a probe mesh that is not moved
+  const probe = new THREE.Mesh(bust.geometry);
+  probe.updateMatrixWorld(true);
+  // Stand the bust on the plinth, with the middle of its underside over the middle of the base
+  head.position.set(-bust.footprint.x, -bust.baseY, -bust.footprint.z);
+  head.updateMatrixWorld(true);
 
   // Eyes. The base head's eyelids are modelled around an eyeball of this size, so both styles sit
   // snugly in the sockets.
@@ -119,8 +113,11 @@ export function buildBust(p: Params, base: HeadBase, full = true): THREE.Group {
     if (p.eyeStyle === "realistic") {
       eye.add(realisticEye(eyeR, p.eyes));
     } else {
-      add(eye, new THREE.SphereGeometry(eyeR, 24, 16), glow, [0, 0, 0]);
-      add(eye, new THREE.CircleGeometry(eyeR * 0.55, 10), pupilTone, [0, 0, eyeR * 0.98], [0.28, 1, 1]);
+      eye.add(new THREE.Mesh(new THREE.SphereGeometry(eyeR, 24, 16), glow));
+      const pupil = new THREE.Mesh(new THREE.CircleGeometry(eyeR * 0.55, 10), pupilTone);
+      pupil.position.z = eyeR * 0.98;
+      pupil.scale.set(0.28, 1, 1);
+      eye.add(pupil);
     }
   }
   if (p.eyeStyle === "glow") {
@@ -129,57 +126,47 @@ export function buildBust(p: Params, base: HeadBase, full = true): THREE.Group {
     head.add(eyeLight);
   }
 
-  // Stitches: a dark thread across each scar, with a small knot at either end
-  const thread = new THREE.MeshStandardMaterial({ color: 0x0e0b09, roughness: 1 });
-  const up = new THREE.Vector3(0, 1, 0);
-  for (const stitch of stitchPlacements(p, skin)) {
-    const bar = add(head, new THREE.CylinderGeometry(0.006, 0.006, 0.085, 5), thread, [stitch.position.x, stitch.position.y, stitch.position.z]);
-    bar.quaternion.setFromUnitVectors(up, stitch.across);
-    for (const end of [-1, 1]) {
-      const knot = stitch.position.clone().addScaledVector(stitch.across, end * 0.042);
-      add(head, new THREE.SphereGeometry(0.013, 6, 5), thread, [knot.x, knot.y, knot.z]);
+  // Horns: a sculpted shape for the chosen style, grown from each side of the top of the skull and
+  // mirrored for the left. The Horn size slider scales the whole horn.
+  if (p.hornStyle !== "none") {
+    const asset = assets.shapes[p.hornStyle];
+    const geometry = shapeGeometry(asset, new THREE.Color(0x4a3a2c), new THREE.Color(0xc9bda0), new THREE.Color(0x2a211a));
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
+    const size = 0.3 + 0.9 * p.horns;
+    for (const side of [-1, 1]) {
+      const rootPoint = topPoint(probe, side * 0.3, -0.3);
+      if (!rootPoint) continue;
+      const horn = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), material);
+      horn.scale.set(side * size, size, size);
+      // Point it along the surface normal, leaned up and outward, with its base buried in the skull
+      const direction = rootPoint.normal.clone().multiplyScalar(0.55).add(new THREE.Vector3(side * 0.3, 0.85, -0.1)).normalize();
+      horn.quaternion.setFromUnitVectors(UP, direction);
+      horn.position.copy(rootPoint.position).addScaledVector(rootPoint.normal, -0.05 * size);
+      head.add(horn);
     }
   }
 
-  // Tusks rise from the lower lip
-  if (p.tusks > 0.03) {
-    const length = 0.05 + p.tusks * 0.1;
+  // Tusks: only half-orcs have them. A sculpted tusk rises from the lower jaw beside each corner of the
+  // mouth, curving up and slightly outward.
+  if (k.tusks > 0.03) {
+    const geometry = shapeGeometry(assets.shapes.tusk, new THREE.Color(0x6a5230), new THREE.Color(0xe6dcc0), new THREE.Color(0xf4eedc));
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38 });
+    const size = 0.12 + 0.18 * k.tusks;
     for (const side of [-1, 1]) {
-      const lip = frontPoint(skin, side * 0.1 * k.mouthWidth, -0.4);
+      const lip = frontPoint(probe, side * 0.13 * k.mouthWidth, -0.42);
       if (!lip) continue;
-      const { x, y, z } = lip.position;
-      add(head, new THREE.ConeGeometry(0.04, length, 7), bone, [x, y - 0.025 + length / 2, z + 0.01], undefined, { z: side * 0.08 });
+      const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), material);
+      tusk.scale.set(side * size, size, size);
+      tusk.quaternion.setFromUnitVectors(UP, new THREE.Vector3(side * 0.1, 1, 0.14).normalize());
+      tusk.position.copy(lip.position).addScaledVector(lip.normal, -0.025).add(new THREE.Vector3(0, -0.02, 0));
+      head.add(tusk);
     }
   }
 
-  // Horns curve up and outward from the top of the skull
-  if (p.horns > 0.03) {
-    const scale = 0.5 + p.horns * 1.6;
-    for (const side of [-1, 1]) {
-      const root3 = topPoint(skin, side * 0.3, -0.3);
-      if (!root3) continue;
-      const curve = new THREE.QuadraticBezierCurve3(
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(side * 0.12 * scale, 0.08 * scale, 0),
-        new THREE.Vector3(side * 0.16 * scale, 0.3 * scale, 0.05 * scale),
-      );
-      add(head, new THREE.TubeGeometry(curve, 14, 0.03, 6), bone, [root3.position.x, root3.position.y - 0.03, root3.position.z]);
-    }
-  }
-
-  // Pauldrons: stacked iron plates resting on the shoulders, with a bone spike once they are heavy enough
-  if (p.pauldrons > 0.03) {
-    for (const side of [-1, 1]) {
-      const shoulder = topPoint(skin, side * 0.62, base.neck.z);
-      if (!shoulder) continue;
-      const { x, y, z } = shoulder.position;
-      const r = 0.12 + 0.14 * p.pauldrons;
-      add(head, new THREE.CylinderGeometry(r * 0.7, r, 0.08, 8), iron, [x, y + 0.01, z], undefined, { z: -side * 0.35 });
-      add(head, new THREE.CylinderGeometry(r * 0.5, r * 0.85, 0.07, 8), iron, [x + side * 0.03, y + 0.08, z], undefined, { z: -side * 0.4 });
-      if (p.pauldrons > 0.5) {
-        add(head, new THREE.ConeGeometry(0.04, 0.1 + p.pauldrons * 0.3, 5), bone, [x + side * 0.08, y + 0.14 + p.pauldrons * 0.08, z], undefined, { z: -side * 0.6 });
-      }
-    }
+  // Hair: sculpted clumps combed along the style's flow
+  const hairGeometry = buildHair(p, bust.positions, bust.normals, base.neck.z);
+  if (hairGeometry) {
+    head.add(new THREE.Mesh(hairGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 })));
   }
 
   return root;

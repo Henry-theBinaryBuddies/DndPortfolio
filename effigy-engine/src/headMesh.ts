@@ -40,6 +40,10 @@ export interface HeadBase {
   neighbours: Uint32Array;
   eyes: { left: Vec3; right: Vec3; radius: number };
   baseY: number; // the flat underside the bust stands on
+  bottom: Uint32Array; // the vertices on that underside, used to centre the bust on its plinth
+  // Per-vertex landmark weights (0..1) measured on the undeformed head, so paint stays on the lips,
+  // mouth line, brows and nostrils however the face is reshaped
+  masks: { lips: Float32Array; mouthLine: Float32Array; brows: Float32Array; nostrils: Float32Array };
   neck: { x: number; z: number }; // centre line of the neck
 }
 
@@ -93,6 +97,31 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
     }
   }
 
+  const underside: number[] = [];
+  for (let i = 0; i < vertexCount; i++) if (positions[i * 3 + 1] < baseY + 0.02) underside.push(i);
+
+  const smooth = (t: number) => {
+    const c = Math.min(1, Math.max(0, t));
+    return c * c * (3 - 2 * c);
+  };
+  const lips = new Float32Array(vertexCount);
+  const mouthLine = new Float32Array(vertexCount);
+  const brows = new Float32Array(vertexCount);
+  const nostrils = new Float32Array(vertexCount);
+  for (let i = 0; i < vertexCount; i++) {
+    const x = Math.abs(positions[i * 3]);
+    const y = positions[i * 3 + 1];
+    const z = positions[i * 3 + 2];
+    const ny = normals[i * 3 + 1];
+    const mouthWindow = (1 - smooth((x - 0.125) / 0.02)) * smooth((z - 0.06) / 0.06);
+    // The red of the lips, between the lip border above and below the mouth line
+    lips[i] = smooth((y - (LANDMARK.stomion - 0.062)) / 0.01) * (1 - smooth((y - (LANDMARK.stomion + 0.062)) / 0.01)) * mouthWindow;
+    mouthLine[i] = Math.exp(-(((y - LANDMARK.stomion) / 0.008) ** 2)) * (1 - smooth((x - 0.13) / 0.02)) * smooth((z - 0.06) / 0.06);
+    brows[i] = Math.exp(-(((x - 0.18) / 0.17) ** 2) - ((y - 0.16) / 0.045) ** 2) * smooth((z + 0.1) / 0.2);
+    // The underside of the nose, where the nostrils open
+    nostrils[i] = Math.exp(-(((x - 0.055) / 0.035) ** 2) - ((y + 0.225) / 0.05) ** 2) * smooth((-ny - 0.2) / 0.3) * smooth((z - 0.08) / 0.05);
+  }
+
   const half = SOURCE.eyeHalfSpacing * SCALE;
   return {
     positions,
@@ -102,6 +131,8 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
     neighbours,
     eyes: { left: [half, 0, 0], right: [-half, 0, 0], radius: SOURCE.eyeRadius * SCALE },
     baseY,
+    bottom: Uint32Array.from(underside),
+    masks: { lips, mouthLine, brows, nostrils },
     neck: { x: neckX / neckCount, z: neckZ / neckCount },
   };
 }

@@ -97,9 +97,11 @@ describe("races", () => {
 
   it("starts each race with its own fantasy features, and resets them on switching", () => {
     const orc = applyRace(defaultParams(), "half-orc");
-    expect(orc.tusks).toBeGreaterThan(0);
-    expect(applyRace(orc, "elf").tusks).toBe(0);
-    expect(applyRace(defaultParams(), "tiefling").horns).toBeGreaterThan(0.5);
+    expect(derive(orc).tusks).toBeGreaterThan(0);
+    // Tusks belong to half-orcs: any other race gets none, whatever the slider says
+    expect(derive(applyRace({ ...orc, tusks: 1 }, "elf")).tusks).toBe(0);
+    expect(applyRace(defaultParams(), "tiefling").hornStyle).not.toBe("none");
+    expect(applyRace(defaultParams(), "human").hornStyle).toBe("none");
   });
 
   it("keeps build, cloth, eyes and eye style across a race change", () => {

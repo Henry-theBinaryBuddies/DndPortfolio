@@ -13,6 +13,7 @@ varying vec3 vObjPos;
 varying vec3 vObjNormal;
 uniform float uAge;
 uniform float uDetail;
+uniform float uScales;
 
 float hash31(vec3 p) {
   p = fract(p * 0.3183099 + 0.1);
@@ -29,6 +30,54 @@ float vnoise(vec3 x) {
     mix(mix(hash31(i + vec3(0, 0, 1)), hash31(i + vec3(1, 0, 1)), f.x), mix(hash31(i + vec3(0, 1, 1)), hash31(i + vec3(1, 1, 1)), f.x), f.y),
     f.z
   );
+}
+
+
+vec3 hash33(vec3 p) {
+  p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
+  return fract(sin(p) * 43758.5453);
+}
+
+// Cellular noise: x is the distance to the nearest cell centre, y to the next nearest, z a random value for the cell
+vec3 worley(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  float d1 = 8.0;
+  float d2 = 8.0;
+  float id = 0.0;
+  for (int x = -1; x <= 1; x++) {
+    for (int y = -1; y <= 1; y++) {
+      for (int z = -1; z <= 1; z++) {
+        vec3 g = vec3(float(x), float(y), float(z));
+        vec3 r = g + hash33(i + g) - f;
+        float d = dot(r, r);
+        if (d < d1) {
+          d2 = d1;
+          d1 = d;
+          id = hash31(i + g);
+        } else if (d < d2) {
+          d2 = d;
+        }
+      }
+    }
+  }
+  return vec3(sqrt(d1), sqrt(d2), id);
+}
+
+// Where scales cover the skin: the head and neck, but not the eyes or the lips
+float scaleCover(vec3 p) {
+  float eye = smoothstep(0.07, 0.17, length(vec2(abs(p.x) - 0.161, p.y)));
+  float lips = 1.0 - 0.9 * smoothstep(0.16, 0.12, abs(p.x)) * smoothstep(-0.46, -0.42, p.y) * (1.0 - smoothstep(-0.28, -0.24, p.y));
+  return eye * lips * smoothstep(-1.2, -0.95, p.y);
+}
+
+// 1 on the face of a scale, 0 in the grooves. The tint darkens the grooves and varies scale to scale.
+float scalePlate(vec3 p, out float tint) {
+  float freq = mix(36.0, 21.0, smoothstep(-0.2, -0.85, p.y));
+  vec3 w = worley(p * freq);
+  float plate = smoothstep(0.0, 0.3, w.y - w.x);
+  tint = (1.0 - plate) * 0.4 + w.z * 0.22;
+  return plate;
 }
 
 float crease(float d, float w) {
@@ -72,9 +121,24 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
   float neck = (1.0 - smoothstep(-0.62, -0.58, p.y)) * smoothstep(-0.92, -0.78, p.y);
   w += neck * (crease(p.y + 0.70 + 0.01 * sin(p.x * 6.0), 0.01) + crease(p.y + 0.79 + 0.01 * sin(p.x * 5.0 + 2.0), 0.009)) * 0.8;
 
+  // Scales: plates raised between grooves, deeper the higher the Scales slider
+  if (uScales > 0.01) {
+    float tint;
+    float plate = scalePlate(p, tint);
+    h -= (1.0 - plate) * 0.0042 * uScales * scaleCover(p);
+  }
+
   // Everything creased deepens with age
   h -= w * (0.0008 + 0.0042 * uAge) * uDetail;
   return h;
+}
+`;
+
+const SCALE_TINT = /* glsl */ `
+if (uScales > 0.01) {
+  float scaleTint;
+  scalePlate(vObjPos, scaleTint);
+  diffuseColor.rgb *= 1.0 - uScales * scaleTint * scaleCover(vObjPos);
 }
 `;
 
@@ -98,16 +162,19 @@ const PERTURB = /* glsl */ `
 // sculpted head, whose vertex positions are in head-local units.
 export function applySkinDetail(material: THREE.MeshStandardMaterial, p: Params): void {
   const age = { value: p.age };
+  const scales = { value: p.scales };
   const detail = { value: 1 };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uAge = age;
     shader.uniforms.uDetail = detail;
+    shader.uniforms.uScales = scales;
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vObjPos;\nvarying vec3 vObjNormal;")
       .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObjPos = position;\nvObjNormal = normal;");
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", `#include <common>\n${HEIGHT_FIELD}`)
+      .replace("#include <color_fragment>", `#include <color_fragment>\n${SCALE_TINT}`)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${PERTURB}`);
   };
-  material.customProgramCacheKey = () => "effigy-skin-v1";
+  material.customProgramCacheKey = () => "effigy-skin-v2";
 }

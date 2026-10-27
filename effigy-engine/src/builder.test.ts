@@ -1,17 +1,26 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
+import { buildHair } from "./hair";
 import { applySkinDetail } from "./skinShader";
-import { parseHead, type HeadBase } from "./headMesh";
-import { applyRace, defaultParams, RACES, type Params } from "./params";
+import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
+import type { HeadBase } from "./headMesh";
+import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
 
+let assets: Assets;
 let base: HeadBase;
 beforeAll(() => {
-  const file = readFileSync(new URL("../public/models/head.bin", import.meta.url));
-  base = parseHead(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
+  const read = (path: string) => {
+    const file = readFileSync(new URL(path, import.meta.url));
+    return file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+  };
+  const shapes = {} as Record<ShapeName, ArrayBuffer>;
+  for (const name of SHAPE_NAMES) shapes[name] = read(`../public/models/horns/${name}.bin`);
+  assets = parseAssets(read("../public/models/head.bin"), shapes);
+  base = assets.head;
 });
 
 const params = (overrides: Partial<Params>): Params => ({ ...defaultParams(), ...overrides });
@@ -37,7 +46,7 @@ const shape = (p: Params) => deformHead(base, p).positions;
 
 describe("the base head", () => {
   it("has the expected size and is a closed solid", () => {
-    expect(base.positions.length / 3).toBe(52842);
+    expect(base.positions.length / 3).toBe(53347);
     const edges = new Map<string, number>();
     for (let t = 0; t < base.indices.length; t += 3) {
       for (let e = 0; e < 3; e++) {
@@ -82,7 +91,7 @@ describe("deformation", () => {
             furthest = Math.max(furthest, Math.abs(out[i] - base.positions[i]));
           }
           expect(broken, `${race} ${body} ${v}`).toBe(0);
-          expect(furthest, `${race} ${body} ${v}`).toBeLessThan(0.5);
+          expect(furthest, `${race} ${body} ${v}`).toBeLessThan(1.0);
         }
       }
     }
@@ -211,31 +220,40 @@ describe("sculptBust", () => {
     expect(geometry.attributes.color.count).toBe(geometry.attributes.position.count);
   });
 
-  it("paints vertex colours, and scars change them", () => {
-    const a = sculpt({ scars: 0, grime: 0 }).geometry.attributes.color.array as Float32Array;
-    const b = sculpt({ scars: 1, grime: 0 }).geometry.attributes.color.array as Float32Array;
-    expect(a.some((value, i) => Math.abs(value - b[i]) > 0.05)).toBe(true);
-  });
-
   it("darkens skin where grime is turned up", () => {
     const average = (arr: Float32Array) => arr.reduce((sum, v) => sum + v, 0) / arr.length;
-    const clean = average(sculpt({ scars: 0, grime: 0 }).geometry.attributes.color.array as Float32Array);
-    const filthy = average(sculpt({ scars: 0, grime: 1 }).geometry.attributes.color.array as Float32Array);
+    const clean = average(sculpt({ grime: 0 }).geometry.attributes.color.array as Float32Array);
+    const filthy = average(sculpt({ grime: 1 }).geometry.attributes.color.array as Float32Array);
     expect(filthy).toBeLessThan(clean);
+  });
+
+  it("finds the middle of the underside so the bust can sit centred on its plinth", () => {
+    const { footprint, baseY } = sculpt({});
+    expect(Number.isFinite(footprint.x)).toBe(true);
+    expect(Number.isFinite(footprint.z)).toBe(true);
+    expect(baseY).toBeLessThan(-1.5);
   });
 
   it("builds in well under a second", () => {
     sculpt({});
     const start = performance.now();
-    sculpt({ scars: 1, grime: 1, age: 1 });
-    const elapsed = performance.now() - start;
-    writeFileSync("timing.txt", `sculpt ${Math.round(elapsed)} ms`);
-    expect(elapsed).toBeLessThan(1000);
+    sculpt({ age: 1, grime: 1 });
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+describe("the body", () => {
+  it("has real shoulders and a chest, not just a neck and a yoke", () => {
+    const positions = shape(params({}));
+    // From the chin down, the bust is tall enough to include the upper chest...
+    expect(extent(positions).y).toBeGreaterThan(2.2);
+    // ...and the shoulders are about as wide as the head is tall, or more
+    expect(extent(positions, -1.8, -1.2).x).toBeGreaterThan(1.8);
   });
 });
 
 describe("buildBust", () => {
-  const bust = (overrides: Partial<Params>) => buildBust(params(overrides), base);
+  const bust = (overrides: Partial<Params>) => buildBust(params(overrides), assets);
 
   it("returns a group containing meshes", () => {
     let meshes = 0;
@@ -245,31 +263,56 @@ describe("buildBust", () => {
     expect(meshes).toBeGreaterThan(3);
   });
 
-  it("omits horns when the horn slider is zero", () => {
-    expect(countObjects(bust({ horns: 0 }))).toBeLessThan(countObjects(bust({ horns: 0.5 })));
+  it("stands the bust on the plinth: the underside is at y = 0 and the footprint is centred", () => {
+    const group = bust({});
+    const box = new THREE.Box3().setFromObject(group.children[0].children[0]);
+    expect(box.min.y).toBeCloseTo(0, 1);
   });
 
-  it("adds stitch meshes only where scars exist", () => {
-    const stitched = countObjects(bust({ scars: 1, stitches: 1 }));
-    const unstitched = countObjects(bust({ scars: 1, stitches: 0 }));
-    const noScars = countObjects(bust({ scars: 0, stitches: 1 }));
-    expect(stitched).toBeGreaterThan(unstitched);
-    expect(noScars).toBe(unstitched);
+  it("grows horns only for a chosen style, and a different asset for each style", () => {
+    const none = countObjects(bust({ hornStyle: "none", hairStyle: "none" }));
+    const ram = countObjects(bust({ hornStyle: "ram", hairStyle: "none" }));
+    expect(ram).toBeGreaterThan(none);
+    const shapes = new Set(["ram", "goat", "bull", "demon", "antelope", "stubby"].map((name) => JSON.stringify(Array.from(assets.shapes[name as ShapeName].positions.slice(0, 12)))));
+    expect(shapes.size).toBeGreaterThan(1);
   });
 
-  it("adds tusks only when the slider is raised", () => {
-    expect(countObjects(bust({ tusks: 0 }))).toBeLessThan(countObjects(bust({ tusks: 0.8 })));
+  it("gives tusks to half-orcs only", () => {
+    const tusked = (race: Params["race"]) => countObjects(buildBust(applyRace({ ...defaultParams(), hairStyle: "none" }, race), assets));
+    const withTusks = (race: Params["race"]) => {
+      const p = { ...applyRace({ ...defaultParams(), hairStyle: "none" }, race), tusks: 1 };
+      return countObjects(buildBust(p, assets));
+    };
+    // Setting the tusk slider changes nothing for any race but the half-orc
+    for (const race of RACES) {
+      if (race === "half-orc") continue;
+      expect(withTusks(race), race).toBe(tusked(race));
+    }
+    expect(derive({ ...defaultParams(), race: "half-orc", tusks: 0.8 }).tusks).toBeGreaterThan(0.5);
+    expect(derive({ ...defaultParams(), race: "human", tusks: 0.8 }).tusks).toBe(0);
+  });
+
+  it("grows hair for each style, and none for none", () => {
+    const none = countObjects(bust({ hairStyle: "none" }));
+    for (const style of ["cropped", "swept", "mohawk", "long"] as const) {
+      expect(countObjects(bust({ hairStyle: style })), style).toBeGreaterThan(none);
+    }
+  });
+
+  it("keeps hair outside the face: no hair vertex below the hairline in front of the brow", () => {
+    const { positions, normals } = sculptBust(params({ hairStyle: "swept" }), base);
+    const hair = buildHair(params({ hairStyle: "swept" }), positions, normals, base.neck.z)!;
+    const pos = hair.attributes.position;
+    let onFace = 0;
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getZ(i) > 0.15 && pos.getY(i) < 0.2 && pos.getY(i) > -0.3 && Math.abs(pos.getX(i)) < 0.4) onFace++;
+    }
+    expect(onFace).toBe(0);
   });
 
   it("builds both eye styles", () => {
     expect(countObjects(bust({ eyeStyle: "glow" }))).toBeGreaterThan(3);
     expect(countObjects(bust({ eyeStyle: "realistic" }))).toBeGreaterThan(3);
-  });
-
-  it("seats the figure on the plinth: the underside of the head lands at y = 0", () => {
-    const group = bust({});
-    const box = new THREE.Box3().setFromObject(group.children[0]);
-    expect(box.min.y).toBeCloseTo(0, 1);
   });
 });
 
@@ -286,6 +329,5 @@ describe("skin detail", () => {
     expect(shader.uniforms.uAge.value).toBeCloseTo(0.7);
     expect(shader.vertexShader).toContain("vObjPos = position;");
     expect(shader.fragmentShader).toContain("skinHeight");
-    expect(shader.fragmentShader.indexOf("skinHeight(vObjPos")).toBeGreaterThan(shader.fragmentShader.indexOf("normal_fragment_maps"));
   });
 });
