@@ -139,15 +139,18 @@ export function buildHairShell(
   return geometry;
 }
 
-// Long hair's hanging lengths: a curtain draped from the scalp around the sides and back of the head down
-// to the upper back, sculpted as one solid mass like the rest of the hair. At every height and angle around
-// the neck it hangs just outside the body, and it can only drift inward slowly as it falls, so it drapes
-// from the widest part of the skull past the neck and rests on the upper back without cutting into it. It
-// is thick near the head and thins toward uneven, layered ends.
-const CURTAIN_ANGLE = 1.4; // how far round from the back toward the face it reaches, either side (radians)
+// Long hair's hanging lengths: a curtain draped from the scalp down the back, sculpted as one solid mass like
+// the rest of the hair, and a lock on each side that frames the face. At every height and angle around the
+// neck the curtain hangs just outside the body, drifting inward only slowly as it falls, so it drapes from
+// the widest part of the skull over the upper back. It is thick near the head, thins toward uneven, layered
+// ends, and has rounded side edges (thinned to nothing, they read as separate straps). The ears are left out
+// of the outline the hair drapes around: hair falls behind them, and an elf's long ears poke through it
+// instead of the hair looping round them. (Sweeping the curtain itself forward wrapped it over the shoulders
+// like a stole.)
+const CURTAIN_ANGLE = 1.1; // how far round from the back it reaches, either side (radians; the ears are at about 1.45)
 const CURTAIN_TOP = 0.32; // where it starts under the cap at the back of the head (lower at the sides)
-const ACROSS = 72;
-const DOWN = 40;
+const ACROSS = 80;
+const DOWN = 44;
 
 export function buildHangingHair(p: Params, positions: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   if (p.hairStyle !== "long") return null;
@@ -156,7 +159,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   const count = positions.length / 3;
 
   // The body's outline: the furthest the surface reaches from the neck's axis, by angle (all the way round,
-  // 0 straight behind) and height
+  // 0 straight behind) and height. Ears are left out.
   const ANGLE_BINS = 128;
   const HEIGHT_BINS = 100;
   const lowest = -1.6;
@@ -164,15 +167,18 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   const heightBin = (y: number) => Math.floor(((CURTAIN_TOP + 0.3 - y) / (CURTAIN_TOP + 0.3 - lowest)) * HEIGHT_BINS);
   let outline = new Float32Array(ANGLE_BINS * HEIGHT_BINS);
   for (let i = 0; i < count; i++) {
-    const dx = positions[i * 3] - ax;
-    const dz = positions[i * 3 + 2] - az;
-    const a = Math.atan2(dx, -dz);
-    const ai = angleBin(a);
-    const hi = heightBin(positions[i * 3 + 1]);
+    const x = positions[i * 3];
+    const y = positions[i * 3 + 1];
+    const z = positions[i * 3 + 2];
+    if (Math.abs(x) > 0.36 && y > -0.35 && y < 0.5 && z > -0.8 && z < -0.15) continue;
+    const dx = x - ax;
+    const dz = z - az;
+    const hi = heightBin(y);
     if (hi < 0 || hi >= HEIGHT_BINS) continue;
+    const ai = angleBin(Math.atan2(dx, -dz));
     outline[hi * ANGLE_BINS + ai] = Math.max(outline[hi * ANGLE_BINS + ai], Math.hypot(dx, dz));
   }
-  // Grown a little in every direction, so the curtain clears the surface between samples too
+  // Grown a little in every direction, so the hair clears the surface between samples too
   for (let pass = 0; pass < 2; pass++) {
     const next = new Float32Array(outline);
     for (let h = 0; h < HEIGHT_BINS; h++) {
@@ -188,51 +194,74 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     }
     outline = next;
   }
+  // ...and blurred, since the furthest vertex in each sample is noisy, and wherever the hair rests on the
+  // body it would take on that noise as ridges
+  for (let pass = 0; pass < 4; pass++) {
+    const next = new Float32Array(outline);
+    for (let h = 1; h < HEIGHT_BINS - 1; h++) {
+      for (let a = 0; a < ANGLE_BINS; a++) {
+        const left = outline[h * ANGLE_BINS + ((a + ANGLE_BINS - 1) % ANGLE_BINS)];
+        const right = outline[h * ANGLE_BINS + ((a + 1) % ANGLE_BINS)];
+        const k = h * ANGLE_BINS + a;
+        next[k] = Math.max(outline[k] * 0.9, (2 * outline[k] + left + right + outline[k - ANGLE_BINS] + outline[k + ANGLE_BINS]) / 6);
+      }
+    }
+    outline = next;
+  }
+  // Read smoothly between samples (snapping to the nearest one gave neighbouring columns slightly different
+  // floors, which showed as vertical ridges)
   const bodyAt = (a: number, y: number) => {
-    const ai = angleBin(a);
-    const hi = Math.min(HEIGHT_BINS - 1, Math.max(0, heightBin(y)));
-    return outline[hi * ANGLE_BINS + ai];
+    const fa = ((a + Math.PI) / (2 * Math.PI)) * ANGLE_BINS - 0.5;
+    const fh = ((CURTAIN_TOP + 0.3 - y) / (CURTAIN_TOP + 0.3 - lowest)) * HEIGHT_BINS - 0.5;
+    const a0 = Math.floor(fa);
+    const h0 = Math.min(HEIGHT_BINS - 2, Math.max(0, Math.floor(fh)));
+    const ta = fa - a0;
+    const th = Math.min(1, Math.max(0, fh - h0));
+    const cell = (h: number, a2: number) => outline[h * ANGLE_BINS + (((a2 % ANGLE_BINS) + ANGLE_BINS) % ANGLE_BINS)];
+    const lo = cell(h0, a0) * (1 - ta) + cell(h0, a0 + 1) * ta;
+    const hi = cell(h0 + 1, a0) * (1 - ta) + cell(h0 + 1, a0 + 1) * ta;
+    return lo * (1 - th) + hi * th;
   };
 
-  const rand = (() => {
-    let seed = 4242;
-    return () => {
-      seed = (seed * 16807) % 2147483647;
-      return seed / 2147483647;
-    };
-  })();
-  // Uneven ends: shorter toward the sides, with a little layering
-  const ends: number[] = [];
-  for (let u = 0; u <= ACROSS; u++) {
-    const a = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
-    ends.push(-1.05 - 0.3 * Math.cos(a * 0.8) - 0.06 * rand());
-  }
-  for (let pass = 0; pass < 2; pass++) for (let u = 1; u < ACROSS; u++) ends[u] = (ends[u - 1] + 2 * ends[u] + ends[u + 1]) / 4;
+  let seed = 4242;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
 
-  // Where it starts: high on the back of the head under the cap, down to the tops of the ears at the sides
-  const topAt = (a: number) => 0.05 + (CURTAIN_TOP - 0.05) * Math.cos(a * 0.9) ** 2;
-
-  // How far out the drape hangs at each point: just off the body, and only drifting inward slowly as it
-  // falls (so it hangs from the widest part of the skull instead of shrinking onto the neck)
   const columns = ACROSS + 1;
   const rows = DOWN + 1;
+  // Each column's angle, where it starts and where it ends
+  const start: number[] = [];
+  const top: number[] = [];
+  const ends: number[] = [];
+  for (let u = 0; u <= ACROSS; u++) {
+    const a0 = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
+    start.push(a0);
+    top.push(0.05 + (CURTAIN_TOP - 0.05) * Math.cos(a0 * 0.9) ** 2);
+    ends.push(-1.1 - 0.15 * Math.cos(a0) - 0.06 * rand());
+  }
+  for (let pass = 0; pass < 2; pass++) for (let u = 1; u < ACROSS; u++) ends[u] = (ends[u - 1] + 2 * ends[u] + ends[u + 1]) / 4;
+  const angleOf = (u: number, _t: number) => start[u];
+  const heightOf = (u: number, t: number) => top[u] + (ends[u] - top[u]) * t;
+
+  // How far out the drape hangs at each point: just off the body, drifting inward only slowly as it falls
   let reach = new Float32Array(columns * rows);
   const floor = new Float32Array(columns * rows);
   for (let u = 0; u <= ACROSS; u++) {
-    const a = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
     for (let v = 0; v <= DOWN; v++) {
       const t = v / DOWN;
-      const y = topAt(a) + (ends[u] - topAt(a)) * t;
-      const body = bodyAt(a, y);
+      const body = bodyAt(angleOf(u, t), heightOf(u, t));
       floor[u * rows + v] = body + 0.012;
       // (starting just under the cap's surface, so no edge stands proud of it, then swelling to full depth)
-      const wanted = body + 0.03 + 0.035 * smooth(t / 0.25) - 0.02 * t;
+      // (standing off the back with some volume, rather than shrink-wrapped onto it)
+      const wanted = body + 0.03 + 0.07 * smooth(t / 0.25) - 0.03 * t;
       reach[u * rows + v] = v === 0 ? wanted : Math.max(wanted, reach[u * rows + v - 1] * 0.985);
     }
   }
   // Smoothed in both directions, so it falls in clean sweeps instead of following every bump beneath it,
   // and then kept clear of the body
-  for (let pass = 0; pass < 6; pass++) {
+  for (let pass = 0; pass < 14; pass++) {
     const next = new Float32Array(reach);
     for (let u = 0; u <= ACROSS; u++) {
       for (let v = 0; v <= DOWN; v++) {
@@ -255,28 +284,28 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   const colors: number[] = [];
   const c = new THREE.Color();
   for (let u = 0; u <= ACROSS; u++) {
-    const a = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
-    const sa = Math.sin(a);
-    const ca = Math.cos(a);
     const band = 0.88 + 0.24 * rand(); // locks of slightly different shade
-    // Thin at the side edges, so the curtain ends in soft edges rather than flat panels
-    const edge = smooth(Math.min(u, ACROSS - u) / 6);
+    // Rounded at the side edges: the outer and inner surfaces close together over the last few columns
+    const edge = Math.sqrt(smooth(Math.min(u, ACROSS - u) / 3));
     for (let v = 0; v <= DOWN; v++) {
       const t = v / DOWN;
-      const y = topAt(a) + (ends[u] - topAt(a)) * t;
+      const a = angleOf(u, t);
+      const y = heightOf(u, t);
       const r = reach[u * rows + v];
       // Grows out from nothing under the cap, full through the length, thinning to the tips
-      const thick = (0.05 + 0.02 * (1 - t)) * smooth(t / 0.15) * (1 - smooth((t - 0.8) / 0.2)) * edge;
-      const r0 = Math.max(r - thick, floor[u * rows + v] - 0.006);
-      outer.push(ax + sa * r, y, az - ca * r);
-      inner.push(ax + sa * Math.min(r, r0), y, az - ca * Math.min(r, r0));
+      const thick = (0.07 + 0.03 * (1 - t)) * smooth(t / 0.15) * (1 - smooth((t - 0.8) / 0.2));
+      const middle = Math.max(r - thick / 2, floor[u * rows + v] - 0.006 + (thick / 2) * edge);
+      const ro = middle + (thick / 2) * edge;
+      const ri = middle - (thick / 2) * edge;
+      outer.push(ax + Math.sin(a) * ro, y, az - Math.cos(a) * ro);
+      inner.push(ax + Math.sin(a) * ri, y, az - Math.cos(a) * ri);
       c.copy(hair).multiplyScalar(band * (0.82 + 0.18 * t));
       colors.push(c.r, c.g, c.b);
     }
   }
 
   // Outer and inner surfaces, closed along the top and the two sides (the ends meet at the tips)
-  const half = (ACROSS + 1) * rows;
+  const half = columns * rows;
   const vertices = new Float32Array(half * 6);
   vertices.set(outer, 0);
   vertices.set(inner, half * 3);
@@ -294,14 +323,14 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   }
   for (const u of [0, ACROSS]) {
     for (let v = 0; v < DOWN; v++) {
-      const flip = u === 0;
       const quad = [at(u, v, 0), at(u, v + 1, 0), at(u, v, 1), at(u, v + 1, 0), at(u, v + 1, 1), at(u, v, 1)];
-      index.push(...(flip ? quad : [quad[0], quad[2], quad[1], quad[3], quad[5], quad[4]]));
+      index.push(...(u === 0 ? quad : [quad[0], quad[2], quad[1], quad[3], quad[5], quad[4]]));
     }
   }
-  // A lock on each side frames the face: it carries on from the curtain's side edge under the cap, runs down
-  // behind the ear as if tucked there, then sweeps forward past the jaw and neck and comes over the front of the shoulder onto the chest,
-  // lying close to the body all the way (it drifts in quickly, so it does not hang off the cheek). It is a flattened band, thick near the head and tapering to a point.
+  // A lock on each side frames the face. It starts inside the curtain's side, so it emerges from the mass
+  // (laid over it, the two surfaces met in a seam), runs down behind the ear as if tucked there, then sweeps
+  // forward past the jaw and neck onto the front of the shoulder and chest, lying close to the body all the
+  // way. It is a flattened band, thick near the head and tapering to a point.
   const lockVertices: number[] = [];
   const lockColors: number[] = [];
   const LOCK_ROWS = 36;
@@ -323,8 +352,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     for (let k = 0; k <= LOCK_ROWS; k++) {
       const t = k / LOCK_ROWS;
       // Behind the ear until below it, then sweeping forward (passing over the ear pushed it out like a fin)
-      const a = side * (1.2 + 1.35 * smooth((t - 0.3) / 0.6));
-      const y = 0.28 + (-1.3 - 0.28) * t;
+      const a = side * (1.1 + 1.45 * smooth((t - 0.3) / 0.6));
+      const y = 0.15 + (-1.3 - 0.15) * t;
       const wanted = bodyAcross(a, y, 0.11 * lockGrow(t)) + 0.03;
       drift = k === 0 ? wanted : Math.max(wanted, drift * 0.95);
       reachAlong.push(drift);
@@ -368,6 +397,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       }
     }
   }
+
 
   const all = new Float32Array(vertices.length + lockVertices.length);
   all.set(vertices, 0);
