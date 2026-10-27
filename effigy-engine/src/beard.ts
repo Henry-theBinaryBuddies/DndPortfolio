@@ -17,15 +17,20 @@ const smooth = (t: number) => {
 function topLine(ax: number): number {
   // (with a little irregularity, as a beard's edge has: one smooth contour read as a painted border)
   const cheek = -0.27 + 0.25 * smooth((ax - 0.2) / 0.22) + (0.012 * Math.sin(ax * 55) + 0.006 * Math.sin(ax * 131 + 1)) * smooth((ax - 0.16) / 0.06);
-  const moustache = -0.256 + 0.012 * smooth((ax - 0.02) / 0.07) - 0.03 * smooth((ax - 0.1) / 0.09);
+  // (a little notch under the philtrum, where a moustache parts: a level top read as a band)
+  const moustache = -0.256 - 0.018 * (1 - smooth(ax / 0.03)) + 0.018 * smooth((ax - 0.02) / 0.07) - 0.03 * smooth((ax - 0.1) / 0.09) + 0.004 * Math.sin(ax * 97);
   return ax < 0.2 ? Math.min(moustache, cheek + 0.03) : cheek;
 }
 
-// The opening around the mouth: a rounded margin a little outside the lips (following the lips' own
-// outline left a rectangular cut-out); 1 well outside it, 0 inside
+// The opening around the mouth; 1 well outside it, 0 inside. Not an oval (that read as a hole cut in a
+// mask): above, the moustache's hem sits just over the lip in the middle and droops past the corners of the
+// mouth, where it runs down into the beard; below, the beard starts lower under the middle of the lip than
+// at its sides. The hem is a little ragged, as hair is.
 function mouthClearance(ax: number, y: number): number {
-  const e = Math.hypot(ax / 0.14, (y - STOMION) / 0.055);
-  return smooth((e - 1) / 0.25);
+  const hem = STOMION + 0.04 - 0.075 * smooth((ax - 0.1) / 0.08) + 0.005 * Math.sin(ax * 90 + 1);
+  const below = STOMION - 0.056 + 0.012 * smooth((ax - 0.03) / 0.08);
+  const open = smooth((hem - y) / 0.012) * smooth((y - below) / 0.015) * (1 - smooth((ax - 0.17) / 0.035));
+  return 1 - open;
 }
 const STOMION = -0.363;
 

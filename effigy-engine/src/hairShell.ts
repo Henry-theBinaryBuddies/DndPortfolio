@@ -332,11 +332,12 @@ function beardShaping(x: number, y: number, z: number): number {
   // itself; the beard's mass hangs from the front of the chin instead
   const throat = 1 - 0.92 * smooth((-0.52 - y) / 0.08) * smooth((0.06 - z) / 0.14);
   // ...and thin at the corners of the mouth, another concave crease
-  const corners = 1 - 0.6 * Math.exp(-(((ax - 0.13) / 0.04) ** 2) - ((y + 0.31) / 0.05) ** 2);
+  const corners = 1 - 0.7 * Math.exp(-(((ax - 0.14) / 0.05) ** 2) - ((y + 0.34) / 0.07) ** 2);
   const underLip = 1 - 0.85 * Math.exp(-(((y + 0.435) / 0.035) ** 2)) * (1 - smooth((ax - 0.12) / 0.06));
   const aboveMouth = smooth((y + 0.34) / 0.05);
-  const parted = 0.35 + 0.65 * smooth((ax - 0.004) / 0.035);
-  const moustache = 1 - aboveMouth * (1 - 0.45 * parted);
+  // (fuller lobes than before: kept thin, the moustache read as a painted band across the lip)
+  const parted = 0.45 + 0.55 * smooth((ax - 0.004) / 0.035);
+  const moustache = 1 - aboveMouth * (1 - 0.65 * parted);
   return underLip * moustache * throat * corners;
 }
 
