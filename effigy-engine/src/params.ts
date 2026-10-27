@@ -182,6 +182,7 @@ export interface RaceInfo {
   skeleton: Skeleton;
   hornStyle: HornStyle;
   hairStyle: HairStyle;
+  eyes?: string; // a racial eye colour, applied when the race is chosen
   // Slider values this race starts with (a heavy brow for a half-orc, heavy eyebrows for a dwarf)
   defaults: Values;
 }
@@ -276,10 +277,11 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   dragonborn: {
     label: "Dragonborn",
     skin: skin("Bronze scale"),
-    skeleton: { ...HUMAN, angularity: 0.85, headWidth: 1.05, earSize: 0, noseLength: 0.2, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.4, jaw: 1.15, chin: 0.3, lipBase: -0.4, slope: 0.4, browBase: 0.35, cheekBase: 0.1, snout: 0.85, gaunt: 0.05, shoulders: 1.3 },
-    hornStyle: "bull",
+    skeleton: { ...HUMAN, angularity: 0.95, headWidth: 1.05, earSize: 0, noseLength: 0.1, noseWidth: 1.2, noseBridge: -0.5, mouthWidth: 1.6, jaw: 1.15, chin: 0.3, lipBase: -1, slope: 0.5, browBase: 0.6, cheekBase: 0.1, socketDepth: 0.7, snout: 1, gaunt: 0.05, shoulders: 1.3 },
+    hornStyle: "goat",
     hairStyle: "none",
-    defaults: { horns: 0.55, muscle: 0.7, eyebrows: 0, scales: 0.55 },
+    eyes: eyes("Amber"),
+    defaults: { horns: 0.55, muscle: 0.7, eyebrows: 0, scales: 0.55, lids: 0 },
   },
 };
 
@@ -426,6 +428,7 @@ export interface Derived {
   slope: number;
   angularity: number;
   tusks: number; // only half-orcs have tusks; zero for everyone else
+  slitPupils: boolean; // reptilian eyes
   brow: number; // brow ridge: the slider plus the race's baseline
   cheek: number;
   snout: number;
@@ -458,6 +461,7 @@ export function derive(p: Params): Derived {
     snout: sk.snout,
     scales: p.scales,
     tusks: p.race === "half-orc" ? p.tusks : 0,
+    slitPupils: p.race === "dragonborn",
     gaunt: clamp01(sk.gaunt + 0.35 * p.age + 0.9 * (0.5 - p.weight)),
     fullness: clamp01((p.weight - 0.5) * 2),
     lipFull: 0.7 + 1.0 * clamp01(p.lips + sk.lipBase),
@@ -479,6 +483,7 @@ export function applyRace(current: Params, race: Race): Params {
   next.eyeStyle = current.eyeStyle;
   next.hornStyle = info.hornStyle;
   next.hairStyle = info.hairStyle;
+  if (info.eyes) next.eyes = info.eyes;
   next.hairColor = current.hairColor;
   Object.assign(next, info.defaults);
   return clampParams(next);

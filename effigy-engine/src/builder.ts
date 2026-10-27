@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { shapeGeometry, type Assets } from "./assets";
 import { frontPoint, sculptBust, topPoint } from "./face";
+import { buildFineHair } from "./fineHair";
 import { buildHair } from "./hair";
 import { derive, type Params } from "./params";
 import { applySkinDetail } from "./skinShader";
@@ -19,7 +20,7 @@ const smooth = (t: number) => {
 
 // A realistic eyeball: a white sclera with faint veins, an iris with radial fibres and a darker rim
 // (the limbal ring), a black pupil, and a clear glossy cornea over the front. It is built facing +z.
-function realisticEye(radius: number, irisHex: string): THREE.Group {
+function realisticEye(radius: number, irisHex: string, slit = false): THREE.Group {
   const group = new THREE.Group();
   const geometry = new THREE.SphereGeometry(radius, 48, 36);
   geometry.rotateX(Math.PI / 2); // spheres have their poles on y; turn one to face the front
@@ -42,7 +43,9 @@ function realisticEye(radius: number, irisHex: string): THREE.Group {
     const theta = Math.acos(Math.min(1, Math.max(-1, z / radius))); // angle away from the front
     const phi = Math.atan2(y, x);
 
-    if (theta < pupilEdge) {
+    // A round pupil, or a narrow vertical slit for reptilian eyes
+    const slitPupil = slit && z > 0 && (x / radius / 0.07) ** 2 + (y / radius / 0.2) ** 2 < 1;
+    if (slit ? slitPupil : theta < pupilEdge) {
       c.copy(dark);
     } else if (theta < irisEdge) {
       const t = (theta - pupilEdge) / (irisEdge - pupilEdge);
@@ -111,7 +114,7 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
     eye.position.set(...side);
     head.add(eye);
     if (p.eyeStyle === "realistic") {
-      eye.add(realisticEye(eyeR, p.eyes));
+      eye.add(realisticEye(eyeR, p.eyes, k.slitPupils));
     } else {
       eye.add(new THREE.Mesh(new THREE.SphereGeometry(eyeR, 24, 16), glow));
       const pupil = new THREE.Mesh(new THREE.CircleGeometry(eyeR * 0.55, 10), pupilTone);
@@ -167,6 +170,12 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   const hairGeometry = buildHair(p, bust.positions, bust.normals, base.neck.z);
   if (hairGeometry) {
     head.add(new THREE.Mesh(hairGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 })));
+  }
+
+  // Eyebrows and eyelashes as real strands
+  const fineHair = buildFineHair(p, bust.positions, bust.normals, bust.eyes, base.masks);
+  if (fineHair) {
+    head.add(new THREE.Mesh(fineHair, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 })));
   }
 
   return root;

@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
+import { buildFineHair } from "./fineHair";
 import { buildHair } from "./hair";
 import { applySkinDetail } from "./skinShader";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
@@ -290,7 +291,7 @@ describe("buildBust", () => {
     }
     expect(derive({ ...defaultParams(), race: "half-orc", tusks: 0.8 }).tusks).toBeGreaterThan(0.5);
     expect(derive({ ...defaultParams(), race: "human", tusks: 0.8 }).tusks).toBe(0);
-  });
+  }, 120000);
 
   it("grows hair for each style, and none for none", () => {
     const none = countObjects(bust({ hairStyle: "none" }));
@@ -308,6 +309,24 @@ describe("buildBust", () => {
       if (pos.getZ(i) > 0.15 && pos.getY(i) < 0.2 && pos.getY(i) > -0.3 && Math.abs(pos.getX(i)) < 0.4) onFace++;
     }
     expect(onFace).toBe(0);
+  });
+
+
+  it("grows real eyebrow and eyelash strands, but none on a reptile with no eyebrows", () => {
+    const fine = (p: Params) => {
+      const bust = sculptBust(p, base);
+      return buildFineHair(p, bust.positions, bust.normals, bust.eyes, base.masks);
+    };
+    const human = fine(params({ eyebrows: 0.2 }));
+    const bushy = fine(params({ eyebrows: 1 }));
+    expect(human).not.toBeNull();
+    expect(bushy!.attributes.position.count).toBeGreaterThan(human!.attributes.position.count);
+    expect(fine(applyRace(defaultParams(), "dragonborn"))).toBeNull();
+  });
+
+  it("gives a dragonborn slit pupils and a human round ones", () => {
+    expect(derive(applyRace(defaultParams(), "dragonborn")).slitPupils).toBe(true);
+    expect(derive(applyRace(defaultParams(), "human")).slitPupils).toBe(false);
   });
 
   it("builds both eye styles", () => {

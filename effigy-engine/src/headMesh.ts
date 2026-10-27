@@ -164,7 +164,7 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
     // The red of the lips, between the lip border above and below the mouth line
     lips[i] = smooth((y - (LANDMARK.stomion - 0.062)) / 0.01) * (1 - smooth((y - (LANDMARK.stomion + 0.062)) / 0.01)) * mouthWindow;
     mouthLine[i] = Math.exp(-(((y - LANDMARK.stomion) / 0.008) ** 2)) * (1 - smooth((x - 0.13) / 0.02)) * smooth((z - 0.06) / 0.06);
-    brows[i] = Math.exp(-(((x - 0.18) / 0.17) ** 2) - ((y - 0.16) / 0.045) ** 2) * smooth((z + 0.1) / 0.2);
+    brows[i] = Math.exp(-(((x - 0.18) / 0.17) ** 2) - ((y - 0.125) / 0.04) ** 2) * smooth((z + 0.1) / 0.2);
     // The underside of the nose, where the nostrils open
     nostrils[i] = Math.exp(-(((x - 0.055) / 0.035) ** 2) - ((y + 0.225) / 0.05) ** 2) * smooth((-ny - 0.2) / 0.3) * smooth((z - 0.08) / 0.05);
   }

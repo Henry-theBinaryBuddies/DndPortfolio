@@ -154,20 +154,22 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     dy += (y0 + 0.1) * earDelta * 0.3 * ear + earDelta * 0.3 * earTip;
     dx += side * earDelta * 0.12 * ear;
     dz -= Math.max(0, earDelta) * 0.1 * earTip;
+    // No ears at all (a dragonborn): the ear is pressed flat into the side of the head
+    if (k.earSize < 0.05) dx -= side * 0.17 * ear;
 
     // Snout (dragonborn): the nose and upper jaw run forward into a muzzle that narrows toward a blunt
     // tip, with a ridge along its top, slit nostrils at the end, and a longer, tapering lower jaw
     if (k.snout > 0.01) {
       const muzzle = blob(0, -0.22, 0.2, 0.26, 0.3, 0.28);
-      dz += k.snout * 0.62 * muzzle + k.snout * 0.08 * blob(0, -0.17, 0.24, 0.09, 0.07, 0.1);
+      dz += k.snout * 0.9 * muzzle + k.snout * 0.1 * blob(0, -0.17, 0.24, 0.09, 0.07, 0.1);
       dx -= x0 * k.snout * 0.3 * blob(0, -0.2, 0.25, 0.2, 0.32, 0.3);
       dz += k.snout * 0.42 * blob(0, -0.48, 0.1, 0.24, 0.14, 0.3);
       dx -= x0 * k.snout * 0.28 * blob(0, -0.52, 0.12, 0.2, 0.12, 0.25);
       push(blob(0, -0.05, 0.2, 0.03, 0.22, 0.15), 0.02 * k.snout);
       const slit = base.masks.nostrils[i];
-      dx += nx * -0.035 * k.snout * slit;
-      dy += ny * -0.035 * k.snout * slit;
-      dz += nz * -0.035 * k.snout * slit;
+      dx += nx * -0.07 * k.snout * slit;
+      dy += ny * -0.07 * k.snout * slit;
+      dz += nz * -0.07 * k.snout * slit;
     }
 
     // Neck: thicker with muscle and weight, and on masculine builds; an Adam's apple on masculine ones

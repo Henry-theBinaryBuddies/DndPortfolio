@@ -103,10 +103,14 @@ float crease(float d, float w) {
 // Height of the skin surface at a point, in scene units. Negative is a pit or a crease.
 float skinHeight(vec3 p, vec3 n, float pixelSize) {
   // Pores and fine texture. Fine detail fades out once a pixel covers more than a pore.
-  float fine = 1.0 - smoothstep(0.0015, 0.0045, pixelSize);
-  float h = (vnoise(p * 95.0) - 0.5) * 0.0015 * fine;
-  h += (vnoise(p * 210.0) - 0.5) * 0.0006 * fine;
-  h -= smoothstep(0.74, 0.94, vnoise(p * 140.0)) * 0.001 * fine;
+  float fine = 1.0 - smoothstep(0.0008, 0.0026, pixelSize);
+  // Pores sit evenly spaced: a pit at the centre of each cell of a fine cellular pattern
+  vec3 pore = worley(p * 260.0);
+  float h = -(1.0 - smoothstep(0.0, 0.25, pore.x)) * 0.0007 * fine;
+  // Between larger cells run the fine furrows that give skin its cross-hatched look
+  vec3 furrow = worley(p * 120.0);
+  h -= (1.0 - smoothstep(0.0, 0.09, furrow.y - furrow.x)) * 0.0004 * fine;
+  h += (vnoise(p * 210.0) - 0.5) * 0.0005 * fine;
   // Broader unevenness so the skin is never perfectly smooth
   h += (vnoise(p * 28.0) - 0.5) * 0.0016;
 
@@ -166,6 +170,9 @@ const CLOTH_TINT = /* glsl */ `
   float weave = 0.88 + 0.24 * vnoise(vObjPos * 90.0);
   vec3 fabric = uCloth * weave;
   fabric = mix(fabric, uCloth * 0.35, 0.8 * clothTrim(vObjPos, n));
+  // Skin is never one flat colour: faint, slow variations in warmth
+  vec3 mottle = vec3(0.96 + 0.08 * vnoise(vObjPos * 5.0), 0.94 + 0.1 * vnoise(vObjPos * 7.0 + 3.0), 0.94 + 0.1 * vnoise(vObjPos * 6.0 + 7.0));
+  diffuseColor.rgb *= mix(vec3(1.0), mottle, 1.0 - cloth);
   diffuseColor.rgb = mix(diffuseColor.rgb, fabric, cloth);
 }
 `;
@@ -176,6 +183,10 @@ const ROUGHNESS = /* glsl */ `
   float cloth = clothAmount(vObjPos, normalize(vObjNormal));
   roughnessFactor = mix(roughnessFactor, 0.92, cloth);
   roughnessFactor = mix(roughnessFactor, 0.28, vLip * 0.7);
+  // The oily T-zone (forehead, bridge and tip of the nose) is shinier than the cheeks
+  vec3 tp = vObjPos;
+  float tzone = smoothstep(0.12, 0.0, abs(tp.x)) * smoothstep(-0.28, -0.1, tp.y) * (1.0 - smoothstep(0.5, 0.6, tp.y)) * (1.0 - cloth);
+  roughnessFactor = mix(roughnessFactor, 0.4, tzone * 0.55);
 }
 `;
 
@@ -184,6 +195,9 @@ if (uScales > 0.01) {
   float scaleTint;
   scalePlate(vObjPos, scaleTint);
   diffuseColor.rgb *= 1.0 - uScales * scaleTint * scaleCover(vObjPos);
+  // The underside (throat and under the jaw) is paler, as on a lizard's belly
+  float under = smoothstep(0.1, -0.55, normalize(vObjNormal).y);
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.5 + vec3(0.08, 0.06, 0.02), under * min(1.0, uScales * 1.4) * scaleCover(vObjPos));
 }
 `;
 
@@ -224,5 +238,5 @@ export function applySkinDetail(material: THREE.MeshStandardMaterial, p: Params)
       .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${ROUGHNESS}`)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${PERTURB}`);
   };
-  material.customProgramCacheKey = () => "effigy-skin-v3";
+  material.customProgramCacheKey = () => "effigy-skin-v5";
 }
