@@ -21,26 +21,32 @@ const smooth = (t: number) => {
 interface Style {
   thickness: (x: number, y: number, z: number) => number; // in head-local units (1 = 20 cm)
   flow: [number, number, number]; // the direction it is combed
+  lean: number; // how far the mass is carried along the combing direction, as a share of its thickness
 }
 
 const STYLES: Record<"cropped" | "swept" | "mohawk" | "long", Style> = {
-  // A close crop: an even few millimetres, a little fuller on top
-  cropped: { thickness: (_x, y) => 0.012 + 0.01 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1] },
-  // Swept back: thin at the hairline, building volume over the crown and down the back of the head
+  // A close crop: a short, even cap of a few millimetres
+  cropped: { thickness: (_x, y) => 0.012 + 0.008 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1], lean: 0 },
+  // Swept back: volume lifted at the front and over the crown, carried back along the comb
   swept: {
-    thickness: (_x, y, z) => 0.016 + 0.05 * smooth((y - 0.05) / 0.35) * (1 - 0.4 * smooth((-z - 0.5) / 0.3)) + 0.02 * smooth((-z - 0.2) / 0.3),
+    thickness: (_x, y, z) =>
+      0.018 + 0.05 * smooth((y - 0.05) / 0.35) * (1 - 0.4 * smooth((-z - 0.5) / 0.3)) + 0.03 * smooth((y - 0.25) / 0.15) * smooth((z + 0.15) / 0.2) + 0.02 * smooth((-z - 0.2) / 0.3),
     flow: [0, 0.3, -1],
+    lean: 0.6,
   },
-  // A crest along the middle of the head, tallest over the crown, falling off to the shaved sides
+  // A crest along the middle of the head, rounded across and swept back, with a gently clumped top line
+  // (a crest that rose straight up to a narrow edge read as a single fin or horn)
   mohawk: {
-    thickness: (x, y) => {
+    thickness: (x, y, z) => {
       const across = 1 - smooth(Math.abs(x) / STRIP_HALF_WIDTH);
-      return 0.02 + 0.2 * across * across * smooth((y + 0.2) / 0.5);
+      const clumps = 0.88 + 0.12 * Math.sin(z * 38 + 1.3) * Math.sin(z * 17);
+      return 0.02 + 0.13 * Math.sqrt(across) * smooth((y + 0.2) / 0.5) * clumps;
     },
     flow: [0, 0.3, -1],
+    lean: 0.35, // (leaning a tall crest further folded its surface over where it curves down the back)
   },
   // Long hair: a cap over the scalp (the hanging lengths are a draped curtain, see buildHangingHair)
-  long: { thickness: (_x, y) => 0.025 + 0.02 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1] },
+  long: { thickness: (_x, y) => 0.025 + 0.02 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1], lean: 0.3 },
 };
 
 // The smallest lift off the skin, so the shell never fights the skin for the same depth at the hairline
@@ -108,7 +114,10 @@ export function buildHairShell(
   const hair = new THREE.Color(p.hairColor);
   const out = new Float32Array(order.length * 3);
   const colors = new Float32Array(order.length * 3);
+  const amount = new Float32Array(order.length);
   const n = new THREE.Vector3();
+  const comb = new THREE.Vector3(...style.flow).normalize();
+  const lean = new THREE.Vector3();
   const c = new THREE.Color();
   const skin = new THREE.Color();
   order.forEach((v, j) => {
@@ -119,13 +128,19 @@ export function buildHairShell(
     const w = grow[v];
     // Full thickness well inside the hairline, tapering to a hair's breadth at its edge
     const lift = SKIN_GAP + style.thickness(x, y, z) * smooth((soft[v] - 0.25) / 0.65) * smooth(w / 0.3);
-    out[j * 3] = x + n.x * lift;
-    out[j * 3 + 1] = y + n.y * lift;
-    out[j * 3 + 2] = z + n.z * lift;
+    // ...and carried along the comb, so a swept style's mass leans back instead of rising straight up
+    lean.copy(comb).addScaledVector(n, -comb.dot(n));
+    if (lean.lengthSq() > 1e-6) lean.normalize().multiplyScalar((lift - SKIN_GAP) * style.lean);
+    else lean.set(0, 0, 0);
+    out[j * 3] = x + n.x * lift + lean.x;
+    out[j * 3 + 1] = y + n.y * lift + lean.y;
+    out[j * 3 + 2] = z + n.z * lift + lean.z;
     // Darker near the roots (where the hair is thin and shadowed), and fading into the skin at the hairline
     skin.setRGB(skinColors[v * 3], skinColors[v * 3 + 1], skinColors[v * 3 + 2]);
     c.copy(hair).multiplyScalar(0.75 + 0.25 * smooth((w - 0.3) / 0.7));
-    c.lerp(skin, 1 - smooth((Math.min(w, soft[v] * 1.6) - 0.02) / 0.5));
+    const hairy = smooth((Math.min(w, soft[v] * 1.6) - 0.02) / 0.5);
+    c.lerp(skin, 1 - hairy);
+    amount[j] = hairy;
     colors[j * 3] = c.r;
     colors[j * 3 + 1] = c.g;
     colors[j * 3 + 2] = c.b;
@@ -134,6 +149,8 @@ export function buildHairShell(
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(out, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  // How much is hair rather than the skin-coloured edge, so the shader leaves strand grooves off the skin
+  geometry.setAttribute("hairAmount", new THREE.BufferAttribute(amount, 1));
   geometry.setIndex(triangles);
   geometry.computeVertexNormals();
   return geometry;
@@ -408,6 +425,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(all, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(allColors, 3));
+  geometry.setAttribute("hairAmount", new THREE.BufferAttribute(new Float32Array(all.length / 3).fill(1), 1));
   geometry.setIndex(index);
   geometry.computeVertexNormals();
   return geometry;
@@ -435,7 +453,7 @@ float hnoise(vec3 x) {
 // Squash the point along the strands, so the noise varies quickly across them and slowly along them
 float strands(vec3 p, vec3 flow) {
   vec3 q = p - flow * dot(p, flow) * 0.92;
-  return 0.65 * hnoise(q * 70.0) + 0.35 * hnoise(q * 160.0 + 7.0);
+  return 0.75 * hnoise(q * 48.0) + 0.25 * hnoise(q * 120.0 + 7.0);
 }
 `;
 
@@ -447,15 +465,15 @@ export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params,
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uFlow = flow;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vHairPos;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvHairPos = position;");
+      .replace("#include <common>", "#include <common>\nattribute float hairAmount;\nvarying float vHairAmount;\nvarying vec3 vHairPos;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvHairPos = position;\nvHairAmount = hairAmount;");
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\nuniform vec3 uFlow;\nvarying vec3 vHairPos;\n${HAIR_HEIGHT}`)
+      .replace("#include <common>", `#include <common>\nuniform vec3 uFlow;\nvarying float vHairAmount;\nvarying vec3 vHairPos;\n${HAIR_HEIGHT}`)
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
   float strand = strands(vHairPos, uFlow);
-  diffuseColor.rgb *= 0.6 + 0.7 * strand;`,
+  diffuseColor.rgb *= mix(1.0, 0.72 + 0.45 * strand, vHairAmount);`,
       )
       .replace(
         "#include <normal_fragment_maps>",
@@ -464,7 +482,7 @@ export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params,
   vec3 surf = -vViewPosition;
   vec3 sX = dFdx(surf);
   vec3 sY = dFdy(surf);
-  float hh = strands(vHairPos, uFlow) * 0.004;
+  float hh = strands(vHairPos, uFlow) * 0.003 * vHairAmount;
   vec2 dH = vec2(dFdx(hh), dFdy(hh));
   vec3 R1 = cross(sY, normal);
   vec3 R2 = cross(normal, sX);
@@ -474,5 +492,5 @@ export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params,
 }`,
       );
   };
-  material.customProgramCacheKey = () => `effigy-hair-v3-${hanging ? "hanging" : "scalp"}`;
+  material.customProgramCacheKey = () => `effigy-hair-v4-${hanging ? "hanging" : "scalp"}`;
 }
