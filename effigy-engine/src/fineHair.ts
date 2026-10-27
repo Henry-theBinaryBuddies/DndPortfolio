@@ -84,7 +84,7 @@ export function buildFineHair(
   // and down and outward along the tail
   if (p.eyebrows > 0.05) {
     const rootTone = hair.clone().multiplyScalar(0.6);
-    const per = Math.round(340 * p.eyebrows);
+    const per = Math.round(520 * p.eyebrows);
     for (const sign of [-1, 1]) {
       const candidates: number[] = [];
       for (let i = 0; i < count; i++) {
@@ -97,48 +97,75 @@ export function buildFineHair(
         normal.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]).normalize();
         const flow = new THREE.Vector3(sign, Math.abs(point.x) < 0.2 ? 0.55 : -0.4, 0).normalize();
         const tangent = flow.clone().addScaledVector(normal, -flow.dot(normal)).normalize();
-        const dir = tangent.clone().addScaledVector(normal, 0.18).normalize();
-        const length = 0.06 * (0.75 + 0.5 * rand());
-        const path = [point.clone().addScaledVector(normal, 0.003)];
+        // Brow hairs leave the skin at a shallow angle and bend back down along it, so they lie flat
+        const dir = tangent.clone().addScaledVector(normal, 0.08).normalize();
+        const length = 0.05 * (0.7 + 0.5 * rand());
+        const path = [point.clone().addScaledVector(normal, 0.001)];
         const p0 = path[0].clone();
         for (let s = 0; s < 4; s++) {
           dir.x += (rand() - 0.5) * 0.08;
           dir.y += (rand() - 0.5) * 0.08;
-          dir.normalize();
+          dir.addScaledVector(normal, -0.07).normalize();
           p0.addScaledVector(dir, length / 4);
           path.push(p0.clone());
         }
-        strands.add(path, normal, 0.0042 * (0.8 + 0.4 * rand()), 1.4, rootTone, hair);
+        strands.add(path, normal, 0.0018 * (0.8 + 0.4 * rand()), 1.3, rootTone, hair);
       }
     }
   }
 
-  // Eyelashes: along the margin of each eyelid, curling up on the upper lid and gently down on the lower
+  // Eyelashes: rooted along the edge of each eyelid. The edge is found by angle around the eye: in each
+  // slice, the skin vertex just in front of the eyeball that is closest to the eye's front axis (the rim
+  // of the opening). The sculpt's lids were made for an eye with a bulging cornea, so the upper lid's edge
+  // sits up to about 1.4 eyeball radii from the centre. Upper lashes are longer and curl up, lower ones are short and point down and out; both
+  // grow longer toward the outer corner.
   {
     const dark = hair.clone().lerp(new THREE.Color(0x050403), 0.8);
+    const BINS = 72;
     for (const eye of [eyes.left, eyes.right]) {
       const centre = new THREE.Vector3(...eye);
       const radius = eyes.radius;
+      const outward = Math.sign(centre.x) || 1;
+      const rim: (THREE.Vector3 | null)[] = new Array(BINS).fill(null);
+      const best = new Array(BINS).fill(Infinity);
+      const rel = new THREE.Vector3();
       for (let i = 0; i < count; i++) {
-        point.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-        const rel = point.clone().sub(centre);
+        rel.set(positions[i * 3] - centre.x, positions[i * 3 + 1] - centre.y, positions[i * 3 + 2] - centre.z);
         const distance = rel.length();
-        // The lid margin: the skin that lies right against the eyeball
-        if (distance < radius * 0.9 || distance > radius * 1.16 || rel.z < -0.01 || Math.abs(rel.y) < 0.012) continue;
-        const upper = rel.y > 0;
-        normal.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]).normalize();
-        const outward = new THREE.Vector3(rel.x, rel.y, 0).normalize();
-        const dir = outward.multiplyScalar(0.5).add(new THREE.Vector3(0, upper ? 0.35 : -0.05, 0.6)).normalize();
-        const length = upper ? 0.06 : 0.03;
-        const path = [point.clone()];
-        const q = point.clone();
-        for (let s = 0; s < 3; s++) {
-          dir.y += upper ? 0.28 : -0.04;
-          dir.normalize();
-          q.addScaledVector(dir, length / 3);
-          path.push(q.clone());
+        if (distance < radius * 0.85 || distance > radius * 1.45 || rel.z < radius * 0.3) continue;
+        const angle = Math.atan2(rel.y, rel.x * outward);
+        const bin = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * BINS) % BINS;
+        const fromAxis = Math.hypot(rel.x, rel.y);
+        if (fromAxis < best[bin]) {
+          best[bin] = fromAxis;
+          rim[bin] = new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
         }
-        strands.add(path, normal, 0.0042, 1, dark, dark);
+      }
+      for (let bin = 0; bin < BINS; bin++) {
+        const root = rim[bin];
+        const next = rim[(bin + 1) % BINS];
+        if (!root || !next) continue;
+        const angle = ((bin + 0.5) / BINS) * 2 * Math.PI - Math.PI;
+        const upper = angle > 0.25 && angle < Math.PI - 0.3;
+        const lower = angle < -0.35 && angle > -Math.PI + 0.4;
+        if (!upper && !lower) continue;
+        const outer = Math.cos(angle); // 1 at the outer corner, -1 at the inner
+        for (let n = 0; n < (upper ? 2 : 1); n++) {
+          const start = root.clone().lerp(next, rand());
+          rel.subVectors(start, centre);
+          const out2d = new THREE.Vector3(rel.x, rel.y, 0).normalize();
+          const dir = out2d.multiplyScalar(upper ? 0.25 : 0.45).add(new THREE.Vector3(0, upper ? 0.05 : -0.2, 0.95)).normalize();
+          const length = (upper ? 0.03 : 0.016) * (0.85 + 0.35 * outer) * (0.85 + 0.3 * rand());
+          const path = [start.clone()];
+          const q = start.clone();
+          for (let s = 0; s < 4; s++) {
+            dir.y += upper ? 0.12 : -0.03;
+            dir.normalize();
+            q.addScaledVector(dir, length / 4);
+            path.push(q.clone());
+          }
+          strands.add(path, new THREE.Vector3(0, 0, 1), 0.0009, 1, dark, dark, 3);
+        }
       }
     }
   }

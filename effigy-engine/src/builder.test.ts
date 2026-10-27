@@ -83,7 +83,7 @@ describe("deformation", () => {
       for (const body of ["masculine", "neutral", "feminine"] as const) {
         for (const v of [0, 1]) {
           const p = applyRace({ ...defaultParams(), body }, race);
-          for (const key of ["age", "weight", "muscle", "brow", "cheekbones", "noseSize", "lips", "jaw"] as const) p[key] = v;
+          for (const key of ["age", "weight", "muscle", "brow", "cheekbones", "noseSize", "lips", "jaw", "lids"] as const) p[key] = v;
           const out = shape(p);
           let furthest = 0;
           let broken = 0;
@@ -114,6 +114,25 @@ describe("deformation", () => {
       }
     }
   }, 120000);
+
+  it("lowers the upper lid over the eye as the lids get heavier", () => {
+    // How far above the eye's front axis the upper lid's edge sits: the nearest skin in front of the eye,
+    // in the slice straight above its centre
+    const lidEdge = (lids: number) => {
+      const { positions, eyes } = deformHead(base, params({ lids }));
+      const [cx, cy, cz] = eyes.left;
+      let edge = Infinity;
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i] - cx;
+        const y = positions[i + 1] - cy;
+        const z = positions[i + 2] - cz;
+        if (y <= 0 || z < 0 || Math.abs(x) > 0.3 * y || Math.hypot(x, y, z) > 1.6 * eyes.radius) continue;
+        edge = Math.min(edge, Math.hypot(x, y));
+      }
+      return edge;
+    };
+    expect(lidEdge(0.75)).toBeLessThan(lidEdge(0.1));
+  });
 
   it("pushes the nose forward as the nose size rises", () => {
     expect(extent(shape(params({ noseSize: 1 })), -0.3, 0.1).z).toBeGreaterThan(extent(shape(params({ noseSize: 0 })), -0.3, 0.1).z);

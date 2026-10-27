@@ -28,13 +28,15 @@ function realisticEye(radius: number, irisHex: string): THREE.Group {
   const colors = new Float32Array(pos.count * 3);
 
   const iris = new THREE.Color(irisHex);
-  const sclera = new THREE.Color(0xe9e3d6);
+  const sclera = new THREE.Color(0xd9d0c0);
   const vein = new THREE.Color(0xb04a3e);
   const dark = new THREE.Color(0x060403);
   const collarette = new THREE.Color(0xd9b46a);
   const c = new THREE.Color();
-  const irisEdge = 0.52; // iris radius as an angle from the front
-  const pupilEdge = 0.2;
+  // The iris as an angle from the front: about 11.5 mm across on this 9.4 mm-radius eyeball, as on a real
+  // eye. (A smaller iris leaves white showing all round it, and the eye stares.)
+  const irisEdge = 0.66;
+  const pupilEdge = 0.24;
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -59,6 +61,8 @@ function realisticEye(radius: number, irisHex: string): THREE.Group {
       c.copy(sclera).lerp(vein, streak * edge * 0.45).multiplyScalar(1 - 0.28 * edge);
       c.lerp(dark, 0.45 * (1 - smooth((theta - irisEdge) / 0.07)));
     }
+    // The upper lid and lashes shade the top of the eye
+    c.multiplyScalar(1 - 0.35 * smooth((y / radius + 0.1) / 0.8));
     colors[i * 3] = Math.min(1, c.r);
     colors[i * 3 + 1] = Math.min(1, c.g);
     colors[i * 3 + 2] = Math.min(1, c.b);
@@ -67,7 +71,7 @@ function realisticEye(radius: number, irisHex: string): THREE.Group {
   group.add(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.32 })));
 
   // The cornea: a thin transparent dome over the iris that catches the light
-  const dome = new THREE.SphereGeometry(radius * 1.03, 32, 20, 0, Math.PI * 2, 0, 0.62);
+  const dome = new THREE.SphereGeometry(radius * 1.03, 32, 20, 0, Math.PI * 2, 0, 0.78);
   dome.rotateX(Math.PI / 2);
   const cornea = new THREE.Mesh(
     dome,

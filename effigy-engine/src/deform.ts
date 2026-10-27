@@ -170,6 +170,22 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     dy += ny * chest * chestPush;
     dz += nz * chest * chestPush;
 
+    // Heavy lids: the upper lid slides down over the eyeball. Each lid vertex turns about the eye's own
+    // centre (about its horizontal axis), so it keeps its distance from the eye and can never cut into it.
+    // The turn is strongest at the lid's edge and fades out toward the corners of the eye and up the lid.
+    const eyeR = base.eyes.radius;
+    if (eyeDistance < 2 * eyeR && z0 > -0.2 * eyeR && y0 > -0.3 * eyeR) {
+      const rx = ax - eyeX;
+      const near = 1 - smooth((eyeDistance - 1.05 * eyeR) / (0.9 * eyeR));
+      const upper = smooth((y0 + 0.1 * eyeR) / (0.5 * eyeR));
+      const corners = Math.max(0, 1 - (rx / (1.3 * eyeR)) ** 2);
+      const turn = (0.05 + 0.22 * p.lids) * near * upper * corners;
+      const c = Math.cos(turn);
+      const s = Math.sin(turn);
+      dy += y0 * c - z0 * s - y0;
+      dz += y0 * s + z0 * c - z0;
+    }
+
     // Skull breadth and height scale the whole head about the middle of its width and the chin
     const head = smooth((y0 + 0.75) / 0.25);
     out[i * 3] = (x0 + dx) * (1 + (k.headWidth - 1) * head);
