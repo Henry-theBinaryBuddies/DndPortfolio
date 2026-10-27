@@ -24,6 +24,11 @@ interface Style {
   thickness: (x: number, y: number, z: number) => number; // in head-local units (1 = 20 cm)
   flow: [number, number, number]; // the direction it is combed
   lean: number; // how far the mass is carried along the combing direction, as a share of its thickness
+  // How broadly the direction the shell is raised in is smoothed across the surface (passes over
+  // neighbouring vertices). Raised along the skin's own normals, a crease tips them inward and the shell
+  // folds into a wall or a point there.
+  directionSmoothing?: number;
+  clumps?: (x: number, y: number, z: number) => number; // sculpted clumps: a factor on the thickness
 }
 
 const STYLES: Record<"cropped" | "swept" | "mohawk" | "long", Style> = {
@@ -104,6 +109,30 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     soft = next;
   }
 
+  // The direction to raise each vertex in: the skin's normals, smoothed across the surface
+  let dirs = new Float32Array(normals);
+  for (let pass = 0; pass < (style.directionSmoothing ?? 8); pass++) {
+    const next = new Float32Array(dirs.length);
+    for (let i = 0; i < count; i++) {
+      const from = base.offsets[i];
+      const to = base.offsets[i + 1];
+      let x = dirs[i * 3];
+      let y = dirs[i * 3 + 1];
+      let z = dirs[i * 3 + 2];
+      for (let k = from; k < to; k++) {
+        const j = base.neighbours[k];
+        x += dirs[j * 3];
+        y += dirs[j * 3 + 1];
+        z += dirs[j * 3 + 2];
+      }
+      const length = Math.hypot(x, y, z) || 1;
+      next[i * 3] = x / length;
+      next[i * 3 + 1] = y / length;
+      next[i * 3 + 2] = z / length;
+    }
+    dirs = next;
+  }
+
   // The triangles that carry hair, and the vertices they use
   const triangles: number[] = [];
   const used = new Int32Array(count).fill(-1);
@@ -134,10 +163,11 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     const x = positions[v * 3];
     const y = positions[v * 3 + 1];
     const z = positions[v * 3 + 2];
-    n.set(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]).normalize();
+    n.set(dirs[v * 3], dirs[v * 3 + 1], dirs[v * 3 + 2]).normalize();
     const w = grow[v];
     // Full thickness well inside the hairline, tapering to a hair's breadth at its edge
-    const lift = SKIN_GAP + style.thickness(x, y, z) * smooth((soft[v] - 0.25) / 0.65) * smooth(w / 0.3);
+    const clumped = style.clumps ? style.clumps(x, y, z) : 1;
+    const lift = SKIN_GAP + style.thickness(x, y, z) * clumped * smooth((soft[v] - 0.25) / 0.65) * smooth(w / 0.3);
     // ...and carried along the comb, so a swept style's mass leans back instead of rising straight up
     lean.copy(comb).addScaledVector(n, -comb.dot(n));
     if (lean.lengthSq() > 1e-6) lean.normalize().multiplyScalar((lift - SKIN_GAP) * style.lean);
@@ -168,18 +198,37 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
 // Beards, sculpted like the hair: a shell raised over the beard's region of the face (see beard.ts), with
 // its strands running down. A short beard is a close layer; a full one is thick, its chin hanging below the
 // jaw; a goatee covers just the chin and the upper lip. Stubble is only painted (see face.ts).
+// Under the lower lip the beard thins to its root, then builds toward the chin, so it never rises into a wall
+// facing the lip; beside the nose and above the lip (the moustache) it stays thin, so the mouth stays clear.
+const lipClear = (x: number, y: number) => 1 - 0.85 * Math.exp(-(((y + 0.43) / 0.035) ** 2)) * (1 - smooth((Math.abs(x) - 0.12) / 0.06));
+const moustache = (y: number) => 1 - 0.55 * smooth((y + 0.33) / 0.06);
+// Broad clumps, as a sculptor would carve them: locks running down the beard, a few centimetres across
+const beardClumps = (x: number, y: number, z: number) => 0.8 + 0.2 * Math.sin(Math.atan2(x, z + 0.3) * 22 + 2.5 * Math.sin(y * 9));
 const BEARDS: Record<"goatee" | "short" | "full", Style> = {
-  goatee: { thickness: (_x, y) => 0.012 + 0.035 * smooth((-0.42 - y) / 0.12), flow: [0, -1, 0.25], lean: 0.5 },
-  short: { thickness: (_x, y) => 0.01 + 0.006 * smooth((-0.42 - y) / 0.12), flow: [0, -1, 0.2], lean: 0.2 },
+  goatee: {
+    thickness: (x, y) => (0.012 + 0.035 * smooth((-0.45 - y) / 0.12)) * lipClear(x, y) * moustache(y),
+    flow: [0, -1, 0.25],
+    lean: 0.5,
+    directionSmoothing: 25,
+    clumps: beardClumps,
+  },
+  short: {
+    thickness: (x, y) => (0.01 + 0.006 * smooth((-0.45 - y) / 0.12)) * lipClear(x, y),
+    flow: [0, -1, 0.2],
+    lean: 0.2,
+    directionSmoothing: 25,
+    clumps: (x, y, z) => 0.9 + 0.1 * (beardClumps(x, y, z) - 0.8) / 0.2,
+  },
   full: {
     thickness: (x, y) => {
-      // Thickest at the chin and along the jaw, kept thin on the upper lip so the mouth stays clear
-      const chin = smooth((-0.42 - y) / 0.15) * (1 - 0.5 * smooth((Math.abs(x) - 0.18) / 0.15));
-      const lip = smooth((y + 0.33) / 0.06);
-      return (0.024 + 0.13 * chin) * (1 - 0.55 * lip);
+      // Thickest at the chin and along the jaw
+      const chin = smooth((-0.45 - y) / 0.15) * (1 - 0.5 * smooth((Math.abs(x) - 0.18) / 0.15));
+      return (0.024 + 0.13 * chin) * lipClear(x, y) * moustache(y);
     },
     flow: [0, -1, 0.3],
     lean: 0.9,
+    directionSmoothing: 25,
+    clumps: beardClumps,
   },
 };
 
@@ -292,8 +341,9 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     const a0 = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
     start.push(a0);
     top.push(0.05 + (CURTAIN_TOP - 0.05) * Math.cos(a0 * 0.9) ** 2);
-    // A curved, layered hem: longest down the middle of the back, with locks of slightly different length
-    ends.push(-0.95 - 0.3 * Math.cos(a0 * 1.1) - 0.1 * rand());
+    // A curved, layered hem: longest down the middle of the back and ending above the shoulders at the
+    // sides (side edges that reached the shoulders lay across them as thin strips)
+    ends.push(-0.82 - 0.45 * Math.max(0, Math.cos(a0 * 1.15)) ** 1.5 - 0.08 * rand());
   }
   for (let pass = 0; pass < 2; pass++) for (let u = 1; u < ACROSS; u++) ends[u] = (ends[u - 1] + 2 * ends[u] + ends[u + 1]) / 4;
   const angleOf = (u: number, _t: number) => start[u];
@@ -409,7 +459,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       // Behind the ear until below it, then sweeping forward (passing over the ear pushed it out like a fin)
       const a = side * (0.95 + 1.6 * smooth((t - 0.3) / 0.6));
       const y = 0.12 + (-1.3 - 0.12) * t;
-      const wanted = bodyAcross(a, y, 0.075 * lockGrow(t)) + 0.05;
+      const wanted = bodyAcross(a, y, 0.055 * lockGrow(t)) + 0.05;
       drift = k === 0 ? wanted : Math.max(wanted, drift * 0.95);
       reachAlong.push(drift);
       path.push({ a, y });
@@ -417,7 +467,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     // Smoothed along its length so it falls in one sweep, never closer to the body than it may be
     for (let pass = 0; pass < 6; pass++) {
       for (let k = 1; k < LOCK_ROWS; k++) {
-        const minimum = bodyAcross(path[k].a, path[k].y, 0.075 * lockGrow(k / LOCK_ROWS)) + 0.05;
+        const minimum = bodyAcross(path[k].a, path[k].y, 0.055 * lockGrow(k / LOCK_ROWS)) + 0.05;
         reachAlong[k] = Math.max(minimum, (reachAlong[k - 1] + 2 * reachAlong[k] + reachAlong[k + 1]) / 4);
       }
     }
@@ -431,8 +481,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       // Across the band runs around the neck; through it runs out from the neck
       const grow = lockGrow(t);
       // A rounded tress (a flat band read as a strap)
-      const halfWidth = 0.075 * grow;
-      const halfThick = 0.045 * grow;
+      const halfWidth = 0.055 * grow;
+      const halfThick = 0.042 * grow;
       for (let j = 0; j < LOCK_SIDES; j++) {
         const angle = (2 * Math.PI * j) / LOCK_SIDES;
         const across = Math.cos(angle) * halfWidth;

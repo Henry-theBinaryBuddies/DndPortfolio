@@ -312,7 +312,8 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   // A beard, sculpted like the hair
   const beard = buildBeard(p, bust.positions, bust.normals, base);
   if (beard) {
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, transparent: true });
+    // (matte: a beard is coarse hair, and glossy it looked like plastic)
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, transparent: true });
     applyHairDetail(material, p, "beard");
     const beardMesh = new THREE.Mesh(beard, material);
     beardMesh.userData.form = true;

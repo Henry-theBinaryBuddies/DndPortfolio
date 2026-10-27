@@ -12,11 +12,21 @@ const smooth = (t: number) => {
 };
 
 // The top edge of the beard: the cheek line, highest at the sideburn and lowest beside the nose; under the
-// nose, the top of the moustache
+// nose, the top of the moustache, which arches with the base of the nose (rising a little beside the
+// nostrils) before dropping to meet the cheek line (a flat top read as a band across the lip)
 function topLine(ax: number): number {
   const cheek = -0.27 + 0.25 * smooth((ax - 0.2) / 0.22);
-  return ax < 0.2 ? -0.258 - 0.012 * smooth((ax - 0.12) / 0.08) : cheek;
+  const moustache = -0.256 + 0.012 * smooth((ax - 0.02) / 0.07) - 0.03 * smooth((ax - 0.1) / 0.09);
+  return ax < 0.2 ? Math.min(moustache, cheek + 0.03) : cheek;
 }
+
+// The opening around the mouth: a rounded margin a little outside the lips (following the lips' own
+// outline left a rectangular cut-out); 1 well outside it, 0 inside
+function mouthClearance(ax: number, y: number): number {
+  const e = Math.hypot(ax / 0.14, (y - STOMION) / 0.055);
+  return smooth((e - 1) / 0.25);
+}
+const STOMION = -0.363;
 
 // lips: how much of this point is the red of the lips (0..1), which a beard keeps off
 export function beardWeight(x: number, y: number, z: number, style: BeardStyle, lips: number): number {
@@ -27,8 +37,8 @@ export function beardWeight(x: number, y: number, z: number, style: BeardStyle, 
   // In front of the ears, and not round the back of the neck
   w *= smooth((z + 0.5) / 0.1);
   if (ax > 0.38 && y > -0.3 && y < 0.25 && z < -0.25) w = 0;
-  // Off the lips
-  w *= 1 - smooth(lips * 1.6);
+  // Off the lips, with a rounded margin round the mouth
+  w *= (1 - smooth(lips * 1.6)) * mouthClearance(ax, y);
   // A goatee: the moustache and the front of the chin only (not under it)
   if (style === "goatee") w *= (1 - smooth((ax - 0.12 - 0.04 * smooth((-0.42 - y) / 0.1)) / 0.03)) * smooth((y + 0.62) / 0.05) * smooth(z / 0.08);
   return w;
