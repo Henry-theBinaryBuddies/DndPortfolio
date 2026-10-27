@@ -5,7 +5,7 @@ import { buildBust, fitSphere, socketFit } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
 import { buildFineHair } from "./fineHair";
-import { buildHairShell, buildHangingHair } from "./hairShell";
+import { buildBeard, buildHairShell, buildHangingHair } from "./hairShell";
 import { applySkinDetail } from "./skinShader";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
@@ -420,6 +420,45 @@ describe("buildBust", () => {
       }
     }
     expect(buildHangingHair(params({ hairStyle: "swept" }), new Float32Array(), base)).toBeNull();
+  }, 120000);
+
+  it("sculpts beards on the lower face only, keeping off the lips, and paints stubble instead of sculpting it", () => {
+    const beardOf = (beardStyle: Params["beardStyle"]) => {
+      const p = params({ beardStyle });
+      const bust = sculptBust(p, base);
+      return buildBeard(p, bust.positions, bust.normals, base);
+    };
+    expect(beardOf("none")).toBeNull();
+    expect(beardOf("stubble")).toBeNull();
+    const sizes: Record<string, number> = {};
+    for (const style of ["goatee", "short", "full"] as const) {
+      const beard = beardOf(style)!;
+      expect(beard, style).not.toBeNull();
+      const pos = beard.attributes.position;
+      const color = beard.attributes.color;
+      let visible = 0;
+      for (let i = 0; i < pos.count; i++) {
+        if (color.getW(i) < 0.1) continue; // the faded edge
+        visible++;
+        // Nothing above the cheek line beside the nose, and nothing over the eyes or forehead
+        expect(pos.getY(i), style).toBeLessThan(0.05);
+      }
+      sizes[style] = visible;
+    }
+    // A goatee covers much less than a short beard
+    expect(sizes.goatee).toBeLessThan(sizes.short * 0.6);
+    // No visible beard over the red of the lips
+    const p = params({ beardStyle: "full" });
+    const bust = sculptBust(p, base);
+    const full = buildBeard(p, bust.positions, bust.normals, base)!;
+    let onLips = 0;
+    const color = full.attributes.color;
+    const pos = full.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (color.getW(i) > 0.5 && Math.abs(pos.getX(i)) < 0.08 && y > -0.4 && y < -0.33 && pos.getZ(i) > 0.15) onLips++;
+    }
+    expect(onLips).toBe(0);
   }, 120000);
 
   it("grows real eyebrow and eyelash strands, more for bushier brows", () => {

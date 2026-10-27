@@ -2,12 +2,13 @@ import * as THREE from "three";
 import { deformHead, type Deformed } from "./deform";
 import { shavedWeight } from "./hair";
 import { LANDMARK, type HeadBase } from "./headMesh";
+import { beardWeight } from "./beard";
 import { browWeight } from "./brows";
 import { masculinity, type Params } from "./params";
 
 // Turns the deformed base head into a painted mesh. Shading comes from cavity: wherever a vertex sits
 // below the average of its neighbours (a socket, a crease, the corner of the mouth) it is darkened, and
-// raised ridges are left light. Grime, scars, brows, lips, age lines, scales and a tunic go on top as
+// raised ridges are left light. Grime, brows, lips, age lines and a tunic go on top as
 // vertex colours, placed using the landmarks measured on the real head.
 
 export interface Bust {
@@ -115,7 +116,8 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
   // Lips are a little darker and redder than the skin, not a separate colour (on green or red skin a
   // strong pink reads as two rolls stuck on)
   const lipTone = skin.clone().multiplyScalar(0.92).lerp(new THREE.Color(0xa85a60), 0.35);
-  const stubbleTone = new THREE.Color(p.hairColor).lerp(skin, 0.55);
+  const stubbleTone = new THREE.Color(p.hairColor).lerp(skin, 0.45);
+  const beardShadow = new THREE.Color(p.hairColor).lerp(skin, 0.3).multiplyScalar(0.85);
   const blushTone = skin.clone().lerp(new THREE.Color(0xa0473c), 0.35);
   const { eyeX } = LANDMARK;
 
@@ -183,6 +185,11 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     // The shaved sides of a mohawk show the shadow of stubble
     const shaved = shavedWeight(p, x, y, z);
     if (shaved > 0) color.lerp(stubbleTone, shaved * 0.45 * head);
+    // Stubble: the same shadow over the beard's region (a sculpted beard covers it anyway)
+    if (p.beardStyle !== "none") {
+      const beard = beardWeight(base.positions[i * 3], base.positions[i * 3 + 1], base.positions[i * 3 + 2], p.beardStyle === "goatee" ? "goatee" : "short", base.masks.lipsSoft[i]);
+      if (beard > 0) color.lerp(beardShadow, beard * 0.75 * (0.8 + 0.4 * noise3(x * 90, y * 90, z * 90)));
+    }
 
     // Grime blotches, heavier in recesses
     const n = noise3(x * 3 + 5, y * 3, z * 3) * 0.6 + noise3(x * 9, y * 9 + 3, z * 9) * 0.4;

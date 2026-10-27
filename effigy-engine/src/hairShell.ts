@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { scalp, STRIP_HALF_WIDTH } from "./hair";
+import { beardWeight } from "./beard";
 import type { HeadBase } from "./headMesh";
 import type { Params } from "./params";
 
@@ -63,7 +64,6 @@ export function buildHairShell(
   base: HeadBase,
   _skinColors: Float32Array,
 ): THREE.BufferGeometry | null {
-  const indices = base.indices;
   if (p.hairStyle === "none") return null;
   const style = STYLES[p.hairStyle];
   const count = positions.length / 3;
@@ -80,6 +80,14 @@ export function buildHairShell(
     if (Math.abs(x) > 0.4 && y > -0.3 && y < 0.2 && z > -0.7 && z < -0.2) w = 0;
     grow[i] = w;
   }
+  return raiseShell(positions, normals, base, grow, style, new THREE.Color(p.hairColor));
+}
+
+// Raises a solid shell from the head wherever the growth map says hair grows (0..1 per vertex), with the
+// style's thickness, carried along its comb by its lean. Shared by the hair and the beard.
+function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBase, grow: Float32Array, style: Style, hair: THREE.Color): THREE.BufferGeometry | null {
+  const indices = base.indices;
+  const count = positions.length / 3;
 
   // The thickness builds up gradually from the hairline: the growth map spread a few centimetres across
   // the surface (it changes within about 8 mm, which made the shell's edge a ledge)
@@ -115,7 +123,6 @@ export function buildHairShell(
   }
   if (triangles.length === 0) return null;
 
-  const hair = new THREE.Color(p.hairColor);
   const out = new Float32Array(order.length * 3);
   const colors = new Float32Array(order.length * 4);
   const amount = new Float32Array(order.length);
@@ -156,6 +163,33 @@ export function buildHairShell(
   geometry.setIndex(triangles);
   geometry.computeVertexNormals();
   return geometry;
+}
+
+// Beards, sculpted like the hair: a shell raised over the beard's region of the face (see beard.ts), with
+// its strands running down. A short beard is a close layer; a full one is thick, its chin hanging below the
+// jaw; a goatee covers just the chin and the upper lip. Stubble is only painted (see face.ts).
+const BEARDS: Record<"goatee" | "short" | "full", Style> = {
+  goatee: { thickness: (_x, y) => 0.012 + 0.035 * smooth((-0.42 - y) / 0.12), flow: [0, -1, 0.25], lean: 0.5 },
+  short: { thickness: (_x, y) => 0.01 + 0.006 * smooth((-0.42 - y) / 0.12), flow: [0, -1, 0.2], lean: 0.2 },
+  full: {
+    thickness: (x, y) => {
+      // Thickest at the chin and along the jaw, kept thin on the upper lip so the mouth stays clear
+      const chin = smooth((-0.42 - y) / 0.15) * (1 - 0.5 * smooth((Math.abs(x) - 0.18) / 0.15));
+      const lip = smooth((y + 0.33) / 0.06);
+      return (0.024 + 0.13 * chin) * (1 - 0.55 * lip);
+    },
+    flow: [0, -1, 0.3],
+    lean: 0.9,
+  },
+};
+
+export function buildBeard(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+  if (p.beardStyle === "none" || p.beardStyle === "stubble") return null;
+  const count = positions.length / 3;
+  const grow = new Float32Array(count);
+  const bp = base.positions;
+  for (let i = 0; i < count; i++) grow[i] = beardWeight(bp[i * 3], bp[i * 3 + 1], bp[i * 3 + 2], p.beardStyle, base.masks.lipsSoft[i]);
+  return raiseShell(positions, normals, base, grow, BEARDS[p.beardStyle], new THREE.Color(p.hairColor).multiplyScalar(0.92));
 }
 
 // Long hair's hanging lengths: a curtain draped from the scalp down the back, sculpted as one solid mass like
@@ -462,10 +496,15 @@ float strands(vec3 p, vec3 flow) {
 }
 `;
 
-export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params, hanging = false): void {
+export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params, part: "scalp" | "hanging" | "beard" = "scalp"): void {
   // One fixed combing direction per style (stretching the noise along each vertex's own direction scrambled
   // the pattern into specks wherever that direction turned); hanging hair runs straight down
-  const direction: [number, number, number] = hanging ? [0, -1, -0.1] : STYLES[p.hairStyle === "none" ? "swept" : p.hairStyle].flow;
+  const direction: [number, number, number] =
+    part === "hanging"
+      ? [0, -1, -0.1]
+      : part === "beard"
+        ? BEARDS[p.beardStyle === "goatee" || p.beardStyle === "short" || p.beardStyle === "full" ? p.beardStyle : "short"].flow
+        : STYLES[p.hairStyle === "none" ? "swept" : p.hairStyle].flow;
   const flow = { value: new THREE.Vector3(...direction).normalize() };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uFlow = flow;
@@ -497,5 +536,5 @@ export function applyHairDetail(material: THREE.MeshStandardMaterial, p: Params,
 }`,
       );
   };
-  material.customProgramCacheKey = () => `effigy-hair-v4-${hanging ? "hanging" : "scalp"}`;
+  material.customProgramCacheKey = () => `effigy-hair-v4-${part}`;
 }

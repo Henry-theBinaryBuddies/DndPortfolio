@@ -18,7 +18,6 @@ export type NumericKey =
   | "eyebrows"
   | "horns"
   | "tusks"
-  | "scales"
   | "grime";
 
 export const RACES = ["human", "elf", "half-elf", "dwarf", "halfling", "gnome", "half-orc", "tiefling"] as const;
@@ -39,12 +38,17 @@ export type HornStyle = (typeof HORN_STYLES)[number];
 export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long"] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
+// Beards are sculpted like the hair (see beard.ts); stubble is painted on the skin. They take the hair colour.
+export const BEARD_STYLES = ["none", "stubble", "goatee", "short", "full"] as const;
+export type BeardStyle = (typeof BEARD_STYLES)[number];
+
 export interface Params extends Record<NumericKey, number> {
   race: Race;
   body: Body;
   eyeStyle: EyeStyle;
   hornStyle: HornStyle;
   hairStyle: HairStyle;
+  beardStyle: BeardStyle;
   skin: string;
   cloth: string;
   eyes: string;
@@ -88,7 +92,6 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("eyebrows", "Eyebrows", "Face", 0.5),
   def("horns", "Horn size", "Fantasy", 0.5),
   def("tusks", "Tusk size", "Fantasy", 0.5),
-  def("scales", "Scales", "Fantasy", 0),
   def("grime", "Grime", "Skin", 0.3),
 ];
 
@@ -111,7 +114,6 @@ export const SKIN_TONES: Swatch[] = [
   { name: "Orc grey-green", value: "#6d7a5a" },
   { name: "Infernal red", value: "#8a3a34" },
   { name: "Infernal violet", value: "#5a3a63" },
-  { name: "Bronze scale", value: "#8a6a34" },
   { name: "Blue-grey", value: "#5c6f80" },
 ];
 
@@ -184,6 +186,7 @@ export interface RaceInfo {
   skeleton: Skeleton;
   hornStyle: HornStyle;
   hairStyle: HairStyle;
+  beardStyle?: BeardStyle; // (none if not given)
   eyes?: string; // a racial eye colour, applied when the race is chosen
   // Slider values this race starts with (a heavy brow for a half-orc, heavy eyebrows for a dwarf)
   defaults: Values;
@@ -236,6 +239,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     skeleton: { ...HUMAN, angularity: 0.7, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.25, noseBridge: 0.3, jaw: 1.15, chin: 0.55, browBase: 0.3, cheekBase: 0.1, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
     hornStyle: "none",
     hairStyle: "cropped",
+    beardStyle: "full",
     defaults: { eyebrows: 0.85, muscle: 0.7, weight: 0.6 },
   },
   // Round, soft face: full cheeks, a small button nose, a gentle brow
@@ -283,6 +287,7 @@ export interface Preset {
   eyeStyle?: EyeStyle;
   hornStyle?: HornStyle;
   hairStyle?: HairStyle;
+  beardStyle?: BeardStyle;
   values: Values;
   skin?: string;
   cloth?: string;
@@ -361,6 +366,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Slayer",
     hairStyle: "cropped",
+    beardStyle: "full",
     race: "dwarf",
     eyeStyle: "realistic",
     skin: skin("Ruddy"),
@@ -378,6 +384,7 @@ export function defaultParams(): Params {
     eyeStyle: "realistic" as EyeStyle,
     hornStyle: "none" as HornStyle,
     hairStyle: "swept" as HairStyle,
+    beardStyle: "none" as BeardStyle,
     skin: RACE_INFO.human.skin,
     cloth: CLOTH_COLORS[0].value,
     eyes: eyes("Hazel"),
@@ -421,7 +428,6 @@ export interface Derived {
   tusks: number; // only half-orcs have tusks; zero for everyone else
   brow: number; // brow ridge: the slider plus the race's baseline
   cheek: number;
-  scales: number;
   gaunt: number; // sunken cheeks, from lean build and age
   fullness: number; // heavier cheeks and jowls, from weight
   lipFull: number;
@@ -447,7 +453,6 @@ export function derive(p: Params): Derived {
     angularity: sk.angularity,
     brow: clamp01(p.brow + sk.browBase),
     cheek: clamp01(p.cheekbones + sk.cheekBase),
-    scales: p.scales,
     tusks: p.race === "half-orc" ? p.tusks : 0,
     gaunt: clamp01(sk.gaunt + 0.35 * p.age + 0.9 * (0.5 - p.weight)),
     fullness: clamp01((p.weight - 0.5) * 2),
@@ -476,6 +481,7 @@ export function applyRace(current: Params, race: Race): Params {
   next.eyeStyle = current.eyeStyle;
   next.hornStyle = info.hornStyle;
   next.hairStyle = info.hairStyle;
+  next.beardStyle = info.beardStyle ?? "none";
   if (info.eyes) next.eyes = info.eyes;
   next.hairColor = current.hairColor;
   Object.assign(next, info.defaults);
@@ -488,6 +494,7 @@ export function applyPreset(current: Params, preset: Preset): Params {
   if (preset.eyeStyle) next.eyeStyle = preset.eyeStyle;
   if (preset.hornStyle) next.hornStyle = preset.hornStyle;
   if (preset.hairStyle) next.hairStyle = preset.hairStyle;
+  if (preset.beardStyle) next.beardStyle = preset.beardStyle;
   if (preset.skin) next.skin = preset.skin;
   if (preset.cloth) next.cloth = preset.cloth;
   if (preset.eyes) next.eyes = preset.eyes;
@@ -506,6 +513,7 @@ export function randomParams(rng: () => number = Math.random): Params {
   params.cloth = pick(CLOTH_COLORS).value;
   params.eyes = pick(EYE_COLORS).value;
   params.hairStyle = pick(HAIR_STYLES);
+  params.beardStyle = pick(BEARD_STYLES);
   params.hairColor = pick(HAIR_COLORS).value;
   // Fantasy features belong to the race, so only the anatomical sliders are randomized.
   const keep: NumericKey[] = ["horns", "tusks"];

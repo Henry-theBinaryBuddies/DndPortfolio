@@ -4,6 +4,7 @@ import {
   EYE_COLORS,
   EYE_STYLES,
   HAIR_COLORS,
+  BEARD_STYLES,
   HAIR_STYLES,
   HORN_STYLES,
   NUMERIC_DEFS,
@@ -18,6 +19,7 @@ import {
   randomParams,
   type Body,
   type EyeStyle,
+  type BeardStyle,
   type HairStyle,
   type HornStyle,
   type NumericKey,
@@ -37,6 +39,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const presetSelect = document.createElement("select");
   const hornSelect = document.createElement("select");
   const hairSelect = document.createElement("select");
+  const beardSelect = document.createElement("select");
   const eyeButtons = new Map<EyeStyle, HTMLButtonElement>();
   const bodyButtons = new Map<Body, HTMLButtonElement>();
 
@@ -48,6 +51,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     for (const [body, button] of bodyButtons) button.setAttribute("aria-pressed", String(body === params.body));
     hornSelect.value = params.hornStyle;
     hairSelect.value = params.hairStyle;
+    beardSelect.value = params.beardStyle;
     for (const [key, { input, out, row }] of sliders) {
       input.value = String(params[key]);
       out.textContent = params[key].toFixed(2);
@@ -173,9 +177,10 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     return row;
   };
   const hairRow = styleRow("Hair", hairSelect, HAIR_STYLES, (value) => (params.hairStyle = value as HairStyle));
+  const beardRow = styleRow("Beard", beardSelect, BEARD_STYLES, (value) => (params.beardStyle = value as BeardStyle));
   const hornRow = styleRow("Horns", hornSelect, HORN_STYLES, (value) => (params.hornStyle = value as HornStyle));
 
-  character.append(bodyRow, raceRow, raceDefaultsRow, presetRow, eyeRow, hairRow, hornRow);
+  character.append(bodyRow, raceRow, raceDefaultsRow, presetRow, eyeRow, hairRow, beardRow, hornRow);
   panel.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];

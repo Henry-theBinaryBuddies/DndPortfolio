@@ -3,7 +3,7 @@ import { shapeGeometry, type Assets } from "./assets";
 import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildFineHair } from "./fineHair";
-import { applyHairDetail, buildHairShell, buildHangingHair } from "./hairShell";
+import { applyHairDetail, buildBeard, buildHairShell, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { derive, type Params } from "./params";
 import { applySkinDetail } from "./skinShader";
@@ -305,8 +305,18 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
   const hanging = buildHangingHair(p, bust.positions, base);
   if (hanging) {
     const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
-    applyHairDetail(material, p, true);
+    applyHairDetail(material, p, "hanging");
     head.add(new THREE.Mesh(hanging, material));
+  }
+
+  // A beard, sculpted like the hair
+  const beard = buildBeard(p, bust.positions, bust.normals, base);
+  if (beard) {
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, transparent: true });
+    applyHairDetail(material, p, "beard");
+    const beardMesh = new THREE.Mesh(beard, material);
+    beardMesh.userData.form = true;
+    head.add(beardMesh);
   }
 
   // Eyebrows and eyelashes as real strands
