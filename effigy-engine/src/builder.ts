@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import { shapeGeometry, type Assets } from "./assets";
+import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildFineHair } from "./fineHair";
 import { buildHair } from "./hair";
+import { LANDMARK } from "./headMesh";
 import { derive, type Params } from "./params";
 import { applySkinDetail } from "./skinShader";
 
@@ -239,19 +241,21 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
     }
   }
 
-  // Tusks: only half-orcs have them. A sculpted tusk rises from the lower jaw beside each corner of the
-  // mouth, curving up and slightly outward.
+  // Tusks: only half-orcs have them. Each rises from the lower jaw, out from between the lips beside the
+  // middle of the mouth, curving up and slightly outward. Its root is buried in the lower lip (which
+  // bulges over it, see deform.ts), so no flat base shows.
   if (k.tusks > 0.03) {
     const geometry = shapeGeometry(assets.shapes.tusk, new THREE.Color(0x6a5230), new THREE.Color(0xe6dcc0), new THREE.Color(0xf4eedc));
     const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38 });
-    const size = 0.12 + 0.18 * k.tusks;
+    const size = 0.1 + 0.14 * k.tusks;
+    const rootX = TUSK_X * (1 + 0.8 * (k.mouthWidth - 1));
     for (const side of [-1, 1]) {
-      const lip = frontPoint(probe, side * 0.13 * k.mouthWidth, -0.42);
+      const lip = frontPoint(probe, side * rootX, LANDMARK.stomion - 0.02);
       if (!lip) continue;
       const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), material);
       tusk.scale.set(side * size, size, size);
-      tusk.quaternion.setFromUnitVectors(UP, new THREE.Vector3(side * 0.1, 1, 0.14).normalize());
-      tusk.position.copy(lip.position).addScaledVector(lip.normal, -0.025).add(new THREE.Vector3(0, -0.02, 0));
+      tusk.quaternion.setFromUnitVectors(UP, new THREE.Vector3(side * 0.12, 1, 0.18).normalize());
+      tusk.position.copy(lip.position).addScaledVector(lip.normal, -0.035).add(new THREE.Vector3(0, -0.035, 0));
       head.add(tusk);
     }
   }

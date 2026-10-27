@@ -29,6 +29,9 @@ function distanceToSegment2(px: number, py: number, ax: number, ay: number, bx: 
   return Math.hypot(px - ax - abx * t, py - ay - aby * t);
 }
 
+// Where each tusk roots, beside the middle of the lower lip (before the mouth is widened)
+export const TUSK_X = 0.095;
+
 export interface Deformed {
   positions: Float32Array;
   eyes: { left: Vec3; right: Vec3; radius: number };
@@ -106,7 +109,8 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // Forehead recession (a sloped brow for an orc) and a jutting lower face (a heavy jaw)
     const forehead = smooth((y0 - 0.15) / 0.2) * (1 - smooth((y0 - 0.5) / 0.1)) * smooth((z0 + 0.1) / 0.2);
     dz -= k.slope * 0.1 * forehead;
-    const lowerFace = smooth((-0.15 - y0) / 0.15) * (1 - smooth((-0.62 - y0) / 0.12)) * smooth((z0 + 0.2) / 0.3);
+    // (The jut is around the mouth and teeth; carried down to the bottom of the chin it made a long shelf.)
+    const lowerFace = smooth((-0.18 - y0) / 0.12) * (1 - smooth((-0.48 - y0) / 0.1)) * smooth((z0 + 0.2) / 0.3);
     dz += k.prognathism * 0.1 * lowerFace;
 
     // Hard structure, scaled by how angular the race is: the bony rim around each eye, the hollow just
@@ -121,7 +125,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     push(Math.exp(-((temporal / 0.03) ** 2)), 0.006 + 0.014 * k.angularity);
     const jawEdge = Math.min(distanceToSegment3(ax, y0, z0, 0.38, -0.22, -0.38, 0.33, -0.46, -0.12), distanceToSegment3(ax, y0, z0, 0.33, -0.46, -0.12, 0.1, -0.58, 0.12));
     push(Math.exp(-((jawEdge / 0.04) ** 2)), (0.008 + 0.03 * k.angularity) * (0.5 + 0.6 * m));
-    push(blob(0.36, -0.32, -0.2, 0.07, 0.12, 0.12), 0.025 * Math.max(0, gender) * (0.5 + k.angularity));
+    push(blob(0.36, -0.32, -0.2, 0.07, 0.12, 0.12), 0.015 * Math.max(0, gender) * (0.5 + k.angularity));
     push(blob(0.26, -0.43, 0.1, 0.07, 0.05, 0.1), 0.03 * Math.max(0, p.age - 0.45) + 0.025 * k.fullness);
     // The wings of the nose and the ridge of the nasal bones
     push(blob(0.1, -0.21, 0.15, 0.03, 0.035, 0.05), 0.008 + 0.01 * edge);
@@ -137,10 +141,14 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     dy += (y0 - stomion) * Math.max(0, lipScale - 1) * 0.28 * lips;
     push(lips, (lipScale - 1) * 0.03);
     dx += x0 * (k.mouthWidth - 1) * 0.8 * lips;
+    // Tusks press up behind the lower lip, so it bulges a little over each one
+    if (k.tusks > 0) push(blob(TUSK_X, stomion - 0.03, 0.16, 0.025, 0.025, 0.06), 0.012 * k.tusks);
 
-    // Chin projection and jaw breadth (the jaw runs from just below the cheeks to the chin)
-    push(blob(0, -0.5, 0.1, 0.14, 0.09, 0.14), (k.chin - 0.4) * 0.2 + 0.02 + 0.02 * m);
-    const jaw = smooth((-0.18 - y0) / 0.14) * (1 - smooth((-0.66 - y0) / 0.12));
+    // Chin projection and jaw breadth (the jaw runs from below the mouth to the chin)
+    push(blob(0, -0.5, 0.1, 0.14, 0.09, 0.14), (k.chin - 0.4) * 0.15 + 0.02 + 0.02 * m);
+    // (The jaw widens from below the mouth: widened from just under the cheekbones, it swelled the cheeks
+    // into balloons.)
+    const jaw = smooth((-0.3 - y0) / 0.14) * (1 - smooth((-0.66 - y0) / 0.12));
     dx += x0 * (k.jawWidth - 1 + 0.06 * Math.max(0, gender)) * jaw;
 
     // Ears: scaled, and swept up into a point for elven ears

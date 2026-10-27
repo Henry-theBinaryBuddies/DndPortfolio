@@ -193,6 +193,15 @@ describe("deformation", () => {
     expect(extent(masc, -0.85, -0.7).x).toBeGreaterThan(extent(fem, -0.85, -0.7).x);
   });
 
+  it("gives a half-orc a heavy jaw without ballooning the cheeks", () => {
+    const human = shape(applyRace(defaultParams(), "human"));
+    const orc = shape(applyRace(defaultParams(), "half-orc"));
+    // At the cheeks the orc is broader only by about its skull's breadth (1.08)
+    expect(extent(orc, -0.3, -0.2, 0).x / extent(human, -0.3, -0.2, 0).x).toBeLessThan(1.12);
+    // ...and broader still at the jaw
+    expect(extent(orc, -0.55, -0.45, -0.2).x).toBeGreaterThan(extent(human, -0.55, -0.45, -0.2).x * 1.05);
+  });
+
   it("cuts the bust's sides flat, narrowing from the shoulders to the base with no arm stumps", () => {
     for (const body of ["masculine", "feminine"] as const) {
       const bust = shape(params({ body }));

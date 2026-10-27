@@ -259,7 +259,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   "half-orc": {
     label: "Half-orc",
     skin: skin("Orc grey-green"),
-    skeleton: { ...HUMAN, angularity: 0.95, headWidth: 1.08, headHeight: 1, earSize: 0.4, noseLength: 0.3, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.12, jaw: 1.22, chin: 0.8, prognathism: 0.55, slope: 0.6, browBase: 0.4, cheekBase: 0.25, lipBase: -0.15, socketDepth: 0.55, shoulders: 1.3 },
+    skeleton: { ...HUMAN, angularity: 0.95, headWidth: 1.08, headHeight: 1, earSize: 0.4, noseLength: 0.3, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.12, jaw: 1.12, chin: 0.6, prognathism: 0.35, slope: 0.6, browBase: 0.4, cheekBase: 0.15, lipBase: -0.15, socketDepth: 0.55, shoulders: 1.3 },
     hornStyle: "none",
     hairStyle: "mohawk",
     defaults: { tusks: 0.6, muscle: 0.75, lids: 0.65, eyebrows: 0.8 },
