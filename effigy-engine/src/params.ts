@@ -35,8 +35,12 @@ export type NumericKey =
 export const RACES = ["human", "elf", "half-elf", "dwarf", "halfling", "gnome", "half-orc", "tiefling", "dragonborn"] as const;
 export type Race = (typeof RACES)[number];
 
+export const BODIES = ["masculine", "neutral", "feminine"] as const;
+export type Body = (typeof BODIES)[number];
+
 export interface Params extends Record<NumericKey, number> {
   race: Race;
+  body: Body;
   hood: boolean;
   skin: string;
   cloth: string;
@@ -206,6 +210,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
 export interface Preset {
   name: string;
   race: Race;
+  body?: Body;
   hood: boolean;
   values: Values;
   skin?: string;
@@ -227,6 +232,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Cultist",
     race: "human",
+    body: "neutral",
     hood: true,
     skin: skin("Pale"),
     cloth: cloth("Bruise"),
@@ -255,6 +261,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Crone",
     race: "human",
+    body: "feminine",
     hood: true,
     skin: skin("Pale"),
     cloth: cloth("Moss"),
@@ -265,6 +272,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Infernal",
     race: "tiefling",
+    body: "feminine",
     hood: false,
     skin: skin("Infernal violet"),
     cloth: cloth("Dried blood"),
@@ -287,6 +295,7 @@ export const PRESETS: Preset[] = [
 export function defaultParams(): Params {
   const params = {
     race: "human" as Race,
+    body: "masculine" as Body,
     hood: true,
     skin: RACE_INFO.human.skin,
     cloth: CLOTH_COLORS[0].value,
@@ -311,6 +320,7 @@ export function applyRace(current: Params, race: Race): Params {
   const info = RACE_INFO[race];
   const next = defaultParams();
   next.race = race;
+  next.body = current.body;
   next.skin = info.skin;
   next.cloth = current.cloth;
   next.eyes = current.eyes;
@@ -322,6 +332,7 @@ export function applyRace(current: Params, race: Race): Params {
 
 export function applyPreset(current: Params, preset: Preset): Params {
   const next = applyRace(current, preset.race);
+  if (preset.body) next.body = preset.body;
   next.hood = preset.hood;
   if (preset.skin) next.skin = preset.skin;
   if (preset.cloth) next.cloth = preset.cloth;
@@ -340,6 +351,7 @@ export function randomParams(rng: () => number = Math.random): Params {
   params.cloth = pick(CLOTH_COLORS).value;
   params.eyes = pick(EYE_COLORS).value;
   params.hairColor = pick(HAIR_COLORS).value;
+  params.body = pick(BODIES);
   params.hood = rng() < 0.6;
   for (const d of NUMERIC_DEFS) {
     const raw = d.min + rng() * (d.max - d.min);

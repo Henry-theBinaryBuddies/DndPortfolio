@@ -1,12 +1,14 @@
 import * as THREE from "three";
-import { buildHeadGeometry, eyePosition, headRadii, stitchPlacements, surfacePoint } from "./face";
+import { BASE_Y, makeAnatomy, shoulderSpan } from "./anatomy";
+import { buildBodyGeometry, eyePosition, headRadii, stitchPlacements, surfacePoint, type Quality } from "./face";
 import type { Params } from "./params";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
 // (how light hits it). Meshes are parented into Groups, so the whole bust can
 // be rotated, scaled and exported as one object.
 //
-// The bust's origin is the top of its plinth: y = 0 is the base, the head floats above it.
+// The bust's origin is the top of its plinth: y = 0 is the base. Everything sculpted lives in a
+// group lifted so that the sculpt's flat underside (BASE_Y) lands on y = 0.
 
 type Vec3 = [number, number, number];
 type Rot = Partial<Record<"x" | "y" | "z", number>>;
@@ -18,7 +20,7 @@ interface Drape {
 }
 
 // A shell is a lathe (a profile spun around the vertical axis) with a wedge cut from the front,
-// then rippled so it hangs like cloth or strands of hair. Hood and hair share it.
+// then rippled so it hangs like cloth or strands of hair. Hood, hair and beard share it.
 function shellGeometry(controls: [number, number][], rx: number, ry: number, radiusScale: number, gap: number, drape: Drape): THREE.BufferGeometry {
   // A spline through the control points gives a smooth silhouette instead of straight segments.
   const spline = new THREE.CatmullRomCurve3(controls.map(([r, y]) => new THREE.Vector3(r * rx * radiusScale, y * ry, 0)));
@@ -38,17 +40,14 @@ function shellGeometry(controls: [number, number][], rx: number, ry: number, rad
   return geometry;
 }
 
-export function buildBust(p: Params): THREE.Group {
+export function buildBust(p: Params, quality: Quality = "final"): THREE.Group {
   const root = new THREE.Group();
 
-  const skin = new THREE.MeshStandardMaterial({ color: p.skin, roughness: 0.85 });
-  // The face reads its colour from per-vertex paint (shadows, grime, scars), so the material itself is white.
-  const face = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.8 });
+  // The sculpted body reads its colour from per-vertex paint (shadow, grime, scars, tunic), so its material is white.
+  const body = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.72 });
   const cloth = new THREE.MeshStandardMaterial({ color: p.cloth, roughness: 1, side: THREE.DoubleSide });
   const iron = new THREE.MeshStandardMaterial({ color: 0x3b3b42, roughness: 0.45, metalness: 0.75, flatShading: true });
-  const armour = new THREE.MeshStandardMaterial({ color: 0x34343b, roughness: 0.5, metalness: 0.7 });
   const bone = new THREE.MeshStandardMaterial({ color: 0xcfc6b0, roughness: 0.6, flatShading: true });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x0b0908, roughness: 1 });
   const hairMat = new THREE.MeshStandardMaterial({ color: p.hairColor, roughness: 0.95, side: THREE.DoubleSide });
   const beardMat = new THREE.MeshStandardMaterial({ color: p.hairColor, roughness: 1, flatShading: true, side: THREE.DoubleSide });
   const glow = new THREE.MeshBasicMaterial({ color: p.eyes });
@@ -62,50 +61,41 @@ export function buildBust(p: Params): THREE.Group {
     return mesh;
   };
 
-  const b = p.bulk;
-  const { rx, ry } = headRadii(p);
+  const { rx, ry, rz } = headRadii(p);
+  const { sdf } = makeAnatomy(p);
+  const span = shoulderSpan(p);
 
-  // Shoulders: the upper half of a squashed sphere, so it sits flat on the plinth.
-  add(root, new THREE.SphereGeometry(1, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), armour, [0, 0, 0], [0.82 * b, 0.62, 0.46]);
-  add(root, new THREE.CylinderGeometry(0.3, 0.42, 0.24, 12, 1, true), cloth, [0, 0.6, 0]);
-  add(root, new THREE.CylinderGeometry(0.13, 0.16, 0.45, 10), skin, [0, 0.74, -0.01]);
+  const head = new THREE.Group();
+  head.position.y = -BASE_Y;
+  root.add(head);
 
+  head.add(new THREE.Mesh(buildBodyGeometry(p, quality), body));
+
+  // Pauldrons: stacked iron plates over the deltoids, with a bone spike once they are heavy enough
   for (const side of [-1, 1]) {
     if (p.pauldrons > 0.03) {
       const r = 0.12 + 0.14 * p.pauldrons;
-      add(root, new THREE.CylinderGeometry(r * 0.7, r, 0.08, 8), iron, [side * 0.6 * b, 0.34, 0], undefined, { z: -side * 0.45 });
-      add(root, new THREE.CylinderGeometry(r * 0.5, r * 0.85, 0.07, 8), iron, [side * 0.64 * b, 0.42, 0], undefined, { z: -side * 0.55 });
+      add(head, new THREE.CylinderGeometry(r * 0.7, r, 0.08, 8), iron, [side * 0.6 * span, -0.91, 0], undefined, { z: -side * 0.45 });
+      add(head, new THREE.CylinderGeometry(r * 0.5, r * 0.85, 0.07, 8), iron, [side * 0.64 * span, -0.84, 0], undefined, { z: -side * 0.55 });
       if (p.pauldrons > 0.5) {
-        add(root, new THREE.ConeGeometry(0.04, 0.1 + p.pauldrons * 0.3, 5), bone, [side * (0.68 * b + 0.04), 0.5 + p.pauldrons * 0.08, 0], undefined, { z: -side * 0.7 });
+        add(head, new THREE.ConeGeometry(0.04, 0.1 + p.pauldrons * 0.3, 5), bone, [side * (0.68 * span + 0.04), -0.76 + p.pauldrons * 0.08, 0], undefined, { z: -side * 0.7 });
       }
     }
   }
 
-  // The head gets its own group so the whole face can be positioned over the neck as one piece.
-  const head = new THREE.Group();
-  head.position.set(0, 0.78 + ry * 0.95, 0.02);
-  root.add(head);
-
-  add(head, buildHeadGeometry(p), face, [0, 0, 0]);
-
-  // Eyes: each is a glowing iris with a dark slit pupil and a heavy upper lid. The lid is a skin-coloured
-  // cap that covers more of the iris as the slider rises, so low settings stare and high settings glower.
+  // Eyes: a glowing iris with a dark slit pupil, nestled in the sculpted socket. The lids are part of the sculpt.
   const eyeRadius = 0.05 * p.eyeSize;
-  const lidTone = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.skin).multiplyScalar(0.55), roughness: 0.9 });
   const pupilTone = new THREE.MeshBasicMaterial({ color: 0x050303, side: THREE.DoubleSide });
   for (const side of [-1, 1] as const) {
-    const at = eyePosition(p, side);
     const eye = new THREE.Group();
-    eye.position.copy(at);
+    eye.position.copy(eyePosition(p, side));
     eye.rotation.y = side * 0.25;
     head.add(eye);
     add(eye, new THREE.SphereGeometry(eyeRadius, 16, 12), glow, [0, 0, 0]);
     add(eye, new THREE.CircleGeometry(eyeRadius * 0.55, 10), pupilTone, [0, 0, eyeRadius * 0.98], [0.28, 1, 1]);
-    const cover = Math.PI * (0.18 + 0.3 * p.lids);
-    add(eye, new THREE.SphereGeometry(eyeRadius * 1.14, 16, 8, 0, Math.PI * 2, 0, cover), lidTone, [0, 0, 0], undefined, { x: 0.35 });
   }
   const eyeLight = new THREE.PointLight(p.eyes, 0.04 * Math.PI, 0.7);
-  eyeLight.position.set(0, 0.1 * ry, headRadii(p).rz + 0.2);
+  eyeLight.position.set(0, 0.1 * ry, rz + 0.2);
   head.add(eyeLight);
 
   // Stitches: a dark thread across each scar, with a small knot at either end
@@ -120,27 +110,18 @@ export function buildBust(p: Params): THREE.Group {
     }
   }
 
-  // Nostrils: two dark slits sunk into the underside of the nose
-  for (const side of [-1, 1]) {
-    const nostril = surfacePoint(p, side * 0.075 * p.noseWidth, -0.3);
-    const at = nostril.position.addScaledVector(nostril.normal, -0.004);
-    add(head, new THREE.SphereGeometry(0.014 * p.noseWidth, 8, 6), dark, [at.x, at.y, at.z], [1, 0.55, 0.8], { z: side * 0.4 });
-  }
-
-  // Mouth: a dark slit set into the indent, with tusks rising from the lower lip
-  const mouth = surfacePoint(p, 0, -0.5);
-  add(head, new THREE.BoxGeometry(0.2 * p.mouthWidth, 0.018, 0.02), dark, [mouth.position.x, mouth.position.y, mouth.position.z + 0.004]);
+  // Tusks rise from the lower lip
   if (p.tusks > 0.03) {
     const length = 0.07 + p.tusks * 0.16;
     for (const side of [-1, 1]) {
-      const lip = surfacePoint(p, side * 0.12 * p.mouthWidth * p.jawWidth / rx, -0.5).position;
+      const lip = surfacePoint(p, (side * 0.12 * p.mouthWidth * p.jawWidth) / rx, -0.5, sdf).position;
       add(head, new THREE.ConeGeometry(0.03, length, 6), bone, [lip.x, lip.y - 0.02 + length / 2, lip.z + 0.005], undefined, { z: side * 0.1 });
     }
   }
 
-  // Moustache and beard share the hair colour. The beard hangs from the jaw as faceted tapered masses.
+  // Moustache and beard share the hair colour. The beard is one rippled mass wrapping the jaw.
   if (p.beard > 0.1) {
-    const nose = surfacePoint(p, 0, -0.32).position;
+    const nose = surfacePoint(p, 0, -0.32, sdf).position;
     for (const side of [-1, 1]) {
       const curve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(side * 0.012, nose.y - 0.03, nose.z - 0.005),
@@ -151,7 +132,6 @@ export function buildBust(p: Params): THREE.Group {
     }
   }
   if (p.beard > 0.3) {
-    // One mass wrapping the jaw below the mouth, open at the back, rippled into strands with a torn lower edge.
     const bottom = -0.68 - (0.1 + 0.6 * p.beard) / ry;
     const controls: [number, number][] = [[0.8, -0.56], [0.92, -0.7], [0.74, (-0.7 + bottom) / 2], [0.42, bottom + 0.15], [0.14, bottom]];
     const beardGeo = shellGeometry(controls, rx, ry, 1, Math.PI * 0.45, { base: 0.03, hang: 0.05, fine: 0.03 });
@@ -162,14 +142,6 @@ export function buildBust(p: Params): THREE.Group {
     beardGeo.computeVertexNormals();
     // The shell's cut-out faces the front by default, so it is turned half way round to open at the back.
     add(head, beardGeo, beardMat, [0, 0, -0.01], [1, 1, 0.92], { y: Math.PI });
-  }
-
-  // Ears: a stubby ellipsoid when small, a swept-back spike when large; none at all when the slider is zero
-  if (p.earSize > 0.03) {
-    for (const side of [-1, 1]) {
-      const length = 0.08 + p.earSize * 0.3;
-      add(head, new THREE.ConeGeometry(0.05, length, 6), skin, [side * (rx * 0.97 + length * 0.35), 0.02 * ry, -0.04], [1, 1, 0.5], { z: -side * (Math.PI / 2 - 0.5) });
-    }
   }
 
   if (p.hood) {

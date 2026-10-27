@@ -113,6 +113,31 @@ input[type="range"] {
   grid-template-columns: 96px minmax(0, 1fr);
 }
 
+.segmented {
+  display: flex;
+}
+
+.segmented button {
+  flex: 1;
+  padding: 6px 4px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-dim);
+  background: transparent;
+  border: 1px solid var(--edge);
+  cursor: pointer;
+}
+
+.segmented button + button {
+  border-left: none;
+}
+
+.segmented button[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--edge);
+  border-color: var(--ember);
+}
+
 .select input[type="checkbox"] {
   justify-self: start;
   width: 18px;

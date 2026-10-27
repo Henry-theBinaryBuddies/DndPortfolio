@@ -1,4 +1,5 @@
 import {
+  BODIES,
   CLOTH_COLORS,
   EYE_COLORS,
   HAIR_COLORS,
@@ -11,6 +12,7 @@ import {
   applyRace,
   defaultParams,
   randomParams,
+  type Body,
   type NumericKey,
   type Params,
   type Race,
@@ -27,12 +29,14 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const raceSelect = document.createElement("select");
   const presetSelect = document.createElement("select");
   const hoodBox = document.createElement("input");
+  const bodyButtons = new Map<Body, HTMLButtonElement>();
 
   const emit = () => onChange({ ...params });
 
   const syncUI = () => {
     raceSelect.value = params.race;
     hoodBox.checked = params.hood;
+    for (const [body, button] of bodyButtons) button.setAttribute("aria-pressed", String(body === params.body));
     for (const [key, { input, out }] of sliders) {
       input.value = String(params[key]);
       out.textContent = params[key].toFixed(2);
@@ -53,6 +57,26 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   // Character section: race, archetype preset and the hood toggle
   const character = document.createElement("section");
   character.innerHTML = "<h2>Character</h2>";
+
+  // Build type: a three-way toggle that reshapes the whole bust (jaw, brow, neck, shoulders, chest)
+  const bodyRow = document.createElement("div");
+  bodyRow.className = "row select";
+  bodyRow.innerHTML = "<span>Build</span>";
+  const bodyGroup = document.createElement("div");
+  bodyGroup.className = "segmented";
+  for (const body of BODIES) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = body[0].toUpperCase() + body.slice(1);
+    button.addEventListener("click", () => {
+      params.body = body;
+      syncUI();
+      emit();
+    });
+    bodyGroup.append(button);
+    bodyButtons.set(body, button);
+  }
+  bodyRow.append(bodyGroup);
 
   const raceRow = document.createElement("label");
   raceRow.className = "row select";
@@ -96,7 +120,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   });
   hoodRow.append(hoodBox);
 
-  character.append(raceRow, presetRow, hoodRow);
+  character.append(bodyRow, raceRow, presetRow, hoodRow);
   panel.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];

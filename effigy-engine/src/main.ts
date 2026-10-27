@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import "./style.css";
 import { buildBust, disposeObject } from "./builder";
+import type { Quality } from "./face";
 import { defaultParams, type Params } from "./params";
 import { mountPanel } from "./ui";
 
@@ -42,13 +43,23 @@ const pivot = new THREE.Group();
 scene.add(pivot);
 
 let figure: THREE.Group | null = null;
-function show(params: Params) {
+let refine: number | undefined;
+
+function swap(params: Params, quality: Quality) {
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildBust(params);
+  figure = buildBust(params, quality);
   pivot.add(figure);
+}
+
+// Sculpting a fine mesh takes a moment, so every edit first shows a quick coarse draft, and the
+// detailed version replaces it once the sliders have been still for a beat.
+function show(params: Params) {
+  swap(params, "draft");
+  window.clearTimeout(refine);
+  refine = window.setTimeout(() => swap(params, "final"), 220);
 }
 
 function resize() {
@@ -68,6 +79,12 @@ canvas.addEventListener("pointerdown", (e) => {
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener("pointerup", () => (dragging = false));
+// Double-click snaps the bust to face the camera and holds it there for a few seconds.
+let hold = 0;
+canvas.addEventListener("dblclick", () => {
+  yaw = 0;
+  hold = performance.now() + 6000;
+});
 canvas.addEventListener("pointermove", (e) => {
   if (!dragging) return;
   yaw += (e.clientX - lastX) * 0.012;
@@ -76,7 +93,7 @@ canvas.addEventListener("pointermove", (e) => {
 
 function frame() {
   requestAnimationFrame(frame);
-  if (!dragging) yaw += 0.003;
+  if (!dragging && performance.now() > hold) yaw += 0.003;
   pivot.rotation.y = yaw;
   renderer.render(scene, camera);
 }
