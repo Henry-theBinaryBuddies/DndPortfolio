@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { frontPoint, sculptBust, stitchPlacements, topPoint } from "./face";
 import type { HeadBase } from "./headMesh";
+import { applySkinDetail } from "./skinShader";
 import { derive, type Params } from "./params";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
@@ -83,7 +84,8 @@ export function buildBust(p: Params, base: HeadBase): THREE.Group {
   const k = derive(p);
 
   // The sculpted head reads its colour from per-vertex paint (shading, grime, scars, tunic), so its material is white.
-  const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.7 });
+  const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.62 });
+  applySkinDetail(skinMaterial, p);
   const iron = new THREE.MeshStandardMaterial({ color: 0x3b3b42, roughness: 0.45, metalness: 0.75, flatShading: true });
   const bone = new THREE.MeshStandardMaterial({ color: 0xcfc6b0, roughness: 0.6, flatShading: true });
   const glow = new THREE.MeshBasicMaterial({ color: p.eyes });

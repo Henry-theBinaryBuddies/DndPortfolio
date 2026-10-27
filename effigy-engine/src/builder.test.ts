@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
+import { applySkinDetail } from "./skinShader";
 import { parseHead, type HeadBase } from "./headMesh";
 import { applyRace, defaultParams, RACES, type Params } from "./params";
 
@@ -144,6 +145,46 @@ describe("deformation", () => {
     expect(extent(shape(params({ muscle: 1 })), -1.2, -1.0).x).toBeGreaterThan(extent(shape(params({ muscle: 0 })), -1.2, -1.0).x);
   });
 
+
+  it("slopes a half-orc's forehead back and juts the lower face forward, compared with a human", () => {
+    const human = shape(applyRace(defaultParams(), "human"));
+    const orc = shape(applyRace(defaultParams(), "half-orc"));
+    const forehead = (positions: Float32Array) => extent(positions, 0.25, 0.45, 0.0).z;
+    const lowerFace = (positions: Float32Array) => extent(positions, -0.55, -0.35, 0.0).z;
+    // z extent is measured from the back of the band, so compare the frontmost vertex instead
+    const front = (positions: Float32Array, minY: number, maxY: number) => {
+      let best = -Infinity;
+      for (let i = 0; i < positions.length; i += 3) if (positions[i + 1] >= minY && positions[i + 1] <= maxY && Math.abs(positions[i]) < 0.15) best = Math.max(best, positions[i + 2]);
+      return best;
+    };
+    expect(forehead(orc)).toBeDefined();
+    expect(lowerFace(orc)).toBeDefined();
+    expect(front(orc, 0.25, 0.45)).toBeLessThan(front(human, 0.25, 0.45));
+    expect(front(orc, -0.55, -0.35)).toBeGreaterThan(front(human, -0.55, -0.35));
+  });
+
+  it("deepens the nasolabial folds with age", () => {
+    const young = shape(params({ age: 0 }));
+    const old = shape(params({ age: 1 }));
+    // Vertices along the fold, from beside the nostril to past the corner of the mouth
+    let deeper = 0;
+    let checked = 0;
+    for (let i = 0; i < base.positions.length; i += 3) {
+      const x = Math.abs(base.positions[i]);
+      const y = base.positions[i + 1];
+      const t = (y + 0.25) / -0.12;
+      if (t < 0.1 || t > 0.9) continue;
+      const foldX = 0.09 + 0.055 * t;
+      if (Math.abs(x - foldX) > 0.02 || base.normals[i + 2] < 0.3) continue;
+      checked++;
+      // Moving against the outward normal means the skin sank in
+      const along = (old[i] - young[i]) * base.normals[i] + (old[i + 1] - young[i + 1]) * base.normals[i + 1] + (old[i + 2] - young[i + 2]) * base.normals[i + 2];
+      if (along < 0) deeper++;
+    }
+    expect(checked).toBeGreaterThan(5);
+    expect(deeper / checked).toBeGreaterThan(0.7);
+  });
+
   it("makes fuller lips taller", () => {
     const lipHeight = (lips: number) => {
       const positions = shape(params({ lips }));
@@ -226,5 +267,22 @@ describe("buildBust", () => {
     const group = bust({});
     const box = new THREE.Box3().setFromObject(group.children[0]);
     expect(box.min.y).toBeCloseTo(0, 1);
+  });
+});
+
+describe("skin detail", () => {
+  it("patches the material's shader with the pore and wrinkle height field", () => {
+    const material = new THREE.MeshStandardMaterial();
+    applySkinDetail(material, params({ age: 0.7 }));
+    const shader = {
+      uniforms: {} as Record<string, { value: number }>,
+      vertexShader: "#include <common>\n#include <begin_vertex>",
+      fragmentShader: "#include <common>\n#include <normal_fragment_maps>",
+    };
+    (material.onBeforeCompile as unknown as (s: typeof shader) => void)(shader);
+    expect(shader.uniforms.uAge.value).toBeCloseTo(0.7);
+    expect(shader.vertexShader).toContain("vObjPos = position;");
+    expect(shader.fragmentShader).toContain("skinHeight");
+    expect(shader.fragmentShader.indexOf("skinHeight(vObjPos")).toBeGreaterThan(shader.fragmentShader.indexOf("normal_fragment_maps"));
   });
 });

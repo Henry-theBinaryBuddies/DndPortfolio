@@ -144,31 +144,41 @@ export function sculptBust(p: Params, base: HeadBase): Bust {
 
     // Light flush on the cheeks and nose, a little less when the skin is filthy
     const blush = Math.max(gauss(ax - 0.27, 0.13, y + 0.12, 0.1, z - 0.12, 0.2), gauss(x, 0.07, y + 0.17, 0.08, z - 0.2, 0.15)) * head * front;
-    color.lerp(blushTone, blush * 0.35 * (1 - p.grime * 0.6));
+    const earFlush = gauss(ax - 0.45, 0.07, y + 0.05, 0.16, z + 0.45, 0.2) * head;
+    color.lerp(blushTone, Math.max(blush * 0.35, earFlush * 0.4) * (1 - p.grime * 0.6));
 
     // Eyebrows, eye bags, and the creases from nose to mouth
     let brow = 0;
     let bags = 0;
     let lines = 0;
+    let creaseLid = 0;
     for (const sign of [-1, 1]) {
       brow = Math.max(brow, gauss(x - sign * (eyeX + 0.02), 0.17, y - 0.16, 0.03 + 0.035 * p.eyebrows, z - 0.17, 0.2));
       bags = Math.max(bags, gauss(x - sign * eyeX, 0.13, y + 0.1, 0.035, z - 0.1, 0.18));
       const fold = distanceToSegment2(x, y, [sign * 0.09, -0.25], [sign * 0.14, -0.37]);
       lines = Math.max(lines, Math.exp(-((fold / 0.025) ** 2)));
+      // The crease of the upper eyelid
+      creaseLid = Math.max(creaseLid, gauss(x - sign * eyeX, 0.1, y - 0.058, 0.008, z - 0.07, 0.2));
     }
     color.lerp(browTone, brow * Math.min(1, p.eyebrows * 2.2) * head * front);
     color.multiplyScalar(1 - 0.35 * bags * (0.3 + p.age) * head * front);
-    color.multiplyScalar(1 - 0.4 * lines * p.age * head * front);
+    color.multiplyScalar(1 - 0.4 * lines * (0.35 + p.age) * head * front);
+    color.multiplyScalar(1 - 0.28 * creaseLid * head * front);
     for (const band of [0.28, 0.36, 0.44]) {
       const crease = Math.exp(-(((y - band) / 0.016) ** 2)) * (1 - smooth((ax - 0.35) / 0.12));
       color.multiplyScalar(1 - 0.22 * crease * p.age * head * front * smooth((noise3(x * 5 + band * 10, band * 7, 1) - 0.35) * 3));
     }
 
     // Lips and the mouth line
-    const lipWeight = gauss(x, 0.12 * k.mouthWidth, y - stomion, 0.05, z - 0.16, 0.2) * head * front;
-    color.lerp(lipTone, lipWeight * 0.95);
-    const mouthLine = gauss(x, 0.13 * k.mouthWidth, y - stomion, 0.012, z - 0.16, 0.2) * head * front;
-    color.lerp(grimeTone, mouthLine * 0.9);
+    // The lips have a crisp edge (the vermilion border) with a slightly darker, more saturated rim
+    const lipHalf = 0.062 * (1 + (k.lipFull - 1) * 0.28);
+    const lipBand = smooth((y - (stomion - lipHalf)) / 0.01) * (1 - smooth((y - (stomion + lipHalf)) / 0.01)) * (1 - smooth((ax - 0.125 * k.mouthWidth) / 0.02));
+    const rimOffset = (Math.abs(y - stomion) - lipHalf) / 0.01;
+    const lipRim = Math.exp(-(rimOffset * rimOffset)) * (1 - smooth((ax - 0.125 * k.mouthWidth) / 0.02));
+    color.lerp(lipTone, lipBand * 0.9 * head * front);
+    color.multiplyScalar(1 - 0.18 * lipRim * head * front);
+    const mouthLine = gauss(x, 0.13 * k.mouthWidth, y - stomion, 0.007, z - 0.16, 0.2) * head * front;
+    color.lerp(grimeTone, mouthLine * 0.95);
 
     // Dragonborn scales: diamond cells with dark seams
     if (k.scales > 0.02) {

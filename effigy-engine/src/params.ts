@@ -146,17 +146,24 @@ const hairColor = (name: string) => HAIR_COLORS.find((s) => s.name === name)!.va
 type Values = Partial<Record<NumericKey, number>>;
 
 // A race's skeleton: the bone structure the sliders then adjust. Ratios are relative to a human
-// (1.0). These are kept inside the ranges real populations vary, plus the fantasy features
-// (pointed ears, a muzzle, scales) that define a race.
+// (1.0). These stay inside the ranges real populations vary, plus the fantasy features (pointed ears,
+// a muzzle, scales) that define a race. The "base" values are added to the matching slider, so a
+// half-orc's brow is heavy even with the Brow ridge slider at its midpoint.
 export interface Skeleton {
   headWidth: number; // skull breadth
   headHeight: number;
   earSize: number; // 0 none, ~0.3 human, 1 long and pointed
   noseLength: number; // 0..1 baseline
   noseWidth: number;
+  noseBridge: number; // -1 flat .. +1 high and prominent
   mouthWidth: number;
   jaw: number; // jaw breadth
   chin: number; // 0..1 baseline projection
+  prognathism: number; // how far the lower face juts forward
+  slope: number; // forehead recession
+  browBase: number;
+  cheekBase: number;
+  lipBase: number;
   snout: number;
   scales: number;
   socketDepth: number;
@@ -168,61 +175,88 @@ export interface RaceInfo {
   label: string;
   skin: string;
   skeleton: Skeleton;
-  // Slider values this race starts with (horns for a tiefling, a beard for a dwarf)
+  // Slider values this race starts with (horns for a tiefling, tusks for a half-orc)
   defaults: Values;
 }
 
-const HUMAN: Skeleton = { headWidth: 1, headHeight: 1, earSize: 0.3, noseLength: 0.4, noseWidth: 1, mouthWidth: 1, jaw: 1, chin: 0.4, snout: 0, scales: 0, socketDepth: 0.45, gaunt: 0.15, shoulders: 1 };
+const HUMAN: Skeleton = {
+  headWidth: 1,
+  headHeight: 1,
+  earSize: 0.3,
+  noseLength: 0.4,
+  noseWidth: 1,
+  noseBridge: 0,
+  mouthWidth: 1,
+  jaw: 1,
+  chin: 0.4,
+  prognathism: 0,
+  slope: 0,
+  browBase: 0,
+  cheekBase: 0,
+  lipBase: 0,
+  snout: 0,
+  scales: 0,
+  socketDepth: 0.45,
+  gaunt: 0.15,
+  shoulders: 1,
+};
 
 export const RACE_INFO: Record<Race, RaceInfo> = {
   human: { label: "Human", skin: skin("Tan"), skeleton: HUMAN, defaults: {} },
+  // Narrow, long face with high cheekbones, a fine straight nose, delicate lips and a light brow
   elf: {
     label: "Elf",
     skin: skin("Elven pale"),
-    skeleton: { ...HUMAN, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.88, mouthWidth: 0.95, jaw: 0.88, chin: 0.3, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
-    defaults: {},
+    skeleton: { ...HUMAN, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.86, noseBridge: 0.35, mouthWidth: 0.95, jaw: 0.86, chin: 0.3, browBase: -0.2, cheekBase: 0.25, lipBase: -0.1, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
+    defaults: { eyebrows: 0.4 },
   },
   "half-elf": {
     label: "Half-elf",
     skin: skin("Pale"),
-    skeleton: { ...HUMAN, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, noseWidth: 0.95, jaw: 0.95, gaunt: 0.2, shoulders: 0.94 },
+    skeleton: { ...HUMAN, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, noseWidth: 0.95, noseBridge: 0.15, jaw: 0.94, browBase: -0.08, cheekBase: 0.12, gaunt: 0.2, shoulders: 0.94 },
     defaults: {},
   },
+  // Broad head, heavy brow, wide strong nose, full cheeks, a thick jaw and chin, a thick neck
   dwarf: {
     label: "Dwarf",
     skin: skin("Ruddy"),
-    skeleton: { ...HUMAN, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.25, jaw: 1.15, chin: 0.55, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
-    defaults: { eyebrows: 0.85, muscle: 0.7, brow: 0.8, cheekbones: 0.6 },
+    skeleton: { ...HUMAN, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.25, noseBridge: 0.3, jaw: 1.15, chin: 0.55, browBase: 0.3, cheekBase: 0.1, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
+    defaults: { eyebrows: 0.85, muscle: 0.7, weight: 0.6 },
   },
+  // Round, soft face: full cheeks, a small button nose, a gentle brow
   halfling: {
     label: "Halfling",
     skin: skin("Tan"),
-    skeleton: { ...HUMAN, headWidth: 1.04, headHeight: 0.97, earSize: 0.5, noseLength: 0.25, noseWidth: 0.9, jaw: 0.9, chin: 0.25, gaunt: 0, shoulders: 0.8 },
-    defaults: { muscle: 0.3 },
+    skeleton: { ...HUMAN, headWidth: 1.04, headHeight: 0.97, earSize: 0.5, noseLength: 0.2, noseWidth: 0.9, noseBridge: -0.2, jaw: 0.9, chin: 0.25, browBase: -0.15, cheekBase: 0.2, lipBase: 0.1, gaunt: 0, shoulders: 0.8 },
+    defaults: { muscle: 0.3, weight: 0.58 },
   },
+  // Big expressive nose, pointed ears, full cheeks and a small chin
   gnome: {
     label: "Gnome",
     skin: skin("Ruddy"),
-    skeleton: { ...HUMAN, headWidth: 1.03, headHeight: 0.98, earSize: 0.6, noseLength: 0.75, noseWidth: 1.15, chin: 0.3, gaunt: 0.1, shoulders: 0.78 },
+    skeleton: { ...HUMAN, headWidth: 1.03, headHeight: 0.98, earSize: 0.6, noseLength: 0.85, noseWidth: 1.15, noseBridge: 0.2, chin: 0.25, browBase: 0.05, cheekBase: 0.15, gaunt: 0.1, shoulders: 0.78 },
     defaults: { muscle: 0.3 },
   },
+  // Sloped forehead, a very heavy brow, a broad flat nose, high cheekbones, and a heavy jutting jaw
   "half-orc": {
     label: "Half-orc",
     skin: skin("Orc grey-green"),
-    skeleton: { ...HUMAN, headWidth: 1.08, headHeight: 1.0, earSize: 0.35, noseLength: 0.3, noseWidth: 1.15, mouthWidth: 1.12, jaw: 1.22, chin: 0.8, socketDepth: 0.5, shoulders: 1.3 },
-    defaults: { tusks: 0.6, muscle: 0.75, brow: 0.92, cheekbones: 0.7, lids: 0.65, eyebrows: 0.8, noseSize: 0.6 },
+    skeleton: { ...HUMAN, headWidth: 1.08, headHeight: 1, earSize: 0.4, noseLength: 0.3, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.12, jaw: 1.22, chin: 0.8, prognathism: 0.55, slope: 0.6, browBase: 0.4, cheekBase: 0.25, lipBase: -0.15, socketDepth: 0.55, shoulders: 1.3 },
+    defaults: { tusks: 0.6, muscle: 0.75, lids: 0.65, eyebrows: 0.8 },
   },
+  // Angular: sharp cheekbones, a defined jaw, an arched brow and slightly pointed ears
   tiefling: {
     label: "Tiefling",
     skin: skin("Infernal red"),
-    skeleton: { ...HUMAN, earSize: 0.55, noseWidth: 0.92, jaw: 0.95, chin: 0.5, gaunt: 0.3, shoulders: 0.98 },
+    skeleton: { ...HUMAN, earSize: 0.55, noseWidth: 0.92, noseBridge: 0.2, jaw: 0.95, chin: 0.5, browBase: 0.15, cheekBase: 0.3, gaunt: 0.3, shoulders: 0.98 },
     defaults: { horns: 0.85 },
   },
+  // A muzzle with a heavy brow ridge, a broad jaw and no ears
   dragonborn: {
     label: "Dragonborn",
     skin: skin("Bronze scale"),
-    skeleton: { ...HUMAN, headWidth: 1.05, earSize: 0, noseLength: 0.2, noseWidth: 1.2, mouthWidth: 1.4, jaw: 1.15, snout: 0.85, scales: 0.9, gaunt: 0.05, shoulders: 1.3 },
-    defaults: { horns: 0.55, muscle: 0.7 },
+    skeleton: { ...HUMAN, headWidth: 1.05, earSize: 0, noseLength: 0.2, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.4, jaw: 1.15, slope: 0.4, browBase: 0.35, cheekBase: 0.1, snout: 0.85, scales: 0.9, gaunt: 0.05, shoulders: 1.3 },
+    defaults: { horns: 0.55, muscle: 0.7, eyebrows: 0 },
   },
 };
 
@@ -349,9 +383,14 @@ export interface Derived {
   socketDepth: number;
   noseLength: number;
   noseWidth: number;
+  noseBridge: number;
   mouthWidth: number;
   jawWidth: number;
   chin: number;
+  prognathism: number;
+  slope: number;
+  brow: number; // brow ridge: the slider plus the race's baseline
+  cheek: number;
   snout: number;
   scales: number;
   gaunt: number; // sunken cheeks, from lean build and age
@@ -367,17 +406,22 @@ export function derive(p: Params): Derived {
     headWidth: sk.headWidth,
     headHeight: sk.headHeight,
     earSize: sk.earSize,
-    socketDepth: clamp01(sk.socketDepth + 0.35 * p.age + 0.3 * (0.5 - p.weight) + 0.15 * (p.brow - 0.5)),
+    socketDepth: clamp01(sk.socketDepth + 0.35 * p.age + 0.3 * (0.5 - p.weight) + 0.15 * (p.brow + sk.browBase - 0.5)),
     noseLength: clamp01(sk.noseLength + (p.noseSize - 0.5) * 0.5),
     noseWidth: sk.noseWidth * (0.86 + 0.28 * p.noseSize),
+    noseBridge: sk.noseBridge,
     mouthWidth: sk.mouthWidth,
     jawWidth: sk.jaw * (0.93 + 0.14 * p.jaw),
     chin: clamp01(sk.chin + (p.jaw - 0.5) * 0.6),
+    prognathism: sk.prognathism,
+    slope: sk.slope,
+    brow: clamp01(p.brow + sk.browBase),
+    cheek: clamp01(p.cheekbones + sk.cheekBase),
     snout: sk.snout,
     scales: sk.scales,
     gaunt: clamp01(sk.gaunt + 0.35 * p.age + 0.9 * (0.5 - p.weight)),
     fullness: clamp01((p.weight - 0.5) * 2),
-    lipFull: 0.7 + 1.0 * p.lips,
+    lipFull: 0.7 + 1.0 * clamp01(p.lips + sk.lipBase),
     shoulders: sk.shoulders * (0.9 + 0.28 * p.muscle + 0.14 * (p.weight - 0.5)),
     neckGirth: 1 + 0.25 * (p.muscle - 0.45) + 0.2 * (p.weight - 0.5),
   };
