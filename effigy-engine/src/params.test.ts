@@ -19,9 +19,9 @@ describe("params", () => {
   });
 
   it("clamps out-of-range values", () => {
-    const wild = { ...defaultParams(), height: 9, bulk: -3 };
+    const wild = { ...defaultParams(), headWidth: 9, bulk: -3 };
     const fixed = clampParams(wild);
-    expect(fixed.height).toBe(1.2);
+    expect(fixed.headWidth).toBe(1.2);
     expect(fixed.bulk).toBe(0.7);
   });
 

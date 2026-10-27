@@ -1,31 +1,55 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { buildCharacter } from "./builder";
+import { buildBust } from "./builder";
+import { buildHeadGeometry } from "./face";
 import { defaultParams } from "./params";
 
-describe("buildCharacter", () => {
+const countObjects = (group: THREE.Object3D) => {
+  let n = 0;
+  group.traverse(() => n++);
+  return n;
+};
+
+describe("buildBust", () => {
   it("returns a group containing meshes", () => {
-    const group = buildCharacter(defaultParams());
     let meshes = 0;
-    group.traverse((o) => {
+    buildBust(defaultParams()).traverse((o) => {
       if (o instanceof THREE.Mesh) meshes++;
     });
-    expect(meshes).toBeGreaterThan(10);
-  });
-
-  it("scales the figure with the height parameter", () => {
-    const tall = buildCharacter({ ...defaultParams(), height: 1.2 });
-    const short = buildCharacter({ ...defaultParams(), height: 0.8 });
-    const heightOf = (g: THREE.Group) => new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3()).y;
-    expect(heightOf(tall)).toBeGreaterThan(heightOf(short));
+    expect(meshes).toBeGreaterThan(8);
   });
 
   it("omits horns when the horn slider is zero", () => {
-    const count = (horns: number) => {
-      let n = 0;
-      buildCharacter({ ...defaultParams(), horns }).traverse(() => n++);
-      return n;
-    };
-    expect(count(0)).toBeLessThan(count(0.5));
+    const none = countObjects(buildBust({ ...defaultParams(), horns: 0 }));
+    const some = countObjects(buildBust({ ...defaultParams(), horns: 0.5 }));
+    expect(none).toBeLessThan(some);
+  });
+
+  it("adds tusks only when the slider is raised", () => {
+    const none = countObjects(buildBust({ ...defaultParams(), tusks: 0 }));
+    const some = countObjects(buildBust({ ...defaultParams(), tusks: 0.8 }));
+    expect(none).toBeLessThan(some);
+  });
+});
+
+describe("buildHeadGeometry", () => {
+  const extent = (geo: THREE.BufferGeometry) => new THREE.Box3().setFromBufferAttribute(geo.attributes.position as THREE.BufferAttribute).getSize(new THREE.Vector3());
+
+  it("pushes the nose forward as the nose slider rises", () => {
+    const short = extent(buildHeadGeometry({ ...defaultParams(), noseLength: 0 }));
+    const long = extent(buildHeadGeometry({ ...defaultParams(), noseLength: 1 }));
+    expect(long.z).toBeGreaterThan(short.z);
+  });
+
+  it("widens the head with the skull width slider", () => {
+    const narrow = extent(buildHeadGeometry({ ...defaultParams(), headWidth: 0.85 }));
+    const wide = extent(buildHeadGeometry({ ...defaultParams(), headWidth: 1.2 }));
+    expect(wide.x).toBeGreaterThan(narrow.x);
+  });
+
+  it("keeps the vertex count stable so sliders never change the mesh topology", () => {
+    const a = buildHeadGeometry(defaultParams()).attributes.position.count;
+    const b = buildHeadGeometry({ ...defaultParams(), chin: 1, brow: 1 }).attributes.position.count;
+    expect(a).toBe(b);
   });
 });

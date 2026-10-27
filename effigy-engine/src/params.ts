@@ -1,16 +1,26 @@
-// The whole character is described by this one plain object. The mesh builder
+// The whole bust is described by this one plain object. The mesh builder
 // reads it, the sliders write it, and presets and saved files are just copies of it.
 
 export type NumericKey =
-  | "height"
-  | "bulk"
-  | "headSize"
-  | "jaw"
-  | "hoodDepth"
+  | "headWidth"
+  | "headHeight"
+  | "brow"
+  | "eyeSize"
+  | "eyeSpacing"
+  | "socketDepth"
+  | "cheekbones"
+  | "gaunt"
+  | "noseLength"
+  | "noseWidth"
+  | "mouthWidth"
+  | "jawWidth"
+  | "chin"
+  | "tusks"
+  | "earSize"
   | "horns"
-  | "cloakLength"
-  | "armLength"
-  | "pauldrons";
+  | "hoodDepth"
+  | "pauldrons"
+  | "bulk";
 
 export interface Params extends Record<NumericKey, number> {
   skin: string;
@@ -18,10 +28,12 @@ export interface Params extends Record<NumericKey, number> {
   eyes: string;
 }
 
+export type Group = "Skull" | "Eyes" | "Nose and cheeks" | "Mouth and jaw" | "Crown and garb";
+
 export interface NumericDef {
   key: NumericKey;
   label: string;
-  group: "Body" | "Head" | "Garb";
+  group: Group;
   min: number;
   max: number;
   step: number;
@@ -29,15 +41,25 @@ export interface NumericDef {
 }
 
 export const NUMERIC_DEFS: NumericDef[] = [
-  { key: "height", label: "Height", group: "Body", min: 0.8, max: 1.2, step: 0.01, default: 1 },
-  { key: "bulk", label: "Bulk", group: "Body", min: 0.7, max: 1.5, step: 0.01, default: 1 },
-  { key: "armLength", label: "Arm length", group: "Body", min: 0.8, max: 1.3, step: 0.01, default: 1 },
-  { key: "headSize", label: "Head size", group: "Head", min: 0.8, max: 1.3, step: 0.01, default: 1 },
-  { key: "jaw", label: "Jaw", group: "Head", min: 0.6, max: 1.5, step: 0.01, default: 1 },
-  { key: "horns", label: "Horns", group: "Head", min: 0, max: 1, step: 0.01, default: 0.3 },
-  { key: "hoodDepth", label: "Hood depth", group: "Garb", min: 0, max: 1, step: 0.01, default: 0.7 },
-  { key: "cloakLength", label: "Cloak length", group: "Garb", min: 0.3, max: 1, step: 0.01, default: 0.8 },
-  { key: "pauldrons", label: "Pauldrons", group: "Garb", min: 0, max: 1, step: 0.01, default: 0.4 },
+  { key: "headWidth", label: "Skull width", group: "Skull", min: 0.85, max: 1.2, step: 0.01, default: 1 },
+  { key: "headHeight", label: "Skull height", group: "Skull", min: 0.85, max: 1.2, step: 0.01, default: 1 },
+  { key: "brow", label: "Brow ridge", group: "Skull", min: 0, max: 1, step: 0.01, default: 0.5 },
+  { key: "earSize", label: "Ears", group: "Skull", min: 0, max: 1, step: 0.01, default: 0.35 },
+  { key: "eyeSize", label: "Eye size", group: "Eyes", min: 0.6, max: 1.5, step: 0.01, default: 1 },
+  { key: "eyeSpacing", label: "Eye spacing", group: "Eyes", min: 0.8, max: 1.3, step: 0.01, default: 1 },
+  { key: "socketDepth", label: "Socket depth", group: "Eyes", min: 0, max: 1, step: 0.01, default: 0.6 },
+  { key: "cheekbones", label: "Cheekbones", group: "Nose and cheeks", min: 0, max: 1, step: 0.01, default: 0.5 },
+  { key: "gaunt", label: "Gauntness", group: "Nose and cheeks", min: 0, max: 1, step: 0.01, default: 0.5 },
+  { key: "noseLength", label: "Nose length", group: "Nose and cheeks", min: 0, max: 1, step: 0.01, default: 0.4 },
+  { key: "noseWidth", label: "Nose width", group: "Nose and cheeks", min: 0.6, max: 1.5, step: 0.01, default: 1 },
+  { key: "mouthWidth", label: "Mouth width", group: "Mouth and jaw", min: 0.6, max: 1.4, step: 0.01, default: 1 },
+  { key: "jawWidth", label: "Jaw width", group: "Mouth and jaw", min: 0.7, max: 1.3, step: 0.01, default: 1 },
+  { key: "chin", label: "Chin", group: "Mouth and jaw", min: 0, max: 1, step: 0.01, default: 0.4 },
+  { key: "tusks", label: "Tusks", group: "Mouth and jaw", min: 0, max: 1, step: 0.01, default: 0 },
+  { key: "horns", label: "Horns", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.3 },
+  { key: "hoodDepth", label: "Hood depth", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.5 },
+  { key: "pauldrons", label: "Pauldrons", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.5 },
+  { key: "bulk", label: "Shoulder width", group: "Crown and garb", min: 0.7, max: 1.4, step: 0.01, default: 1 },
 ];
 
 export interface Swatch {

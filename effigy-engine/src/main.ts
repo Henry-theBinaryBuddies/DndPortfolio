@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import "./style.css";
-import { buildCharacter, disposeObject } from "./builder";
+import { buildBust, disposeObject } from "./builder";
 import { defaultParams, type Params } from "./params";
 import { mountPanel } from "./ui";
 
@@ -18,13 +18,13 @@ scene.background = new THREE.Color(0x14110f);
 scene.fog = new THREE.Fog(0x14110f, 5, 10);
 
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
-camera.position.set(0, 1.35, 5.4);
-camera.lookAt(0, 1.05, 0);
+camera.position.set(0, 1.5, 4.6);
+camera.lookAt(0, 0.95, 0);
 
 // Newer Three.js uses physical light units, so intensities need a ~PI boost to match older looks.
 scene.add(new THREE.HemisphereLight(0x6a5860, 0x1a1412, 1.1 * Math.PI));
 const key = new THREE.DirectionalLight(0xffa860, 1.9 * Math.PI);
-key.position.set(-3, 3, 3);
+key.position.set(-3.5, 2, 2);
 scene.add(key);
 const rim = new THREE.DirectionalLight(0x4a70c0, 1.4 * Math.PI);
 rim.position.set(3, 2, -3);
@@ -32,8 +32,8 @@ scene.add(rim);
 
 // The miniature's base: 25 mm in print terms, and the footprint a token ring wraps around.
 const base = new THREE.Mesh(
-  new THREE.CylinderGeometry(1.1, 1.2, 0.1, 32),
-  new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.9 }),
+  new THREE.CylinderGeometry(1.1, 1.2, 0.1, 12),
+  new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.95, flatShading: true }),
 );
 base.position.y = -0.05;
 scene.add(base);
@@ -47,7 +47,7 @@ function show(params: Params) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildCharacter(params);
+  figure = buildBust(params);
   pivot.add(figure);
 }
 
