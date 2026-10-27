@@ -164,6 +164,17 @@ describe("deformation", () => {
     expect(extent(masc, -0.85, -0.7).x).toBeGreaterThan(extent(fem, -0.85, -0.7).x);
   });
 
+  it("cuts the bust's sides flat, narrowing from the shoulders to the base with no arm stumps", () => {
+    for (const body of ["masculine", "feminine"] as const) {
+      const bust = shape(params({ body }));
+      const shoulders = extent(bust, -1.15, -1.05).x;
+      const armpits = extent(bust, -1.5, -1.4).x;
+      const bottom = extent(bust, -2.05, -1.95).x;
+      expect(armpits, body).toBeLessThan(shoulders);
+      expect(bottom, body).toBeLessThan(armpits);
+    }
+  });
+
   it("gives feminine busts a narrower jaw and a bust that projects beyond the masculine chest", () => {
     const masc = shape(params({ body: "masculine" }));
     const fem = shape(params({ body: "feminine" }));

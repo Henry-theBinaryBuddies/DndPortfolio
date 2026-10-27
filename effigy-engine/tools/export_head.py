@@ -11,6 +11,7 @@ What it does to GEO-head_sculpting_realistic:
   2b. wraps those rings onto the bundle's sculpted male and female bodies (cut like a classic bust: flat
      through the deltoids, level below the chest), so the chest has real pectorals or a real bust. The
      male wrap is written to head.bin and the female wrap to feminine.bin (same vertices, other positions),
+     then cut flat at each side, slanting in from the deltoid to the base,
   2c. gives feminine.bin a feminine face: the broad male-to-female change between the bundle's two body
      heads (brow, jaw, chin, cheeks), added to this head with the eyes and ears locked,
   3. turns the axes into the app's (Y up, face toward +Z),
@@ -102,11 +103,11 @@ depsgraph = bpy.context.evaluated_depsgraph_get()
 mesh = bpy.data.meshes.new_from_object(temp.evaluated_get(depsgraph))
 
 # 2b. Wrap the shoulders and chest onto a sculpted body. Each body is moved so its eyes sit on this head's
-# eyes (the three heads are the same size: 64-66 mm between the eyes), its own head is cut away, its arms
-# are cut off flat through the deltoids and it is cut level a little below the bottom of the bust (so the
-# lowest ring has surface to land on). Every vertex below
-# the jaw then moves onto that body, fully from the base of the neck down.
-def bust_target(name, arm_cut):
+# eyes (the three heads are the same size: 64-66 mm between the eyes), its own head is cut away, and it is
+# cut level a little below the bottom of the bust (so the lowest ring has surface to land on). Every vertex
+# below the jaw then moves onto that body, fully from the base of the neck down. Last, the wrapped bust is
+# cut flat at each side, through the deltoid and slanting in to the base.
+def bust_target(name, shoulder_cut, bottom_cut):
     body = bpy.data.objects[name]
     eyes = [bpy.data.objects[f"{name}.eye.{side}"] for side in "LR"]
     eye_mid = sum((e.matrix_world @ v.co for e in eyes for v in e.data.vertices), Vector()) / sum(len(e.data.vertices) for e in eyes)
@@ -115,7 +116,16 @@ def bust_target(name, arm_cut):
     target.transform(Matrix.Translation(head_mid - eye_mid) @ body.matrix_world)
     tb = bmesh.new()
     tb.from_mesh(target)
-    cuts = [((0, 0, EYE_Z - 0.12), (0, 0, 1)), ((0, 0, EYE_Z - BOTTOM - 0.03), (0, 0, -1)), ((HEAD_CENTRE_X + arm_cut, 0, 0), (1, 0, 0)), ((HEAD_CENTRE_X - arm_cut, 0, 0), (-1, 0, 0))]
+    # Each side will be one flat cut, like a sculpted bust: through the deltoid at the top of the shoulder
+    # (20 cm below the eyes) and slanting in to the bottom of the bust, so below the armpit it runs inside
+    # the torso and nothing of the arm is left (a vertical cut leaves an arm stump with a notch beneath it)
+    top, bottom = EYE_Z - 0.20, EYE_Z - BOTTOM
+    sides = []
+    for sign in (1, -1):
+        point = Vector((HEAD_CENTRE_X + sign * shoulder_cut, 0, top))
+        normal = Vector((sign * (top - bottom), 0, bottom_cut - shoulder_cut)).normalized()
+        sides.append((point, normal))
+    cuts = [((0, 0, EYE_Z - 0.12), (0, 0, 1)), ((0, 0, EYE_Z - BOTTOM - 0.03), (0, 0, -1))]
     for co, no in cuts:
         bmesh.ops.bisect_plane(tb, geom=list(tb.verts) + list(tb.edges) + list(tb.faces), plane_co=co, plane_no=no, clear_outer=True)
     # The torso is the largest connected piece; stray bits of hands or hair are dropped
@@ -138,13 +148,12 @@ def bust_target(name, arm_cut):
         pieces.append(piece)
     pieces.sort(key=len)
     bmesh.ops.delete(tb, geom=[v for piece in pieces[:-1] for v in piece], context="VERTS")
-    # Only the arm cuts are capped (the flat sides of the bust). The neck and the bottom stay open, so
-    # nothing near them snaps onto a cap.
-    side = [e for e in tb.edges if e.is_boundary and all(abs(v.co.x - HEAD_CENTRE_X) > arm_cut - 0.003 for v in e.verts)]
-    bmesh.ops.holes_fill(tb, edges=side, sides=0)
+    # The arms stay on the target: below the armpits the wrap pushes each vertex straight out from the
+    # centre line, so it lands on the torso before the arm. The side cuts are applied to the wrapped bust
+    # itself afterwards (see cut_sides), which keeps them exactly flat.
     tree = BVHTree.FromBMesh(tb)
     tb.free()
-    return tree
+    return tree, sides
 
 
 def neck_weight(z):
@@ -166,8 +175,10 @@ def wrap(tree, co):
     return near if hit is None else near.lerp(hit, t * t * (3 - 2 * t))
 
 
-male = bust_target("GEO-body_male_realistic", 0.205)
-female = bust_target("GEO-body_female_realistic", 0.185)
+# (Measured: below the armpits the male torso's sides are 12-17 cm from the centre line and the female's
+# 10-14 cm, narrowest at the front of the chest, so the planes end just inside them.)
+male, male_sides = bust_target("GEO-body_male_realistic", 0.205, 0.12)
+female, female_sides = bust_target("GEO-body_female_realistic", 0.19, 0.10)
 feminine = []
 for v in mesh.vertices:
     w = neck_weight(v.co.z)
@@ -208,6 +219,20 @@ weights = [neck_weight(v.co.z) for v in mesh.vertices]
 masculine = [v.co.copy() for v in mesh.vertices]
 relax(masculine, weights, 4)
 relax(feminine, weights, 4)
+
+
+# The flat side cuts: anything beyond a side plane is pressed onto it
+def cut_sides(positions, sides):
+    for i, co in enumerate(positions):
+        for point, normal in sides:
+            beyond = (co - point).dot(normal)
+            if beyond > 0:
+                co = co - normal * beyond
+        positions[i] = co
+
+
+cut_sides(masculine, male_sides)
+cut_sides(feminine, female_sides)
 for v, co in zip(mesh.vertices, masculine):
     v.co = co
 mesh.update()
