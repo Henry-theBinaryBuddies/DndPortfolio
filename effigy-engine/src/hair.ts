@@ -35,10 +35,10 @@ interface Spec {
 }
 
 const SPECS: Record<Exclude<HairStyle, "none">, Spec> = {
-  cropped: { count: 1400, length: 0.1, radius: 0.03, gravity: 0, lift: 0.1, flow: [0, 0.1, -1], strip: false, hug: 1 },
+  cropped: { count: 2400, length: 0.1, radius: 0.021, gravity: 0, lift: 0.1, flow: [0, 0.1, -1], strip: false, hug: 1 },
   swept: { count: 1000, length: 0.7, radius: 0.036, gravity: 0.2, lift: 0.12, flow: [0, 0.3, -1], strip: false, hug: 0.85 },
   mohawk: { count: 1100, length: 0.78, radius: 0.058, gravity: 0.05, lift: 0.15, flow: [0, 0.3, -1], strip: true, hug: 0.55 },
-  long: { count: 800, length: 1.15, radius: 0.036, gravity: 0.9, lift: 0.15, flow: [0, -0.1, -1], strip: false, hug: 0.4 },
+  long: { count: 1200, length: 1.15, radius: 0.04, gravity: 0.9, lift: 0.15, flow: [0, -0.1, -1], strip: false, hug: 0.55 },
 };
 
 // Half the width of a mohawk's strip; everywhere else on the scalp is shaved
@@ -100,7 +100,7 @@ export function buildHair(p: Params, positions: Float32Array, normals: Float32Ar
     const z = positions[i * 3 + 2];
     let weight = scalp(x, y, z);
     if (spec.strip) weight *= 1 - smooth((Math.abs(x) - STRIP_HALF_WIDTH) / 0.05);
-    if (weight > 0.5 && normals[i * 3 + 1] > -0.2) candidates.push(i);
+    if (weight > 0.85 && normals[i * 3 + 1] > -0.2) candidates.push(i);
   }
   const picked: number[] = [];
   for (let n = 0; n < Math.min(spec.count, candidates.length); n++) {
@@ -216,6 +216,11 @@ export function buildHair(p: Params, positions: Float32Array, normals: Float32Ar
       if (f < 1.04) {
         const push = new THREE.Vector3((point.x - cx) / (rx * rx), (point.y - cy) / (ry * ry), (point.z - cz) / (rz * rz)).normalize();
         point.addScaledVector(push, 0.012 + 0.02 * (1.04 - f));
+      }
+      // Long hair falls close to the head and behind the shoulders instead of flaring into bunches
+      if (spec.gravity > 0.5 && along > spec.hug) {
+        // Once off the scalp, long hair falls: mostly straight down, leaning in toward the middle and a little back
+        dir.set(-point.x * 0.7 + (rand() - 0.5) * 0.08, -1, -0.12 + (rand() - 0.5) * 0.08).normalize();
       }
       // Long hair hangs behind the neck and shoulders, not through them
       if (point.y < -0.6) point.z = Math.min(point.z, neckZ - 0.36);

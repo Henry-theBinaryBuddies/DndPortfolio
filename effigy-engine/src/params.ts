@@ -240,7 +240,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   halfling: {
     label: "Halfling",
     skin: skin("Tan"),
-    skeleton: { ...HUMAN, angularity: 0.12, headWidth: 1.04, headHeight: 0.97, earSize: 0.5, noseLength: 0.2, noseWidth: 0.9, noseBridge: -0.2, jaw: 0.9, chin: 0.25, browBase: -0.15, cheekBase: 0.2, lipBase: 0.1, gaunt: 0, shoulders: 0.8 },
+    skeleton: { ...HUMAN, angularity: 0.08, headWidth: 1.07, headHeight: 0.96, earSize: 0.55, noseLength: 0.15, noseWidth: 0.85, noseBridge: -0.3, jaw: 0.85, chin: 0.18, browBase: -0.2, cheekBase: 0.4, lipBase: 0.15, gaunt: 0, shoulders: 0.8 },
     hornStyle: "none",
     hairStyle: "cropped",
     defaults: { muscle: 0.3, weight: 0.58 },
@@ -249,7 +249,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   gnome: {
     label: "Gnome",
     skin: skin("Ruddy"),
-    skeleton: { ...HUMAN, angularity: 0.3, headWidth: 1.03, headHeight: 0.98, earSize: 0.6, noseLength: 0.85, noseWidth: 1.15, noseBridge: 0.2, chin: 0.25, browBase: 0.05, cheekBase: 0.15, gaunt: 0.1, shoulders: 0.78 },
+    skeleton: { ...HUMAN, angularity: 0.3, headWidth: 1.03, headHeight: 0.98, earSize: 0.75, noseLength: 0.98, noseWidth: 1.3, noseBridge: 0.3, chin: 0.15, browBase: 0.05, cheekBase: 0.15, gaunt: 0.1, shoulders: 0.78 },
     hornStyle: "none",
     hairStyle: "cropped",
     defaults: { muscle: 0.3 },

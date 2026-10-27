@@ -129,7 +129,9 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     const head = smooth((y + 0.78) / 0.15); // 1 on the head, fading out down the neck
 
     // Shading: hollows darken, ridges catch a little extra light
-    const shade = Math.min(1, Math.max(-0.4, hollows[i] * 55));
+    // The neck is a smooth column: let its creases shade less so it does not look hatched
+    const neckEase = 1 - 0.55 * smooth((-0.55 - y) / 0.25);
+    const shade = Math.min(1, Math.max(-0.4, hollows[i] * 55 * neckEase));
     color.copy(skin).multiplyScalar(1 - 0.7 * Math.max(0, shade) + 0.2 * Math.max(0, -shade));
     if (!full) {
       colors[i * 3] = color.r;
@@ -169,7 +171,7 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     const lip = base.masks.lips[i];
     color.lerp(lipTone, lip * 0.9 * (1 - 0.6 * k.snout) * head * front);
     color.multiplyScalar(1 - 0.16 * 4 * lip * (1 - lip) * head * front);
-    color.lerp(grimeTone, base.masks.mouthLine[i] * 0.7 * head * front);
+    color.lerp(grimeTone, base.masks.mouthLine[i] * 0.45 * head * front);
     // The nostrils are dark openings under the tip of the nose
     color.lerp(grimeTone, base.masks.nostrils[i] * 0.85 * head);
 

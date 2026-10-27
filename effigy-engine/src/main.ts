@@ -38,7 +38,7 @@ scene.add(key);
 const fill = new THREE.DirectionalLight(0xb8c4e0, 0.55 * Math.PI);
 fill.position.set(2.5, 1.2, 4);
 scene.add(fill);
-const rim = new THREE.DirectionalLight(0x4a70c0, 1.4 * Math.PI);
+const rim = new THREE.DirectionalLight(0x7a8ab0, 1.0 * Math.PI);
 rim.position.set(3, 2, -3);
 scene.add(rim);
 

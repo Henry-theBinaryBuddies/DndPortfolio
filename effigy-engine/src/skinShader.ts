@@ -135,7 +135,7 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
 
   // Rings around the neck
   float neck = (1.0 - smoothstep(-0.62, -0.58, p.y)) * smoothstep(-0.92, -0.78, p.y);
-  w += neck * (crease(p.y + 0.70 + 0.01 * sin(p.x * 6.0), 0.01) + crease(p.y + 0.79 + 0.01 * sin(p.x * 5.0 + 2.0), 0.009)) * 0.8;
+  w += neck * (crease(p.y + 0.70 + 0.01 * sin(p.x * 6.0), 0.01) + crease(p.y + 0.79 + 0.01 * sin(p.x * 5.0 + 2.0), 0.009)) * 0.3;
 
   // Scales: plates raised between grooves, deeper the higher the Scales slider
   if (uScales > 0.01) {

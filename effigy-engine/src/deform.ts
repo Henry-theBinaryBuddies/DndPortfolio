@@ -121,7 +121,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     push(blob(0, -0.06, 0.17, 0.026, 0.1, 0.08), 0.008 * edge + k.noseBridge * 0.02);
     // The cords of the neck: the muscle that runs from behind each ear down to the notch between the collarbones
     const cord = distanceToSegment3(ax, y0, z0, 0.34, -0.42, -0.42, 0.07, -0.92, -0.12);
-    push(Math.exp(-((cord / 0.04) ** 2)) * smooth((-0.45 - y0) / 0.1), (0.012 + 0.02 * Math.max(0, gender) + 0.01 * (p.muscle - 0.45)) * (0.6 + 0.5 * k.angularity));
+    push(Math.exp(-((cord / 0.04) ** 2)) * smooth((-0.45 - y0) / 0.1), (0.005 + 0.01 * Math.max(0, gender) + 0.006 * (p.muscle - 0.45)) * (0.6 + 0.5 * k.angularity));
 
     // Lips: scaled about the mouth line so they get taller and fuller, and the mouth widens
     const lips = blob(0, stomion, 0.16, 0.2, 0.06, 0.2);
@@ -131,7 +131,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
 
     // Lip definition: a groove along the mouth line that deepens toward the corners, the two peaks of
     // the cupid's bow with the philtrum ridges rising to them, and the crease under the lower lip
-    const cornerDepth = 0.4 + 0.6 * smooth((ax - 0.05) / 0.08);
+    const cornerDepth = 0.55 + 0.2 * smooth((ax - 0.05) / 0.08);
     push(blob(0, stomion, 0.17, 0.2, 0.011, 0.18) * cornerDepth, -0.02 * Math.min(lipScale, 1.4));
     // The raised border around the red of the lips, and the soft pillow of each lip inside it
     push(blob(0, stomion + 0.062, 0.17, 0.11, 0.009, 0.14), 0.008 * lipScale);
