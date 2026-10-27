@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { makeAnatomy } from "./anatomy";
+import { eyeCentre, FACE_DROP, makeAnatomy } from "./anatomy";
 import { meshField } from "./mesher";
 import { raycastSurface, smoothstep, type Sdf } from "./sdf";
-import type { Params } from "./params";
+import { derive, type Params } from "./params";
 
 // The bust is sculpted as a signed distance field (anatomy.ts), turned into a mesh (mesher.ts), and
 // painted here. Painting is per-vertex colour: ambient occlusion sampled from the field darkens
@@ -14,9 +14,10 @@ export interface Radii {
   rz: number;
 }
 
-// Rough size of the head, used to fit the hood, hair and beard shells around it.
+// Rough size of the head, used to place horns and fit things around it.
 export function headRadii(p: Params): Radii {
-  return { rx: 0.5 * p.headWidth, ry: 0.62 * p.headHeight, rz: 0.55 };
+  const k = derive(p);
+  return { rx: 0.5 * k.headWidth, ry: 0.62 * k.headHeight, rz: 0.55 };
 }
 
 type Vec3 = [number, number, number];
@@ -98,7 +99,47 @@ export function buildBodyGeometry(p: Params, quality: Quality = "final"): THREE.
   const lipTone = base.clone().lerp(new THREE.Color(0x6a2326), 0.45).multiplyScalar(0.85);
   const blushTone = base.clone().lerp(new THREE.Color(0xa0473c), 0.35);
   const scars = scarSegments(p);
-  const eyeX = 0.3 * p.eyeSpacing;
+  const k = derive(p);
+  const eyeX = 0.3 * k.eyeSpacing;
+
+  // Ambient occlusion: how much of the field near each point is solid. Samples at a few distances along
+  // the normal; if the field is closer than expected, something is blocking the light. The raw values
+  // are noisy (the field is only approximately a distance), so they are smoothed across neighbouring
+  // vertices, which is what removes the orange-peel look from the skin.
+  const aoValues = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const x = mesh.positions[i * 3];
+    const y = mesh.positions[i * 3 + 1];
+    const z = mesh.positions[i * 3 + 2];
+    const nx = mesh.normals[i * 3];
+    const ny = mesh.normals[i * 3 + 1];
+    const nz = mesh.normals[i * 3 + 2];
+    let occ = 0;
+    let weight = 1;
+    for (const dist of [0.03, 0.07, 0.14]) {
+      occ += (dist - Math.max(-0.5, sdf(x + nx * dist, y + ny * dist, z + nz * dist))) * weight;
+      weight *= 0.55;
+    }
+    aoValues[i] = Math.min(1, Math.max(0, occ * 3.2));
+  }
+  const smoothAo = new Float32Array(count);
+  const touches = new Float32Array(count);
+  for (let pass = 0; pass < 3; pass++) {
+    smoothAo.set(aoValues);
+    touches.fill(1);
+    for (let t3 = 0; t3 < mesh.indices.length; t3 += 3) {
+      const a = mesh.indices[t3];
+      const b = mesh.indices[t3 + 1];
+      const c = mesh.indices[t3 + 2];
+      smoothAo[a] += aoValues[b] + aoValues[c];
+      smoothAo[b] += aoValues[a] + aoValues[c];
+      smoothAo[c] += aoValues[a] + aoValues[b];
+      touches[a] += 2;
+      touches[b] += 2;
+      touches[c] += 2;
+    }
+    for (let i = 0; i < count; i++) aoValues[i] = smoothAo[i] / touches[i];
+  }
 
   const u = new THREE.Vector3();
   const v = new THREE.Vector3();
@@ -110,23 +151,12 @@ export function buildBodyGeometry(p: Params, quality: Quality = "final"): THREE.
     const x = mesh.positions[i * 3];
     const y = mesh.positions[i * 3 + 1];
     const z = mesh.positions[i * 3 + 2];
-    const nx = mesh.normals[i * 3];
-    const ny = mesh.normals[i * 3 + 1];
-    const nz = mesh.normals[i * 3 + 2];
 
-    // Ambient occlusion: how much of the field near this point is solid. Samples at a few distances
-    // along the normal; if the field is closer than expected, something is blocking the light.
-    let occ = 0;
-    let weight = 1;
-    for (const dist of [0.03, 0.07, 0.14]) {
-      occ += (dist - Math.max(-0.5, sdf(x + nx * dist, y + ny * dist, z + nz * dist))) * weight;
-      weight *= 0.55;
-    }
-    const ao = Math.min(1, Math.max(0, occ * 3.2));
+    const ao = aoValues[i];
     color.copy(base).multiplyScalar(1 - 0.72 * ao);
 
     // Head-region painting uses the unit sphere around the skull; fade it out down the neck.
-    u.set(x / rx, y / ry, z / rz).normalize();
+    u.set(x / rx, (y + FACE_DROP) / ry, z / rz).normalize();
     const head = smoothstep((y + 0.78) / 0.12);
 
     // Light flush on the cheeks and nose, a little less when the skin is filthy
@@ -153,18 +183,18 @@ export function buildBodyGeometry(p: Params, quality: Quality = "final"): THREE.
     }
 
     // Lips and the mouth line
-    const lipWeight = gauss(u.x, 0.2 * p.mouthWidth, u.y + 0.5, 0.05, u.z - 0.88, 0.3) * head;
+    const lipWeight = gauss(u.x, 0.2 * k.mouthWidth, u.y + 0.5, 0.05, u.z - 0.88, 0.3) * head;
     color.lerp(lipTone, lipWeight * 0.75);
-    const mouthLine = gauss(u.x, 0.2 * p.mouthWidth, u.y + 0.515, 0.012, u.z - 0.86, 0.3) * head;
+    const mouthLine = gauss(u.x, 0.2 * k.mouthWidth, u.y + 0.515, 0.012, u.z - 0.86, 0.3) * head;
     color.lerp(grimeTone, mouthLine * 0.9);
 
     // Dragonborn scales: diamond cells with dark seams
-    if (p.scales > 0.02) {
+    if (k.scales > 0.02) {
       const g1 = Math.sin((u.x + u.y * 0.5) * 46);
       const g2 = Math.sin((u.x - u.y * 0.5) * 46);
       const seam = 1 - smoothstep(Math.abs(g1 * g2) / 0.22);
-      color.multiplyScalar(1 - 0.5 * seam * p.scales * head);
-      color.multiplyScalar(1 + 0.12 * p.scales * head * (noise3(u.x * 30, u.y * 30, u.z * 30) - 0.5));
+      color.multiplyScalar(1 - 0.5 * seam * k.scales * head);
+      color.multiplyScalar(1 + 0.12 * k.scales * head * (noise3(u.x * 30, u.y * 30, u.z * 30) - 0.5));
     }
 
     // Grime blotches, heavier in recesses
@@ -217,8 +247,8 @@ export function surfacePoint(p: Params, ux: number, uy: number, sdf?: Sdf): { po
   const uz = Math.sqrt(Math.max(0, 1 - ux * ux - uy * uy));
   const dir = new THREE.Vector3(ux, uy, uz).normalize();
   const { rx, ry, rz } = headRadii(p);
-  const far: Vec3 = [dir.x * rx * 2.2, dir.y * ry * 2.2, dir.z * rz * 2.2];
-  const hit = raycastSurface(field, far, [0, 0, 0]) ?? [dir.x * rx, dir.y * ry, dir.z * rz];
+  const far: Vec3 = [dir.x * rx * 2.2, dir.y * ry * 2.2 - FACE_DROP, dir.z * rz * 2.2];
+  const hit = raycastSurface(field, far, [0, -FACE_DROP, 0]) ?? [dir.x * rx, dir.y * ry - FACE_DROP, dir.z * rz];
   const e = 0.003;
   const normal = new THREE.Vector3(
     field(hit[0] + e, hit[1], hit[2]) - field(hit[0] - e, hit[1], hit[2]),
@@ -257,5 +287,5 @@ export function stitchPlacements(p: Params): Stitch[] {
 
 // Where an eyeball sits: nestled in the socket, its front just below the face surface.
 export function eyePosition(p: Params, side: -1 | 1): THREE.Vector3 {
-  return new THREE.Vector3(side * 0.17 * p.eyeSpacing, 0.1 * p.headHeight, 0.385);
+  return new THREE.Vector3(...eyeCentre(p, side));
 }

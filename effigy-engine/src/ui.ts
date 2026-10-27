@@ -2,6 +2,7 @@ import {
   BODIES,
   CLOTH_COLORS,
   EYE_COLORS,
+  EYE_STYLES,
   HAIR_COLORS,
   NUMERIC_DEFS,
   PRESETS,
@@ -13,6 +14,7 @@ import {
   defaultParams,
   randomParams,
   type Body,
+  type EyeStyle,
   type NumericKey,
   type Params,
   type Race,
@@ -28,14 +30,14 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const swatchRows = new Map<ColorKey, { swatch: Swatch; button: HTMLButtonElement }[]>();
   const raceSelect = document.createElement("select");
   const presetSelect = document.createElement("select");
-  const hoodBox = document.createElement("input");
+  const eyeButtons = new Map<EyeStyle, HTMLButtonElement>();
   const bodyButtons = new Map<Body, HTMLButtonElement>();
 
   const emit = () => onChange({ ...params });
 
   const syncUI = () => {
     raceSelect.value = params.race;
-    hoodBox.checked = params.hood;
+    for (const [style, button] of eyeButtons) button.setAttribute("aria-pressed", String(style === params.eyeStyle));
     for (const [body, button] of bodyButtons) button.setAttribute("aria-pressed", String(body === params.body));
     for (const [key, { input, out }] of sliders) {
       input.value = String(params[key]);
@@ -54,7 +56,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     emit();
   };
 
-  // Character section: race, archetype preset and the hood toggle
+  // Character section: build, race, archetype preset and eye style
   const character = document.createElement("section");
   character.innerHTML = "<h2>Character</h2>";
 
@@ -110,17 +112,27 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   });
   presetRow.append(presetSelect);
 
-  const hoodRow = document.createElement("label");
-  hoodRow.className = "row select";
-  hoodRow.innerHTML = "<span>Hood</span>";
-  hoodBox.type = "checkbox";
-  hoodBox.addEventListener("change", () => {
-    params.hood = hoodBox.checked;
-    emit();
-  });
-  hoodRow.append(hoodBox);
+  // Eye style: one solid colour (glowing) or a realistic eye with sclera, iris, pupil and cornea
+  const eyeRow = document.createElement("div");
+  eyeRow.className = "row select";
+  eyeRow.innerHTML = "<span>Eyes</span>";
+  const eyeGroup = document.createElement("div");
+  eyeGroup.className = "segmented";
+  for (const style of EYE_STYLES) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = style === "glow" ? "Solid colour" : "Realistic";
+    button.addEventListener("click", () => {
+      params.eyeStyle = style;
+      syncUI();
+      emit();
+    });
+    eyeGroup.append(button);
+    eyeButtons.set(style, button);
+  }
+  eyeRow.append(eyeGroup);
 
-  character.append(bodyRow, raceRow, presetRow, hoodRow);
+  character.append(bodyRow, raceRow, presetRow, eyeRow);
   panel.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];
@@ -179,7 +191,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     colorSection.append(row);
   };
   addSwatches("Skin", "skin", SKIN_TONES);
-  addSwatches("Hair", "hairColor", HAIR_COLORS);
+  addSwatches("Brows", "hairColor", HAIR_COLORS);
   addSwatches("Cloth", "cloth", CLOTH_COLORS);
   addSwatches("Eyes", "eyes", EYE_COLORS);
   panel.append(colorSection);
