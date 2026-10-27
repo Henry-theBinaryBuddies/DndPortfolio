@@ -309,7 +309,9 @@ export function buildBeard(p: Params, positions: Float32Array, normals: Float32A
 // of the outline the hair drapes around: hair falls behind them, and an elf's long ears poke through it
 // instead of the hair looping round them. (Sweeping the curtain itself forward wrapped it over the shoulders
 // like a stole.)
-const CURTAIN_ANGLE = 1.1; // how far round from the back it reaches, either side (radians; the ears are at about 1.45)
+// How far round from the back it reaches, either side (radians; the ears are at about 1.45). Kept on the back
+// behind the neck: reaching further, its sides lay over the slope of the shoulders, seen edge-on as a sliver.
+const CURTAIN_ANGLE = 0.85;
 const CURTAIN_TOP = 0.32; // where it starts under the cap at the back of the head (lower at the sides)
 const ACROSS = 80;
 const DOWN = 44;
@@ -401,9 +403,10 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     const a0 = -CURTAIN_ANGLE + (2 * CURTAIN_ANGLE * u) / ACROSS;
     start.push(a0);
     top.push(0.05 + (CURTAIN_TOP - 0.05) * Math.cos(a0 * 0.9) ** 2);
-    // A curved, layered hem: longest down the middle of the back and ending above the shoulders at the
-    // sides (side edges that reached the shoulders lay across them as thin strips)
-    ends.push(-0.82 - 0.45 * Math.max(0, Math.cos(a0 * 1.15)) ** 1.5 - 0.08 * rand());
+    // A curved, layered hem: longest down the middle of the back, and ending at the sides on the neck, above
+    // the rise of the shoulders (sides that reached the shoulders followed them outward and lay across them
+    // as a thin flap)
+    ends.push(-0.7 - 0.55 * Math.max(0, Math.cos(a0 * 1.2)) ** 1.3 - 0.08 * rand());
   }
   for (let pass = 0; pass < 2; pass++) for (let u = 1; u < ACROSS; u++) ends[u] = (ends[u - 1] + 2 * ends[u] + ends[u + 1]) / 4;
   const angleOf = (u: number, _t: number) => start[u];
@@ -458,7 +461,9 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       const y = heightOf(u, t);
       const r = reach[u * rows + v];
       // Grows out from nothing under the cap, full through the length, thinning to the tips
-      const thick = (0.09 + 0.03 * (1 - t)) * smooth(t / 0.15) * (1 - smooth((t - 0.65) / 0.35));
+      // (full until near the tips, which close in a rounded end: tapered over the last third, the sides
+      // thinned to a sliver)
+      const thick = (0.09 + 0.03 * (1 - t)) * smooth(t / 0.15) * Math.sqrt(Math.max(0, 1 - smooth((t - 0.82) / 0.18)));
       const middle = Math.max(r - thick / 2, floor[u * rows + v] - 0.006 + (thick / 2) * edge);
       const ro = middle + (thick / 2) * edge;
       const ri = middle - (thick / 2) * edge;
