@@ -17,6 +17,8 @@ export type NumericKey =
   | "chin"
   | "tusks"
   | "earSize"
+  | "scars"
+  | "grime"
   | "horns"
   | "hoodDepth"
   | "pauldrons"
@@ -28,7 +30,7 @@ export interface Params extends Record<NumericKey, number> {
   eyes: string;
 }
 
-export type Group = "Skull" | "Eyes" | "Nose and cheeks" | "Mouth and jaw" | "Crown and garb";
+export type Group = "Skull" | "Eyes" | "Nose and cheeks" | "Mouth and jaw" | "Skin" | "Crown and garb";
 
 export interface NumericDef {
   key: NumericKey;
@@ -56,6 +58,8 @@ export const NUMERIC_DEFS: NumericDef[] = [
   { key: "jawWidth", label: "Jaw width", group: "Mouth and jaw", min: 0.7, max: 1.3, step: 0.01, default: 1 },
   { key: "chin", label: "Chin", group: "Mouth and jaw", min: 0, max: 1, step: 0.01, default: 0.4 },
   { key: "tusks", label: "Tusks", group: "Mouth and jaw", min: 0, max: 1, step: 0.01, default: 0 },
+  { key: "scars", label: "Scars", group: "Skin", min: 0, max: 1, step: 0.01, default: 0.4 },
+  { key: "grime", label: "Grime", group: "Skin", min: 0, max: 1, step: 0.01, default: 0.45 },
   { key: "horns", label: "Horns", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.3 },
   { key: "hoodDepth", label: "Hood depth", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.5 },
   { key: "pauldrons", label: "Pauldrons", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.5 },

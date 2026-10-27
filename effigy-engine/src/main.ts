@@ -23,7 +23,7 @@ camera.lookAt(0, 0.95, 0);
 
 // Newer Three.js uses physical light units, so intensities need a ~PI boost to match older looks.
 scene.add(new THREE.HemisphereLight(0x6a5860, 0x1a1412, 1.1 * Math.PI));
-const key = new THREE.DirectionalLight(0xffa860, 1.9 * Math.PI);
+const key = new THREE.DirectionalLight(0xffc9a0, 1.7 * Math.PI);
 key.position.set(-3.5, 2, 2);
 scene.add(key);
 const rim = new THREE.DirectionalLight(0x4a70c0, 1.4 * Math.PI);

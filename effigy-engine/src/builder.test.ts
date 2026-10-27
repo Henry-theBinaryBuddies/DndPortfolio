@@ -47,6 +47,25 @@ describe("buildHeadGeometry", () => {
     expect(wide.x).toBeGreaterThan(narrow.x);
   });
 
+  it("paints vertex colours, and scars change them", () => {
+    const clean = buildHeadGeometry({ ...defaultParams(), scars: 0, grime: 0 });
+    const scarred = buildHeadGeometry({ ...defaultParams(), scars: 1, grime: 0 });
+    const a = clean.attributes.color.array as Float32Array;
+    const b = scarred.attributes.color.array as Float32Array;
+    expect(a.length).toBe(clean.attributes.position.count * 3);
+    expect(a.some((value, i) => Math.abs(value - b[i]) > 0.05)).toBe(true);
+  });
+
+  it("darkens skin where grime is turned up", () => {
+    const average = (geo: THREE.BufferGeometry) => {
+      const c = geo.attributes.color.array as Float32Array;
+      return c.reduce((sum, v) => sum + v, 0) / c.length;
+    };
+    const clean = average(buildHeadGeometry({ ...defaultParams(), scars: 0, grime: 0 }));
+    const filthy = average(buildHeadGeometry({ ...defaultParams(), scars: 0, grime: 1 }));
+    expect(filthy).toBeLessThan(clean);
+  });
+
   it("keeps the vertex count stable so sliders never change the mesh topology", () => {
     const a = buildHeadGeometry(defaultParams()).attributes.position.count;
     const b = buildHeadGeometry({ ...defaultParams(), chin: 1, brow: 1 }).attributes.position.count;

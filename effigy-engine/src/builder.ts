@@ -15,8 +15,11 @@ export function buildBust(p: Params): THREE.Group {
   const root = new THREE.Group();
 
   const skin = new THREE.MeshStandardMaterial({ color: p.skin, roughness: 0.85 });
-  const cloth = new THREE.MeshStandardMaterial({ color: p.cloth, roughness: 1, side: THREE.DoubleSide, flatShading: true });
+  // The face reads its colour from per-vertex paint (shadows, grime, scars), so the material itself is white.
+  const face = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.8 });
+  const cloth = new THREE.MeshStandardMaterial({ color: p.cloth, roughness: 1, side: THREE.DoubleSide });
   const iron = new THREE.MeshStandardMaterial({ color: 0x3b3b42, roughness: 0.45, metalness: 0.75, flatShading: true });
+  const armour = new THREE.MeshStandardMaterial({ color: 0x34343b, roughness: 0.5, metalness: 0.7 });
   const bone = new THREE.MeshStandardMaterial({ color: 0xcfc6b0, roughness: 0.6, flatShading: true });
   const dark = new THREE.MeshStandardMaterial({ color: 0x0b0908, roughness: 1 });
   const glow = new THREE.MeshBasicMaterial({ color: p.eyes });
@@ -34,7 +37,7 @@ export function buildBust(p: Params): THREE.Group {
   const { rx, ry, rz } = headRadii(p);
 
   // Shoulders: the upper half of a squashed sphere, so it sits flat on the plinth.
-  add(root, new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), iron, [0, 0, 0], [0.82 * b, 0.62, 0.46]);
+  add(root, new THREE.SphereGeometry(1, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), armour, [0, 0, 0], [0.82 * b, 0.62, 0.46]);
   add(root, new THREE.CylinderGeometry(0.3, 0.42, 0.24, 12, 1, true), cloth, [0, 0.6, 0]);
   add(root, new THREE.CylinderGeometry(0.13, 0.16, 0.45, 10), skin, [0, 0.74, -0.01]);
 
@@ -54,7 +57,7 @@ export function buildBust(p: Params): THREE.Group {
   head.position.set(0, 0.78 + ry * 0.95, 0.02);
   root.add(head);
 
-  add(head, buildHeadGeometry(p), skin, [0, 0, 0]);
+  add(head, buildHeadGeometry(p), face, [0, 0, 0]);
 
   // Eyes: glowing orbs partly hidden inside the sockets
   const eyeRadius = 0.04 * p.eyeSize;
@@ -62,7 +65,7 @@ export function buildBust(p: Params): THREE.Group {
     const at = eyePosition(p, side);
     add(head, new THREE.SphereGeometry(eyeRadius, 12, 10), glow, [at.x, at.y, at.z]);
   }
-  const eyeLight = new THREE.PointLight(p.eyes, 0.12 * Math.PI, 0.9);
+  const eyeLight = new THREE.PointLight(p.eyes, 0.04 * Math.PI, 0.7);
   eyeLight.position.set(0, 0.1 * ry, rz + 0.2);
   head.add(eyeLight);
 
@@ -71,14 +74,16 @@ export function buildBust(p: Params): THREE.Group {
   const mouthZ = rz * Math.sqrt(1 - 0.25) * 0.98;
   add(head, new THREE.BoxGeometry(0.2 * p.mouthWidth, 0.018, 0.02), dark, [0, mouthY, mouthZ - 0.005]);
   if (p.tusks > 0.03) {
+    // Each tusk's base sits on the lower lip and it rises from there, so the centre is half its length up.
+    const length = 0.07 + p.tusks * 0.16;
     for (const side of [-1, 1]) {
       add(
         head,
-        new THREE.ConeGeometry(0.022, 0.06 + p.tusks * 0.14, 6),
+        new THREE.ConeGeometry(0.03, length, 6),
         bone,
-        [side * 0.11 * p.mouthWidth * p.jawWidth, mouthY + 0.02 + p.tusks * 0.03, mouthZ - 0.015],
+        [side * 0.12 * p.mouthWidth * p.jawWidth, mouthY - 0.02 + length / 2, mouthZ + 0.005],
         undefined,
-        { z: side * 0.12 },
+        { z: side * 0.1 },
       );
     }
   }
@@ -92,17 +97,32 @@ export function buildBust(p: Params): THREE.Group {
   // Hood: a lathe (a profile spun around the vertical axis) with a wedge cut from the front.
   // Deeper hood means a narrower opening and a taller peak.
   const gap = Math.PI * (0.85 - 0.6 * p.hoodDepth);
-  const profile: [number, number][] = [
-    [0.7, -0.95],
-    [1.05, -0.6],
-    [1.2, -0.1],
-    [1.12, 0.45],
-    [0.8, 0.95],
-    [0.4, 1.28],
-    [0.0, 1.35 + p.hoodDepth * 0.4],
+  const controls: [number, number][] = [
+    [0.62, -0.95],
+    [0.98, -0.6],
+    [1.12, -0.1],
+    [1.04, 0.45],
+    [0.74, 0.95],
+    [0.36, 1.25],
+    [0.05, 1.33 + p.hoodDepth * 0.4],
   ];
-  const hoodGeo = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r * rx * 1.2, y * ry)), 14, gap / 2, Math.PI * 2 - gap);
-  add(head, hoodGeo, cloth, [0, 0, -0.06], [1, 1, 1.05]);
+  // A spline through the control points gives a smooth silhouette instead of straight segments.
+  const spline = new THREE.CatmullRomCurve3(controls.map(([r, y]) => new THREE.Vector3(r * rx * 1.12, y * ry, 0)));
+  const profile = spline.getPoints(28).map((v) => new THREE.Vector2(Math.max(0.001, v.x), v.y));
+  const hoodGeo = new THREE.LatheGeometry(profile, 44, gap / 2, Math.PI * 2 - gap);
+  // Drape: radial folds that grow toward the bottom, like heavy cloth hanging from the crown.
+  const hp = hoodGeo.attributes.position;
+  for (let i = 0; i < hp.count; i++) {
+    const x = hp.getX(i);
+    const y = hp.getY(i);
+    const z = hp.getZ(i);
+    const angle = Math.atan2(x, z);
+    const hang = Math.min(1, Math.max(0, (0.6 * ry - y) / (1.5 * ry)));
+    const fold = 1 + (0.025 + 0.05 * hang) * Math.sin(angle * 7 + y * 3.5) + 0.02 * Math.sin(angle * 13 - y * 5);
+    hp.setXYZ(i, x * fold, y, z * fold);
+  }
+  hoodGeo.computeVertexNormals();
+  add(head, hoodGeo, cloth, [0, 0, -0.05], [1, 1, 1.05]);
 
   if (p.horns > 0.03) {
     const scale = 0.5 + p.horns * 1.6;
