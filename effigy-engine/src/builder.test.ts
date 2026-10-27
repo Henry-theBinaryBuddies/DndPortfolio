@@ -500,6 +500,52 @@ describe("buildBust", () => {
     }
   }, 120000);
 
+  it("never folds a hair or beard shell over itself: every visible outer triangle faces the same way as the skin under it", () => {
+    // A fold shows as a pale plate with a dark slit (a full beard's lean once slid the front of the chin down
+    // past its own underside)
+    const folds = (geometry: THREE.BufferGeometry) => {
+      const index = geometry.index!;
+      const pos = geometry.attributes.position;
+      const color = geometry.attributes.color;
+      const total = pos.count / 2;
+      const a = new THREE.Vector3();
+      const b = new THREE.Vector3();
+      const c = new THREE.Vector3();
+      const outer = new THREE.Vector3();
+      const inner = new THREE.Vector3();
+      let folded = 0;
+      for (let t = 0; t < index.count; t += 3) {
+        const i0 = index.getX(t);
+        const i1 = index.getX(t + 1);
+        const i2 = index.getX(t + 2);
+        if (i0 >= total || i1 >= total || i2 >= total) continue; // only the outer surface
+        if (Math.min(color.getW(i0), color.getW(i1), color.getW(i2)) < 0.5) continue; // only where it shows
+        // The outer triangle's facing, against the same triangle on the inner surface (which follows the skin)
+        outer.crossVectors(b.fromBufferAttribute(pos, i1).sub(a.fromBufferAttribute(pos, i0)), c.fromBufferAttribute(pos, i2).sub(a));
+        inner.crossVectors(b.fromBufferAttribute(pos, total + i1).sub(a.fromBufferAttribute(pos, total + i0)), c.fromBufferAttribute(pos, total + i2).sub(a));
+        if (outer.dot(inner) < 0) folded++;
+      }
+      return folded;
+    };
+    const cases: Partial<Params>[] = [
+      { beardStyle: "full" },
+      { beardStyle: "full", race: "dwarf", lips: 0.75, jaw: 0.8 },
+      { beardStyle: "full", lips: 0.25, jaw: 0.2 },
+      { beardStyle: "goatee" },
+      { beardStyle: "short" },
+    ];
+    for (const overrides of cases) {
+      const p = params(overrides);
+      const bust = sculptBust(p, base);
+      expect(folds(buildBeard(p, bust.positions, bust.normals, base)!), JSON.stringify(overrides)).toBe(0);
+    }
+    for (const hairStyle of ["cropped", "swept", "mohawk", "long"] as const) {
+      const p = params({ hairStyle });
+      const bust = sculptBust(p, base);
+      expect(folds(buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array)!), hairStyle).toBe(0);
+    }
+  }, 120000);
+
   it("grows real eyebrow and eyelash strands, more for bushier brows", () => {
     const fine = (p: Params) => {
       const bust = sculptBust(p, base);

@@ -37,7 +37,9 @@ export function beardWeight(x: number, y: number, z: number, style: BeardStyle, 
   let w = smooth((topLine(ax) - y) / 0.03) * smooth((y + 0.7 - 0.1 * smooth((ax - 0.15) / 0.2)) / 0.1);
   // In front of the ears, and not round the back of the neck
   w *= smooth((z + 0.5) / 0.1);
-  if (ax > 0.38 && y > -0.3 && y < 0.25 && z < -0.25) w = 0;
+  // (the whole ear, its front edge included: the beard's sideburn ran up over it)
+  // (a soft edge: cut off sharply, the shell folded where the sideburn stopped)
+  w *= 1 - smooth((ax - 0.33) / 0.04) * smooth((y + 0.26) / 0.06) * smooth((0.27 - y) / 0.04) * smooth((-0.13 - z) / 0.12);
   // Off the lips, with a rounded margin round the mouth
   w *= (1 - smooth(lips * 1.6)) * mouthClearance(ax, y);
   // A goatee: the moustache and the front of the chin only (not under it)
