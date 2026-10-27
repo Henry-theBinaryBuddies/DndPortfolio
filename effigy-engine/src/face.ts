@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { deformHead, type Deformed } from "./deform";
 import { shavedWeight } from "./hair";
 import { LANDMARK, type HeadBase } from "./headMesh";
-import type { Params } from "./params";
+import { browWeight } from "./brows";
+import { masculinity, type Params } from "./params";
 
 // Turns the deformed base head into a painted mesh. Shading comes from cavity: wherever a vertex sits
 // below the average of its neighbours (a socket, a crease, the corner of the mouth) it is darkened, and
@@ -110,6 +111,7 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
   const skin = new THREE.Color(p.skin);
   const grimeTone = new THREE.Color(0x15110c);
   const browTone = new THREE.Color(p.hairColor);
+  const build = masculinity(p);
   // Lips are a little darker and redder than the skin, not a separate colour (on green or red skin a
   // strong pink reads as two rolls stuck on)
   const lipTone = skin.clone().multiplyScalar(0.92).lerp(new THREE.Color(0xa85a60), 0.35);
@@ -160,7 +162,8 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
       creaseLid = Math.max(creaseLid, gauss(x - sign * eyeX, 0.1, y - 0.058, 0.008, z - 0.07, 0.2));
     }
     // (a light shadow under the brow hairs; strong, it read as a painted bar)
-    color.lerp(browTone, base.masks.brows[i] * 0.45 * Math.min(1, p.eyebrows * 1.5) * head * front);
+    const brow = browWeight(base.positions[i * 3], base.positions[i * 3 + 1], base.positions[i * 3 + 2], build, p.eyebrows);
+    color.lerp(browTone, brow * 0.45 * Math.min(1, p.eyebrows * 1.5) * head * front);
     color.multiplyScalar(1 - 0.35 * bags * (0.1 + 0.9 * Math.max(0, p.age - 0.2)) * head * front);
     color.multiplyScalar(1 - 0.4 * lines * Math.max(0, p.age - 0.15) * head * front);
     color.multiplyScalar(1 - 0.28 * creaseLid * head * front);

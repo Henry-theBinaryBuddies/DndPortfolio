@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { HeadBase } from "./headMesh";
-import type { Params } from "./params";
+import { browShape, browWeight } from "./brows";
+import { masculinity, type Params } from "./params";
 
 // The small hair of a face, as real strand geometry: eyebrows combed along the brow ridge, and the lashes
 // along the edge of each eyelid. Painted brows have no depth and never catch the light; strands do.
@@ -15,6 +16,11 @@ function random(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+const smooth = (t: number) => {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+};
 
 // Collects strands (thin flattened tubes that taper to a point) into one mesh
 class Strands {
@@ -73,7 +79,6 @@ export function buildFineHair(
   eyes: { left: [number, number, number]; right: [number, number, number]; radius: number },
   base: HeadBase,
 ): THREE.BufferGeometry | null {
-  const masks = base.masks;
   const strands = new Strands();
   const rand = random(77);
   const count = positions.length / 3;
@@ -81,31 +86,40 @@ export function buildFineHair(
   const point = new THREE.Vector3();
   const normal = new THREE.Vector3();
 
-  // Eyebrows: short strands rooted in the brow mask, combed up and outward along the inner half of the brow
-  // and down and outward along the tail
+  // Eyebrows: short strands rooted inside the brow's shape (see brows.ts), which is read on the undeformed
+  // head so it stays put however the face is reshaped. At the head of the brow the hairs grow upward; along
+  // the arch and the tail they follow its curve outward, so the tail's hairs run down toward the temple.
   if (p.eyebrows > 0.05) {
+    const m = masculinity(p);
     const rootTone = hair.clone().multiplyScalar(0.75);
     const per = Math.round(650 * p.eyebrows);
+    const bp = base.positions;
     for (const sign of [-1, 1]) {
       const candidates: number[] = [];
+      const weights: number[] = [];
       for (let i = 0; i < count; i++) {
-        if (masks.brows[i] > 0.4 && positions[i * 3] * sign > 0 && normals[i * 3 + 2] > -0.1) candidates.push(i);
+        if (bp[i * 3] * sign <= 0 || normals[i * 3 + 2] < -0.1) continue;
+        const w = browWeight(bp[i * 3], bp[i * 3 + 1], bp[i * 3 + 2], m, p.eyebrows);
+        if (w > 0.05) {
+          candidates.push(i);
+          weights.push(w);
+        }
       }
       if (candidates.length === 0) continue;
-      // Densest along the middle of the brow and thinning toward its edges and its tail, so it reads as
-      // hair rather than a solid bar
-      for (let n = 0, tries = 0; n < per && tries < per * 6; tries++) {
-        const i = candidates[Math.floor(rand() * candidates.length)];
-        const tail = 1 - 0.6 * Math.max(0, Math.min(1, (Math.abs(positions[i * 3]) - 0.22) / 0.12));
-        if (rand() > masks.brows[i] ** 2 * tail) continue;
+      for (let n = 0, tries = 0; n < per && tries < per * 8; tries++) {
+        const pick = Math.floor(rand() * candidates.length);
+        if (rand() > weights[pick]) continue;
         n++;
+        const i = candidates[pick];
         point.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
         normal.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]).normalize();
-        const flow = new THREE.Vector3(sign, Math.abs(point.x) < 0.2 ? 0.55 : -0.4, 0).normalize();
+        const shape = browShape(Math.abs(bp[i * 3]), m, p.eyebrows);
+        const along = new THREE.Vector3(sign, shape.slope, 0).normalize();
+        const flow = new THREE.Vector3(0.25 * sign, 1, 0).normalize().lerp(along, smooth((shape.t - 0.04) / 0.2)).normalize();
         const tangent = flow.clone().addScaledVector(normal, -flow.dot(normal)).normalize();
         // Brow hairs leave the skin at a shallow angle and bend back down along it, so they lie flat
         const dir = tangent.clone().addScaledVector(normal, 0.08).normalize();
-        const length = 0.04 * (0.7 + 0.5 * rand());
+        const length = 0.04 * (0.7 + 0.5 * rand()) * (1 - 0.35 * shape.t);
         const path = [point.clone().addScaledVector(normal, 0.001)];
         const p0 = path[0].clone();
         for (let s = 0; s < 4; s++) {
