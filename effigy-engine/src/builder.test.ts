@@ -5,7 +5,7 @@ import { buildBust, fitSphere, socketFit } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
 import { buildFineHair } from "./fineHair";
-import { buildHair } from "./hair";
+import { buildHairShell } from "./hairShell";
 import { applySkinDetail } from "./skinShader";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
@@ -374,17 +374,27 @@ describe("buildBust", () => {
     }
   });
 
-  it("keeps hair outside the face: no hair vertex below the hairline in front of the brow", () => {
-    const { positions, normals } = sculptBust(params({ hairStyle: "swept" }), base);
-    const hair = buildHair(params({ hairStyle: "swept" }), positions, normals, base.neck.z)!;
-    const pos = hair.attributes.position;
-    let onFace = 0;
-    for (let i = 0; i < pos.count; i++) {
-      if (pos.getZ(i) > 0.15 && pos.getY(i) < 0.2 && pos.getY(i) > -0.3 && Math.abs(pos.getX(i)) < 0.4) onFace++;
+  it("keeps hair off the face: the hair shell lies on the skin in front of the brow and below the hairline", () => {
+    for (const style of ["cropped", "swept", "mohawk", "long"] as const) {
+      const p = params({ hairStyle: style });
+      const bust = sculptBust(p, base);
+      const shell = buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array)!;
+      expect(shell, style).not.toBeNull();
+      const onFace = (x: number, y: number, z: number) => z > 0.15 && y < 0.2 && y > -0.3 && Math.abs(x) < 0.4;
+      const skin: number[] = [];
+      for (let i = 0; i < bust.positions.length; i += 3) {
+        if (onFace(bust.positions[i], bust.positions[i + 1], bust.positions[i + 2] - 0.02)) skin.push(bust.positions[i], bust.positions[i + 1], bust.positions[i + 2]);
+      }
+      const pos = shell.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        if (!onFace(pos.getX(i), pos.getY(i), pos.getZ(i))) continue;
+        let nearest = Infinity;
+        for (let j = 0; j < skin.length; j += 3) nearest = Math.min(nearest, Math.hypot(pos.getX(i) - skin[j], pos.getY(i) - skin[j + 1], pos.getZ(i) - skin[j + 2]));
+        expect(nearest, style).toBeLessThan(0.01);
+      }
     }
-    expect(onFace).toBe(0);
-  });
-
+    expect(buildHairShell(params({ hairStyle: "none" }), new Float32Array(), new Float32Array(), base, new Float32Array())).toBeNull();
+  }, 120000);
 
   it("grows real eyebrow and eyelash strands, more for bushier brows", () => {
     const fine = (p: Params) => {

@@ -4,6 +4,7 @@ import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildFineHair } from "./fineHair";
 import { buildHair } from "./hair";
+import { applyHairDetail, buildHairShell } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { derive, type Params } from "./params";
 import { applySkinDetail } from "./skinShader";
@@ -290,7 +291,15 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
     }
   }
 
-  // Hair: sculpted clumps combed along the style's flow
+  // Hair: a sculpted shell over the scalp, with strand grooves carved by its shader (shown in clay too,
+  // since it is form)
+  const shell = buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array);
+  if (shell) {
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
+    applyHairDetail(material, p);
+    head.add(new THREE.Mesh(shell, material));
+  }
+  // and, for long hair, strands for the lengths that hang free
   const hairGeometry = buildHair(p, bust.positions, bust.normals, base.neck.z);
   if (hairGeometry) {
     const hair = new THREE.Mesh(hairGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 }));

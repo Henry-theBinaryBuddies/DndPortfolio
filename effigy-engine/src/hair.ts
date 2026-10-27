@@ -42,7 +42,7 @@ const SPECS: Record<Exclude<HairStyle, "none">, Spec> = {
 };
 
 // Half the width of a mohawk's strip; everywhere else on the scalp is shaved
-const STRIP_HALF_WIDTH = 0.15;
+export const STRIP_HALF_WIDTH = 0.15;
 
 // How shaved the scalp is at a point: 1 on the sides of a mohawk, where the skin shows the shadow of
 // stubble, and 0 everywhere else
@@ -56,7 +56,7 @@ const SIDES = 5;
 
 // How much of a point on the head lies inside the hair-bearing scalp: nothing on the face below the
 // hairline or on the ears, full above the brow, around the sides, and down the back of the head.
-function scalp(x: number, y: number, z: number): number {
+export function scalp(x: number, y: number, z: number): number {
   const ax = Math.abs(x);
   const front = 0.38 - 0.16 * smooth((ax - 0.14) / 0.22);
   const side = 0.12;
@@ -67,8 +67,10 @@ function scalp(x: number, y: number, z: number): number {
   return smooth((y - threshold) / 0.04);
 }
 
+// The hair on the scalp is a sculpted shell (see hairShell.ts); clumps are only drawn for the lengths of
+// long hair that hang free of the head.
 export function buildHair(p: Params, positions: Float32Array, normals: Float32Array, neckZ: number): THREE.BufferGeometry | null {
-  if (p.hairStyle === "none") return null;
+  if (p.hairStyle !== "long") return null;
   const spec = SPECS[p.hairStyle];
   const count = positions.length / 3;
   const rand = random(1337);
