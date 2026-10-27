@@ -209,6 +209,7 @@ clayButton.addEventListener("click", () => {
 // from a script even when the page is in a background tab and animation frames are paused)
 if (import.meta.env.DEV) {
   (window as unknown as { effigy: unknown }).effigy = {
+    scene,
     render(view?: { yaw?: number; clay?: boolean; distance?: number }) {
       if (view?.yaw !== undefined) yaw = view.yaw;
       if (view?.clay !== undefined) clayOn = view.clay;

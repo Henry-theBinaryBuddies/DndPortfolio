@@ -82,23 +82,30 @@ export function fitSphere(geometry: THREE.BufferGeometry, fit: EyeFit, scale = 1
     limit[i] = fit.limit(u) * scale;
   }
   const index = geometry.index!;
-  for (let pass = 0; pass < 8; pass++) {
+  const average = (values: Float32Array) => {
     const sum = new Float32Array(pos.count);
     const n = new Float32Array(pos.count);
     for (let t = 0; t < index.count; t++) {
       const a = index.getX(t);
       const b = index.getX(t % 3 === 2 ? t - 2 : t + 1);
-      sum[a] += r[b];
+      sum[a] += values[b];
       n[a]++;
-      sum[b] += r[a];
+      sum[b] += values[a];
       n[b]++;
     }
     const next = new Float32Array(pos.count);
-    for (let i = 0; i < pos.count; i++) next[i] = n[i] ? (r[i] + sum[i] / n[i]) / 2 : r[i];
-    r = next;
+    for (let i = 0; i < pos.count; i++) next[i] = n[i] ? (values[i] + sum[i] / n[i]) / 2 : values[i];
+    return next;
+  };
+  for (let pass = 0; pass < 8; pass++) r = average(r);
+  // Held inside the skin, then evened out and held again a few times, so the eye curves smoothly under
+  // the lids instead of folding where the limit starts to bite (a crease across the eyeball)
+  for (let pass = 0; pass < 6; pass++) {
+    for (let i = 0; i < pos.count; i++) r[i] = Math.min(r[i], limit[i]);
+    if (pass < 5) r = average(r);
   }
   for (let i = 0; i < pos.count; i++) {
-    u.fromBufferAttribute(pos, i).normalize().multiplyScalar(Math.min(r[i], limit[i]));
+    u.fromBufferAttribute(pos, i).normalize().multiplyScalar(r[i]);
     pos.setXYZ(i, u.x, u.y, u.z);
   }
   geometry.computeVertexNormals();
@@ -241,24 +248,26 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
     }
   }
 
-  // Tusks: only half-orcs have them. Each rises from the lower jaw, out from between the lips beside the
-  // middle of the mouth, curving up and slightly outward. Its root is buried in the lower lip (which
-  // bulges over it, see deform.ts), so no flat base shows.
+  // Tusks: only half-orcs have them. Each grows from the lower jaw inside the mouth and comes out
+  // between the lips beside the middle of the mouth, leaning forward so it rises in front of the upper lip
+  // and a little outward. A third of it (the root and its flared base) stays hidden inside the mouth; the lips are shaped around it in deform.ts (the lower lip swells over it, the upper lip lifts).
   if (k.tusks > 0.03) {
     const geometry = shapeGeometry(assets.shapes.tusk, new THREE.Color(0x6a5230), new THREE.Color(0xe6dcc0), new THREE.Color(0xf4eedc));
     const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38 });
-    const size = 0.1 + 0.14 * k.tusks;
+    // The tusk asset is one unit long. The largest stays small enough for its hidden root to fit behind the
+    // lower lip (any bigger and the root shows in front of the chin).
+    const size = 0.09 + 0.09 * k.tusks;
     const rootX = TUSK_X * (1 + 0.8 * (k.mouthWidth - 1));
     for (const side of [-1, 1]) {
-      const lip = frontPoint(probe, side * rootX, LANDMARK.stomion - 0.02);
-      if (!lip) continue;
+      const mouth = frontPoint(probe, side * rootX, LANDMARK.stomion);
+      if (!mouth) continue;
+      const along = new THREE.Vector3(side * 0.12, 1, 0.55).normalize();
+      // Where it leaves the mouth: on the mouth line, just inside the lips
+      const exit = mouth.position.clone().add(new THREE.Vector3(0, 0, -0.03));
       const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), material);
       tusk.scale.set(side * size, size, size);
-      // Leaning forward so it rises in front of the upper lip, with its root set into the front of the lower
-      // lip, deeper the bigger the tusk so its flared base never stands proud (buried straight down, a big
-      // tusk's base comes out under the lip; buried far back, the tusk runs inside the upper lip)
-      tusk.quaternion.setFromUnitVectors(UP, new THREE.Vector3(side * 0.12, 1, 0.32).normalize());
-      tusk.position.copy(lip.position).addScaledVector(lip.normal, -0.15 * size).add(new THREE.Vector3(0, -0.12 * size, 0));
+      tusk.quaternion.setFromUnitVectors(UP, along);
+      tusk.position.copy(exit).addScaledVector(along, -0.33 * size);
       head.add(tusk);
     }
   }

@@ -75,10 +75,12 @@ float scaleCover(vec3 p) {
 
 // 1 on the face of a scale, 0 in the grooves. The tint darkens the grooves and varies scale to scale.
 float scalePlate(vec3 p, out float tint) {
-  float freq = mix(36.0, 21.0, smoothstep(-0.2, -0.85, p.y));
+  // Large domed plates with soft, light grooves and little variation: small plates outlined by thin dark
+  // grooves read as cracked earth at full strength
+  float freq = mix(17.0, 11.0, smoothstep(-0.2, -0.85, p.y));
   vec3 w = worley(p * freq);
-  float plate = smoothstep(0.0, 0.3, w.y - w.x);
-  tint = (1.0 - plate) * 0.4 + w.z * 0.22;
+  float plate = smoothstep(0.0, 0.4, w.y - w.x);
+  tint = (1.0 - plate) * 0.2 + w.z * 0.08;
   return plate;
 }
 
@@ -111,8 +113,9 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
   vec3 furrow = worley(p * 120.0);
   h -= (1.0 - smoothstep(0.0, 0.09, furrow.y - furrow.x)) * 0.0004 * fine;
   h += (vnoise(p * 210.0) - 0.5) * 0.0003 * fine;
-  // Broader unevenness so the skin is never perfectly smooth
-  h += (vnoise(p * 28.0) - 0.5) * 0.001;
+  // Broader unevenness so the skin is never perfectly smooth. (Smooth waves rather than lattice noise:
+  // at this scale the noise's cells could line up into a short dark dash on the cheek.)
+  h += sin(p.x * 23.0 + sin(p.y * 17.0)) * sin(p.y * 19.0 + sin(p.z * 21.0)) * sin(p.z * 25.0 + p.x * 7.0) * 0.0005;
 
   float facing = smoothstep(0.1, 0.6, n.z);
   float ax = abs(p.x);
@@ -124,13 +127,14 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
   w += fore * (crease(p.y - 0.30 + wob, 0.007) + crease(p.y - 0.38 + wob * 1.2, 0.007) + crease(p.y - 0.46 + wob, 0.006));
 
   // Frown lines between the brows
-  w += facing * crease(ax - 0.035, 0.006) * smoothstep(0.06, 0.12, p.y) * (1.0 - smoothstep(0.2, 0.26, p.y));
+  w += 0.6 * facing * crease(ax - 0.035, 0.006) * smoothstep(0.06, 0.12, p.y) * (1.0 - smoothstep(0.2, 0.26, p.y));
 
   // Crow's feet: short lines fanning out from the outer corner of each eye
   vec2 corner = vec2(ax - 0.235, p.y);
   float cr = length(corner);
   float ca = atan(corner.y, corner.x);
-  float feet = smoothstep(0.03, 0.05, cr) * (1.0 - smoothstep(0.1, 0.14, cr)) * step(0.0, corner.x) * smoothstep(0.1, 0.5, n.x * sign(p.x) + 0.3);
+  // (kept close to the eye: fanned out further they reached the cheek as stray dashes)
+  float feet = smoothstep(0.025, 0.04, cr) * (1.0 - smoothstep(0.065, 0.09, cr)) * (1.0 - smoothstep(0.04, 0.07, abs(p.y))) * step(0.0, corner.x) * smoothstep(0.1, 0.5, n.x * sign(p.x) + 0.3);
   w += feet * pow(abs(sin(ca * 6.0)), 18.0) * 0.5;
 
   // Fine vertical lines above the upper lip
@@ -145,7 +149,7 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
   if (uScales > 0.01) {
     float tint;
     float plate = scalePlate(p, tint);
-    h -= (1.0 - plate) * 0.0042 * uScales * scaleCover(p);
+    h -= (1.0 - plate) * 0.0032 * uScales * scaleCover(p);
   }
 
   // Lips: faint, irregular vertical lines across the red (regular ones read as ribbing), and a soft pillow
@@ -157,8 +161,8 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
   h *= 1.0 - 0.9 * cloth;
   h += cloth * (sin(p.x * 260.0) * sin(p.z * 260.0 + p.y * 40.0) * 0.00035);
 
-  // Everything creased deepens with age
-  h -= w * (0.0008 + 0.0042 * uAge) * uDetail;
+  // Everything creased deepens with age; young faces barely show these lines
+  h -= w * (0.0002 + 0.0048 * max(0.0, uAge - 0.15)) * uDetail;
   return h;
 }
 `;
@@ -238,5 +242,5 @@ export function applySkinDetail(material: THREE.MeshStandardMaterial, p: Params)
       .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${ROUGHNESS}`)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${PERTURB}`);
   };
-  material.customProgramCacheKey = () => "effigy-skin-v7";
+  material.customProgramCacheKey = () => "effigy-skin-v10";
 }

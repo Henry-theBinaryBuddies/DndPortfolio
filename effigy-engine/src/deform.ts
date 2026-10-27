@@ -29,8 +29,9 @@ function distanceToSegment2(px: number, py: number, ax: number, ay: number, bx: 
   return Math.hypot(px - ax - abx * t, py - ay - aby * t);
 }
 
-// Where each tusk roots, beside the middle of the lower lip (before the mouth is widened)
-export const TUSK_X = 0.095;
+// Where each tusk comes out of the mouth, partway between the middle and the corner, where the lower lip
+// is thick enough to hide its root (before the mouth is widened)
+export const TUSK_X = 0.075;
 
 export interface Deformed {
   positions: Float32Array;
@@ -144,8 +145,14 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     dy += (y0 - stomion) * Math.max(0, lipScale - 1) * 0.28 * lips * (0.4 + 0.6 * red);
     push(0.5 * lips + 0.5 * red, (lipScale - 1) * 0.03);
     dx += x0 * (k.mouthWidth - 1) * 0.8 * lips;
-    // Tusks press up behind the lower lip, so it bulges a little over each one
-    if (k.tusks > 0) push(blob(TUSK_X, stomion - 0.03, 0.16, 0.025, 0.025, 0.06), 0.012 * k.tusks);
+    // Tusks come up out of the mouth: the lower lip swells a little over each one, and the upper lip is
+    // lifted and pushed forward where the tusk passes in front of it
+    if (k.tusks > 0) {
+      push(blob(TUSK_X, stomion - 0.035, 0.16, 0.03, 0.03, 0.06), 0.02 * k.tusks);
+      const lifted = blob(TUSK_X, stomion + 0.025, 0.16, 0.03, 0.025, 0.06) * k.tusks;
+      dy += 0.012 * lifted;
+      push(lifted, 0.008);
+    }
 
     // Chin projection and jaw breadth (the jaw runs from below the mouth to the chin)
     push(blob(0, -0.5, 0.1, 0.14, 0.09, 0.14), (k.chin - 0.4) * 0.15 + 0.02 + 0.02 * m);
