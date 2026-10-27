@@ -62,13 +62,6 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
     positions[i * 3 + 2] = (raw[i * 3 + 2] - SOURCE.eyeZ) * SCALE;
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-  geometry.computeVertexNormals();
-  const normals = new Float32Array((geometry.attributes.normal as THREE.BufferAttribute).array);
-  geometry.dispose();
-
   const sets: Set<number>[] = Array.from({ length: vertexCount }, () => new Set<number>());
   for (let t = 0; t < indices.length; t += 3) {
     const a = indices[t];
@@ -82,6 +75,60 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
   for (let i = 0; i < vertexCount; i++) offsets[i + 1] = offsets[i] + sets[i].size;
   const neighbours = new Uint32Array(offsets[vertexCount]);
   for (let i = 0; i < vertexCount; i++) neighbours.set([...sets[i]], offsets[i]);
+
+  // The shoulders and chest are built from a few coarse rings, which leaves flat facets in the silhouette.
+  // A shrink-free smoothing pass (Taubin: smooth, then inflate a little) rounds them without thinning the
+  // body. It fades out above the shoulders, so the neck and face are untouched, and at the flat underside.
+  let lowest = Infinity;
+  for (let i = 0; i < vertexCount; i++) lowest = Math.min(lowest, positions[i * 3 + 1]);
+  const smoothWeight = new Float32Array(vertexCount);
+  const ease = (t: number) => {
+    const c = Math.min(1, Math.max(0, t));
+    return c * c * (3 - 2 * c);
+  };
+  for (let i = 0; i < vertexCount; i++) {
+    const y = positions[i * 3 + 1];
+    smoothWeight[i] = ease((-0.88 - y) / 0.16) * ease((y - lowest) / 0.1);
+  }
+  const relaxed = new Float32Array(positions.length);
+  const relax = (factor: number) => {
+    for (let i = 0; i < vertexCount; i++) {
+      const w = smoothWeight[i];
+      const from = offsets[i];
+      const to = offsets[i + 1];
+      if (w === 0 || to === from) {
+        relaxed[i * 3] = positions[i * 3];
+        relaxed[i * 3 + 1] = positions[i * 3 + 1];
+        relaxed[i * 3 + 2] = positions[i * 3 + 2];
+        continue;
+      }
+      let sx = 0;
+      let sy = 0;
+      let sz = 0;
+      for (let j = from; j < to; j++) {
+        const n = neighbours[j] * 3;
+        sx += positions[n];
+        sy += positions[n + 1];
+        sz += positions[n + 2];
+      }
+      const c = to - from;
+      relaxed[i * 3] = positions[i * 3] + factor * w * (sx / c - positions[i * 3]);
+      relaxed[i * 3 + 1] = positions[i * 3 + 1] + factor * w * (sy / c - positions[i * 3 + 1]);
+      relaxed[i * 3 + 2] = positions[i * 3 + 2] + factor * w * (sz / c - positions[i * 3 + 2]);
+    }
+    positions.set(relaxed);
+  };
+  for (let pass = 0; pass < 14; pass++) {
+    relax(0.5);
+    relax(-0.53);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.computeVertexNormals();
+  const normals = new Float32Array((geometry.attributes.normal as THREE.BufferAttribute).array);
+  geometry.dispose();
 
   let baseY = Infinity;
   let neckX = 0;

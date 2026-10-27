@@ -37,9 +37,19 @@ interface Spec {
 const SPECS: Record<Exclude<HairStyle, "none">, Spec> = {
   cropped: { count: 1400, length: 0.1, radius: 0.03, gravity: 0, lift: 0.1, flow: [0, 0.1, -1], strip: false, hug: 1 },
   swept: { count: 1000, length: 0.7, radius: 0.036, gravity: 0.2, lift: 0.12, flow: [0, 0.3, -1], strip: false, hug: 0.85 },
-  mohawk: { count: 560, length: 0.62, radius: 0.05, gravity: 0, lift: 0.2, flow: [0, 0.4, -1], strip: true, hug: 0.35 },
+  mohawk: { count: 1100, length: 0.78, radius: 0.058, gravity: 0.05, lift: 0.15, flow: [0, 0.3, -1], strip: true, hug: 0.55 },
   long: { count: 800, length: 1.15, radius: 0.036, gravity: 0.9, lift: 0.15, flow: [0, -0.1, -1], strip: false, hug: 0.4 },
 };
+
+// Half the width of a mohawk's strip; everywhere else on the scalp is shaved
+const STRIP_HALF_WIDTH = 0.15;
+
+// How shaved the scalp is at a point: 1 on the sides of a mohawk, where the skin shows the shadow of
+// stubble, and 0 everywhere else
+export function shavedWeight(p: Params, x: number, y: number, z: number): number {
+  if (p.hairStyle !== "mohawk") return 0;
+  return scalp(x, y, z) * smooth((Math.abs(x) - STRIP_HALF_WIDTH + 0.02) / 0.05);
+}
 
 const SEGMENTS = 9;
 const SIDES = 5;
@@ -89,7 +99,7 @@ export function buildHair(p: Params, positions: Float32Array, normals: Float32Ar
     const y = positions[i * 3 + 1];
     const z = positions[i * 3 + 2];
     let weight = scalp(x, y, z);
-    if (spec.strip) weight *= 1 - smooth((Math.abs(x) - 0.11) / 0.06);
+    if (spec.strip) weight *= 1 - smooth((Math.abs(x) - STRIP_HALF_WIDTH) / 0.05);
     if (weight > 0.5 && normals[i * 3 + 1] > -0.2) candidates.push(i);
   }
   const picked: number[] = [];
@@ -103,7 +113,12 @@ export function buildHair(p: Params, positions: Float32Array, normals: Float32Ar
   const grid = new Map<string, number[]>();
   const cellOf = (v: number) => Math.floor(v / cell);
   for (let i = 0; i < count; i++) {
-    if (positions[i * 3 + 1] < -0.55) continue;
+    const vx = Math.abs(positions[i * 3]);
+    const vy = positions[i * 3 + 1];
+    const vz = positions[i * 3 + 2];
+    if (vy < -0.55) continue;
+    // The ears are not scalp: a strand must not snap onto one and follow it outward
+    if (vx > 0.4 && vy > -0.3 && vy < 0.2 && vz > -0.7 && vz < -0.2) continue;
     const key = `${cellOf(positions[i * 3])},${cellOf(positions[i * 3 + 1])},${cellOf(positions[i * 3 + 2])}`;
     const bucket = grid.get(key);
     if (bucket) bucket.push(i);
@@ -194,6 +209,8 @@ export function buildHair(p: Params, positions: Float32Array, normals: Float32Ar
         dir.z -= 0.3;
         dir.normalize();
       }
+      // A mohawk stays inside its strip
+      if (spec.strip) point.x = Math.max(-STRIP_HALF_WIDTH - 0.05, Math.min(STRIP_HALF_WIDTH + 0.05, point.x));
       // Keep the strand outside the skull
       const f = ((point.x - cx) / rx) ** 2 + ((point.y - cy) / ry) ** 2 + ((point.z - cz) / rz) ** 2;
       if (f < 1.04) {

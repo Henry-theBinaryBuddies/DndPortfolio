@@ -132,7 +132,12 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // Lip definition: a groove along the mouth line that deepens toward the corners, the two peaks of
     // the cupid's bow with the philtrum ridges rising to them, and the crease under the lower lip
     const cornerDepth = 0.4 + 0.6 * smooth((ax - 0.05) / 0.08);
-    push(blob(0, stomion, 0.17, 0.2, 0.011, 0.18) * cornerDepth, -0.013 * Math.min(lipScale, 1.4));
+    push(blob(0, stomion, 0.17, 0.2, 0.011, 0.18) * cornerDepth, -0.02 * Math.min(lipScale, 1.4));
+    // The raised border around the red of the lips, and the soft pillow of each lip inside it
+    push(blob(0, stomion + 0.062, 0.17, 0.11, 0.009, 0.14), 0.008 * lipScale);
+    push(blob(0, stomion - 0.064, 0.17, 0.1, 0.009, 0.14), 0.007 * lipScale);
+    push(blob(0, stomion + 0.032, 0.17, 0.09, 0.02, 0.12), 0.006 * lipScale);
+    push(blob(0, stomion - 0.034, 0.17, 0.08, 0.022, 0.12), 0.008 * lipScale);
     push(blob(0.035, -0.332, 0.17, 0.024, 0.016, 0.08), 0.011 * lipScale);
     push(blob(0.035, -0.29, 0.17, 0.014, 0.03, 0.08), 0.006);
     push(blob(0, -0.451, 0.14, 0.12, 0.014, 0.1), -0.016);

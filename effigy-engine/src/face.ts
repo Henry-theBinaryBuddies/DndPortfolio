@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { deformHead, type Deformed } from "./deform";
+import { shavedWeight } from "./hair";
 import { LANDMARK, type HeadBase } from "./headMesh";
 import { derive, type Params } from "./params";
 
@@ -108,17 +109,15 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
   const hollows = cavity(base, positions, normals);
 
   const skin = new THREE.Color(p.skin);
-  const clothTone = new THREE.Color(p.cloth);
-  const trimTone = clothTone.clone().multiplyScalar(0.35);
   const grimeTone = new THREE.Color(0x15110c);
   const browTone = new THREE.Color(p.hairColor);
-  const lipTone = skin.clone().lerp(new THREE.Color(0xa04650), 0.5);
+  const lipTone = skin.clone().lerp(new THREE.Color(0xa85a60), 0.5);
+  const stubbleTone = new THREE.Color(p.hairColor).lerp(skin, 0.55);
   const blushTone = skin.clone().lerp(new THREE.Color(0xa0473c), 0.35);
   const { eyeX } = LANDMARK;
 
   const colors = new Float32Array(count * 3);
   const color = new THREE.Color();
-  const tunic = new THREE.Color();
 
   for (let i = 0; i < count; i++) {
     const x = positions[i * 3];
@@ -174,20 +173,14 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     // The nostrils are dark openings under the tip of the nose
     color.lerp(grimeTone, base.masks.nostrils[i] * 0.85 * head);
 
+    // The shaved sides of a mohawk show the shadow of stubble
+    const shaved = shavedWeight(p, x, y, z);
+    if (shaved > 0) color.lerp(stubbleTone, shaved * 0.45 * head);
+
     // Grime blotches, heavier in recesses
     const n = noise3(x * 3 + 5, y * 3, z * 3) * 0.6 + noise3(x * 9, y * 9 + 3, z * 9) * 0.4;
     const grime = smooth((n - 0.38) / 0.28) * p.grime * 0.8 + Math.max(0, shade) * p.grime * 0.35;
     color.lerp(grimeTone, Math.min(0.9, grime) * (0.4 + 0.6 * head));
-
-    // Tunic: everything below a V-shaped neckline is cloth, with a dark trim along the edge
-    const neckline = -1.08 - 0.42 * (1 - smooth(ax / 0.3)) * smooth(nz * 3 + 0.5);
-    const cloth = smooth((neckline - y) / 0.06);
-    if (cloth > 0) {
-      const weave = 0.9 + 0.2 * noise3(x * 50, y * 50, z * 50);
-      tunic.copy(clothTone).multiplyScalar(weave * (1 - 0.5 * Math.max(0, shade)));
-      color.lerp(tunic, cloth);
-      color.lerp(trimTone, Math.exp(-(((y - neckline) / 0.03) ** 2)) * 0.8 * cloth);
-    }
 
     colors[i * 3] = color.r;
     colors[i * 3 + 1] = color.g;
@@ -195,6 +188,8 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
   }
 
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  // Where the lips are, for the skin shader (a wet highlight and fine vertical lines)
+  geometry.setAttribute("lip", new THREE.BufferAttribute(base.masks.lips, 1));
   // The bust's underside: where it stands on the plinth, and the middle of that footprint
   let footX = 0;
   let footZ = 0;

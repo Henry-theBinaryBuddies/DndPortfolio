@@ -1,4 +1,4 @@
-import type * as THREE from "three";
+import * as THREE from "three";
 import type { Params } from "./params";
 
 // Skin micro-detail. The base head has about 13,000 vertices, far too few to carry pores or fine
@@ -14,6 +14,8 @@ varying vec3 vObjNormal;
 uniform float uAge;
 uniform float uDetail;
 uniform float uScales;
+uniform vec3 uCloth;
+varying float vLip;
 
 float hash31(vec3 p) {
   p = fract(p * 0.3183099 + 0.1);
@@ -80,6 +82,20 @@ float scalePlate(vec3 p, out float tint) {
   return plate;
 }
 
+
+// The tunic: everything below a V-shaped neckline. Evaluated per pixel so the edge is crisp, not stair-stepped.
+float clothAmount(vec3 p, vec3 n) {
+  float front = smoothstep(-0.1, 0.5, n.z);
+  float neckline = -1.08 - 0.42 * (1.0 - smoothstep(0.0, 0.3, abs(p.x))) * front;
+  return 1.0 - smoothstep(-0.007, 0.007, p.y - neckline);
+}
+
+float clothTrim(vec3 p, vec3 n) {
+  float front = smoothstep(-0.1, 0.5, n.z);
+  float neckline = -1.08 - 0.42 * (1.0 - smoothstep(0.0, 0.3, abs(p.x))) * front;
+  return exp(-pow((p.y - neckline) / 0.02, 2.0));
+}
+
 float crease(float d, float w) {
   return exp(-(d * d) / (w * w));
 }
@@ -128,9 +144,38 @@ float skinHeight(vec3 p, vec3 n, float pixelSize) {
     h -= (1.0 - plate) * 0.0042 * uScales * scaleCover(p);
   }
 
+  // Lips: fine vertical lines across the red, and a soft pillow
+  h -= vLip * pow(abs(sin(p.x * 150.0 + sin(p.y * 40.0) * 0.6)), 24.0) * 0.0009;
+  h += vLip * 0.0008;
+
+  // Cloth has a weave instead of pores
+  float cloth = clothAmount(p, n);
+  h *= 1.0 - 0.9 * cloth;
+  h += cloth * (sin(p.x * 260.0) * sin(p.z * 260.0 + p.y * 40.0) * 0.00035);
+
   // Everything creased deepens with age
   h -= w * (0.0008 + 0.0042 * uAge) * uDetail;
   return h;
+}
+`;
+
+const CLOTH_TINT = /* glsl */ `
+{
+  vec3 n = normalize(vObjNormal);
+  float cloth = clothAmount(vObjPos, n);
+  float weave = 0.88 + 0.24 * vnoise(vObjPos * 90.0);
+  vec3 fabric = uCloth * weave;
+  fabric = mix(fabric, uCloth * 0.35, 0.8 * clothTrim(vObjPos, n));
+  diffuseColor.rgb = mix(diffuseColor.rgb, fabric, cloth);
+}
+`;
+
+const ROUGHNESS = /* glsl */ `
+{
+  // Cloth is matte; the lips are wet and catch the light
+  float cloth = clothAmount(vObjPos, normalize(vObjNormal));
+  roughnessFactor = mix(roughnessFactor, 0.92, cloth);
+  roughnessFactor = mix(roughnessFactor, 0.28, vLip * 0.7);
 }
 `;
 
@@ -163,18 +208,21 @@ const PERTURB = /* glsl */ `
 export function applySkinDetail(material: THREE.MeshStandardMaterial, p: Params): void {
   const age = { value: p.age };
   const scales = { value: p.scales };
+  const cloth = { value: new THREE.Color(p.cloth) };
   const detail = { value: 1 };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uAge = age;
     shader.uniforms.uDetail = detail;
     shader.uniforms.uScales = scales;
+    shader.uniforms.uCloth = cloth;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vObjPos;\nvarying vec3 vObjNormal;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObjPos = position;\nvObjNormal = normal;");
+      .replace("#include <common>", "#include <common>\nvarying vec3 vObjPos;\nvarying vec3 vObjNormal;\nattribute float lip;\nvarying float vLip;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObjPos = position;\nvObjNormal = normal;\nvLip = lip;");
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", `#include <common>\n${HEIGHT_FIELD}`)
-      .replace("#include <color_fragment>", `#include <color_fragment>\n${SCALE_TINT}`)
+      .replace("#include <color_fragment>", `#include <color_fragment>\n${SCALE_TINT}\n${CLOTH_TINT}`)
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n${ROUGHNESS}`)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>\n${PERTURB}`);
   };
-  material.customProgramCacheKey = () => "effigy-skin-v2";
+  material.customProgramCacheKey = () => "effigy-skin-v3";
 }
