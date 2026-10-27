@@ -79,7 +79,7 @@ function realisticEye(radius: number, irisHex: string): THREE.Group {
   return group;
 }
 
-export function buildBust(p: Params, base: HeadBase): THREE.Group {
+export function buildBust(p: Params, base: HeadBase, full = true): THREE.Group {
   const root = new THREE.Group();
   const k = derive(p);
 
@@ -103,7 +103,7 @@ export function buildBust(p: Params, base: HeadBase): THREE.Group {
   head.position.y = -base.baseY;
   root.add(head);
 
-  const bust = sculptBust(p, base);
+  const bust = sculptBust(p, base, full);
   const skin = new THREE.Mesh(bust.geometry, skinMaterial);
   head.add(skin);
   skin.updateMatrixWorld(true);

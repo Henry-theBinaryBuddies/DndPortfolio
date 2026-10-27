@@ -73,7 +73,7 @@ function cavity(base: HeadBase, positions: Float32Array, normals: Float32Array):
   const count = positions.length / 3;
   let a = new Float32Array(positions);
   let b = new Float32Array(positions.length);
-  for (let pass = 0; pass < 6; pass++) {
+  for (let pass = 0; pass < 20; pass++) {
     for (let i = 0; i < count; i++) {
       let sx = 0;
       let sy = 0;
@@ -100,7 +100,9 @@ function cavity(base: HeadBase, positions: Float32Array, normals: Float32Array):
   return out;
 }
 
-export function sculptBust(p: Params, base: HeadBase): Bust {
+// With `full` off, only the skin tone and shading are painted. That is enough to keep a slider drag
+// responsive; the full paint (brows, lips, age lines, grime, scars, tunic) follows once it is still.
+export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
   const deformed = deformHead(base, p);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(deformed.positions, 3));
@@ -120,7 +122,7 @@ export function sculptBust(p: Params, base: HeadBase): Bust {
   const grimeTone = new THREE.Color(0x15110c);
   const rimTone = skin.clone().lerp(new THREE.Color(0xe6d2c4), 0.55);
   const browTone = new THREE.Color(p.hairColor);
-  const lipTone = skin.clone().lerp(new THREE.Color(0x6a2326), 0.45).multiplyScalar(0.85);
+  const lipTone = skin.clone().lerp(new THREE.Color(0xa04650), 0.5);
   const blushTone = skin.clone().lerp(new THREE.Color(0xa0473c), 0.35);
   const strengths = scarStrengths(p);
   const { eyeX, stomion } = LANDMARK;
@@ -141,6 +143,12 @@ export function sculptBust(p: Params, base: HeadBase): Bust {
     // Shading: hollows darken, ridges catch a little extra light
     const shade = Math.min(1, Math.max(-0.4, hollows[i] * 55));
     color.copy(skin).multiplyScalar(1 - 0.7 * Math.max(0, shade) + 0.2 * Math.max(0, -shade));
+    if (!full) {
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
+      continue;
+    }
 
     // Light flush on the cheeks and nose, a little less when the skin is filthy
     const blush = Math.max(gauss(ax - 0.27, 0.13, y + 0.12, 0.1, z - 0.12, 0.2), gauss(x, 0.07, y + 0.17, 0.08, z - 0.2, 0.15)) * head * front;
@@ -176,9 +184,9 @@ export function sculptBust(p: Params, base: HeadBase): Bust {
     const rimOffset = (Math.abs(y - stomion) - lipHalf) / 0.01;
     const lipRim = Math.exp(-(rimOffset * rimOffset)) * (1 - smooth((ax - 0.125 * k.mouthWidth) / 0.02));
     color.lerp(lipTone, lipBand * 0.9 * head * front);
-    color.multiplyScalar(1 - 0.18 * lipRim * head * front);
+    color.multiplyScalar(1 - 0.1 * lipRim * head * front);
     const mouthLine = gauss(x, 0.13 * k.mouthWidth, y - stomion, 0.007, z - 0.16, 0.2) * head * front;
-    color.lerp(grimeTone, mouthLine * 0.95);
+    color.lerp(grimeTone, mouthLine * 0.7);
 
     // Dragonborn scales: diamond cells with dark seams
     if (k.scales > 0.02) {

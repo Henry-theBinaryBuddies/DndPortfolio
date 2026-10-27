@@ -58,14 +58,24 @@ let headBase: HeadBase | null = null;
 
 // Rebuilds the bust from the current settings. The sculpt is a deformed copy of a real head mesh, so
 // this is fast enough to run on every slider movement.
-function show(params: Params) {
+let settle: number | undefined;
+
+function swap(params: Params, full: boolean) {
   if (!headBase) return;
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildBust(params, headBase);
+  figure = buildBust(params, headBase, full);
   pivot.add(figure);
+}
+
+// Every edit shows a quick draft (shape and shading only), and the full paint replaces it once the
+// controls have been still for a moment.
+function show(params: Params) {
+  swap(params, false);
+  window.clearTimeout(settle);
+  settle = window.setTimeout(() => swap(params, true), 160);
 }
 
 function resize() {

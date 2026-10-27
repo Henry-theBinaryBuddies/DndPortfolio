@@ -12,6 +12,15 @@ const smooth = (t: number) => {
   return c * c * (3 - 2 * c);
 };
 
+// Distance from a point to a line segment in 3D
+function distanceToSegment3(px: number, py: number, pz: number, ax: number, ay: number, az: number, bx: number, by: number, bz: number): number {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const abz = bz - az;
+  const t = Math.min(1, Math.max(0, ((px - ax) * abx + (py - ay) * aby + (pz - az) * abz) / (abx * abx + aby * aby + abz * abz)));
+  return Math.hypot(px - ax - abx * t, py - ay - aby * t, pz - az - abz * t);
+}
+
 // Distance from a point to a line segment, in the front view
 function distanceToSegment2(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
   const abx = bx - ax;
@@ -86,13 +95,33 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // Nasolabial folds: a groove from the side of the nose down past the corner of the mouth, deeper
     // with age and with a heavy face
     const foldDistance = distanceToSegment2(ax, y0, 0.09, -0.25, 0.145, -0.37);
-    push(Math.exp(-((foldDistance / 0.022) ** 2)) * Math.max(0, nz), -(0.008 + 0.018 * p.age + 0.008 * k.fullness));
+    push(Math.exp(-((foldDistance / 0.02) ** 2)) * Math.max(0, nz), -(0.012 + 0.026 * p.age + 0.01 * k.fullness) * (0.8 + 0.4 * k.angularity));
 
     // Forehead recession (a sloped brow for an orc) and a jutting lower face (a heavy jaw)
     const forehead = smooth((y0 - 0.15) / 0.2) * (1 - smooth((y0 - 0.5) / 0.1)) * smooth((z0 + 0.1) / 0.2);
     dz -= k.slope * 0.1 * forehead;
     const lowerFace = smooth((-0.15 - y0) / 0.15) * (1 - smooth((-0.62 - y0) / 0.12)) * smooth((z0 + 0.2) / 0.3);
     dz += k.prognathism * 0.1 * lowerFace;
+
+    // Hard structure, scaled by how angular the race is: the bony rim around each eye, the hollow just
+    // beneath it, the temporal line up the side of the forehead, the edge of the jaw, the bulge of the
+    // chewing muscle on masculine faces, and heavier jowls with age and weight
+    const edge = 0.35 + 0.65 * k.angularity;
+    const rim = Math.exp(-(((eyeDistance - 0.115) / 0.02) ** 2)) * (0.4 + 0.6 * Math.max(0, nz));
+    push(rim, (0.006 + 0.022 * k.angularity) * (0.7 + 0.5 * m));
+    push(blob(0.2, -0.17, 0.09, 0.09, 0.035, 0.1), -0.02 * k.angularity);
+    const temporal = distanceToSegment3(ax, y0, z0, 0.3, 0.2, 0.02, 0.28, 0.5, -0.3);
+    push(Math.exp(-((temporal / 0.03) ** 2)), 0.006 + 0.014 * k.angularity);
+    const jawEdge = Math.min(distanceToSegment3(ax, y0, z0, 0.38, -0.22, -0.38, 0.33, -0.46, -0.12), distanceToSegment3(ax, y0, z0, 0.33, -0.46, -0.12, 0.1, -0.58, 0.12));
+    push(Math.exp(-((jawEdge / 0.04) ** 2)), (0.008 + 0.03 * k.angularity) * (0.5 + 0.6 * m));
+    push(blob(0.36, -0.32, -0.2, 0.07, 0.12, 0.12), 0.025 * Math.max(0, gender) * (0.5 + k.angularity));
+    push(blob(0.26, -0.43, 0.1, 0.07, 0.05, 0.1), 0.02 * p.age + 0.025 * k.fullness);
+    // The wings of the nose and the ridge of the nasal bones
+    push(blob(0.1, -0.21, 0.15, 0.03, 0.035, 0.05), 0.008 + 0.01 * edge);
+    push(blob(0, -0.06, 0.17, 0.026, 0.1, 0.08), 0.008 * edge + k.noseBridge * 0.02);
+    // The cords of the neck: the muscle that runs from behind each ear down to the notch between the collarbones
+    const cord = distanceToSegment3(ax, y0, z0, 0.34, -0.42, -0.42, 0.07, -0.92, -0.12);
+    push(Math.exp(-((cord / 0.04) ** 2)) * smooth((-0.45 - y0) / 0.1), (0.012 + 0.02 * Math.max(0, gender) + 0.01 * (p.muscle - 0.45)) * (0.6 + 0.5 * k.angularity));
 
     // Lips: scaled about the mouth line so they get taller and fuller, and the mouth widens
     const lips = blob(0, stomion, 0.16, 0.2, 0.06, 0.2);
@@ -103,10 +132,10 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // Lip definition: a groove along the mouth line that deepens toward the corners, the two peaks of
     // the cupid's bow with the philtrum ridges rising to them, and the crease under the lower lip
     const cornerDepth = 0.4 + 0.6 * smooth((ax - 0.05) / 0.08);
-    push(blob(0, stomion, 0.17, 0.2, 0.014, 0.18) * cornerDepth, -0.007 * Math.min(lipScale, 1.4));
-    push(blob(0.035, -0.332, 0.17, 0.026, 0.02, 0.08), 0.006 * lipScale);
-    push(blob(0.035, -0.29, 0.17, 0.018, 0.035, 0.08), 0.003);
-    push(blob(0, -0.451, 0.14, 0.12, 0.018, 0.1), -0.009);
+    push(blob(0, stomion, 0.17, 0.2, 0.011, 0.18) * cornerDepth, -0.013 * Math.min(lipScale, 1.4));
+    push(blob(0.035, -0.332, 0.17, 0.024, 0.016, 0.08), 0.011 * lipScale);
+    push(blob(0.035, -0.29, 0.17, 0.014, 0.03, 0.08), 0.006);
+    push(blob(0, -0.451, 0.14, 0.12, 0.014, 0.1), -0.016);
 
     // Chin projection and jaw breadth (the jaw runs from just below the cheeks to the chin)
     push(blob(0, -0.5, 0.1, 0.14, 0.09, 0.14), (k.chin - 0.4) * 0.2 + 0.04 * m);
