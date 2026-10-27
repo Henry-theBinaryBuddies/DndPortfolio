@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { buildHeadGeometry, eyePosition, headRadii } from "./face";
+import { buildHeadGeometry, eyePosition, headRadii, stitchPlacements } from "./face";
 import type { Params } from "./params";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
@@ -60,14 +60,37 @@ export function buildBust(p: Params): THREE.Group {
   add(head, buildHeadGeometry(p), face, [0, 0, 0]);
 
   // Eyes: glowing orbs partly hidden inside the sockets
-  const eyeRadius = 0.04 * p.eyeSize;
+  // Each eye is a glowing iris with a dark slit pupil and a heavy upper lid. The lid is a skin-coloured
+  // cap that covers more of the iris as the slider rises, so low settings stare and high settings glower.
+  const eyeRadius = 0.05 * p.eyeSize;
+  const lidTone = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.skin).multiplyScalar(0.55), roughness: 0.9 });
+  const pupilTone = new THREE.MeshBasicMaterial({ color: 0x050303, side: THREE.DoubleSide });
   for (const side of [-1, 1] as const) {
     const at = eyePosition(p, side);
-    add(head, new THREE.SphereGeometry(eyeRadius, 12, 10), glow, [at.x, at.y, at.z]);
+    const eye = new THREE.Group();
+    eye.position.copy(at);
+    eye.rotation.y = side * 0.25;
+    head.add(eye);
+    add(eye, new THREE.SphereGeometry(eyeRadius, 16, 12), glow, [0, 0, 0]);
+    add(eye, new THREE.CircleGeometry(eyeRadius * 0.55, 10), pupilTone, [0, 0, eyeRadius * 0.98], [0.28, 1, 1]);
+    const cover = Math.PI * (0.18 + 0.3 * p.lids);
+    add(eye, new THREE.SphereGeometry(eyeRadius * 1.14, 16, 8, 0, Math.PI * 2, 0, cover), lidTone, [0, 0, 0], undefined, { x: 0.35 });
   }
   const eyeLight = new THREE.PointLight(p.eyes, 0.04 * Math.PI, 0.7);
   eyeLight.position.set(0, 0.1 * ry, rz + 0.2);
   head.add(eyeLight);
+
+  // Stitches: a dark thread across each scar, with a small knot at either end
+  const thread = new THREE.MeshStandardMaterial({ color: 0x0e0b09, roughness: 1 });
+  const up = new THREE.Vector3(0, 1, 0);
+  for (const stitch of stitchPlacements(p)) {
+    const bar = add(head, new THREE.CylinderGeometry(0.006, 0.006, 0.085, 5), thread, [stitch.position.x, stitch.position.y, stitch.position.z]);
+    bar.quaternion.setFromUnitVectors(up, stitch.across);
+    for (const end of [-1, 1]) {
+      const knot = stitch.position.clone().addScaledVector(stitch.across, end * 0.042);
+      add(head, new THREE.SphereGeometry(0.013, 6, 5), thread, [knot.x, knot.y, knot.z]);
+    }
+  }
 
   // Mouth: a dark slit set into the indent, with tusks rising from the jaw
   const mouthY = -0.5 * ry;

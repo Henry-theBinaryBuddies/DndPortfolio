@@ -25,6 +25,14 @@ describe("buildBust", () => {
     expect(none).toBeLessThan(some);
   });
 
+  it("adds stitch meshes only where scars exist", () => {
+    const stitched = countObjects(buildBust({ ...defaultParams(), scars: 1, stitches: 1 }));
+    const unstitched = countObjects(buildBust({ ...defaultParams(), scars: 1, stitches: 0 }));
+    const noScars = countObjects(buildBust({ ...defaultParams(), scars: 0, stitches: 1 }));
+    expect(stitched).toBeGreaterThan(unstitched);
+    expect(noScars).toBe(unstitched);
+  });
+
   it("adds tusks only when the slider is raised", () => {
     const none = countObjects(buildBust({ ...defaultParams(), tusks: 0 }));
     const some = countObjects(buildBust({ ...defaultParams(), tusks: 0.8 }));

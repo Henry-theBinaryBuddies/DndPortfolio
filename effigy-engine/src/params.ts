@@ -17,7 +17,9 @@ export type NumericKey =
   | "chin"
   | "tusks"
   | "earSize"
+  | "lids"
   | "scars"
+  | "stitches"
   | "grime"
   | "horns"
   | "hoodDepth"
@@ -58,7 +60,9 @@ export const NUMERIC_DEFS: NumericDef[] = [
   { key: "jawWidth", label: "Jaw width", group: "Mouth and jaw", min: 0.7, max: 1.3, step: 0.01, default: 1 },
   { key: "chin", label: "Chin", group: "Mouth and jaw", min: 0, max: 1, step: 0.01, default: 0.4 },
   { key: "tusks", label: "Tusks", group: "Mouth and jaw", min: 0, max: 1, step: 0.01, default: 0 },
-  { key: "scars", label: "Scars", group: "Skin", min: 0, max: 1, step: 0.01, default: 0.4 },
+  { key: "lids", label: "Heavy lids", group: "Eyes", min: 0, max: 1, step: 0.01, default: 0.4 },
+  { key: "scars", label: "Scars", group: "Skin", min: 0, max: 1, step: 0.01, default: 0.55 },
+  { key: "stitches", label: "Stitches", group: "Skin", min: 0, max: 1, step: 0.01, default: 0.6 },
   { key: "grime", label: "Grime", group: "Skin", min: 0, max: 1, step: 0.01, default: 0.45 },
   { key: "horns", label: "Horns", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.3 },
   { key: "hoodDepth", label: "Hood depth", group: "Crown and garb", min: 0, max: 1, step: 0.01, default: 0.5 },
