@@ -107,14 +107,12 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   raceDefaults.className = "inline";
   raceDefaults.textContent = "Race defaults";
   raceDefaults.title = "Reset the sliders, skin, hair and horns to this race's defaults";
-  raceDefaults.addEventListener("click", (e) => {
-    e.preventDefault();
-    update(applyRace(params, params.race));
-  });
-  const raceControls = document.createElement("div");
-  raceControls.className = "with-button";
-  raceControls.append(raceSelect, raceDefaults);
-  raceRow.append(raceControls);
+  raceDefaults.addEventListener("click", () => update(applyRace(params, params.race)));
+  raceRow.append(raceSelect);
+  // On its own row, so the race picker keeps its full width
+  const raceDefaultsRow = document.createElement("div");
+  raceDefaultsRow.className = "row select";
+  raceDefaultsRow.append(document.createElement("span"), raceDefaults);
 
   const presetRow = document.createElement("label");
   presetRow.className = "row select";
@@ -177,7 +175,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const hairRow = styleRow("Hair", hairSelect, HAIR_STYLES, (value) => (params.hairStyle = value as HairStyle));
   const hornRow = styleRow("Horns", hornSelect, HORN_STYLES, (value) => (params.hornStyle = value as HornStyle));
 
-  character.append(bodyRow, raceRow, presetRow, eyeRow, hairRow, hornRow);
+  character.append(bodyRow, raceRow, raceDefaultsRow, presetRow, eyeRow, hairRow, hornRow);
   panel.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];

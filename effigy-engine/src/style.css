@@ -162,18 +162,8 @@ input[type="range"] {
   accent-color: var(--ember);
 }
 
-.with-button {
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-}
-
-.with-button select {
-  flex: 1;
-  min-width: 0;
-}
-
 button.inline {
+  justify-self: start;
   padding: 6px 10px;
   font: inherit;
   font-size: 13px;

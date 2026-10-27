@@ -82,19 +82,32 @@ export function fitSphere(geometry: THREE.BufferGeometry, fit: EyeFit, scale = 1
     limit[i] = fit.limit(u) * scale;
   }
   const index = geometry.index!;
+  // A sphere repeats the vertices along its seam and at its poles; they are welded here so the smoothing
+  // treats them as one point (smoothed apart, they opened a crease down the eye)
+  const same = new Int32Array(pos.count);
+  const first = new Map<string, number>();
+  for (let i = 0; i < pos.count; i++) {
+    const key = `${pos.getX(i).toFixed(5)},${pos.getY(i).toFixed(5)},${pos.getZ(i).toFixed(5)}`;
+    if (!first.has(key)) first.set(key, i);
+    same[i] = first.get(key)!;
+  }
   const average = (values: Float32Array) => {
     const sum = new Float32Array(pos.count);
     const n = new Float32Array(pos.count);
     for (let t = 0; t < index.count; t++) {
-      const a = index.getX(t);
-      const b = index.getX(t % 3 === 2 ? t - 2 : t + 1);
+      const a = same[index.getX(t)];
+      const b = same[index.getX(t % 3 === 2 ? t - 2 : t + 1)];
+      if (a === b) continue;
       sum[a] += values[b];
       n[a]++;
       sum[b] += values[a];
       n[b]++;
     }
     const next = new Float32Array(pos.count);
-    for (let i = 0; i < pos.count; i++) next[i] = n[i] ? (values[i] + sum[i] / n[i]) / 2 : values[i];
+    for (let i = 0; i < pos.count; i++) {
+      const j = same[i];
+      next[i] = n[j] ? (values[j] + sum[j] / n[j]) / 2 : values[j];
+    }
     return next;
   };
   for (let pass = 0; pass < 8; pass++) r = average(r);
@@ -260,10 +273,15 @@ export function buildBust(p: Params, assets: Assets, full = true): THREE.Group {
     const rootX = TUSK_X * (1 + 0.8 * (k.mouthWidth - 1));
     for (const side of [-1, 1]) {
       const mouth = frontPoint(probe, side * rootX, LANDMARK.stomion);
-      if (!mouth) continue;
-      const along = new THREE.Vector3(side * 0.12, 1, 0.55).normalize();
+      const upperLip = frontPoint(probe, side * rootX, LANDMARK.stomion + 0.035);
+      if (!mouth || !upperLip) continue;
       // Where it leaves the mouth: on the mouth line, just inside the lips
-      const exit = mouth.position.clone().add(new THREE.Vector3(0, 0, -0.03));
+      const exit = mouth.position.clone().add(new THREE.Vector3(0, 0, -0.015));
+      // Aimed to pass just in front of the upper lip, so even a small tusk's tip clears it instead of
+      // seeming to pierce it, however full the lips or heavy the jaw
+      const clear = upperLip.position.clone().add(new THREE.Vector3(0, 0, 0.008)).sub(exit);
+      const lean = Math.min(0.85, Math.max(0.35, clear.z / Math.max(clear.y, 1e-3)));
+      const along = new THREE.Vector3(side * 0.12, 1, lean).normalize();
       const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), material);
       tusk.scale.set(side * size, size, size);
       tusk.quaternion.setFromUnitVectors(UP, along);
