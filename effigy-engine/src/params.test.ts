@@ -24,7 +24,7 @@ describe("params", () => {
   it("clamps out-of-range values", () => {
     const fixed = clampParams({ ...defaultParams(), age: 9, weight: -3 });
     expect(fixed.age).toBe(1);
-    expect(fixed.weight).toBe(0);
+    expect(fixed.weight).toBe(0.15); // the Weight slider's lower bound
   });
 
   it("randomizes within range, and repeatably for the same seed", () => {
@@ -86,13 +86,6 @@ describe("races", () => {
     expect(elf.earSize).toBe(1);
     expect(dwarf.headWidth).toBeGreaterThan(elf.headWidth);
     expect(dwarf.shoulders).toBeGreaterThan(elf.shoulders);
-  });
-
-  it("gives dragonborn a snout and scales, and no ears", () => {
-    const dragonborn = derive(applyRace(defaultParams(), "dragonborn"));
-    expect(dragonborn.snout).toBeGreaterThan(0.5);
-    expect(dragonborn.scales).toBeGreaterThan(0.5);
-    expect(dragonborn.earSize).toBe(0);
   });
 
   it("starts each race with its own fantasy features, and resets them on switching", () => {

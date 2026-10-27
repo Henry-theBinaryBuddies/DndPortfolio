@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { HeadBase } from "./headMesh";
-import { derive, type Params } from "./params";
+import type { Params } from "./params";
 
 // The small hair of a face, as real strand geometry: eyebrows combed along the brow ridge, and the lashes
 // along the edge of each eyelid. Painted brows have no depth and never catch the light; strands do.
@@ -73,7 +73,6 @@ export function buildFineHair(
   eyes: { left: [number, number, number]; right: [number, number, number]; radius: number },
   masks: HeadBase["masks"],
 ): THREE.BufferGeometry | null {
-  const k = derive(p);
   const strands = new Strands();
   const rand = random(77);
   const count = positions.length / 3;
@@ -114,9 +113,8 @@ export function buildFineHair(
     }
   }
 
-  // Eyelashes: along the margin of each eyelid, curling up on the upper lid and gently down on the lower.
-  // (Reptilian eyes have none.)
-  if (!k.slitPupils) {
+  // Eyelashes: along the margin of each eyelid, curling up on the upper lid and gently down on the lower
+  {
     const dark = hair.clone().lerp(new THREE.Color(0x050403), 0.8);
     for (const eye of [eyes.left, eyes.right]) {
       const centre = new THREE.Vector3(...eye);

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { deformHead, type Deformed } from "./deform";
 import { shavedWeight } from "./hair";
 import { LANDMARK, type HeadBase } from "./headMesh";
-import { derive, type Params } from "./params";
+import type { Params } from "./params";
 
 // Turns the deformed base head into a painted mesh. Shading comes from cavity: wherever a vertex sits
 // below the average of its neighbours (a socket, a crease, the corner of the mouth) it is darkened, and
@@ -105,7 +105,6 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
   const positions = deformed.positions;
   const count = positions.length / 3;
 
-  const k = derive(p);
   const hollows = cavity(base, positions, normals);
 
   const skin = new THREE.Color(p.skin);
@@ -169,7 +168,7 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
     // Lips and the mouth line
     // The lips are the red between the lip borders, with a slightly darker rim at the edge
     const lip = base.masks.lips[i];
-    color.lerp(lipTone, lip * 0.9 * (1 - Math.min(1, 1.2 * k.snout)) * head * front);
+    color.lerp(lipTone, lip * 0.9 * head * front);
     color.multiplyScalar(1 - 0.16 * 4 * lip * (1 - lip) * head * front);
     color.lerp(grimeTone, base.masks.mouthLine[i] * 0.45 * head * front);
     // The nostrils are dark openings under the tip of the nose
@@ -191,9 +190,7 @@ export function sculptBust(p: Params, base: HeadBase, full = true): Bust {
 
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   // Where the lips are, for the skin shader (a wet highlight and fine vertical lines)
-  const lipAttribute = new Float32Array(base.masks.lips);
-  if (k.snout > 0.3) lipAttribute.fill(0); // a muzzle has no wet red lips
-  geometry.setAttribute("lip", new THREE.BufferAttribute(lipAttribute, 1));
+  geometry.setAttribute("lip", new THREE.BufferAttribute(base.masks.lips, 1));
   // The bust's underside: where it stands on the plinth, and the middle of that footprint
   let footX = 0;
   let footZ = 0;

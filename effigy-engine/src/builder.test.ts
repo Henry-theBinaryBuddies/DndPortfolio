@@ -20,7 +20,7 @@ beforeAll(() => {
   };
   const shapes = {} as Record<ShapeName, ArrayBuffer>;
   for (const name of SHAPE_NAMES) shapes[name] = read(`../public/models/horns/${name}.bin`);
-  assets = parseAssets(read("../public/models/head.bin"), shapes);
+  assets = parseAssets(read("../public/models/head.bin"), shapes, read("../public/models/feminine.bin"));
   base = assets.head;
 });
 
@@ -47,7 +47,7 @@ const shape = (p: Params) => deformHead(base, p).positions;
 
 describe("the base head", () => {
   it("has the expected size and is a closed solid", () => {
-    expect(base.positions.length / 3).toBe(53347);
+    expect(base.positions.length / 3).toBe(57799);
     const edges = new Map<string, number>();
     for (let t = 0; t < base.indices.length; t += 3) {
       for (let e = 0; e < 3; e++) {
@@ -117,12 +117,6 @@ describe("deformation", () => {
 
   it("pushes the nose forward as the nose size rises", () => {
     expect(extent(shape(params({ noseSize: 1 })), -0.3, 0.1).z).toBeGreaterThan(extent(shape(params({ noseSize: 0 })), -0.3, 0.1).z);
-  });
-
-  it("gives a dragonborn a muzzle that projects beyond a human face", () => {
-    const human = extent(shape(applyRace(defaultParams(), "human")), -0.5, 0.1).z;
-    const dragonborn = extent(shape(applyRace(defaultParams(), "dragonborn")), -0.5, 0.1).z;
-    expect(dragonborn).toBeGreaterThan(human);
   });
 
   it("gives dwarves a broader skull than elves, measured above the ears", () => {
@@ -312,7 +306,7 @@ describe("buildBust", () => {
   });
 
 
-  it("grows real eyebrow and eyelash strands, but none on a reptile with no eyebrows", () => {
+  it("grows real eyebrow and eyelash strands, more for bushier brows", () => {
     const fine = (p: Params) => {
       const bust = sculptBust(p, base);
       return buildFineHair(p, bust.positions, bust.normals, bust.eyes, base.masks);
@@ -321,12 +315,6 @@ describe("buildBust", () => {
     const bushy = fine(params({ eyebrows: 1 }));
     expect(human).not.toBeNull();
     expect(bushy!.attributes.position.count).toBeGreaterThan(human!.attributes.position.count);
-    expect(fine(applyRace(defaultParams(), "dragonborn"))).toBeNull();
-  });
-
-  it("gives a dragonborn slit pupils and a human round ones", () => {
-    expect(derive(applyRace(defaultParams(), "dragonborn")).slitPupils).toBe(true);
-    expect(derive(applyRace(defaultParams(), "human")).slitPupils).toBe(false);
   });
 
   it("builds both eye styles", () => {

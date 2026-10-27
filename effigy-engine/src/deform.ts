@@ -45,13 +45,16 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
   const { menton, stomion } = LANDMARK;
   const axis = base.neck;
 
+  // The shoulders and chest come from two sculpted bodies; the build blends between them
+  const f = 1 - m;
+  const fem = base.feminine;
   for (let i = 0; i < count; i++) {
-    const x0 = base.positions[i * 3];
-    const y0 = base.positions[i * 3 + 1];
-    const z0 = base.positions[i * 3 + 2];
-    const nx = base.normals[i * 3];
-    const ny = base.normals[i * 3 + 1];
-    const nz = base.normals[i * 3 + 2];
+    const x0 = base.positions[i * 3] + f * (fem.positions[i * 3] - base.positions[i * 3]);
+    const y0 = base.positions[i * 3 + 1] + f * (fem.positions[i * 3 + 1] - base.positions[i * 3 + 1]);
+    const z0 = base.positions[i * 3 + 2] + f * (fem.positions[i * 3 + 2] - base.positions[i * 3 + 2]);
+    const nx = base.normals[i * 3] + f * (fem.normals[i * 3] - base.normals[i * 3]);
+    const ny = base.normals[i * 3 + 1] + f * (fem.normals[i * 3 + 1] - base.normals[i * 3 + 1]);
+    const nz = base.normals[i * 3 + 2] + f * (fem.normals[i * 3 + 2] - base.normals[i * 3 + 2]);
     const ax = Math.abs(x0);
     const side = x0 < 0 ? -1 : 1;
 
@@ -147,34 +150,18 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     const jaw = smooth((-0.18 - y0) / 0.14) * (1 - smooth((-0.66 - y0) / 0.12));
     dx += x0 * (k.jawWidth - 1 + 0.06 * gender) * jaw;
 
-    // Ears: scaled, swept up into a point for elven ears, or pressed flat against the head for none
+    // Ears: scaled, and swept up into a point for elven ears
     const ear = blob(0.44, -0.08, -0.45, 0.09, 0.2, 0.16);
     const earDelta = k.earSize - 0.3;
     const earTip = ear * smooth((y0 + 0.1) / 0.15);
     dy += (y0 + 0.1) * earDelta * 0.3 * ear + earDelta * 0.3 * earTip;
     dx += side * earDelta * 0.12 * ear;
     dz -= Math.max(0, earDelta) * 0.1 * earTip;
-    // No ears at all (a dragonborn): the ear is pressed flat into the side of the head
-    if (k.earSize < 0.05) dx -= side * 0.17 * ear;
 
-    // Snout (dragonborn): the nose and upper jaw run forward into a muzzle that narrows toward a blunt
-    // tip, with a ridge along its top, slit nostrils at the end, and a longer, tapering lower jaw
-    if (k.snout > 0.01) {
-      const muzzle = blob(0, -0.22, 0.2, 0.26, 0.3, 0.28);
-      dz += k.snout * 0.9 * muzzle + k.snout * 0.1 * blob(0, -0.17, 0.24, 0.09, 0.07, 0.1);
-      dx -= x0 * k.snout * 0.3 * blob(0, -0.2, 0.25, 0.2, 0.32, 0.3);
-      dz += k.snout * 0.42 * blob(0, -0.48, 0.1, 0.24, 0.14, 0.3);
-      dx -= x0 * k.snout * 0.28 * blob(0, -0.52, 0.12, 0.2, 0.12, 0.25);
-      push(blob(0, -0.05, 0.2, 0.03, 0.22, 0.15), 0.02 * k.snout);
-      const slit = base.masks.nostrils[i];
-      dx += nx * -0.07 * k.snout * slit;
-      dy += ny * -0.07 * k.snout * slit;
-      dz += nz * -0.07 * k.snout * slit;
-    }
-
-    // Neck: thicker with muscle and weight, and on masculine builds; an Adam's apple on masculine ones
+    // Neck: thicker with muscle and weight (the sculpted bodies already give the build's neck); an
+    // Adam's apple on masculine ones
     const neckBand = smooth((-0.62 - y0) / 0.12) * (1 - smooth((-0.95 - y0) / 0.12));
-    const girth = k.neckGirth - 1 + 0.1 * gender;
+    const girth = k.neckGirth - 1 + 0.04 * gender;
     dx += (x0 - axis.x) * girth * neckBand;
     dz += (z0 - axis.z) * girth * neckBand;
     const adamsApple = Math.exp(-((ax / 0.07) ** 2) - (((y0 + 0.8) / 0.06) ** 2)) * Math.max(0, nz);
@@ -183,12 +170,12 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     dy += ny * apple;
     dz += nz * apple;
 
-    // Shoulders: broader with muscle, on masculine builds, and with the race's frame
+    // Shoulders: broader with muscle and with the race's frame (the build's own breadth is in the sculpt)
     const shoulders = smooth((-0.85 - y0) / 0.25);
-    dx += x0 * (k.shoulders - 1 + 0.1 * gender) * shoulders;
-    // A soft chest rise on feminine busts, a fuller chest with weight
-    const chest = Math.exp(-(((ax - 0.25) / 0.2) ** 2) - (((y0 + 1.15) / 0.16) ** 2)) * Math.max(0, nz);
-    const chestPush = 0.05 * Math.max(0, -gender) + 0.03 * k.fullness;
+    dx += x0 * (k.shoulders - 1) * shoulders;
+    // A fuller chest with weight
+    const chest = Math.exp(-(((ax - 0.25) / 0.2) ** 2) - (((y0 + 1.4) / 0.2) ** 2)) * Math.max(0, nz);
+    const chestPush = 0.03 * k.fullness;
     dx += nx * chest * chestPush;
     dy += ny * chest * chestPush;
     dz += nz * chest * chestPush;

@@ -29,10 +29,10 @@ export function parseShape(buffer: ArrayBuffer): ShapeAsset {
   };
 }
 
-export function parseAssets(head: ArrayBuffer, shapes: Record<ShapeName, ArrayBuffer>): Assets {
+export function parseAssets(head: ArrayBuffer, shapes: Record<ShapeName, ArrayBuffer>, feminine?: ArrayBuffer): Assets {
   const parsed = {} as Record<ShapeName, ShapeAsset>;
   for (const name of SHAPE_NAMES) parsed[name] = parseShape(shapes[name]);
-  return { head: parseHead(head), shapes: parsed };
+  return { head: parseHead(head, feminine), shapes: parsed };
 }
 
 export async function loadAssets(): Promise<Assets> {

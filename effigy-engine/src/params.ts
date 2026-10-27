@@ -21,7 +21,7 @@ export type NumericKey =
   | "scales"
   | "grime";
 
-export const RACES = ["human", "elf", "half-elf", "dwarf", "halfling", "gnome", "half-orc", "tiefling", "dragonborn"] as const;
+export const RACES = ["human", "elf", "half-elf", "dwarf", "halfling", "gnome", "half-orc", "tiefling"] as const;
 export type Race = (typeof RACES)[number];
 
 export const BODIES = ["masculine", "neutral", "feminine"] as const;
@@ -62,26 +62,28 @@ export interface NumericDef {
   default: number;
 }
 
-const def = (key: NumericKey, label: string, group: Group, defaultValue: number): NumericDef => ({
+// Each slider's ends are where a face still looks like a plausible person of its race; past them the
+// regional displacements start to fight the base sculpt and the face turns bizarre.
+const def = (key: NumericKey, label: string, group: Group, defaultValue: number, min = 0, max = 1): NumericDef => ({
   key,
   label,
   group,
-  min: 0,
-  max: 1,
+  min,
+  max,
   step: 0.01,
   default: defaultValue,
 });
 
 export const NUMERIC_DEFS: NumericDef[] = [
   def("age", "Age", "Body", 0.3),
-  def("weight", "Weight", "Body", 0.5),
-  def("muscle", "Muscle", "Body", 0.45),
-  def("brow", "Brow ridge", "Face", 0.5),
-  def("cheekbones", "Cheekbones", "Face", 0.5),
-  def("noseSize", "Nose size", "Face", 0.5),
-  def("lips", "Lips", "Face", 0.5),
-  def("jaw", "Jaw", "Face", 0.5),
-  def("lids", "Heavy lids", "Face", 0.4),
+  def("weight", "Weight", "Body", 0.5, 0.15, 0.85),
+  def("muscle", "Muscle", "Body", 0.45, 0.1, 0.9),
+  def("brow", "Brow ridge", "Face", 0.5, 0.2, 0.8),
+  def("cheekbones", "Cheekbones", "Face", 0.5, 0.2, 0.8),
+  def("noseSize", "Nose size", "Face", 0.5, 0.25, 0.75),
+  def("lips", "Lips", "Face", 0.5, 0.25, 0.75),
+  def("jaw", "Jaw", "Face", 0.5, 0.2, 0.8),
+  def("lids", "Heavy lids", "Face", 0.4, 0.1, 0.75),
   def("eyebrows", "Eyebrows", "Face", 0.5),
   def("horns", "Horn size", "Fantasy", 0.5),
   def("tusks", "Tusk size", "Fantasy", 0.5),
@@ -152,12 +154,12 @@ type Values = Partial<Record<NumericKey, number>>;
 
 // A race's skeleton: the bone structure the sliders then adjust. Ratios are relative to a human
 // (1.0). These stay inside the ranges real populations vary, plus the fantasy features (pointed ears,
-// a muzzle, scales) that define a race. The "base" values are added to the matching slider, so a
+// horns, tusks) that define a race. The "base" values are added to the matching slider, so a
 // half-orc's brow is heavy even with the Brow ridge slider at its midpoint.
 export interface Skeleton {
   headWidth: number; // skull breadth
   headHeight: number;
-  earSize: number; // 0 none, ~0.3 human, 1 long and pointed
+  earSize: number; // ~0.3 human, 1 long and pointed
   noseLength: number; // 0..1 baseline
   noseWidth: number;
   noseBridge: number; // -1 flat .. +1 high and prominent
@@ -170,7 +172,6 @@ export interface Skeleton {
   browBase: number;
   cheekBase: number;
   lipBase: number;
-  snout: number;
   socketDepth: number;
   gaunt: number;
   shoulders: number; // shoulder breadth
@@ -203,7 +204,6 @@ const HUMAN: Skeleton = {
   browBase: 0,
   cheekBase: 0,
   lipBase: 0,
-  snout: 0,
   socketDepth: 0.45,
   gaunt: 0.15,
   shoulders: 1,
@@ -272,16 +272,6 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     hornStyle: "demon",
     hairStyle: "long",
     defaults: { horns: 0.85 },
-  },
-  // A muzzle with a heavy brow ridge, a broad jaw and no ears
-  dragonborn: {
-    label: "Dragonborn",
-    skin: skin("Bronze scale"),
-    skeleton: { ...HUMAN, angularity: 0.95, headWidth: 1.05, earSize: 0, noseLength: 0.1, noseWidth: 1.2, noseBridge: -0.5, mouthWidth: 1.6, jaw: 1.15, chin: 0.3, lipBase: -1, slope: 0.5, browBase: 0.6, cheekBase: 0.1, socketDepth: 0.7, snout: 1, gaunt: 0.05, shoulders: 1.3 },
-    hornStyle: "goat",
-    hairStyle: "none",
-    eyes: eyes("Amber"),
-    defaults: { horns: 0.55, muscle: 0.7, eyebrows: 0, scales: 0.55, lids: 0 },
   },
 };
 
@@ -428,10 +418,8 @@ export interface Derived {
   slope: number;
   angularity: number;
   tusks: number; // only half-orcs have tusks; zero for everyone else
-  slitPupils: boolean; // reptilian eyes
   brow: number; // brow ridge: the slider plus the race's baseline
   cheek: number;
-  snout: number;
   scales: number;
   gaunt: number; // sunken cheeks, from lean build and age
   fullness: number; // heavier cheeks and jowls, from weight
@@ -458,10 +446,8 @@ export function derive(p: Params): Derived {
     angularity: sk.angularity,
     brow: clamp01(p.brow + sk.browBase),
     cheek: clamp01(p.cheekbones + sk.cheekBase),
-    snout: sk.snout,
     scales: p.scales,
     tusks: p.race === "half-orc" ? p.tusks : 0,
-    slitPupils: p.race === "dragonborn",
     gaunt: clamp01(sk.gaunt + 0.35 * p.age + 0.9 * (0.5 - p.weight)),
     fullness: clamp01((p.weight - 0.5) * 2),
     lipFull: 0.7 + 1.0 * clamp01(p.lips + sk.lipBase),
@@ -512,7 +498,7 @@ export function randomParams(rng: () => number = Math.random): Params {
   params.skin = pick(SKIN_TONES).value;
   params.cloth = pick(CLOTH_COLORS).value;
   params.eyes = pick(EYE_COLORS).value;
-  params.hairStyle = race === "dragonborn" ? "none" : pick(HAIR_STYLES);
+  params.hairStyle = pick(HAIR_STYLES);
   params.hairColor = pick(HAIR_COLORS).value;
   // Fantasy features belong to the race, so only the anatomical sliders are randomized.
   const keep: NumericKey[] = ["horns", "tusks"];

@@ -5,12 +5,16 @@ Run with the bundle open in Blender (background mode, auto-run of embedded scrip
     blender -b human_base_meshes_bundle.blend --disable-autoexec --python tools/export_head.py -- public/models
 
 What it does to GEO-head_sculpting_realistic:
-  1. applies the multires modifier (level 1) and the object's transform, then fills out the body: cuts at the widest shoulder line and extrudes deltoids and upper chest below it,
-  2. subdivides once more with Catmull-Clark (about 53,000 vertices), which keeps the sculpt's shape
+  1. applies the multires modifier (level 1) and the object's transform, then fills out the body: cuts at the widest shoulder line and extrudes rings for the shoulders and chest below it,
+  2. subdivides once more with Catmull-Clark (about 60,000 vertices), which keeps the sculpt's shape
      and gives the app enough vertices to carry sharper facial structure,
+  2b. wraps those rings onto the bundle's sculpted male and female bodies (cut like a classic bust: flat
+     through the deltoids, level below the chest), so the chest has real pectorals or a real bust. The
+     male wrap is written to head.bin and the female wrap to feminine.bin (same vertices, other positions),
   3. turns the axes into the app's (Y up, face toward +Z),
   4. caps the open base so the bust is a closed solid, and triangulates,
-  5. writes head.bin: uint32 vertexCount, uint32 triangleCount, float32 xyz per vertex, uint32 abc per triangle.
+  5. writes head.bin: uint32 vertexCount, uint32 triangleCount, float32 xyz per vertex, uint32 abc per triangle,
+     and feminine.bin: uint32 vertexCount, float32 xyz per vertex.
 
 The app moves the origin to the midpoint between the eyes and scales it (see src/headMesh.ts).
 """
@@ -21,6 +25,7 @@ import sys
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
+from mathutils.bvhtree import BVHTree
 
 out_dir = sys.argv[-1]
 src = bpy.data.objects["GEO-head_sculpting_realistic"]
@@ -42,8 +47,24 @@ bmesh.ops.bisect_plane(bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces)
 ring0 = {v for e in bm.edges if e.is_boundary for v in e.verts}
 centre = sum((v.co for v in ring0), Vector()) / len(ring0)
 centre.x = HEAD_CENTRE_X
-# (drop below the cut in metres, width scale, depth scale), each relative to the cut ring
-RINGS = [(0.03, 1.22, 1.25), (0.06, 1.45, 1.5), (0.09, 1.58, 1.65), (0.12, 1.62, 1.72), (0.15, 1.6, 1.75), (0.18, 1.55, 1.75)]
+# Where the bust ends: this far below the eyes, under the pectorals and the bust
+EYE_Z = 0.7659
+BOTTOM = 0.42
+# (drop below the cut in metres, width scale, depth scale), each relative to the cut ring. The rings only
+# need to be roughly the right shape: step 2b wraps them onto a sculpted body.
+PROFILE = [(0.0, 1.0, 1.0), (0.03, 1.22, 1.25), (0.06, 1.45, 1.5), (0.09, 1.58, 1.65), (0.12, 1.62, 1.72), (0.15, 1.6, 1.75), (0.18, 1.55, 1.75), (1.0, 1.55, 1.75)]
+depth = cut_z - (EYE_Z - BOTTOM)
+
+
+def profile(drop):
+    for (d0, x0, y0), (d1, x1, y1) in zip(PROFILE, PROFILE[1:]):
+        if drop <= d1:
+            t = (drop - d0) / (d1 - d0)
+            return (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)
+    return PROFILE[-1][1:]
+
+
+RINGS = [(depth * (n + 1) / 16, *profile(depth * (n + 1) / 16)) for n in range(16)]
 previous = (1.0, 1.0)
 extended = set(ring0)
 for index, (drop, sx, sy) in enumerate(RINGS):
@@ -74,12 +95,140 @@ bpy.context.view_layer.update()
 depsgraph = bpy.context.evaluated_depsgraph_get()
 mesh = bpy.data.meshes.new_from_object(temp.evaluated_get(depsgraph))
 
+# 2b. Wrap the shoulders and chest onto a sculpted body. Each body is moved so its eyes sit on this head's
+# eyes (the three heads are the same size: 64-66 mm between the eyes), its own head is cut away, its arms
+# are cut off flat through the deltoids and it is cut level a little below the bottom of the bust (so the
+# lowest ring has surface to land on). Every vertex below
+# the jaw then moves onto that body, fully from the base of the neck down.
+def bust_target(name, arm_cut):
+    body = bpy.data.objects[name]
+    eyes = [bpy.data.objects[f"{name}.eye.{side}"] for side in "LR"]
+    eye_mid = sum((e.matrix_world @ v.co for e in eyes for v in e.data.vertices), Vector()) / sum(len(e.data.vertices) for e in eyes)
+    head_mid = Vector((HEAD_CENTRE_X, -0.1251, EYE_Z))
+    target = bpy.data.meshes.new_from_object(body.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    target.transform(Matrix.Translation(head_mid - eye_mid) @ body.matrix_world)
+    tb = bmesh.new()
+    tb.from_mesh(target)
+    cuts = [((0, 0, EYE_Z - 0.12), (0, 0, 1)), ((0, 0, EYE_Z - BOTTOM - 0.03), (0, 0, -1)), ((HEAD_CENTRE_X + arm_cut, 0, 0), (1, 0, 0)), ((HEAD_CENTRE_X - arm_cut, 0, 0), (-1, 0, 0))]
+    for co, no in cuts:
+        bmesh.ops.bisect_plane(tb, geom=list(tb.verts) + list(tb.edges) + list(tb.faces), plane_co=co, plane_no=no, clear_outer=True)
+    # The torso is the largest connected piece; stray bits of hands or hair are dropped
+    pieces = []
+    seen = set()
+    for v in tb.verts:
+        if v.index in seen:
+            continue
+        stack = [v]
+        piece = []
+        seen.add(v.index)
+        while stack:
+            u = stack.pop()
+            piece.append(u)
+            for e in u.link_edges:
+                w = e.other_vert(u)
+                if w.index not in seen:
+                    seen.add(w.index)
+                    stack.append(w)
+        pieces.append(piece)
+    pieces.sort(key=len)
+    bmesh.ops.delete(tb, geom=[v for piece in pieces[:-1] for v in piece], context="VERTS")
+    # Only the arm cuts are capped (the flat sides of the bust). The neck and the bottom stay open, so
+    # nothing near them snaps onto a cap.
+    side = [e for e in tb.edges if e.is_boundary and all(abs(v.co.x - HEAD_CENTRE_X) > arm_cut - 0.003 for v in e.verts)]
+    bmesh.ops.holes_fill(tb, edges=side, sides=0)
+    tree = BVHTree.FromBMesh(tb)
+    tb.free()
+    return tree
+
+
+def neck_weight(z):
+    t = min(1.0, max(0.0, ((EYE_Z - 0.15) - z) / 0.07))
+    return t * t * (3 - 2 * t)
+
+
+def wrap(tree, co):
+    # Around the neck and shoulders: the nearest point on the body. Below the armpits that bunches the
+    # rings into the fold under the pectorals, so there each vertex is pushed straight out from the torso's
+    # centre line instead, which keeps the rings level and evenly spaced.
+    near = tree.find_nearest(co)[0]
+    t = min(1.0, max(0.0, ((EYE_Z - 0.26) - co.z) / 0.05))
+    if t == 0:
+        return near
+    origin = Vector((HEAD_CENTRE_X, centre.y, co.z))
+    out = Vector((co.x - origin.x, co.y - origin.y, 0))
+    hit = tree.ray_cast(origin, out.normalized(), 1.0)[0] if out.length > 1e-6 else None
+    return near if hit is None else near.lerp(hit, t * t * (3 - 2 * t))
+
+
+male = bust_target("GEO-body_male_realistic", 0.205)
+female = bust_target("GEO-body_female_realistic", 0.185)
+feminine = []
+for v in mesh.vertices:
+    w = neck_weight(v.co.z)
+    m = wrap(male, v.co) if w > 0 else v.co
+    f = wrap(female, v.co) if w > 0 else v.co
+    feminine.append(v.co.lerp(f, w))
+    v.co = v.co.lerp(m, w)
+# The bottom ring sits exactly on the cut, so the underside is flat
+floor = EYE_Z - BOTTOM
+for i, v in enumerate(mesh.vertices):
+    if v.co.z < floor + 0.004:
+        v.co.z = floor
+        feminine[i].z = floor
+
+
+# Even out the wrapped vertices a little (nearest-point snapping bunches them at creases), keeping the
+# flat underside flat
+def relax(positions, weights, passes):
+    neighbours = [[] for _ in mesh.vertices]
+    for e in mesh.edges:
+        a, b = e.vertices
+        neighbours[a].append(b)
+        neighbours[b].append(a)
+    for _ in range(passes):
+        fresh = list(positions)
+        for i, w in enumerate(weights):
+            if w <= 0 or not neighbours[i]:
+                continue
+            mean = sum((positions[j] for j in neighbours[i]), Vector()) / len(neighbours[i])
+            moved = positions[i].lerp(mean, 0.5 * w)
+            if positions[i].z <= floor + 1e-6:
+                moved.z = floor
+            fresh[i] = moved
+        positions[:] = fresh
+
+
+weights = [neck_weight(v.co.z) for v in mesh.vertices]
+masculine = [v.co.copy() for v in mesh.vertices]
+relax(masculine, weights, 4)
+relax(feminine, weights, 4)
+for v, co in zip(mesh.vertices, masculine):
+    v.co = co
+mesh.update()
+
 # 3. Blender is Z-up with the face toward -Y; the app is Y-up with the face toward +Z.
 mesh.transform(Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1))))
+feminine = [Vector((co.x, co.z, -co.y)) for co in feminine]
 
 # 4. Cap the open base and triangulate
 bm = bmesh.new()
 bm.from_mesh(mesh)
+# First a narrow inset ring (3 mm) on the underside, so the big cap does not bend the normals of the bust's
+# bottom edge and shade it dark and ragged
+boundary = [e for e in bm.edges if e.is_boundary]
+ring = {v for e in boundary for v in e.verts}
+centre_m = sum((v.co for v in ring), Vector()) / len(ring)
+centre_f = sum((feminine[v.index] for v in ring), Vector()) / len(ring)
+made = bmesh.ops.extrude_edge_only(bm, edges=boundary)
+bm.verts.index_update()
+for v in (g for g in made["geom"] if isinstance(g, bmesh.types.BMVert)):
+    source = next(e.other_vert(v) for e in v.link_edges if e.other_vert(v) in ring)
+    inward = Vector((centre_m.x - v.co.x, 0, centre_m.z - v.co.z))
+    v.co += inward.normalized() * 0.003
+    fem = feminine[source.index].copy()
+    inward = Vector((centre_f.x - fem.x, 0, centre_f.z - fem.z))
+    feminine.append(fem + inward.normalized() * 0.003)
+    assert v.index == len(feminine) - 1
 boundary = [e for e in bm.edges if e.is_boundary]
 filled = bmesh.ops.holes_fill(bm, edges=boundary, sides=0)
 bmesh.ops.triangulate(bm, faces=list(bm.faces))
@@ -99,4 +248,7 @@ with open(out_dir + "/head.bin", "wb") as handle:
     handle.write(struct.pack("<II", len(mesh.vertices), len(indices) // 3))
     handle.write(struct.pack(f"<{len(positions)}f", *positions))
     handle.write(struct.pack(f"<{len(indices)}I", *indices))
+with open(out_dir + "/feminine.bin", "wb") as handle:
+    handle.write(struct.pack("<I", len(feminine)))
+    handle.write(struct.pack(f"<{len(feminine) * 3}f", *[c for co in feminine for c in co]))
 print("exported", len(mesh.vertices), "vertices,", len(indices) // 3, "triangles, open edges:", still_open)

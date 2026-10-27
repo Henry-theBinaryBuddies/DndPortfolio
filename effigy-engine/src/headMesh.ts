@@ -6,6 +6,9 @@ import * as THREE from "three";
 
 export const SCALE = 5;
 
+// Light smoothing of the shoulders and chest at load, to even out the wrapped rings
+const SMOOTH_PASSES = 3;
+
 // Where the eyes sit in the source file's own units (metres): the midpoint between the eyes, and the
 // eyeball radius that fits this head's eyelids. The bundle's own eyeball mesh is larger (12.4 mm), but the
 // head's lids are modelled around a smaller eye: its skin comes within 8.7 mm of the eye's centre, so a
@@ -45,22 +48,30 @@ export interface HeadBase {
   // mouth line, brows and nostrils however the face is reshaped
   masks: { lips: Float32Array; mouthLine: Float32Array; brows: Float32Array; nostrils: Float32Array };
   neck: { x: number; z: number }; // centre line of the neck
+  // The same vertices with the shoulders and chest wrapped onto a sculpted female body instead of a male
+  // one (see tools/export_head.py). The build blends between the two.
+  feminine: { positions: Float32Array; normals: Float32Array };
 }
 
-// Turns the raw file into a normalised mesh with normals and connectivity.
-export function parseHead(buffer: ArrayBuffer): HeadBase {
+// Turns the raw files into a normalised mesh with normals and connectivity.
+export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): HeadBase {
   const header = new Uint32Array(buffer, 0, 2);
   const vertexCount = header[0];
   const triangleCount = header[1];
   const raw = new Float32Array(buffer, 8, vertexCount * 3);
   const indices = new Uint32Array(buffer.slice(8 + vertexCount * 12, 8 + vertexCount * 12 + triangleCount * 12));
 
-  const positions = new Float32Array(vertexCount * 3);
-  for (let i = 0; i < vertexCount; i++) {
-    positions[i * 3] = (raw[i * 3] - SOURCE.eyeX) * SCALE;
-    positions[i * 3 + 1] = (raw[i * 3 + 1] - SOURCE.eyeY) * SCALE;
-    positions[i * 3 + 2] = (raw[i * 3 + 2] - SOURCE.eyeZ) * SCALE;
-  }
+  const normalise = (source: Float32Array) => {
+    const out = new Float32Array(vertexCount * 3);
+    for (let i = 0; i < vertexCount; i++) {
+      out[i * 3] = (source[i * 3] - SOURCE.eyeX) * SCALE;
+      out[i * 3 + 1] = (source[i * 3 + 1] - SOURCE.eyeY) * SCALE;
+      out[i * 3 + 2] = (source[i * 3 + 2] - SOURCE.eyeZ) * SCALE;
+    }
+    return out;
+  };
+  const positions = normalise(raw);
+  const femininePositions = feminineBuffer ? normalise(new Float32Array(feminineBuffer, 4, vertexCount * 3)) : new Float32Array(positions);
 
   const sets: Set<number>[] = Array.from({ length: vertexCount }, () => new Set<number>());
   for (let t = 0; t < indices.length; t += 3) {
@@ -91,7 +102,7 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
     smoothWeight[i] = ease((-0.88 - y) / 0.16) * ease((y - lowest) / 0.1);
   }
   const relaxed = new Float32Array(positions.length);
-  const relax = (factor: number) => {
+  const relax = (positions: Float32Array, factor: number) => {
     for (let i = 0; i < vertexCount; i++) {
       const w = smoothWeight[i];
       const from = offsets[i];
@@ -118,17 +129,23 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
     }
     positions.set(relaxed);
   };
-  for (let pass = 0; pass < 14; pass++) {
-    relax(0.5);
-    relax(-0.53);
+  for (const shape of [positions, femininePositions]) {
+    for (let pass = 0; pass < SMOOTH_PASSES; pass++) {
+      relax(shape, 0.5);
+      relax(shape, -0.53);
+    }
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-  geometry.computeVertexNormals();
-  const normals = new Float32Array((geometry.attributes.normal as THREE.BufferAttribute).array);
-  geometry.dispose();
+  const normalsOf = (shape: Float32Array) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(shape, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    geometry.computeVertexNormals();
+    const out = new Float32Array((geometry.attributes.normal as THREE.BufferAttribute).array);
+    geometry.dispose();
+    return out;
+  };
+  const normals = normalsOf(positions);
 
   let baseY = Infinity;
   let neckX = 0;
@@ -181,12 +198,18 @@ export function parseHead(buffer: ArrayBuffer): HeadBase {
     bottom: Uint32Array.from(underside),
     masks: { lips, mouthLine, brows, nostrils },
     neck: { x: neckX / neckCount, z: neckZ / neckCount },
+    feminine: { positions: femininePositions, normals: normalsOf(femininePositions) },
   };
 }
 
 // Loads the head in the browser. The file sits next to the page, under models/.
 export async function loadHead(): Promise<HeadBase> {
-  const response = await fetch(`${import.meta.env.BASE_URL}models/head.bin`);
-  if (!response.ok) throw new Error(`Could not load the head model (${response.status})`);
-  return parseHead(await response.arrayBuffer());
+  const [head, feminine] = await Promise.all(
+    ["head", "feminine"].map(async (name) => {
+      const response = await fetch(`${import.meta.env.BASE_URL}models/${name}.bin`);
+      if (!response.ok) throw new Error(`Could not load the ${name} model (${response.status})`);
+      return response.arrayBuffer();
+    }),
+  );
+  return parseHead(head, feminine);
 }
