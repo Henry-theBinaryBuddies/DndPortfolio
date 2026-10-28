@@ -3,10 +3,11 @@ import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import { basePrism, pedestalGeometry } from "./builder";
-import { collectParts } from "./export";
+import { collectBust, collectParts } from "./export";
 import { applyRace, defaultParams, type Params } from "./params";
-import { baseOutline, convexHull, MM, pedestalRings, PEDESTAL_SIDES, PRINT, radiusAt } from "./print";
+import { baseOutline, convexHull, MM, pedestalRings, PEDESTAL_SIDES, PRINT, radiusAt, reachOfHull } from "./print";
 import { edgeProblems, mergeParts, readStl, separateKisses, splitShells, weld, writeStl, type Part, type PrintReport } from "./printable";
+import { measureWalls, summariseWalls } from "./thickness";
 
 let assets: Assets;
 beforeAll(() => {
@@ -136,7 +137,7 @@ describe("collecting a bust's parts for printing", () => {
     expect(maxZ).toBeGreaterThan(PRINT.bustHeight[0]);
     expect(maxZ).toBeLessThan(PRINT.bustHeight[1]);
     expect(nose).toBeLessThan(-10);
-  }, 120000);
+  }, 300000);
 });
 
 // Checks an STL file on its own terms, without Manifold: watertight (every edge shared by two triangles, one
@@ -172,7 +173,10 @@ const inspect = (stl: ArrayBuffer) => {
 };
 
 describe("merging a bust into one printable solid", () => {
-  const merge = async (p: Params) => mergeParts(collectParts(p, assets), undefined, undefined, PRINT.flatCut);
+  const merge = async (p: Params) => {
+    const { parts, flatCut } = collectBust(p, assets);
+    return mergeParts(parts, undefined, undefined, flatCut);
+  };
   const expectOneSolid = (label: string, report: PrintReport) => {
     expect(report.status, label).toBe("NoError");
     expect(report.parts.filter((part) => !part.accepted).map((part) => `${part.name}: ${part.problem}`), label).toEqual([]);
@@ -194,7 +198,7 @@ describe("merging a bust into one printable solid", () => {
     expect(file.count).toBe(report.triangles);
     expect(file.unpaired).toBe(0);
     expect(Math.abs(file.volume - report.volume) / report.volume).toBeLessThan(0.002);
-  }, 120000);
+  }, 300000);
 
   it("joins the eyes, brows, teeth, tongue and tusks to the head: a half-orc with its mouth open is one solid", async () => {
     const orc = applyRace(defaultParams(), "half-orc");
@@ -266,7 +270,7 @@ describe("merging a bust into one printable solid", () => {
     expect(bx1).toBeGreaterThan(x1 + PRINT.baseMargin * 0.9);
     const [z0, z1] = span(base, 2);
     expect(z0).toBeCloseTo(-PRINT.baseHeight, 3);
-    expect(z1).toBeCloseTo(PRINT.flatCut + PRINT.baseOverlap, 3);
+    expect(z1).toBeCloseTo(collectBust(params({ hairStyle: "none", beardStyle: "none" }), assets).flatCut + PRINT.baseOverlap, 3);
     expect(MM * 32).toBe(1);
   });
 });
@@ -283,7 +287,7 @@ describe("the pedestal", () => {
     expect(radiusAt(square, Math.PI)).toBeCloseTo(1, 6);
   });
   it("is a round disc at the foot, narrows to a waist, and flares out to the bust's exact underside", () => {
-    const rings = pedestalRings(footprint, -PRINT.baseHeight * MM, 1.6 * MM);
+    const rings = pedestalRings(reachOfHull(footprint), -PRINT.baseHeight * MM, 1.6 * MM);
     const radii = rings.map((ring) => Array.from({ length: PEDESTAL_SIDES }, (_, k) => Math.hypot(ring[k * 3], ring[k * 3 + 2])));
     const foot = radii[1];
     expect(Math.min(...foot)).toBeCloseTo(Math.max(...foot), 6);
@@ -295,7 +299,7 @@ describe("the pedestal", () => {
     for (let k = 0; k < PEDESTAL_SIDES; k++) expect(top[k]).toBeCloseTo(radiusAt(hull, (k / PEDESTAL_SIDES) * 2 * Math.PI), 6);
   });
   it("is a closed solid wound outward", () => {
-    const geometry = pedestalGeometry(footprint, -PRINT.baseHeight * MM, 1.6 * MM);
+    const geometry = pedestalGeometry(reachOfHull(footprint), -PRINT.baseHeight * MM, 1.6 * MM);
     const index = geometry.index!;
     const uses = new Map<number, number>();
     for (let t = 0; t < index.count; t += 3) {
@@ -354,4 +358,67 @@ describe("the file as a slicer reads it", () => {
     const result = separateKisses(Float32Array.from(positions), indices);
     expect(result).toEqual({ moved: 0, open: 0, shared: 0 });
   });
+});
+
+describe("wall thickness", () => {
+  const box = (x: number, y: number, z: number): { positions: Float32Array; indices: Uint32Array } => {
+    const { positions, indices } = cube();
+    return { positions: Float32Array.from(positions, (v, i) => v * [x, y, z][i % 3] + (i % 3 === 2 ? 5 : 0)), indices };
+  };
+  it("measures a thick block as thick all the way through", () => {
+    const { positions, indices } = box(10, 10, 10);
+    const walls = measureWalls(positions, indices, 4000, 0);
+    const mostly = Array.from(walls.thickness).filter((t) => Math.abs(t - 10) < 0.05).length / walls.thickness.length;
+    expect(mostly).toBeGreaterThan(0.9);
+  });
+  it("calls a thin plate thin, and says how much of the surface it is", () => {
+    const { positions, indices } = box(20, 20, 0.3);
+    const summary = summariseWalls(measureWalls(positions, indices, 6000, 0));
+    // (nearly all the surface is the two big faces, each 0.3 mm from the other)
+    expect(summary.thinner[0].share).toBeGreaterThan(0.95);
+  });
+  it("does not mistake carved ridges for a thin wall, since the ray goes into the core", () => {
+    // A block with a row of ridges 0.4 mm wide and 0.6 mm tall standing on its top face, as a triangle soup
+    const soup: number[] = [];
+    const quad = (a: number[], b: number[], c: number[], d: number[]) => soup.push(...a, ...b, ...c, ...a, ...c, ...d);
+    const { positions, indices } = box(20, 20, 10);
+    for (let t = 0; t < indices.length; t++) soup.push(positions[indices[t] * 3], positions[indices[t] * 3 + 1], positions[indices[t] * 3 + 2]);
+    // (ridges sit on top, as extra closed prisms: overlapping solids are fine for ray measurements)
+    for (let r = 0; r < 20; r++) {
+      const x = 0.5 + r * 0.95;
+      const [x1, y0, y1, z0, z1] = [x + 0.4, 1, 19, 15, 15.6];
+      quad([x, y0, z0], [x1, y0, z0], [x1, y1, z0], [x, y1, z0]);
+      quad([x, y0, z1], [x, y1, z1], [x1, y1, z1], [x1, y0, z1]);
+      quad([x, y0, z0], [x, y0, z1], [x1, y0, z1], [x1, y0, z0]);
+      quad([x1, y1, z0], [x1, y1, z1], [x, y1, z1], [x, y1, z0]);
+      quad([x, y1, z0], [x, y1, z1], [x, y0, z1], [x, y0, z0]);
+      quad([x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]);
+    }
+    // The top of the block is at z = 15: with its ridges, and averaged normals, the flat top still reads as the block
+    const walls = measureWalls(new Float32Array(soup), null, 8000, 0);
+    const thin = Array.from(walls.thickness).filter((t) => t < 0.4).length / walls.thickness.length;
+    expect(thin).toBeLessThan(0.15); // (the ridges' own sides and tops are 0.4 mm across: those do count, a little)
+  });
+  it("is repeatable", () => {
+    const { positions, indices } = box(10, 10, 3);
+    const a = measureWalls(positions, indices, 500, 0, 7);
+    const b = measureWalls(positions, indices, 500, 0, 7);
+    expect(Array.from(a.thickness)).toEqual(Array.from(b.thickness));
+  });
+});
+
+describe("the pedestal junction", () => {
+  it("leaves no thin wedge where the pedestal meets a half-orc's wide shoulders", async () => {
+    const orc = applyRace(defaultParams(), "half-orc");
+    orc.hairStyle = "none";
+    const { parts, flatCut } = collectBust(orc, assets);
+    const { stl, report } = await mergeParts(parts, undefined, undefined, flatCut);
+    expect(flatCut).toBeGreaterThan(PRINT.flatCut); // the shoulders' underside is not flat: the cut goes higher
+    // The junction band: from the cut to 4 mm above it
+    const file = readStl(stl);
+    const band = measureWalls(file.positions, null, 40000, flatCut - 0.5, 1, 0.8, flatCut + 4);
+    const thin = Array.from(band.thickness).filter((t) => t < 0.4).length / band.thickness.length;
+    expect(thin, `${(thin * 100).toFixed(1)}% of the junction is thin`).toBeLessThan(0.02);
+    expect(report.walls.thinner[0].share).toBeLessThan(0.01);
+  }, 300000);
 });

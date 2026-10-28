@@ -85,7 +85,7 @@ function swap(params: Params, detail: boolean) {
     pivot.remove(base);
     base.geometry.dispose();
   }
-  base = new THREE.Mesh(pedestalGeometry(figure.userData.footprint, -PRINT.baseHeight * MM, (PRINT.flatCut + PRINT.baseOverlap) * MM), baseMaterial);
+  base = new THREE.Mesh(pedestalGeometry(figure.userData.reach, -PRINT.baseHeight * MM, (figure.userData.flatCut + PRINT.baseOverlap) * MM), baseMaterial);
   pivot.add(base); // (it turns with the bust, so the flare under the bust stays under it)
   // Refit the face framing to this bust (keeping the camera where it was if it is framing the face): from
   // the lowest point of its chin or beard to the highest point of its head

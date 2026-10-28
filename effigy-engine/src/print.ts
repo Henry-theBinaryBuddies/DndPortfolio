@@ -15,7 +15,8 @@ export const PRINT = {
   baseMargin: 2, // mm: how far the disc reaches beyond the farthest corner of the bust's underside
   discHeight: 3, // mm: the disc's rim, with its sloped top
   discBevel: 2, // mm: how far the sloped top of the disc comes in
-  flatCut: 1.2, // mm: the bust is cut flat this far above its lowest point, which trims the rounded edge off its underside
+  flatCut: 1.2, // mm: the least the bust is cut flat above its lowest point (see underside.ts: it goes higher where the underside hangs out)
+  overhang: 1, // mm of outward growth allowed per mm of height above the cut: 1 is 45 degrees
   baseOverlap: 0.4, // mm: the base reaches this far up inside the bust, so the two are joined, not just touching
 };
 
@@ -103,13 +104,12 @@ export const PEDESTAL_SIDES = 96;
 
 // The pedestal, as rings of points from its foot to its top (in head units: each ring is (x, y, z) triples, y up).
 // Like the busts on turned bases it stands on a round disc with a sloped rim, narrows to a waist and flares
-// out under the bust to its exact underside, so the bust has solid support wherever it reaches (a bust
+// out under the bust to the section of the bust at its flat cut (`reach`: how far that outline reaches from the
+// middle in each of PEDESTAL_SIDES directions), so the bust has solid support wherever it reaches (a bust
 // whose flat bottom hung out over a narrow stem would print as a bridge).
-export function pedestalRings(footprint: Point[], bottom: number, top: number): number[][] {
-  const hull = convexHull(footprint);
-  const reach = Array.from({ length: PEDESTAL_SIDES }, (_, k) => radiusAt(hull, (k / PEDESTAL_SIDES) * 2 * Math.PI));
-  const farthest = Math.max(...reach);
-  const nearest = Math.min(...reach);
+export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: number): number[][] {
+  const farthest = Math.max(...Array.from(reach));
+  const nearest = Math.min(...Array.from(reach));
   const disc = Math.max(PRINT.baseRadius * MM, farthest + PRINT.baseMargin * MM);
   const waist = Math.min(16 * MM, Math.max(10 * MM, 0.65 * nearest));
   const foot = disc - PRINT.discBevel * MM;
@@ -136,4 +136,10 @@ export function pedestalRings(footprint: Point[], bottom: number, top: number): 
     }
     return ring;
   });
+}
+
+// The reach (see pedestalRings) of a convex outline around the origin
+export function reachOfHull(points: Point[]): number[] {
+  const hull = convexHull(points);
+  return Array.from({ length: PEDESTAL_SIDES }, (_, k) => radiusAt(hull, (k / PEDESTAL_SIDES) * 2 * Math.PI));
 }

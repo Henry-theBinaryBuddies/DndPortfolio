@@ -1,5 +1,5 @@
 import type { Assets } from "./assets";
-import { collectParts } from "./export";
+import { collectBust } from "./export";
 import type { Params } from "./params";
 import { PRINT } from "./print";
 import type { PrintReport } from "./printable";
@@ -21,6 +21,9 @@ export function describe(report: PrintReport): string {
   if (report.specks) lines.push(`${report.specks} stray specks under 0.5 mm³ were removed.`);
   if (report.separated) lines.push(`${report.separated} points where two surfaces touched exactly along an edge were moved a few microns apart.`);
   if (report.badEdges) lines.push(`${report.badEdges} edges of the file are not shared by exactly two triangles.`);
+  const [fine, thin] = report.walls.thinner;
+  lines.push(`Walls: ${(fine.share * 100).toFixed(1)}% of the surface is thinner than ${fine.limit} mm and ${(thin.share * 100).toFixed(1)}% thinner than ${thin.limit} mm (ear rims, lips, nostrils, hair edges and tips).`);
+  if (fine.share > 0.03) lines.push(`That is a lot: the thinnest places are near ${report.walls.worst.slice(0, 2).map((w) => `(${w.at.map((v) => v.toFixed(0)).join(", ")})`).join(" and ")} mm.`);
   if (report.voids) lines.push(`${report.voids} small enclosed pockets inside it.`);
   if (report.status !== "NoError") lines.push(`The merge reported: ${report.status}.`);
   lines.push("The eyes are printed 7% larger than in the preview, so they join the head.");
@@ -59,7 +62,7 @@ export function exportStl(params: Params, assets: Assets, say: (text: string) =>
       try {
         worker ??= new Worker(new URL("./exportWorker.ts", import.meta.url), { type: "module" });
         w = worker;
-        const parts = collectParts(params, assets);
+        const { parts, flatCut } = collectBust(params, assets);
         const transfer = parts.flatMap((part) => [part.positions.buffer, part.indices.buffer]);
         onMessage = (event: MessageEvent) => {
           if (event.data.id !== id) return;
@@ -87,7 +90,7 @@ export function exportStl(params: Params, assets: Assets, say: (text: string) =>
         w.addEventListener("message", onMessage);
         w.addEventListener("error", onFault);
         w.addEventListener("messageerror", onFault);
-        w.postMessage({ id, parts, partial }, { transfer });
+        w.postMessage({ id, parts, flatCut, partial }, { transfer });
       } catch (error) {
         fail(error, true);
       }

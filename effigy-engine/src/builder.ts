@@ -9,7 +9,7 @@ import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
 import { buildTeeth } from "./teeth";
 import { derive, type Params } from "./params";
-import { convexHull, MM, PEDESTAL_SIDES, pedestalRings, PRINT } from "./print";
+import { MM, PEDESTAL_SIDES, pedestalRings } from "./print";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
 // (how light hits it). Meshes are parented into Groups, so the whole bust can
@@ -137,21 +137,20 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // With detail off the beard is its plain shell, without the carving (about 750,000 triangles, which takes
 // a moment to build): that is the quick draft shown while a slider moves.
-// The bust is cut flat a little above its lowest point (see PRINT.flatCut): everything below this plane is
-// trimmed off, which leaves a clean flat underside for the pedestal. (The viewer clips it away; the export
-// cuts the solid.)
-const FLAT_CUT = new THREE.Plane(new THREE.Vector3(0, 1, 0), -PRINT.flatCut * MM);
-
 export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group {
   const root = new THREE.Group();
   const k = derive(p);
   const base = assets.head;
-  const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75, clippingPlanes: [FLAT_CUT] });
 
   const head = new THREE.Group();
   root.add(head);
 
   const bust = sculptBust(p, base);
+  // The bust is cut flat a little above its lowest point (see underside.ts): everything below this plane is
+  // trimmed off, which leaves a clean flat underside for the pedestal. (The viewer clips it away; the export
+  // cuts the solid.)
+  const cut = bust.underside.cut;
+  const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75, clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, 1, 0), -cut * MM)] });
   const skin = new THREE.Mesh(bust.geometry, clay);
   skin.name = "head";
   head.add(skin);
@@ -253,11 +252,10 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
   }
 
   // Where the bust stands, and how far down its face reaches, for the base and for framing the face: the
-  // outline of its underside (relative to the middle of the plinth), and the lowest point of the chin or the
+  // outline of the cut (relative to the middle of the plinth), and the lowest point of the chin or the
   // beard (in the plinth's coordinates: y = 0 is the top of the base)
-  const underside: [number, number][] = [];
-  for (const i of base.bottom) underside.push([bust.positions[i * 3] - bust.footprint.x, bust.positions[i * 3 + 2] - bust.footprint.z]);
-  root.userData.footprint = convexHull(underside);
+  root.userData.reach = bust.underside.reach;
+  root.userData.flatCut = cut;
   let faceBottom = Infinity;
   for (let i = 0; i < bust.positions.length; i += 3) {
     if (bust.positions[i + 1] > -0.8 && bust.positions[i + 2] > -0.05) faceBottom = Math.min(faceBottom, bust.positions[i + 1]);
@@ -326,10 +324,10 @@ export function basePrism(outline: [number, number][], bottom: number, top: numb
   return geometry;
 }
 
-// The pedestal as a closed solid (see pedestalRings): a footprint (the bust's underside, as (x, z)) from
-// `bottom` up to `top`: a round disc and a waisted stem flaring out to the footprint
-export function pedestalGeometry(footprint: [number, number][], bottom: number, top: number): THREE.BufferGeometry {
-  const rings = pedestalRings(footprint, bottom, top);
+// The pedestal as a closed solid (see pedestalRings), from `bottom` up to `top`: a round disc and a waisted stem
+// flaring out to the outline of the bust at its cut
+export function pedestalGeometry(reach: ArrayLike<number>, bottom: number, top: number): THREE.BufferGeometry {
+  const rings = pedestalRings(reach, bottom, top);
   const n = PEDESTAL_SIDES;
   const positions: number[] = rings.flat();
   const index: number[] = [];

@@ -1,3 +1,4 @@
+import { measureWalls, summariseWalls, type WallReport } from "./thickness";
 import Module from "manifold-3d";
 
 // Merging the parts of a bust into one solid for printing, and writing it as a binary STL. The bust is built
@@ -24,6 +25,7 @@ export interface PartReport {
 }
 
 export interface PrintReport {
+  walls: WallReport; // how thin the walls are (see thickness.ts)
   parts: PartReport[];
   status: string; // the union's status: "NoError" when it is a valid solid
   triangles: number;
@@ -286,6 +288,8 @@ export function separateKisses(positions: Float32Array, triangles: ArrayLike<num
   return { moved: moved.size, open: problems.open, shared: problems.shared };
 }
 
+const WALL_SAMPLES = 60000; // points measured over the surface: about a tenth of a percent of precision
+
 // Unions the parts into one solid. By default it is all or nothing: it throws if any part cannot be made into
 // a valid solid, if the merge reports a problem, or if the result is not exactly one connected solid, so a
 // file with a feature missing, or with loose pieces, is never produced by accident. `allowPartial` is for a
@@ -365,8 +369,11 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
     const badEdges = kisses.open + kisses.shared;
     if (badEdges > 0 && !allowPartial) throw new Error(`${badEdges} edges of the file are not shared by exactly two triangles (${kisses.open} open, ${kisses.shared} shared by more), so nothing was exported`);
     const { stl, degenerate } = writeStl(positions, mesh.triVerts);
+    progress("Measuring the walls");
+    const walls = summariseWalls(measureWalls(positions, mesh.triVerts, WALL_SAMPLES, flatAt ?? 1));
     const report: PrintReport = {
       parts: reports,
+      walls,
       status,
       triangles: mesh.triVerts.length / 3 - degenerate,
       vertices: positions.length / 3,

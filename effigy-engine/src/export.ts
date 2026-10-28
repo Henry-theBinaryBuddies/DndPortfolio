@@ -14,6 +14,11 @@ const MILLIMETRES = 1 / MM;
 const EYE_GROWTH = 1.07; // printed eyeballs are this much larger than the sculpt's, so they join the head
 
 export function collectParts(p: Params, assets: Assets): Part[] {
+  return collectBust(p, assets).parts;
+}
+
+// The parts, and how high above the bust's lowest point it is cut flat (mm)
+export function collectBust(p: Params, assets: Assets): { parts: Part[]; flatCut: number } {
   const bust = buildBust(p, assets, true);
   bust.updateMatrixWorld(true);
   const parts: Part[] = [];
@@ -47,9 +52,10 @@ export function collectParts(p: Params, assets: Assets): Part[] {
     add(object.name || "part", object.geometry, matrix);
   });
   // The base reaches a little way up inside the bust, so the two are joined and not merely touching
-  const prism = pedestalGeometry(bust.userData.footprint, -PRINT.baseHeight * MM, (PRINT.flatCut + PRINT.baseOverlap) * MM);
+  const prism = pedestalGeometry(bust.userData.reach, -PRINT.baseHeight * MM, (bust.userData.flatCut + PRINT.baseOverlap) * MM);
   add("base", prism, new THREE.Matrix4());
   prism.dispose();
+  const flatCut = bust.userData.flatCut as number;
   disposeObject(bust);
-  return parts;
+  return { parts, flatCut };
 }

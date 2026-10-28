@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { deformHead, type Deformed } from "./deform";
 import type { HeadBase } from "./headMesh";
 import type { Params } from "./params";
+import { findUnderside, type Underside } from "./underside";
 
 // Turns the deformed base head into the bust's mesh. (It was painted here too, with shading, grime, brows,
 // lips and a tunic; that paint is in git history for when colour comes back.)
@@ -11,8 +12,9 @@ export interface Bust {
   eyes: Deformed["eyes"];
   positions: Float32Array; // the deformed vertices, for fitting hair and attachments
   normals: Float32Array;
-  footprint: { x: number; z: number }; // the centre of the underside, so the bust can sit centred on its plinth
+  footprint: { x: number; z: number }; // the centre of the underside at the flat cut, so the bust can sit centred on its plinth
   baseY: number;
+  underside: Underside; // where it is cut flat, and the outline of the cut
 }
 
 export function sculptBust(p: Params, base: HeadBase): Bust {
@@ -38,8 +40,8 @@ export function sculptBust(p: Params, base: HeadBase): Bust {
     z1 = Math.max(z1, positions[i * 3 + 2]);
     baseY = Math.min(baseY, positions[i * 3 + 1]);
   }
-  const footprint = { x: (x0 + x1) / 2, z: (z0 + z1) / 2 };
-  return { geometry, eyes: deformed.eyes, positions, normals, footprint, baseY };
+  const underside = findUnderside(positions, base.indices, baseY, { x: (x0 + x1) / 2, z: (z0 + z1) / 2 });
+  return { geometry, eyes: deformed.eyes, positions, normals, footprint: underside.footprint, baseY, underside };
 }
 
 export interface SurfaceHit {
