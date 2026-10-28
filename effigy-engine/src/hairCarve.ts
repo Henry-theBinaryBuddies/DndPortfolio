@@ -16,14 +16,18 @@ export const HAIR_CARVING = {
 };
 
 // The carving across one family of locks: `across` is how far across the locks the point is (as a length),
-// `along` how far along them (it makes each groove start and stop where a separate lock would)
-export function locks(across: number, along: number): number {
+// `along` how far along them (it makes each groove start and stop where a separate lock would). Round a
+// rope the locks come back to where they began, and `period` (how many there are) makes the numbering come
+// back with them, or the grooves would carve differently on the two sides of the seam.
+export function locks(across: number, along: number, period = 0): number {
   const c = HAIR_CARVING;
+  const wrap = (k: number) => (period ? ((k % period) + period) % period : k);
   const p1 = across / c.lockPitch;
-  const lock = Math.floor(p1);
+  const lock = wrap(Math.floor(p1));
   const major = vee(p1, c.lockGroove / c.lockPitch / 2) * (0.7 + 0.6 * hash(lock)) * (0.6 + 0.4 * Math.sin(along * 13 + lock * 2.3));
   const p2 = p1 + 0.5;
-  const fine = vee(p2, c.fineGroove / c.lockPitch / 2) * (0.7 + 0.6 * hash(Math.floor(p2) + 57)) * (0.5 + 0.5 * Math.sin(along * 9 + Math.floor(p2) * 1.7));
+  const fineLock = wrap(Math.floor(p2));
+  const fine = vee(p2, c.fineGroove / c.lockPitch / 2) * (0.7 + 0.6 * hash(fineLock + 57)) * (0.5 + 0.5 * Math.sin(along * 9 + fineLock * 1.7));
   return Math.max(c.lockDepth * major, c.fineDepth * fine);
 }
 
@@ -40,22 +44,27 @@ const swept: Pattern = (x, y, z) => {
 const CROWN_Z = -0.15; // the whorl at the crown, where a short crop's hair grows out from
 const CROP_LOCKS = 36; // round the whole head
 
+// A short crop grows out from the whorl at the crown, so its locks radiate from there (a whole number of them
+// round the head, or they would meet in a seam), and the whorl itself is left plain, where they would be too
+// close together to print
+const crop: Pattern = (x, _y, z) => {
+  const angle = Math.atan2(x, z - CROWN_Z);
+  const r = Math.hypot(x, z - CROWN_Z);
+  const across = ((angle + 0.02 * Math.sin(r * 17)) / (2 * Math.PI)) * CROP_LOCKS * HAIR_CARVING.lockPitch;
+  return locks(across, r) * smooth((r - 0.1) / 0.08);
+};
+
 // The carving at a point of the scalp, in the undeformed head's coordinates (so it stays with the head
 // however it is reshaped), for each style
 const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   swept,
   long: swept,
-  // A short crop grows out from the whorl at the crown, so its locks radiate from there (a whole number of
-  // them round the head, or they would meet in a seam), and the whorl itself is left plain, where they would
-  // be too close together to print
-  cropped: (x, _y, z) => {
-    const angle = Math.atan2(x, z - CROWN_Z);
-    const r = Math.hypot(x, z - CROWN_Z);
-    const across = ((angle + 0.02 * Math.sin(r * 17)) / (2 * Math.PI)) * CROP_LOCKS * HAIR_CARVING.lockPitch;
-    return locks(across, r) * smooth((r - 0.1) / 0.08);
-  },
+  cropped: crop,
   // A crest swept back: locks run along its length, side by side across its width
   mohawk: (x, y, z) => locks(x + 0.008 * Math.sin(z * 11 + y * 5), z),
+  // (dreadlocks and braids grow from a close crop)
+  dreadlocks: crop,
+  braids: crop,
 };
 
 export function hairPattern(style: Exclude<HairStyle, "none">): Pattern {

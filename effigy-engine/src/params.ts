@@ -33,7 +33,8 @@ export const HORN_STYLES = ["none", "ram", "goat", "bull", "demon", "antelope", 
 export type HornStyle = (typeof HORN_STYLES)[number];
 
 // (Long hair is still rough, so no race starts with it; it is there to choose.)
-export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long"] as const;
+// (dreadlocks and braids are built from tubes over a close crop: see locks.ts)
+export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dreadlocks", "braids"] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
 // Beards are sculpted like the hair (see beard.ts)

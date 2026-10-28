@@ -9,6 +9,8 @@ import { deformHead } from "./deform";
 import { sculptBust } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
+import { braidPattern, buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
+import { scalp } from "./hair";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
 import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
@@ -899,4 +901,145 @@ describe("carved hair", () => {
       expect(performance.now() - start, hairStyle).toBeLessThan(4000);
     }
   }, 300000);
+});
+
+describe("dreadlocks and braids", () => {
+  const styles = ["dreadlocks", "braids"] as const;
+  const shellOf = (hairStyle: (typeof styles)[number], overrides: Partial<Params> = {}) => {
+    const p = params({ hairStyle, ...overrides });
+    const bust = sculptBust(p, base);
+    return { p, bust, shell: buildLockShell(p, bust.positions, bust.normals, base)! };
+  };
+  const edgeUses = (index: THREE.BufferAttribute) => {
+    const uses = new Map<number, number>();
+    for (let t = 0; t < index.count; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const i = index.getX(t + e);
+        const j = index.getX(t + ((e + 1) % 3));
+        const k = i < j ? i * 4194304 + j : j * 4194304 + i;
+        uses.set(k, (uses.get(k) ?? 0) + 1);
+      }
+    }
+    let open = 0;
+    for (const n of uses.values()) if (n !== 2) open++;
+    return open;
+  };
+
+  it("are sized so they print: thick ropes and plaits, grooves no finer than the nozzle can hold", () => {
+    expect(LOCKS.dreadRadius * 2).toBeGreaterThanOrEqual(2.4 * MM);
+    expect(LOCKS.braidRadius[0] * 2).toBeGreaterThanOrEqual(3.6 * MM);
+    expect(LOCKS.braidGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
+    expect(LOCKS.braidPitch - LOCKS.braidGroove).toBeGreaterThanOrEqual(MIN_FEATURE * 2);
+    expect(LOCKS.dreadSpacing).toBeGreaterThan(LOCKS.dreadRadius * 2 * 1.2);
+  });
+
+  it("start on the scalp, spread at a fixed spacing, and are the same locks whatever the face", () => {
+    const roots = dreadRoots(base);
+    expect(roots.length).toBeGreaterThan(40);
+    expect(roots.length).toBeLessThan(160);
+    const bp = base.positions;
+    for (const v of roots) expect(scalp(bp[v * 3], bp[v * 3 + 1], bp[v * 3 + 2])).toBeGreaterThanOrEqual(0.9);
+    for (let i = 0; i < roots.length; i++) {
+      for (let j = i + 1; j < roots.length; j++) {
+        const a = roots[i] * 3;
+        const b = roots[j] * 3;
+        expect(Math.hypot(bp[a] - bp[b], bp[a + 1] - bp[b + 1], bp[a + 2] - bp[b + 2])).toBeGreaterThanOrEqual(LOCKS.dreadSpacing - 1e-6);
+      }
+    }
+    // The same locks (so a rebuild can reuse its subdivision) however the sliders move
+    for (const style of styles) {
+      const plain = shellOf(style).shell.index!.count;
+      expect(shellOf(style, { jaw: 0.8, muscle: 0.9, age: 0.9 }).shell.index!.count, style).toBe(plain);
+      expect(shellOf(style, { body: "feminine", race: "half-orc" }).shell.index!.count, style).toBe(plain);
+    }
+  }, 120000);
+
+  it("are closed solids wound outward: every edge shared by two triangles, and a positive volume", () => {
+    for (const style of styles) {
+      const { shell } = shellOf(style);
+      const index = shell.index!;
+      const pos = shell.attributes.position;
+      let volume = 0;
+      const a = new THREE.Vector3();
+      const b = new THREE.Vector3();
+      const c = new THREE.Vector3();
+      for (let t = 0; t < index.count; t += 3) {
+        a.fromBufferAttribute(pos, index.getX(t));
+        b.fromBufferAttribute(pos, index.getX(t + 1));
+        c.fromBufferAttribute(pos, index.getX(t + 2));
+        volume += a.dot(b.clone().cross(c)) / 6;
+      }
+      expect(edgeUses(index), style).toBe(0);
+      expect(volume, style).toBeGreaterThan(0);
+    }
+  }, 120000);
+
+  it("lie on the body, not in it: beyond their roots, no part of a lock is inside the skin", () => {
+    for (const style of styles) {
+      const { shell, bust } = shellOf(style);
+      const pos = shell.attributes.position;
+      const along = shell.attributes.headPos;
+      // The nearest skin vertex to each far part of a lock, by a coarse grid
+      const cell = 0.05;
+      const grid = new Map<string, number[]>();
+      for (let i = 0; i < bust.positions.length; i += 3) {
+        const key = `${Math.floor(bust.positions[i] / cell)},${Math.floor(bust.positions[i + 1] / cell)},${Math.floor(bust.positions[i + 2] / cell)}`;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key)!.push(i);
+      }
+      let closest = Infinity;
+      for (let v = 0; v < pos.count; v++) {
+        if (along.getZ(v) < 0.25) continue;
+        const cx = Math.floor(pos.getX(v) / cell);
+        const cy = Math.floor(pos.getY(v) / cell);
+        const cz = Math.floor(pos.getZ(v) / cell);
+        for (let x = -1; x <= 1; x++) {
+          for (let y = -1; y <= 1; y++) {
+            for (let z = -1; z <= 1; z++) {
+              for (const i of grid.get(`${cx + x},${cy + y},${cz + z}`) ?? []) {
+                closest = Math.min(closest, Math.hypot(pos.getX(v) - bust.positions[i], pos.getY(v) - bust.positions[i + 1], pos.getZ(v) - bust.positions[i + 2]));
+              }
+            }
+          }
+        }
+      }
+      // (measured to the nearest skin vertex, which are about 0.3 mm apart, so only a gross penetration shows)
+      expect(closest, style).toBeGreaterThan(0.001);
+    }
+  }, 120000);
+
+  it("carve their grooves with every triangle quartered twice, still closed, cutting only inward", () => {
+    for (const style of styles) {
+      const { p, bust, shell } = shellOf(style);
+      const carved = buildLocks(p, bust.positions, bust.normals, base)!;
+      expect(carved.index!.count, style).toBe(shell.index!.count * 16);
+      expect(edgeUses(carved.index!), style).toBe(0);
+      const a = new THREE.Box3().setFromBufferAttribute(shell.attributes.position as THREE.BufferAttribute);
+      const b = new THREE.Box3().setFromBufferAttribute(carved.attributes.position as THREE.BufferAttribute);
+      expect(b.min.y, style).toBeGreaterThanOrEqual(a.min.y - 1e-4);
+      expect(b.max.y, style).toBeLessThanOrEqual(a.max.y + 1e-4);
+      expect(b.min.x, style).toBeGreaterThanOrEqual(a.min.x - 1e-4);
+      expect(b.max.x, style).toBeLessThanOrEqual(a.max.x + 1e-4);
+    }
+  }, 300000);
+
+  it("carve continuously round a lock (no seam) and, on a braid, the same either side of its middle", () => {
+    const at = (angle: number, length: number) => [Math.cos(angle), Math.sin(angle), length] as const;
+    for (const length of [0.05, 0.13, 0.31]) {
+      expect(Math.abs(dreadPattern(...at(Math.PI - 1e-4, length)) - dreadPattern(...at(-Math.PI + 1e-4, length)))).toBeLessThan(0.0005);
+      for (const angle of [0.3, 1.1, 2.5]) expect(braidPattern(...at(angle, length))).toBeCloseTo(braidPattern(...at(-angle, length)), 8);
+    }
+    // ...and a braid's grooves are deep enough to show
+    let most = 0;
+    for (let length = 0; length < 0.4; length += 0.002) most = Math.max(most, braidPattern(...at(0.4, length)));
+    expect(most).toBeGreaterThan(0.3 * MM);
+  });
+
+  it("are only for the styles that have them", () => {
+    for (const hairStyle of ["none", "cropped", "swept", "mohawk", "long"] as const) {
+      const p = params({ hairStyle });
+      const bust = sculptBust(p, base);
+      expect(buildLockShell(p, bust.positions, bust.normals, base), hairStyle).toBeNull();
+    }
+  }, 120000);
 });

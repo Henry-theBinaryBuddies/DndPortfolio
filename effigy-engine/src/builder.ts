@@ -5,6 +5,7 @@ import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
+import { buildLockShell, buildLocks } from "./locks";
 import { derive, type Params } from "./params";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
@@ -203,7 +204,7 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
 
   // Hair: a sculpted shell over the scalp, and, for long hair, a draped curtain for the lengths that hang
   // free; and a beard, sculpted like the hair
-  for (const form of [(detail ? buildHair : buildHairShell)(p, bust.positions, bust.normals, base), (detail ? buildHanging(p, bust.positions, base) : buildHangingHair(p, bust.positions, base)), (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base)]) {
+  for (const form of [(detail ? buildHair : buildHairShell)(p, bust.positions, bust.normals, base), (detail ? buildHanging(p, bust.positions, base) : buildHangingHair(p, bust.positions, base)), (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base), (detail ? buildLocks : buildLockShell)(p, bust.positions, bust.normals, base)]) {
     if (form) head.add(new THREE.Mesh(form, clay));
   }
   // Eyebrows, sculpted with carved hair (see brows.ts)

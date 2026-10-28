@@ -5,7 +5,7 @@ import { carvingDepth } from "./beardCarve";
 import { carveShell } from "./carve";
 import { hairPattern, hangingPattern } from "./hairCarve";
 import type { HeadBase } from "./headMesh";
-import type { Params } from "./params";
+import type { HairStyle, Params } from "./params";
 
 // Hair as a sculpted shell, the way hair is modelled on a bust: the hair-bearing part of the scalp raised
 // into a solid mass whose thickness follows the style (a close crop, a swept-back mane, a mohawk's crest).
@@ -43,7 +43,7 @@ interface Style {
   tight?: boolean;
 }
 
-const STYLES: Record<"cropped" | "swept" | "mohawk" | "long", Style> = {
+const STYLES: Record<Exclude<HairStyle, "none">, Style> = {
   // A close crop: a short, even cap, about a millimetre (any thinner and there is no carving it, or printing it)
   cropped: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1], lean: 0 },
   // Swept back: volume lifted at the front and over the crown, carried back along the comb
@@ -69,6 +69,9 @@ const STYLES: Record<"cropped" | "swept" | "mohawk" | "long", Style> = {
   },
   // Long hair: a cap over the scalp (the hanging lengths are a draped curtain, see buildHangingHair)
   long: { thickness: (_x, y) => 0.025 + 0.02 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1], lean: 0.3 },
+  // Dreadlocks and braids are tubes (see locks.ts) rooted in a close crop, so the scalp is covered between them
+  dreadlocks: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, -1, 0], lean: 0 },
+  braids: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1], lean: 0 },
 };
 
 // The smallest lift off the skin, so the shell never fights the skin for the same depth at the hairline
