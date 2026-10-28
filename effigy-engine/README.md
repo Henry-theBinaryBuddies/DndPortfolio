@@ -35,7 +35,8 @@ Print target: an FDM printer with a 0.4 mm nozzle, busts 75-90 mm tall on a base
 - `src/builder.ts` - assembles the head, eyes, tusks, horns, hair and beard into a Three.js group
 - `src/hairShell.ts`, `src/beard.ts` - hair and beard shells, and where a beard grows
 - `src/brows.ts` - sculpted eyebrows: the brow outline, raised and carved with grooves along the hair
-- `src/beardCarve.ts` - subdivides the beard shell and carves locks, fine grooves and a moustache fan into it, sized for the printer
+- `src/carve.ts` - subdivides a hair or beard shell and cuts a groove pattern into its outer surface
+- `src/beardCarve.ts`, `src/hairCarve.ts` - the patterns: broad locks with a finer groove down each, running the way the hair is combed (a moustache fan for beards; radiating from the crown for a crop; down the curtain and locks of long hair), sized for the printer
 - `src/print.ts` - the print scale (mm per head unit) and the smallest groove and feature that print
 - `src/ui.ts` - the control panel
 - `src/main.ts` - scene, camera, lights, drag to rotate, scroll to zoom, double-click to face front

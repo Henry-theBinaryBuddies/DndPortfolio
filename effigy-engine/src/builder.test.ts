@@ -7,7 +7,8 @@ import { BROW_CARVING, buildBrows } from "./brows";
 import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
-import { buildBeard, buildBeardShell, buildHairShell, buildHangingHair } from "./hairShell";
+import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
+import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
 import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
@@ -797,4 +798,105 @@ describe("carved beards", () => {
       expect(sunk, JSON.stringify(overrides)).toBe(0);
     }
   }, 120000);
+});
+
+describe("carved hair", () => {
+  const styles = ["cropped", "swept", "mohawk", "long"] as const;
+
+  it("is carved no finer than the printer can make, with ridges left between the grooves wide enough to print", () => {
+    expect(HAIR_CARVING.lockGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
+    expect(HAIR_CARVING.fineGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
+    expect(HAIR_CARVING.lockDepth).toBeGreaterThanOrEqual(0.3 * MM);
+    expect(HAIR_CARVING.lockPitch / 2 - (HAIR_CARVING.lockGroove + HAIR_CARVING.fineGroove) / 2).toBeGreaterThanOrEqual(MIN_FEATURE);
+  });
+
+  it("is subdivided into sixteen times the shell's triangles, and stays a closed solid, for every style", () => {
+    for (const hairStyle of styles) {
+      const p = params({ hairStyle });
+      const bust = sculptBust(p, base);
+      const shell = buildHairShell(p, bust.positions, bust.normals, base)!;
+      const carved = buildHair(p, bust.positions, bust.normals, base)!;
+      expect(carved.index!.count, hairStyle).toBe(shell.index!.count * 16);
+      const index = carved.index!;
+      const uses = new Map<number, number>();
+      for (let t = 0; t < index.count; t += 3) {
+        for (let e = 0; e < 3; e++) {
+          const a = index.getX(t + e);
+          const b = index.getX(t + ((e + 1) % 3));
+          const k = a < b ? a * 4194304 + b : b * 4194304 + a;
+          uses.set(k, (uses.get(k) ?? 0) + 1);
+        }
+      }
+      let open = 0;
+      for (const n of uses.values()) if (n !== 2) open++;
+      expect(open, hairStyle).toBe(0);
+    }
+  }, 300000);
+
+  it("only cuts inward: the carved hair never reaches beyond its shell", () => {
+    for (const hairStyle of styles) {
+      const p = params({ hairStyle });
+      const bust = sculptBust(p, base);
+      const shell = new THREE.Box3().setFromBufferAttribute(buildHairShell(p, bust.positions, bust.normals, base)!.attributes.position as THREE.BufferAttribute);
+      const carved = new THREE.Box3().setFromBufferAttribute(buildHair(p, bust.positions, bust.normals, base)!.attributes.position as THREE.BufferAttribute);
+      expect(carved.min.y, hairStyle).toBeGreaterThanOrEqual(shell.min.y - 1e-4);
+      expect(carved.max.y, hairStyle).toBeLessThanOrEqual(shell.max.y + 1e-4);
+      expect(carved.min.x, hairStyle).toBeGreaterThanOrEqual(shell.min.x - 1e-4);
+      expect(carved.max.x, hairStyle).toBeLessThanOrEqual(shell.max.x + 1e-4);
+    }
+  }, 300000);
+
+  it("runs each style's locks the way it is combed, and never deeper than the carving allows", () => {
+    const variation = (pattern: (x: number, y: number, z: number) => number, from: number[], direction: number[]) => {
+      let sum = 0;
+      for (let t = 0; t < 0.04; t += 0.0004) {
+        const at = (u: number) => pattern(from[0] + direction[0] * u, from[1] + direction[1] * u, from[2] + direction[2] * u);
+        sum += Math.abs(at(t + 0.0004) - at(t));
+      }
+      return sum;
+    };
+    // A mohawk's locks run along the crest (front to back), side by side across it
+    const mohawk = hairPattern("mohawk");
+    expect(variation(mohawk, [0, 0.55, 0], [1, 0, 0])).toBeGreaterThan(3 * variation(mohawk, [0, 0.55, 0], [0, 0, 1]));
+    // Combed back, a swept style's locks run front to back over the top of the head
+    const swept = hairPattern("swept");
+    expect(variation(swept, [0.02, 0.5, -0.1], [1, 0, 0])).toBeGreaterThan(2 * variation(swept, [0.02, 0.5, -0.1], [0, 0, 1]));
+    // ...a short crop grows out from the whorl at its crown, which is left plain
+    expect(hairPattern("cropped")(0, 0.5, -0.15)).toBe(0);
+    expect(hairPattern("cropped")(0.01, 0.5, -0.14)).toBe(0);
+    // ...and nothing is cut deeper than the deepest groove
+    for (const style of ["swept", "cropped", "mohawk", "long"] as const) {
+      let most = 0;
+      for (let x = -0.2; x <= 0.2; x += 0.004) for (let z = -0.5; z <= 0.3; z += 0.02) most = Math.max(most, hairPattern(style)(x, 0.5, z));
+      // (grooves vary by up to 30% from lock to lock; the shell's own thickness caps them as well)
+      expect(most, style).toBeLessThanOrEqual(HAIR_CARVING.lockDepth * 1.31);
+      expect(most, style).toBeGreaterThan(0.2 * MM);
+    }
+    // Hanging hair's locks run down its length
+    expect(variation(hangingPattern, [0, -0.5, 0], [1, 0, 0])).toBeGreaterThan(2 * variation(hangingPattern, [0, -0.5, 0], [0, 1, 0]));
+  });
+
+  it("carves long hair's curtain and locks: sixteen times the triangles, only inward", () => {
+    const p = params({ hairStyle: "long" });
+    const bust = sculptBust(p, base);
+    const plain = buildHangingHair(p, bust.positions, base)!;
+    const carved = buildHanging(p, bust.positions, base)!;
+    expect(carved.index!.count).toBe(plain.index!.count * 16);
+    const a = new THREE.Box3().setFromBufferAttribute(plain.attributes.position as THREE.BufferAttribute);
+    const b = new THREE.Box3().setFromBufferAttribute(carved.attributes.position as THREE.BufferAttribute);
+    expect(b.min.x).toBeGreaterThanOrEqual(a.min.x - 1e-4);
+    expect(b.max.x).toBeLessThanOrEqual(a.max.x + 1e-4);
+    expect(b.min.y).toBeGreaterThanOrEqual(a.min.y - 1e-4);
+  }, 120000);
+
+  it("rebuilds in a few seconds at most once the pattern is cached", () => {
+    for (const hairStyle of styles) {
+      const p = params({ hairStyle });
+      const bust = sculptBust(p, base);
+      buildHair(p, bust.positions, bust.normals, base);
+      const start = performance.now();
+      buildHair(p, bust.positions, bust.normals, base);
+      expect(performance.now() - start, hairStyle).toBeLessThan(4000);
+    }
+  }, 300000);
 });

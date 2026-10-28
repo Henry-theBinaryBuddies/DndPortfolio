@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import { scalp, STRIP_HALF_WIDTH } from "./hair";
 import { beardWeight } from "./beard";
-import { carveBeard } from "./beardCarve";
+import { carvingDepth } from "./beardCarve";
+import { carveShell } from "./carve";
+import { hairPattern, hangingPattern } from "./hairCarve";
 import type { HeadBase } from "./headMesh";
 import type { Params } from "./params";
 
@@ -42,8 +44,8 @@ interface Style {
 }
 
 const STYLES: Record<"cropped" | "swept" | "mohawk" | "long", Style> = {
-  // A close crop: a short, even cap of a few millimetres
-  cropped: { thickness: (_x, y) => 0.012 + 0.008 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1], lean: 0 },
+  // A close crop: a short, even cap, about a millimetre (any thinner and there is no carving it, or printing it)
+  cropped: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1], lean: 0 },
   // Swept back: volume lifted at the front and over the crown, carried back along the comb
   swept: {
     thickness: (_x, y, z) =>
@@ -95,6 +97,13 @@ export function buildHairShell(
     grow[i] = w;
   }
   return raiseShell(positions, normals, base, grow, style);
+}
+
+// The hair as it prints: its shell, subdivided and carved into locks (see hairCarve.ts)
+export function buildHair(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+  if (p.hairStyle === "none") return null;
+  const shell = buildHairShell(p, positions, normals, base);
+  return shell ? carveShell(shell, base, `hair-${p.hairStyle}`, hairPattern(p.hairStyle)) : null;
 }
 
 // Raises a solid shell from the head wherever the growth map says hair grows (0..1 per vertex), with the
@@ -392,7 +401,7 @@ export function buildBeardShell(p: Params, positions: Float32Array, normals: Flo
 // The beard as it prints: its shape, subdivided and carved into locks (see beardCarve.ts)
 export function buildBeard(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   const shell = buildBeardShell(p, positions, normals, base);
-  return shell ? carveBeard(shell, base, p.beardStyle) : null;
+  return shell ? carveShell(shell, base, p.beardStyle, carvingDepth) : null;
 }
 
 // Long hair's hanging lengths: a curtain draped from the scalp down the back, sculpted as one solid mass like
@@ -541,6 +550,9 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
 
   const outer: number[] = [];
   const inner: number[] = [];
+  // For carving: where each curtain vertex lies as an arc round the neck and a height, and how thick it is
+  const curtainAt: number[] = [];
+  const curtainThick: number[] = [];
   for (let u = 0; u <= ACROSS; u++) {
     // Rounded at the side edges: the outer and inner surfaces close together over the last few columns
     // (rounded over a wide span, so the sides end full and round instead of in a thin line)
@@ -559,6 +571,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       const ri = middle - (thick / 2) * edge;
       outer.push(ax + Math.sin(a) * ro, y, az - Math.cos(a) * ro);
       inner.push(ax + Math.sin(a) * ri, y, az - Math.cos(a) * ri);
+      curtainAt.push(0.5 * a, y, 0);
+      curtainThick.push(thick * edge);
     }
   }
 
@@ -587,6 +601,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   // forward past the jaw and neck onto the front of the shoulder and chest, lying close to the body all the
   // way. It is a flattened band, thick near the head and tapering to a point.
   const lockVertices: number[] = [];
+  const lockAt: number[] = [];
+  const lockThick: number[] = [];
   const LOCK_ROWS = 36;
   const LOCK_SIDES = 12;
   const lockGrow = (t: number) => smooth(t / 0.15) * (1 - 0.85 * smooth((t - 0.6) / 0.4));
@@ -636,6 +652,9 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
         const across = Math.cos(angle) * halfWidth;
         const out = Math.sin(angle) * halfThick;
         lockVertices.push(cx + Math.cos(a) * across + Math.sin(a) * out, y, cz + Math.sin(a) * across - Math.cos(a) * out);
+        // (the arc round the tress's own section, offset per side so the two are not mirror images)
+        lockAt.push((angle / (2 * Math.PI)) * 2 * Math.PI * 0.05 + side * 0.31, y, 0);
+        lockThick.push(2 * halfThick);
       }
     }
     for (let k = 0; k < LOCK_ROWS; k++) {
@@ -657,7 +676,20 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(all, 3));
   geometry.setAttribute("hairAmount", new THREE.BufferAttribute(new Float32Array(all.length / 3).fill(1), 1));
+  // ...for carving: the outer surface of the curtain and all of the locks, with where each lies and how thick
+  geometry.setAttribute("headPos", new THREE.Float32BufferAttribute([...curtainAt, ...curtainAt, ...lockAt], 3));
+  geometry.setAttribute("thick", new THREE.Float32BufferAttribute([...curtainThick, ...curtainThick, ...lockThick], 1));
+  const carve = new Float32Array(all.length / 3);
+  carve.fill(1, 0, half);
+  carve.fill(1, half * 2);
+  geometry.setAttribute("carve", new THREE.BufferAttribute(carve, 1));
   geometry.setIndex(index);
   geometry.computeVertexNormals();
   return geometry;
+}
+
+// Long hair's hanging lengths as they print: subdivided and carved with locks running down them
+export function buildHanging(p: Params, positions: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+  const hanging = buildHangingHair(p, positions, base);
+  return hanging ? carveShell(hanging, base, "hanging", hangingPattern) : null;
 }
