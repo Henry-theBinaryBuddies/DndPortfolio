@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { shapeGeometry, type Assets } from "./assets";
+import { buildBrows } from "./brows";
 import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildHairShell, buildHangingHair } from "./hairShell";
@@ -203,6 +204,9 @@ export function buildBust(p: Params, assets: Assets): THREE.Group {
   for (const form of [buildHairShell(p, bust.positions, bust.normals, base), buildHangingHair(p, bust.positions, base), buildBeard(p, bust.positions, bust.normals, base)]) {
     if (form) head.add(new THREE.Mesh(form, clay));
   }
+  // Eyebrows, sculpted with carved hair (see brows.ts)
+  const brows = buildBrows(p, bust.positions, bust.normals, base);
+  if (brows) head.add(new THREE.Mesh(brows, clay));
 
   return root;
 }

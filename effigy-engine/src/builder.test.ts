@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust, fitSphere, socketFit } from "./builder";
+import { BROW_CARVING, buildBrows } from "./brows";
+import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
 import { buildBeard, buildHairShell, buildHangingHair } from "./hairShell";
@@ -532,6 +534,97 @@ describe("buildBust", () => {
       const p = params({ hairStyle });
       const bust = sculptBust(p, base);
       expect(folds(buildHairShell(p, bust.positions, bust.normals, base)!), hairStyle).toBe(0);
+    }
+  }, 120000);
+});
+
+describe("sculpted eyebrows", () => {
+  const browsOf = (overrides: Partial<Params>) => {
+    const p = params(overrides);
+    const bust = sculptBust(p, base);
+    return { brows: buildBrows(p, bust.positions, bust.normals, base), bust };
+  };
+
+  it("are closed solids: every edge is used once each way, so they print and never show an open side", () => {
+    const { brows } = browsOf({});
+    const index = brows!.index!;
+    const directed = new Map<string, number>();
+    for (let t = 0; t < index.count; t += 3) {
+      const v = [index.getX(t), index.getX(t + 1), index.getX(t + 2)];
+      for (let e = 0; e < 3; e++) {
+        const k = `${v[e]},${v[(e + 1) % 3]}`;
+        directed.set(k, (directed.get(k) ?? 0) + 1);
+      }
+    }
+    let bad = 0;
+    for (const [k, n] of directed) {
+      const [a, b] = k.split(",");
+      if (n !== 1 || directed.get(`${b},${a}`) !== 1) bad++;
+    }
+    expect(bad).toBe(0);
+  });
+
+  it("never fold their carved top over: each top triangle faces the same way as the base beneath it", () => {
+    for (const overrides of [{}, { eyebrows: 1 }, { body: "feminine" as const }, { race: "half-orc" as const, brow: 0.8 }, { race: "elf" as const, brow: 0.2 }]) {
+      const { brows } = browsOf(overrides);
+      const index = brows!.index!;
+      const pos = brows!.attributes.position;
+      // Each brow is a top block of vertices followed by its base, the same grid just under the skin
+      const per = pos.count / 4;
+      const a = new THREE.Vector3();
+      const b = new THREE.Vector3();
+      const c = new THREE.Vector3();
+      const normal = (i0: number, i1: number, i2: number) =>
+        new THREE.Vector3().crossVectors(b.fromBufferAttribute(pos, i1).sub(a.fromBufferAttribute(pos, i0)), c.fromBufferAttribute(pos, i2).sub(a));
+      let folded = 0;
+      for (let t = 0; t < index.count; t += 3) {
+        const v = [index.getX(t), index.getX(t + 1), index.getX(t + 2)];
+        const block = Math.floor(v[0] / per);
+        if (block % 2 === 1 || v.some((i) => Math.floor(i / per) !== block)) continue; // tops only
+        if (normal(v[0], v[1], v[2]).dot(normal(v[0] + per, v[1] + per, v[2] + per)) < 0) folded++;
+      }
+      expect(folded, JSON.stringify(overrides)).toBe(0);
+    }
+  }, 120000);
+
+  it("sit over the eyes on the front of the face, rise with the Eyebrows slider, and vanish at zero", () => {
+    const rise = (eyebrows: number) => {
+      const { brows } = browsOf({ eyebrows });
+      const pos = brows!.attributes.position;
+      const per = pos.count / 4;
+      let most = 0;
+      for (const block of [0, 2]) {
+        for (let k = 0; k < per; k++) {
+          const top = block * per + k;
+          const under = top + per;
+          most = Math.max(most, Math.hypot(pos.getX(top) - pos.getX(under), pos.getY(top) - pos.getY(under), pos.getZ(top) - pos.getZ(under)));
+        }
+      }
+      return most;
+    };
+    const { brows, bust } = browsOf({});
+    const box = new THREE.Box3().setFromBufferAttribute(brows!.attributes.position as THREE.BufferAttribute);
+    expect(box.min.y).toBeGreaterThan(Math.max(bust.eyes.left[1], bust.eyes.right[1]));
+    expect(box.max.y).toBeLessThan(0.25);
+    expect(box.min.z).toBeGreaterThan(-0.2); // (the tail reaches round to the temple, no further)
+    expect(rise(1)).toBeGreaterThan(rise(0.2) * 1.5);
+    expect(browsOf({ eyebrows: 0 }).brows).toBeNull();
+  });
+
+  it("are carved no finer than the printer can make", () => {
+    expect(BROW_CARVING.grooveWidth).toBeGreaterThanOrEqual(MIN_GROOVE);
+    expect(BROW_CARVING.minWidth).toBeGreaterThanOrEqual(MIN_FEATURE);
+    expect(BROW_CARVING.depth).toBeGreaterThan(0.2 * MM); // deep enough to show at all
+  });
+
+  it("fit every race and build without leaving the face", () => {
+    for (const race of RACES) {
+      for (const body of ["masculine", "feminine"] as const) {
+        const p = applyRace({ ...defaultParams(), body }, race);
+        p.eyebrows = 1;
+        const bust = sculptBust(p, base);
+        expect(() => buildBrows(p, bust.positions, bust.normals, base), `${race} ${body}`).not.toThrow();
+      }
     }
   }, 120000);
 });

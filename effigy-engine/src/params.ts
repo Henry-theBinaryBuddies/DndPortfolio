@@ -18,6 +18,7 @@ export type NumericKey =
   | "lips"
   | "jaw"
   | "lids"
+  | "eyebrows"
   | "horns"
   | "tusks";
 
@@ -81,6 +82,7 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("lips", "Lips", "Face", 0.5, 0.25, 0.75),
   def("jaw", "Jaw", "Face", 0.5, 0.2, 0.8),
   def("lids", "Heavy lids", "Face", 0.4, 0.1, 0.75),
+  def("eyebrows", "Eyebrows", "Face", 0.5), // (0: none)
   def("horns", "Horn size", "Fantasy", 0.5),
   def("tusks", "Tusk size", "Fantasy", 0.5),
 ];
@@ -118,7 +120,7 @@ export interface RaceInfo {
   hornStyle: HornStyle;
   hairStyle: HairStyle;
   beardStyle?: BeardStyle; // (none if not given)
-  // Slider values this race starts with (heavy lids and big tusks for a half-orc, a dwarf's muscle)
+  // Slider values this race starts with (a heavy brow for a half-orc, heavy eyebrows for a dwarf)
   defaults: Values;
 }
 
@@ -151,7 +153,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     skeleton: { ...HUMAN, angularity: 0.45, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.86, noseBridge: 0.35, mouthWidth: 0.95, jaw: 0.86, chin: 0.3, browBase: -0.2, cheekBase: 0.25, lipBase: -0.1, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
     hornStyle: "none",
     hairStyle: "swept",
-    defaults: {},
+    defaults: { eyebrows: 0.4 },
   },
   "half-elf": {
     label: "Half-elf",
@@ -167,7 +169,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     hornStyle: "none",
     hairStyle: "cropped",
     beardStyle: "full",
-    defaults: { muscle: 0.7, weight: 0.6 },
+    defaults: { eyebrows: 0.85, muscle: 0.7, weight: 0.6 },
   },
   // Round, soft face: full cheeks, a small button nose, a gentle brow
   halfling: {
@@ -191,7 +193,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     skeleton: { ...HUMAN, angularity: 0.95, headWidth: 1.08, headHeight: 1, earSize: 0.4, noseLength: 0.3, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.12, jaw: 1.12, chin: 0.6, prognathism: 0.35, slope: 0.6, browBase: 0.4, cheekBase: 0.15, lipBase: -0.15, socketDepth: 0.55, shoulders: 1.3 },
     hornStyle: "none",
     hairStyle: "mohawk",
-    defaults: { tusks: 0.6, muscle: 0.75, lids: 0.65 },
+    defaults: { tusks: 0.6, muscle: 0.75, lids: 0.65, eyebrows: 0.8 },
   },
   // Angular: sharp cheekbones, a defined jaw, an arched brow and slightly pointed ears
   tiefling: {

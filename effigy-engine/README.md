@@ -33,7 +33,9 @@ Print target: an FDM printer with a 0.4 mm nozzle, busts 75-90 mm tall on a base
 - `src/deform.ts` - every slider as a regional displacement of the base head
 - `src/face.ts` - the deformed bust mesh, and surface lookups by ray casting
 - `src/builder.ts` - assembles the head, eyes, tusks, horns, hair and beard into a Three.js group
-- `src/hairShell.ts`, `src/beard.ts`, `src/brows.ts` - hair and beard shells, where a beard grows, and the shape of an eyebrow
+- `src/hairShell.ts`, `src/beard.ts` - hair and beard shells, and where a beard grows
+- `src/brows.ts` - sculpted eyebrows: the brow outline, raised and carved with grooves along the hair
+- `src/print.ts` - the print scale (mm per head unit) and the smallest groove and feature that print
 - `src/ui.ts` - the control panel
 - `src/main.ts` - scene, camera, lights, drag to rotate, scroll to zoom, double-click to face front
 
