@@ -82,11 +82,11 @@ function swap(params: Params, detail: boolean) {
   figure = buildBust(params, assets, detail);
   pivot.add(figure);
   if (base) {
-    scene.remove(base);
+    pivot.remove(base);
     base.geometry.dispose();
   }
   base = new THREE.Mesh(pedestalGeometry(figure.userData.footprint, -PRINT.baseHeight * MM, (PRINT.flatCut + PRINT.baseOverlap) * MM), baseMaterial);
-  scene.add(base);
+  pivot.add(base); // (it turns with the bust, so the flare under the bust stays under it)
   // Refit the face framing to this bust (keeping the camera where it was if it is framing the face): from
   // the lowest point of its chin or beard to the highest point of its head
   const framingFace = Math.abs(distance - faceDistance()) < 0.01;

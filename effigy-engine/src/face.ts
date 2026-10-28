@@ -24,16 +24,21 @@ export function sculptBust(p: Params, base: HeadBase): Bust {
   const normals = (geometry.attributes.normal as THREE.BufferAttribute).array as Float32Array;
   const positions = deformed.positions;
 
-  // The bust's underside: where it stands on the plinth, and the middle of that footprint
-  let footX = 0;
-  let footZ = 0;
+  // The bust's underside: where it stands on the plinth, and the middle of that footprint (the middle of its
+  // extent, not the average of its vertices, which leans toward wherever the mesh is dense)
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let z0 = Infinity;
+  let z1 = -Infinity;
   let baseY = Infinity;
   for (const i of base.bottom) {
-    footX += positions[i * 3];
-    footZ += positions[i * 3 + 2];
+    x0 = Math.min(x0, positions[i * 3]);
+    x1 = Math.max(x1, positions[i * 3]);
+    z0 = Math.min(z0, positions[i * 3 + 2]);
+    z1 = Math.max(z1, positions[i * 3 + 2]);
     baseY = Math.min(baseY, positions[i * 3 + 1]);
   }
-  const footprint = { x: footX / base.bottom.length, z: footZ / base.bottom.length };
+  const footprint = { x: (x0 + x1) / 2, z: (z0 + z1) / 2 };
   return { geometry, eyes: deformed.eyes, positions, normals, footprint, baseY };
 }
 
