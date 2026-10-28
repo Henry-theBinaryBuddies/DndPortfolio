@@ -3,6 +3,9 @@
 // an arch that peaks about two thirds of the way out, and a tail that thins and dips toward the temple. A
 // masculine brow sits lower and flatter and is heavier; a feminine one is finer with a higher arch. (A plain
 // band the same height all the way along read as a bar.)
+//
+// (The strand brows and brow paint that used it were taken out with the colour; it is kept for the sculpted
+// brows that replace them.)
 
 const smooth = (t: number) => {
   const c = Math.min(1, Math.max(0, t));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NUMERIC_DEFS, PRESETS, RACES, applyPreset, applyRace, clampParams, defaultParams, derive, randomParams, switchRace } from "./params";
+import { NUMERIC_DEFS, RACES, applyRace, clampParams, defaultParams, derive, randomParams, switchRace } from "./params";
 
 // Small deterministic generator so the random tests give the same answer every run.
 function seeded(seed: number) {
@@ -89,7 +89,7 @@ describe("races", () => {
   });
 
   it("keeps every edit when switching race, and changes only the race's anatomy", () => {
-    const edited = { ...defaultParams(), weight: 0.85, muscle: 0.9, lips: 0.25, lids: 0.1, eyebrows: 0, hairStyle: "none" as const, skin: "#123456" };
+    const edited = { ...defaultParams(), weight: 0.85, muscle: 0.9, lips: 0.25, lids: 0.1, hairStyle: "none" as const };
     const orc = switchRace(edited, "half-orc");
     expect({ ...orc, race: "human" }).toEqual(edited);
     expect(orc.race).toBe("half-orc");
@@ -106,26 +106,8 @@ describe("races", () => {
     expect(applyRace(defaultParams(), "human").hornStyle).toBe("none");
   });
 
-  it("keeps build, cloth, eyes and eye style across a race change", () => {
-    const current = { ...defaultParams(), body: "feminine" as const, cloth: "#123456", eyes: "#abcdef", eyeStyle: "glow" as const };
-    const next = applyRace(current, "tiefling");
+  it("keeps the build across a race change", () => {
+    const next = applyRace({ ...defaultParams(), body: "feminine" as const }, "tiefling");
     expect(next.body).toBe("feminine");
-    expect(next.cloth).toBe("#123456");
-    expect(next.eyes).toBe("#abcdef");
-    expect(next.eyeStyle).toBe("glow");
-  });
-});
-
-describe("presets", () => {
-  it("every preset produces in-range sliders", () => {
-    for (const preset of PRESETS) inRange(applyPreset(defaultParams(), preset));
-  });
-
-  it("applies the preset's race, eye style and colours", () => {
-    const ghoul = PRESETS.find((p) => p.name === "Ghoul")!;
-    const result = applyPreset(defaultParams(), ghoul);
-    expect(result.skin).toBe(ghoul.skin);
-    expect(result.eyeStyle).toBe("glow");
-    expect(applyPreset(defaultParams(), PRESETS.find((p) => p.name === "Warlord")!).race).toBe("half-orc");
   });
 });

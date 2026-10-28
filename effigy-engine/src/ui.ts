@@ -1,53 +1,38 @@
 import {
   BODIES,
-  CLOTH_COLORS,
-  EYE_COLORS,
-  EYE_STYLES,
-  HAIR_COLORS,
   BEARD_STYLES,
   HAIR_STYLES,
   HORN_STYLES,
   NUMERIC_DEFS,
-  PRESETS,
   RACES,
   RACE_INFO,
-  SKIN_TONES,
-  applyPreset,
   applyRace,
   switchRace,
   defaultParams,
   randomParams,
   type Body,
-  type EyeStyle,
   type BeardStyle,
   type HairStyle,
   type HornStyle,
   type NumericKey,
   type Params,
   type Race,
-  type Swatch,
 } from "./params";
-
-type ColorKey = "skin" | "cloth" | "eyes" | "hairColor";
 
 // Builds the control panel and calls onChange with a fresh Params copy on every edit.
 export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void): void {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
-  const swatchRows = new Map<ColorKey, { swatch: Swatch; button: HTMLButtonElement }[]>();
   const raceSelect = document.createElement("select");
-  const presetSelect = document.createElement("select");
   const hornSelect = document.createElement("select");
   const hairSelect = document.createElement("select");
   const beardSelect = document.createElement("select");
-  const eyeButtons = new Map<EyeStyle, HTMLButtonElement>();
   const bodyButtons = new Map<Body, HTMLButtonElement>();
 
   const emit = () => onChange({ ...params });
 
   const syncUI = () => {
     raceSelect.value = params.race;
-    for (const [style, button] of eyeButtons) button.setAttribute("aria-pressed", String(style === params.eyeStyle));
     for (const [body, button] of bodyButtons) button.setAttribute("aria-pressed", String(body === params.body));
     hornSelect.value = params.hornStyle;
     hairSelect.value = params.hairStyle;
@@ -58,11 +43,6 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
       // Tusks belong to half-orcs; the other races have no tusk control
       if (key === "tusks") row.style.display = params.race === "half-orc" ? "" : "none";
     }
-    for (const [key, entries] of swatchRows) {
-      for (const { swatch, button } of entries) {
-        button.setAttribute("aria-pressed", String(swatch.value === params[key]));
-      }
-    }
   };
 
   const update = (next: Params) => {
@@ -71,7 +51,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     emit();
   };
 
-  // Character section: build, race, archetype preset and eye style
+  // Character section: build, race, and the hair, beard and horn styles
   const character = document.createElement("section");
   character.innerHTML = "<h2>Character</h2>";
 
@@ -105,58 +85,18 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     raceSelect.append(option);
   }
   raceSelect.addEventListener("change", () => update(switchRace(params, raceSelect.value as Race)));
-  // Switching race keeps every edit; this applies the race's suggested sliders, skin, hair and horns
+  // Switching race keeps every edit; this applies the race's suggested sliders, hair, beard and horns
   const raceDefaults = document.createElement("button");
   raceDefaults.type = "button";
   raceDefaults.className = "inline";
   raceDefaults.textContent = "Race defaults";
-  raceDefaults.title = "Reset the sliders, skin, hair and horns to this race's defaults";
+  raceDefaults.title = "Reset the sliders, hair, beard and horns to this race's defaults";
   raceDefaults.addEventListener("click", () => update(applyRace(params, params.race)));
   raceRow.append(raceSelect);
   // On its own row, so the race picker keeps its full width
   const raceDefaultsRow = document.createElement("div");
   raceDefaultsRow.className = "row select";
   raceDefaultsRow.append(document.createElement("span"), raceDefaults);
-
-  const presetRow = document.createElement("label");
-  presetRow.className = "row select";
-  presetRow.innerHTML = "<span>Archetype</span>";
-  const blank = document.createElement("option");
-  blank.value = "";
-  blank.textContent = "Choose a preset";
-  presetSelect.append(blank);
-  for (const preset of PRESETS) {
-    const option = document.createElement("option");
-    option.value = preset.name;
-    option.textContent = preset.name;
-    presetSelect.append(option);
-  }
-  presetSelect.addEventListener("change", () => {
-    const preset = PRESETS.find((entry) => entry.name === presetSelect.value);
-    presetSelect.value = "";
-    if (preset) update(applyPreset(params, preset));
-  });
-  presetRow.append(presetSelect);
-
-  // Eye style: one solid colour (glowing) or a realistic eye with sclera, iris, pupil and cornea
-  const eyeRow = document.createElement("div");
-  eyeRow.className = "row select";
-  eyeRow.innerHTML = "<span>Eyes</span>";
-  const eyeGroup = document.createElement("div");
-  eyeGroup.className = "segmented";
-  for (const style of EYE_STYLES) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = style === "glow" ? "Solid colour" : "Realistic";
-    button.addEventListener("click", () => {
-      params.eyeStyle = style;
-      syncUI();
-      emit();
-    });
-    eyeGroup.append(button);
-    eyeButtons.set(style, button);
-  }
-  eyeRow.append(eyeGroup);
 
   // Hair and horn styles
   const styleRow = (label: string, select: HTMLSelectElement, names: readonly string[], apply: (value: string) => void) => {
@@ -180,7 +120,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const beardRow = styleRow("Beard", beardSelect, BEARD_STYLES, (value) => (params.beardStyle = value as BeardStyle));
   const hornRow = styleRow("Horns", hornSelect, HORN_STYLES, (value) => (params.hornStyle = value as HornStyle));
 
-  character.append(bodyRow, raceRow, raceDefaultsRow, presetRow, eyeRow, hairRow, beardRow, hornRow);
+  character.append(bodyRow, raceRow, raceDefaultsRow, hairRow, beardRow, hornRow);
   panel.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];
@@ -209,40 +149,6 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     }
     panel.append(section);
   }
-
-  const colorSection = document.createElement("section");
-  colorSection.innerHTML = "<h2>Colors</h2>";
-  const addSwatches = (label: string, key: ColorKey, list: Swatch[]) => {
-    const row = document.createElement("div");
-    row.className = "row swatches";
-    const name = document.createElement("span");
-    name.textContent = label;
-    const holder = document.createElement("div");
-    const entries: { swatch: Swatch; button: HTMLButtonElement }[] = [];
-    for (const swatch of list) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "swatch";
-      button.title = swatch.name;
-      button.setAttribute("aria-label", `${label}: ${swatch.name}`);
-      button.style.background = swatch.value;
-      button.addEventListener("click", () => {
-        params[key] = swatch.value;
-        syncUI();
-        emit();
-      });
-      holder.append(button);
-      entries.push({ swatch, button });
-    }
-    swatchRows.set(key, entries);
-    row.append(name, holder);
-    colorSection.append(row);
-  };
-  addSwatches("Skin", "skin", SKIN_TONES);
-  addSwatches("Hair", "hairColor", HAIR_COLORS);
-  addSwatches("Cloth", "cloth", CLOTH_COLORS);
-  addSwatches("Eyes", "eyes", EYE_COLORS);
-  panel.append(colorSection);
 
   const actions = document.createElement("div");
   actions.className = "actions";

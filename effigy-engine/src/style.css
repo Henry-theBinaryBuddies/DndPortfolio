@@ -116,16 +116,6 @@ input[type="range"] {
   accent-color: var(--ember);
 }
 
-.swatches {
-  grid-template-columns: 96px minmax(0, 1fr);
-}
-
-.swatches div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .select {
   grid-template-columns: 96px minmax(0, 1fr);
 }
@@ -184,20 +174,6 @@ select {
   color: var(--ink);
   background: var(--bg);
   border: 1px solid var(--edge);
-}
-
-.swatch {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--edge);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.swatch[aria-pressed="true"] {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
 }
 
 .actions {

@@ -71,15 +71,13 @@ let assets: Assets | null = null;
 
 // Rebuilds the bust from the current settings. The sculpt is a deformed copy of a real head mesh, so
 // this is fast enough to run on every slider movement.
-let settle: number | undefined;
-
-function swap(params: Params, full: boolean) {
+function show(params: Params) {
   if (!assets) return;
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildBust(params, assets, full);
+  figure = buildBust(params, assets);
   pivot.add(figure);
   // Refit the face framing to this bust's height (keeping the camera where it was if it is framing the face)
   const framingFace = Math.abs(distance - faceDistance()) < 0.01;
@@ -87,14 +85,6 @@ function swap(params: Params, full: boolean) {
   faceButton.dataset.distance = String(faceDistance());
   if (framingFace) distance = faceDistance();
   placeCamera();
-}
-
-// Every edit shows a quick draft (shape and shading only), and the full paint replaces it once the
-// controls have been still for a moment.
-function show(params: Params) {
-  swap(params, false);
-  window.clearTimeout(settle);
-  settle = window.setTimeout(() => swap(params, true), 160);
 }
 
 function resize() {
@@ -143,33 +133,15 @@ function frame() {
   syncToolbar();
 }
 
-// Clay shows the bare form in one plain grey material: no paint, no skin detail, no garment
-const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75 });
-let clayOn = false;
-
 function draw() {
   pivot.rotation.y = yaw;
-  scene.overrideMaterial = clayOn ? clay : null;
-  // Clay shows the bare form: the clear corneas (which would turn solid grey and hide the eyes), hair,
-  // brows and lashes are left out
-  const hidden: THREE.Object3D[] = [];
-  if (clayOn) {
-    pivot.traverse((o) => {
-      if (o instanceof THREE.Mesh && o.visible && (((o.material as THREE.Material).transparent && !o.userData.form) || o.userData.strands)) {
-        o.visible = false;
-        hidden.push(o);
-      }
-    });
-  }
   renderer.render(scene, camera);
-  for (const o of hidden) o.visible = true;
 }
 
-// The viewport toolbar: fixed views for comparing shapes at matching angles, bust or face framing, the
-// turntable and the clay view
+// The viewport toolbar: fixed views for comparing shapes at matching angles, bust or face framing, and the
+// turntable
 const toolbar = document.getElementById("toolbar") as HTMLElement;
 const rotateButton = document.getElementById("rotate") as HTMLButtonElement;
-const clayButton = document.getElementById("clay") as HTMLButtonElement;
 const setTurntable = (on: boolean) => {
   turntable = on;
   rotateButton.setAttribute("aria-pressed", String(on));
@@ -200,19 +172,14 @@ function syncToolbar() {
   for (const button of viewButtons) button.setAttribute("aria-pressed", String(still && Math.abs(Number(button.dataset.yaw) - yaw) < 0.002));
   for (const button of framingButtons) button.setAttribute("aria-pressed", String(Math.abs(Number(button.dataset.distance) - distance) < 0.01));
 }
-clayButton.addEventListener("click", () => {
-  clayOn = !clayOn;
-  clayButton.setAttribute("aria-pressed", String(clayOn));
-});
 
 // In development, a page script can render a frame on demand and read it back (for checking the look
 // from a script even when the page is in a background tab and animation frames are paused)
 if (import.meta.env.DEV) {
   (window as unknown as { effigy: unknown }).effigy = {
     scene,
-    render(view?: { yaw?: number; clay?: boolean; distance?: number }) {
+    render(view?: { yaw?: number; distance?: number }) {
       if (view?.yaw !== undefined) yaw = view.yaw;
-      if (view?.clay !== undefined) clayOn = view.clay;
       if (view?.distance !== undefined) {
         distance = view.distance;
         placeCamera();

@@ -49,27 +49,11 @@ export async function loadAssets(): Promise<Assets> {
   return { head, shapes: byName };
 }
 
-const smooth = (t: number) => {
-  const c = Math.min(1, Math.max(0, t));
-  return c * c * (3 - 2 * c);
-};
-
-// A shape as renderable geometry, coloured from its base to its tip: a darker, stained root, a paler
-// shaft, and a tip that darkens (horns) or whitens (tusks).
-export function shapeGeometry(asset: ShapeAsset, root: THREE.Color, shaft: THREE.Color, tip: THREE.Color): THREE.BufferGeometry {
+// A shape as renderable geometry
+export function shapeGeometry(asset: ShapeAsset): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(asset.positions, 3));
   geometry.setIndex(new THREE.BufferAttribute(asset.indices, 1));
   geometry.computeVertexNormals();
-  const colors = new Float32Array(asset.t.length * 3);
-  const c = new THREE.Color();
-  for (let i = 0; i < asset.t.length; i++) {
-    const t = asset.t[i];
-    c.copy(root).lerp(shaft, smooth(t / 0.3)).lerp(tip, smooth((t - 0.7) / 0.3));
-    colors[i * 3] = c.r;
-    colors[i * 3 + 1] = c.g;
-    colors[i * 3 + 2] = c.b;
-  }
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   return geometry;
 }

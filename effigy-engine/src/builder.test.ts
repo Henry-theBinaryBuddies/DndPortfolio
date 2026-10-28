@@ -4,9 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust, fitSphere, socketFit } from "./builder";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
-import { buildFineHair } from "./fineHair";
 import { buildBeard, buildHairShell, buildHangingHair } from "./hairShell";
-import { applySkinDetail } from "./skinShader";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
 import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
@@ -289,17 +287,9 @@ describe("deformation", () => {
 describe("sculptBust", () => {
   const sculpt = (overrides: Partial<Params>) => sculptBust(params(overrides), base);
 
-  it("keeps the base head's topology and paints a colour on every vertex", () => {
+  it("keeps the base head's topology", () => {
     const { geometry } = sculpt({});
     expect(geometry.index!.count).toBe(base.indices.length);
-    expect(geometry.attributes.color.count).toBe(geometry.attributes.position.count);
-  });
-
-  it("darkens skin where grime is turned up", () => {
-    const average = (arr: Float32Array) => arr.reduce((sum, v) => sum + v, 0) / arr.length;
-    const clean = average(sculpt({ grime: 0 }).geometry.attributes.color.array as Float32Array);
-    const filthy = average(sculpt({ grime: 1 }).geometry.attributes.color.array as Float32Array);
-    expect(filthy).toBeLessThan(clean);
   });
 
   it("finds the middle of the underside so the bust can sit centred on its plinth", () => {
@@ -312,7 +302,7 @@ describe("sculptBust", () => {
   it("builds in well under a second", () => {
     sculpt({});
     const start = performance.now();
-    sculpt({ age: 1, grime: 1 });
+    sculpt({ age: 1 });
     expect(performance.now() - start).toBeLessThan(1000);
   });
 });
@@ -378,7 +368,7 @@ describe("buildBust", () => {
     for (const style of ["cropped", "swept", "mohawk", "long"] as const) {
       const p = params({ hairStyle: style });
       const bust = sculptBust(p, base);
-      const shell = buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array)!;
+      const shell = buildHairShell(p, bust.positions, bust.normals, base)!;
       expect(shell, style).not.toBeNull();
       const onFace = (x: number, y: number, z: number) => z > 0.15 && y < 0.2 && y > -0.3 && Math.abs(x) < 0.4;
       const skin: number[] = [];
@@ -393,7 +383,7 @@ describe("buildBust", () => {
         expect(nearest, style).toBeLessThan(0.01);
       }
     }
-    expect(buildHairShell(params({ hairStyle: "none" }), new Float32Array(), new Float32Array(), base, new Float32Array())).toBeNull();
+    expect(buildHairShell(params({ hairStyle: "none" }), new Float32Array(), new Float32Array(), base)).toBeNull();
   }, 120000);
 
   it("drapes long hair as one solid curtain that hangs outside the head and body, for long hair only", () => {
@@ -422,23 +412,22 @@ describe("buildBust", () => {
     expect(buildHangingHair(params({ hairStyle: "swept" }), new Float32Array(), base)).toBeNull();
   }, 120000);
 
-  it("sculpts beards on the lower face only, keeping off the lips, and paints stubble instead of sculpting it", () => {
+  it("sculpts beards on the lower face only, keeping off the lips", () => {
     const beardOf = (beardStyle: Params["beardStyle"]) => {
       const p = params({ beardStyle });
       const bust = sculptBust(p, base);
       return buildBeard(p, bust.positions, bust.normals, base);
     };
     expect(beardOf("none")).toBeNull();
-    expect(beardOf("stubble")).toBeNull();
     const sizes: Record<string, number> = {};
     for (const style of ["goatee", "short", "full"] as const) {
       const beard = beardOf(style)!;
       expect(beard, style).not.toBeNull();
       const pos = beard.attributes.position;
-      const color = beard.attributes.color;
+      const hair = beard.attributes.hairAmount;
       let visible = 0;
       for (let i = 0; i < pos.count; i++) {
-        if (color.getW(i) < 0.1) continue; // the faded edge
+        if (hair.getX(i) < 0.1) continue; // the faded edge
         visible++;
         // Nothing above the cheek line beside the nose, and nothing over the eyes or forehead
         expect(pos.getY(i), style).toBeLessThan(0.05);
@@ -452,11 +441,11 @@ describe("buildBust", () => {
     const bust = sculptBust(p, base);
     const full = buildBeard(p, bust.positions, bust.normals, base)!;
     let onLips = 0;
-    const color = full.attributes.color;
+    const hair = full.attributes.hairAmount;
     const pos = full.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i);
-      if (color.getW(i) > 0.5 && Math.abs(pos.getX(i)) < 0.08 && y > -0.4 && y < -0.33 && pos.getZ(i) > 0.15) onLips++;
+      if (hair.getX(i) > 0.5 && Math.abs(pos.getX(i)) < 0.08 && y > -0.4 && y < -0.33 && pos.getZ(i) > 0.15) onLips++;
     }
     expect(onLips).toBe(0);
   }, 120000);
@@ -491,7 +480,7 @@ describe("buildBust", () => {
     for (const hairStyle of ["cropped", "swept", "mohawk", "long"] as const) {
       const p = params({ hairStyle });
       const bust = sculptBust(p, base);
-      expect(openEdges(buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array)!), hairStyle).toBe(0);
+      expect(openEdges(buildHairShell(p, bust.positions, bust.normals, base)!), hairStyle).toBe(0);
     }
     for (const beardStyle of ["goatee", "short", "full"] as const) {
       const p = params({ beardStyle });
@@ -506,7 +495,7 @@ describe("buildBust", () => {
     const folds = (geometry: THREE.BufferGeometry) => {
       const index = geometry.index!;
       const pos = geometry.attributes.position;
-      const color = geometry.attributes.color;
+      const hair = geometry.attributes.hairAmount;
       const total = pos.count / 2;
       const a = new THREE.Vector3();
       const b = new THREE.Vector3();
@@ -519,7 +508,7 @@ describe("buildBust", () => {
         const i1 = index.getX(t + 1);
         const i2 = index.getX(t + 2);
         if (i0 >= total || i1 >= total || i2 >= total) continue; // only the outer surface
-        if (Math.min(color.getW(i0), color.getW(i1), color.getW(i2)) < 0.5) continue; // only where it shows
+        if (Math.min(hair.getX(i0), hair.getX(i1), hair.getX(i2)) < 0.5) continue; // only where it shows
         // The outer triangle's facing, against the same triangle on the inner surface (which follows the skin)
         outer.crossVectors(b.fromBufferAttribute(pos, i1).sub(a.fromBufferAttribute(pos, i0)), c.fromBufferAttribute(pos, i2).sub(a));
         inner.crossVectors(b.fromBufferAttribute(pos, total + i1).sub(a.fromBufferAttribute(pos, total + i0)), c.fromBufferAttribute(pos, total + i2).sub(a));
@@ -542,39 +531,7 @@ describe("buildBust", () => {
     for (const hairStyle of ["cropped", "swept", "mohawk", "long"] as const) {
       const p = params({ hairStyle });
       const bust = sculptBust(p, base);
-      expect(folds(buildHairShell(p, bust.positions, bust.normals, base, bust.geometry.attributes.color.array as Float32Array)!), hairStyle).toBe(0);
+      expect(folds(buildHairShell(p, bust.positions, bust.normals, base)!), hairStyle).toBe(0);
     }
   }, 120000);
-
-  it("grows real eyebrow and eyelash strands, more for bushier brows", () => {
-    const fine = (p: Params) => {
-      const bust = sculptBust(p, base);
-      return buildFineHair(p, bust.positions, bust.normals, bust.eyes, base);
-    };
-    const human = fine(params({ eyebrows: 0.2 }));
-    const bushy = fine(params({ eyebrows: 1 }));
-    expect(human).not.toBeNull();
-    expect(bushy!.attributes.position.count).toBeGreaterThan(human!.attributes.position.count);
-  });
-
-  it("builds both eye styles", () => {
-    expect(countObjects(bust({ eyeStyle: "glow" }))).toBeGreaterThan(3);
-    expect(countObjects(bust({ eyeStyle: "realistic" }))).toBeGreaterThan(3);
-  });
-});
-
-describe("skin detail", () => {
-  it("patches the material's shader with the pore and wrinkle height field", () => {
-    const material = new THREE.MeshStandardMaterial();
-    applySkinDetail(material, params({ age: 0.7 }));
-    const shader = {
-      uniforms: {} as Record<string, { value: number }>,
-      vertexShader: "#include <common>\n#include <begin_vertex>",
-      fragmentShader: "#include <common>\n#include <normal_fragment_maps>",
-    };
-    (material.onBeforeCompile as unknown as (s: typeof shader) => void)(shader);
-    expect(shader.uniforms.uAge.value).toBeCloseTo(0.7);
-    expect(shader.vertexShader).toContain("vObjPos = position;");
-    expect(shader.fragmentShader).toContain("skinHeight");
-  });
 });

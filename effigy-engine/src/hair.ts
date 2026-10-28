@@ -1,5 +1,3 @@
-import type { Params } from "./params";
-
 // Where hair grows. The hair itself is a sculpted shell over the scalp, with a draped curtain for long
 // hair's hanging lengths (see hairShell.ts); this file says which parts of the head carry it.
 
@@ -10,13 +8,6 @@ const smooth = (t: number) => {
 
 // Half the width of a mohawk's strip; everywhere else on the scalp is shaved
 export const STRIP_HALF_WIDTH = 0.15;
-
-// How shaved the scalp is at a point: 1 on the sides of a mohawk, where the skin shows the shadow of
-// stubble, and 0 everywhere else
-export function shavedWeight(p: Params, x: number, y: number, z: number): number {
-  if (p.hairStyle !== "mohawk") return 0;
-  return scalp(x, y, z) * smooth((Math.abs(x) - STRIP_HALF_WIDTH + 0.02) / 0.05);
-}
 
 // How much of a point on the head lies inside the hair-bearing scalp: nothing on the face below the
 // hairline or on the ears, full above the brow, around the sides, and down the back of the head.
