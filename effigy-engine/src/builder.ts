@@ -9,7 +9,7 @@ import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
 import { buildTeeth } from "./teeth";
 import { derive, type Params } from "./params";
-import { baseOutline, MM, PRINT } from "./print";
+import { convexHull, MM, PEDESTAL_SIDES, pedestalRings, PRINT } from "./print";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
 // (how light hits it). Meshes are parented into Groups, so the whole bust can
@@ -137,11 +137,16 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // With detail off the beard is its plain shell, without the carving (about 750,000 triangles, which takes
 // a moment to build): that is the quick draft shown while a slider moves.
+// The bust is cut flat a little above its lowest point (see PRINT.flatCut): everything below this plane is
+// trimmed off, which leaves a clean flat underside for the pedestal. (The viewer clips it away; the export
+// cuts the solid.)
+const FLAT_CUT = new THREE.Plane(new THREE.Vector3(0, 1, 0), -PRINT.flatCut * MM);
+
 export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group {
   const root = new THREE.Group();
   const k = derive(p);
   const base = assets.head;
-  const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75 });
+  const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75, clippingPlanes: [FLAT_CUT] });
 
   const head = new THREE.Group();
   root.add(head);
@@ -252,7 +257,7 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
   // beard (in the plinth's coordinates: y = 0 is the top of the base)
   const underside: [number, number][] = [];
   for (const i of base.bottom) underside.push([bust.positions[i * 3] - bust.footprint.x, bust.positions[i * 3 + 2] - bust.footprint.z]);
-  root.userData.outline = baseOutline(underside, PRINT.baseMargin * MM);
+  root.userData.footprint = convexHull(underside);
   let faceBottom = Infinity;
   for (let i = 0; i < bust.positions.length; i += 3) {
     if (bust.positions[i + 1] > -0.8 && bust.positions[i + 2] > -0.05) faceBottom = Math.min(faceBottom, bust.positions[i + 1]);
@@ -308,6 +313,43 @@ export function basePrism(outline: [number, number][], bottom: number, top: numb
     index.push(0, i + 1, i);
   }
   // (wound outward whichever way round the outline runs)
+  let volume = 0;
+  for (let t = 0; t < index.length; t += 3) {
+    const [a, b, c] = [index[t] * 3, index[t + 1] * 3, index[t + 2] * 3];
+    volume += positions[a] * (positions[b + 1] * positions[c + 2] - positions[b + 2] * positions[c + 1]) - positions[a + 1] * (positions[b] * positions[c + 2] - positions[b + 2] * positions[c]) + positions[a + 2] * (positions[b] * positions[c + 1] - positions[b + 1] * positions[c]);
+  }
+  if (volume < 0) for (let t = 0; t < index.length; t += 3) [index[t + 1], index[t + 2]] = [index[t + 2], index[t + 1]];
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+// The pedestal as a closed solid (see pedestalRings): a footprint (the bust's underside, as (x, z)) from
+// `bottom` up to `top`: a round disc and a waisted stem flaring out to the footprint
+export function pedestalGeometry(footprint: [number, number][], bottom: number, top: number): THREE.BufferGeometry {
+  const rings = pedestalRings(footprint, bottom, top);
+  const n = PEDESTAL_SIDES;
+  const positions: number[] = rings.flat();
+  const index: number[] = [];
+  for (let r = 0; r + 1 < rings.length; r++) {
+    const low = r * n;
+    const high = (r + 1) * n;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      index.push(low + i, high + j, high + i, low + i, low + j, high + j);
+    }
+  }
+  const lastRing = (rings.length - 1) * n;
+  const foot = positions.length / 3;
+  positions.push(0, bottom, 0, 0, top, 0);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    index.push(foot, j, i); // the underside
+    index.push(foot + 1, lastRing + i, lastRing + j); // the top
+  }
+  // (wound outward whichever way round the rings run)
   let volume = 0;
   for (let t = 0; t < index.length; t += 3) {
     const [a, b, c] = [index[t] * 3, index[t + 1] * 3, index[t + 2] * 3];

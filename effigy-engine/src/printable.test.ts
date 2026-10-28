@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
-import { basePrism } from "./builder";
+import { basePrism, pedestalGeometry } from "./builder";
 import { collectParts } from "./export";
 import { applyRace, defaultParams, type Params } from "./params";
-import { baseOutline, convexHull, MM, PRINT } from "./print";
+import { baseOutline, convexHull, MM, pedestalRings, PEDESTAL_SIDES, PRINT, radiusAt } from "./print";
 import { mergeParts, readStl, splitShells, weld, writeStl, type Part, type PrintReport } from "./printable";
 
 let assets: Assets;
@@ -172,7 +172,7 @@ const inspect = (stl: ArrayBuffer) => {
 };
 
 describe("merging a bust into one printable solid", () => {
-  const merge = async (p: Params) => mergeParts(collectParts(p, assets));
+  const merge = async (p: Params) => mergeParts(collectParts(p, assets), undefined, undefined, PRINT.flatCut);
   const expectOneSolid = (label: string, report: PrintReport) => {
     expect(report.status, label).toBe("NoError");
     expect(report.parts.filter((part) => !part.accepted).map((part) => `${part.name}: ${part.problem}`), label).toEqual([]);
@@ -264,10 +264,45 @@ describe("merging a bust into one printable solid", () => {
     expect(bx1).toBeGreaterThan(x1 + PRINT.baseMargin * 0.9);
     const [z0, z1] = span(base, 2);
     expect(z0).toBeCloseTo(-PRINT.baseHeight, 3);
-    expect(z1).toBeCloseTo(PRINT.baseOverlap, 3);
+    expect(z1).toBeCloseTo(PRINT.flatCut + PRINT.baseOverlap, 3);
     expect(MM * 32).toBe(1);
   });
 });
 
 // (THREE is imported for the typed-array helpers some checks lean on)
 void THREE;
+
+describe("the pedestal", () => {
+  const footprint: [number, number][] = [[-20 * MM, -10 * MM], [20 * MM, -10 * MM], [26 * MM, 18 * MM], [-26 * MM, 18 * MM]];
+  it("reads how far an outline reaches in any direction", () => {
+    const square = convexHull([[-1, -1], [1, -1], [1, 1], [-1, 1]]);
+    expect(radiusAt(square, 0)).toBeCloseTo(1, 6);
+    expect(radiusAt(square, Math.PI / 4)).toBeCloseTo(Math.SQRT2, 6);
+    expect(radiusAt(square, Math.PI)).toBeCloseTo(1, 6);
+  });
+  it("is a round disc at the foot, narrows to a waist, and flares out to the bust's exact underside", () => {
+    const rings = pedestalRings(footprint, -PRINT.baseHeight * MM, 1.6 * MM);
+    const radii = rings.map((ring) => Array.from({ length: PEDESTAL_SIDES }, (_, k) => Math.hypot(ring[k * 3], ring[k * 3 + 2])));
+    const foot = radii[1];
+    expect(Math.min(...foot)).toBeCloseTo(Math.max(...foot), 6);
+    expect(foot[0] / MM).toBeGreaterThanOrEqual(PRINT.baseRadius - 1e-6);
+    const waist = Math.min(...radii.map((r) => Math.max(...r)).slice(4));
+    expect(waist).toBeLessThan(0.6 * foot[0]);
+    const top = radii[radii.length - 1];
+    const hull = convexHull(footprint);
+    for (let k = 0; k < PEDESTAL_SIDES; k++) expect(top[k]).toBeCloseTo(radiusAt(hull, (k / PEDESTAL_SIDES) * 2 * Math.PI), 6);
+  });
+  it("is a closed solid wound outward", () => {
+    const geometry = pedestalGeometry(footprint, -PRINT.baseHeight * MM, 1.6 * MM);
+    const index = geometry.index!;
+    const uses = new Map<number, number>();
+    for (let t = 0; t < index.count; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const [i, j] = [index.getX(t + e), index.getX(t + ((e + 1) % 3))];
+        uses.set(i * 65536 + j, (uses.get(i * 65536 + j) ?? 0) + 1);
+      }
+    }
+    for (const [key] of uses) expect(uses.get((key % 65536) * 65536 + Math.floor(key / 65536))).toBe(1);
+    expect(volumeOf(geometry.attributes.position.array, index.array)).toBeGreaterThan(0);
+  });
+});

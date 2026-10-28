@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import "./style.css";
-import { basePrism, buildBust, disposeObject } from "./builder";
+import { buildBust, disposeObject, pedestalGeometry } from "./builder";
 import { MM, PRINT } from "./print";
 import { loadAssets, type Assets } from "./assets";
 import { defaultParams, type Params } from "./params";
@@ -15,6 +15,7 @@ const panel = document.getElementById("panel") as HTMLElement;
 // and a renderer (which paints the camera's view onto the canvas).
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.localClippingEnabled = true; // (the bust is cut flat underneath: see FLAT_CUT in builder.ts)
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x14110f);
@@ -84,7 +85,7 @@ function swap(params: Params, detail: boolean) {
     scene.remove(base);
     base.geometry.dispose();
   }
-  base = new THREE.Mesh(basePrism(figure.userData.outline, -PRINT.baseHeight * MM, 0), baseMaterial);
+  base = new THREE.Mesh(pedestalGeometry(figure.userData.footprint, -PRINT.baseHeight * MM, (PRINT.flatCut + PRINT.baseOverlap) * MM), baseMaterial);
   scene.add(base);
   // Refit the face framing to this bust (keeping the camera where it was if it is framing the face): from
   // the lowest point of its chin or beard to the highest point of its head

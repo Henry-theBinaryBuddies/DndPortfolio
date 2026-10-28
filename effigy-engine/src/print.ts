@@ -10,8 +10,12 @@ export const MM = 1 / 32; // one print millimetre, in head units
 export const PRINT = {
   nozzle: 0.2, // mm
   bustHeight: [75, 90] as const, // mm, the bust itself (without its base)
-  baseHeight: 4, // mm
-  baseMargin: 2.5, // mm: how far the base reaches beyond the underside of the bust
+  baseHeight: 24, // mm: the whole pedestal, disc and stem (below the bust's flat underside)
+  baseRadius: 25, // mm: the disc is at least this wide (a 50 mm base), and wider when the bust's underside needs it
+  baseMargin: 2, // mm: how far the disc reaches beyond the farthest corner of the bust's underside
+  discHeight: 3, // mm: the disc's rim, with its sloped top
+  discBevel: 2, // mm: how far the sloped top of the disc comes in
+  flatCut: 1.2, // mm: the bust is cut flat this far above its lowest point, which trims the rounded edge off its underside
   baseOverlap: 0.4, // mm: the base reaches this far up inside the bust, so the two are joined, not just touching
 };
 
@@ -67,4 +71,69 @@ export function baseOutline(underside: Point[], margin: number, arcSteps = 8): P
     }
   }
   return out;
+}
+
+// How far the outline (convex, with the origin inside it) reaches from the origin in direction `angle`
+export function radiusAt(hull: Point[], angle: number): number {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  let reach = 0;
+  const n = hull.length;
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = hull[i];
+    const [bx, by] = hull[(i + 1) % n];
+    // The ray t*(dx, dy) meets the edge a + u*(b - a)
+    const ex = bx - ax;
+    const ey = by - ay;
+    const denominator = dx * ey - dy * ex;
+    if (Math.abs(denominator) < 1e-12) continue;
+    const t = (ax * ey - ay * ex) / denominator;
+    const u = (ax * dy - ay * dx) / denominator;
+    if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) reach = Math.max(reach, t);
+  }
+  return reach;
+}
+
+const ease = (t: number) => {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+};
+
+export const PEDESTAL_SIDES = 96;
+
+// The pedestal, as rings of points from its foot to its top (in head units: each ring is (x, y, z) triples, y up).
+// Like the busts on turned bases it stands on a round disc with a sloped rim, narrows to a waist and flares
+// out under the bust to its exact underside, so the bust has solid support wherever it reaches (a bust
+// whose flat bottom hung out over a narrow stem would print as a bridge).
+export function pedestalRings(footprint: Point[], bottom: number, top: number): number[][] {
+  const hull = convexHull(footprint);
+  const reach = Array.from({ length: PEDESTAL_SIDES }, (_, k) => radiusAt(hull, (k / PEDESTAL_SIDES) * 2 * Math.PI));
+  const farthest = Math.max(...reach);
+  const nearest = Math.min(...reach);
+  const disc = Math.max(PRINT.baseRadius * MM, farthest + PRINT.baseMargin * MM);
+  const waist = Math.min(16 * MM, Math.max(10 * MM, 0.65 * nearest));
+  const foot = disc - PRINT.discBevel * MM;
+  const discTop = bottom + PRINT.discHeight * MM;
+  const rim = bottom + PRINT.discHeight * MM * 0.4;
+  const stemSteps = 24;
+  const heights: [number, (k: number) => number][] = [
+    [bottom, () => disc - 0.4 * MM], // (a small bevel at the foot, so the first layer does not flare out)
+    [bottom + 0.4 * MM, () => disc],
+    [rim, () => disc],
+    [discTop, () => foot],
+  ];
+  for (let s = 1; s <= stemSteps; s++) {
+    const t = s / stemSteps;
+    const y = discTop + (top - discTop) * t;
+    heights.push([y, (k) => waist + (foot - waist) * (1 - ease(t / 0.45)) + (reach[k] - waist) * ease((t - 0.45) / 0.55)]);
+  }
+  return heights.map(([y, radius]) => {
+    const ring: number[] = [];
+    for (let k = 0; k < PEDESTAL_SIDES; k++) {
+      const a = (k / PEDESTAL_SIDES) * 2 * Math.PI;
+      const r = radius(k);
+      ring.push(Math.cos(a) * r, y, Math.sin(a) * r);
+    }
+    return ring;
+  });
 }

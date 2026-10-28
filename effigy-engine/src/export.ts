@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { basePrism, buildBust, disposeObject } from "./builder";
+import { buildBust, disposeObject, pedestalGeometry } from "./builder";
 import type { Assets } from "./assets";
 import type { Params } from "./params";
 import type { Part } from "./printable";
@@ -47,7 +47,7 @@ export function collectParts(p: Params, assets: Assets): Part[] {
     add(object.name || "part", object.geometry, matrix);
   });
   // The base reaches a little way up inside the bust, so the two are joined and not merely touching
-  const prism = basePrism(bust.userData.outline, -PRINT.baseHeight * MM, PRINT.baseOverlap * MM);
+  const prism = pedestalGeometry(bust.userData.footprint, -PRINT.baseHeight * MM, (PRINT.flatCut + PRINT.baseOverlap) * MM);
   add("base", prism, new THREE.Matrix4());
   prism.dispose();
   disposeObject(bust);

@@ -208,11 +208,12 @@ export function readStl(buffer: ArrayBuffer): { positions: Float32Array; count: 
 }
 
 // Unions the parts into one solid. Parts that cannot be made into a valid solid are left out and reported.
-export async function mergeParts(parts: Part[], progress: (text: string) => void = () => {}, wasmUrl?: string): Promise<{ stl: ArrayBuffer; report: PrintReport }> {
+export async function mergeParts(parts: Part[], progress: (text: string) => void = () => {}, wasmUrl?: string, flatAt?: number): Promise<{ stl: ArrayBuffer; report: PrintReport }> {
   const started = Date.now();
   const wasm = await loadManifold(wasmUrl);
   const { Manifold, Mesh } = wasm;
   const solids: InstanceType<typeof Manifold>[] = [];
+  const baseSolids: InstanceType<typeof Manifold>[] = [];
   const reports: PartReport[] = [];
   for (const part of parts) {
     progress(`Preparing ${part.name}`);
@@ -227,7 +228,7 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
         if (status !== "NoError" || solid.isEmpty()) problem = status === "NoError" ? "empty" : String(status);
         else if (solid.volume() <= 0) problem = "wound inside out (negative volume)";
         if (problem) solid.delete();
-        else solids.push(solid);
+        else (part.name === "base" ? baseSolids : solids).push(solid);
       } catch (error) {
         problem = error instanceof Error ? error.message : String(error);
       }
@@ -239,10 +240,19 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
     }
     reports.push(report);
   }
-  if (solids.length === 0) throw new Error("No part could be made into a solid: " + reports.map((r) => `${r.name}: ${r.problem}`).join("; "));
+  if (solids.length + baseSolids.length === 0) throw new Error("No part could be made into a solid: " + reports.map((r) => `${r.name}: ${r.problem}`).join("; "));
 
   progress("Merging");
-  const merged = Manifold.union(solids);
+  // The bust is cut flat (everything below `flatAt` is trimmed away), then the base is joined to the cut
+  let merged: InstanceType<typeof Manifold>;
+  if (flatAt === undefined || solids.length === 0) merged = Manifold.union([...solids, ...baseSolids]);
+  else {
+    const bust = Manifold.union(solids);
+    const cut = bust.trimByPlane([0, 0, 1], flatAt);
+    merged = Manifold.union([cut, ...baseSolids]);
+    bust.delete();
+    cut.delete();
+  }
   const status = String(merged.status());
   const mesh = merged.getMesh();
   const positions = new Float32Array((mesh.vertProperties.length / mesh.numProp) * 3);
@@ -272,6 +282,6 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
   };
   for (const piece of pieces) piece.delete();
   merged.delete();
-  for (const solid of solids) solid.delete();
+  for (const solid of [...solids, ...baseSolids]) solid.delete();
   return { stl, report };
 }
