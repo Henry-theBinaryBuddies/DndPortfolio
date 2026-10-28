@@ -13,7 +13,13 @@ import type { HeadBase } from "./headMesh";
 // neighbours (a harmonic field, solved once per head).
 
 export const JAW_HINGE = { y: -0.15, z: -0.4 }; // the hinge's axis runs along x through here
-export const JAW_MAX = 0.5; // radians at full Jaw open: about 29 degrees
+export const JAW = {
+  max: 0.5, // radians at full Jaw open: about 29 degrees
+  // How far the jaw slides forward as it opens, per radian (head units). A real jaw's hinge glides forward as
+  // it turns; turned about a fixed hinge alone, the chin swung back into the neck at full opening, and the
+  // skin between them was squeezed into folds (about 900 folded triangles; none under the throat with this).
+  glide: 0.3,
+};
 
 const cache = new WeakMap<HeadBase, Float32Array>();
 
@@ -68,5 +74,5 @@ export function turnWithJaw(y: number, z: number, angle: number): [number, numbe
   const dz = z - JAW_HINGE.z;
   const c = Math.cos(angle);
   const s = Math.sin(angle);
-  return [JAW_HINGE.y + dy * c - dz * s, JAW_HINGE.z + dy * s + dz * c];
+  return [JAW_HINGE.y + dy * c - dz * s, JAW_HINGE.z + dy * s + dz * c + JAW.glide * angle];
 }

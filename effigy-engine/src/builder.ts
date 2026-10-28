@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { shapeGeometry, type Assets } from "./assets";
 import { buildBrows } from "./brows";
-import { JAW_MAX, turnWithJaw } from "./jaw";
+import { JAW, turnWithJaw } from "./jaw";
 import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
@@ -181,7 +181,7 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
   // and a little outward. A third of it (the root and its flared base) stays hidden inside the mouth; the lips are shaped around it in deform.ts (the lower lip swells over it, the upper lip lifts).
   // It belongs to the lower jaw, so it is placed with the mouth shut (as above) and then turned with the jaw
   // as far as the mouth is open: the tusk rises out of the open mouth instead of staying where the lips were.
-  const jawAngle = p.jawOpen * JAW_MAX;
+  const jawAngle = p.jawOpen * JAW.max;
   if (k.tusks > 0.03) {
     let shut = probe;
     if (jawAngle > 0) {

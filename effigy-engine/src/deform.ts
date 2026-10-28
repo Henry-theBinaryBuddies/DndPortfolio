@@ -1,5 +1,5 @@
 import { LANDMARK, type HeadBase, type Vec3 } from "./headMesh";
-import { JAW_MAX, jawWeights, turnWithJaw } from "./jaw";
+import { JAW, jawWeights, turnWithJaw } from "./jaw";
 import { derive, masculinity, type Params } from "./params";
 
 // Every slider, race and build becomes a small, smooth displacement of the base head's vertices in the
@@ -50,7 +50,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
   const { menton, stomion } = LANDMARK;
   const axis = base.neck;
   // The lower jaw turns about its hinge to open the mouth (see jaw.ts)
-  const jawAngle = p.jawOpen * JAW_MAX;
+  const jawAngle = p.jawOpen * JAW.max;
   const jawField = jawAngle > 0 ? jawWeights(base) : null;
 
   // The shoulders and chest come from two sculpted bodies; the build blends between them

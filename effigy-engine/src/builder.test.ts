@@ -1205,3 +1205,46 @@ describe("the open mouth, teeth and expressions", () => {
     }
   }, 120000);
 });
+
+describe("the jaw at full opening", () => {
+  // A triangle is folded when its face turns away from the way it faced with the mouth shut
+  const folded = (open: Float32Array, rest: Float32Array) => {
+    const idx = base.indices;
+    const normal = (pos: Float32Array, t: number) => {
+      const [a, b, c] = [idx[t] * 3, idx[t + 1] * 3, idx[t + 2] * 3];
+      const u = [pos[b] - pos[a], pos[b + 1] - pos[a + 1], pos[b + 2] - pos[a + 2]];
+      const v = [pos[c] - pos[a], pos[c + 1] - pos[a + 1], pos[c + 2] - pos[a + 2]];
+      return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    };
+    let throat = 0;
+    let all = 0;
+    for (let t = 0; t < idx.length; t += 3) {
+      const [n, m] = [normal(rest, t), normal(open, t)];
+      if (n[0] * m[0] + n[1] * m[1] + n[2] * m[2] >= 0) continue;
+      all++;
+      const a = idx[t] * 3;
+      if (open[a + 1] < -0.55 && open[a + 2] < 0.05) throat++;
+    }
+    return { throat, all };
+  };
+
+  it("does not squeeze the throat into folds, and keeps the chin out in front of the neck, for every build", () => {
+    // (the jaw's hinge slides forward as it opens: turned about a fixed hinge, the chin swung back into the
+    // neck and about 600 triangles under the chin folded)
+    let chin = 0;
+    for (let i = 0; i < base.positions.length; i += 3) {
+      if (Math.abs(base.positions[i]) < 0.006 && Math.abs(base.positions[i + 1] + 0.55) < 0.01 && base.positions[i + 2] > 0.05) chin = i;
+    }
+    for (const [race, body] of [["human", "masculine"], ["half-orc", "masculine"], ["elf", "feminine"]] as const) {
+      const p = applyRace({ ...defaultParams(), body }, race);
+      const rest = shape(p);
+      const open = shape({ ...p, jawOpen: 1 });
+      const { throat, all } = folded(open, rest);
+      expect(throat, `${race} ${body}`).toBeLessThan(10);
+      // Some shear at the corners of the mouth remains (inside the cavity, where it hardly shows)
+      expect(all, `${race} ${body}`).toBeLessThan(300);
+      expect(open[chin + 2], `${race} ${body}`).toBeGreaterThan(-0.06);
+      expect(open[chin + 1], `${race} ${body}`).toBeLessThan(rest[chin + 1] - 0.15);
+    }
+  }, 120000);
+});

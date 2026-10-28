@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { JAW_MAX, turnWithJaw } from "./jaw";
+import { JAW, turnWithJaw } from "./jaw";
 import { derive, type Params } from "./params";
 import { MM } from "./print";
 
@@ -164,7 +164,7 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
   const k = derive(p);
   const into = { positions: [] as number[], index: [] as number[] };
   const scale = 0.92 + 0.25 * k.angularity; // broader teeth on a heavier face
-  const jawAngle = p.jawOpen * JAW_MAX;
+  const jawAngle = p.jawOpen * JAW.max;
 
   for (const lower of [false, true]) {
     const first = into.positions.length / 3;
