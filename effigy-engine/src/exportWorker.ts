@@ -10,12 +10,13 @@ import { mergeParts, type Part } from "./printable";
 interface Request {
   id: number;
   parts: Part[];
+  partial?: boolean; // a diagnostic export: keep what can be merged instead of refusing
 }
 
 self.onmessage = async (event: MessageEvent<Request>) => {
-  const { id, parts } = event.data;
+  const { id, parts, partial } = event.data;
   try {
-    const { stl, report } = await mergeParts(parts, (text) => self.postMessage({ id, progress: text }), wasmUrl, PRINT.flatCut);
+    const { stl, report } = await mergeParts(parts, (text) => self.postMessage({ id, progress: text }), wasmUrl, PRINT.flatCut, partial);
     self.postMessage({ id, stl, report }, { transfer: [stl] });
   } catch (error) {
     self.postMessage({ id, error: error instanceof Error ? error.message : String(error) });

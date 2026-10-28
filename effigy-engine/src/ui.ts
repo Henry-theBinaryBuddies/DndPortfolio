@@ -20,7 +20,7 @@ import {
 } from "./params";
 
 // Builds the control panel and calls onChange with a fresh Params copy on every edit.
-export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void) => Promise<void>): void {
+export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean) => Promise<void>): void {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
   const raceSelect = document.createElement("select");
@@ -171,17 +171,37 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     exportButton.type = "button";
     exportButton.id = "export-stl";
     exportButton.textContent = "Export STL";
+    const diagnosticButton = document.createElement("button");
+    diagnosticButton.type = "button";
+    diagnosticButton.id = "export-partial";
+    diagnosticButton.textContent = "Diagnostic export (partial)";
+    diagnosticButton.title = "Keeps whatever can be merged, even if a part is missing: for finding out what is wrong, never for printing";
     const status = document.createElement("p");
-    status.className = "hint";
+    status.className = "status";
     status.id = "export-status";
-    status.textContent = "Merges the bust, with its base, into one solid: about 75-90 mm tall, sized for a 0.2 mm nozzle.";
-    exportButton.addEventListener("click", () => {
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    status.textContent = "Merges the bust, with its base, into one solid: about 75-90 mm tall on a 24 mm base, sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
+    const run = (partial: boolean) => {
       exportButton.disabled = true;
-      onExport({ ...params }, (text) => (status.textContent = text))
+      diagnosticButton.disabled = true;
+      // (whatever goes wrong, the buttons come back)
+      let started: Promise<void>;
+      try {
+        started = onExport({ ...params }, (text) => (status.textContent = text), partial);
+      } catch (error) {
+        started = Promise.reject(error);
+      }
+      started
         .catch((error: unknown) => (status.textContent = `Export failed: ${error instanceof Error ? error.message : String(error)}`))
-        .finally(() => (exportButton.disabled = false));
-    });
-    exportSection.append(exportButton, status);
+        .finally(() => {
+          exportButton.disabled = false;
+          diagnosticButton.disabled = false;
+        });
+    };
+    exportButton.addEventListener("click", () => run(false));
+    diagnosticButton.addEventListener("click", () => run(true));
+    exportSection.append(exportButton, diagnosticButton, status);
     panel.append(exportSection);
   }
 

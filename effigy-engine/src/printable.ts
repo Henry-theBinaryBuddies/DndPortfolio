@@ -207,81 +207,104 @@ export function readStl(buffer: ArrayBuffer): { positions: Float32Array; count: 
   return { positions, count };
 }
 
-// Unions the parts into one solid. Parts that cannot be made into a valid solid are left out and reported.
-export async function mergeParts(parts: Part[], progress: (text: string) => void = () => {}, wasmUrl?: string, flatAt?: number): Promise<{ stl: ArrayBuffer; report: PrintReport }> {
+// Unions the parts into one solid. By default it is all or nothing: it throws if any part cannot be made into
+// a valid solid, if the merge reports a problem, or if the result is not exactly one connected solid, so a
+// file with a feature missing, or with loose pieces, is never produced by accident. `allowPartial` is for a
+// diagnostic export: it leaves out what cannot be made into a solid and reports it. Stray specks (bodies too
+// small to be real parts) are removed explicitly, and counted, either way.
+export async function mergeParts(parts: Part[], progress: (text: string) => void = () => {}, wasmUrl?: string, flatAt?: number, allowPartial = false): Promise<{ stl: ArrayBuffer; report: PrintReport }> {
   const started = Date.now();
   const wasm = await loadManifold(wasmUrl);
   const { Manifold, Mesh } = wasm;
-  const solids: InstanceType<typeof Manifold>[] = [];
-  const baseSolids: InstanceType<typeof Manifold>[] = [];
-  const reports: PartReport[] = [];
-  for (const part of parts) {
-    progress(`Preparing ${part.name}`);
-    const welded = weld(part.positions, part.indices);
-    const shells = splitShells(welded.positions, welded.indices);
-    const report: PartReport = { name: part.name, triangles: welded.indices.length / 3, shells: shells.length, rejectedShells: 0, accepted: true };
-    for (const shell of shells) {
-      let problem: string | undefined;
-      try {
-        const solid = Manifold.ofMesh(new Mesh({ numProp: 3, vertProperties: shell.positions, triVerts: shell.indices }));
-        const status = solid.status();
-        if (status !== "NoError" || solid.isEmpty()) problem = status === "NoError" ? "empty" : String(status);
-        else if (solid.volume() <= 0) problem = "wound inside out (negative volume)";
-        if (problem) solid.delete();
-        else (part.name === "base" ? baseSolids : solids).push(solid);
-      } catch (error) {
-        problem = error instanceof Error ? error.message : String(error);
+  type Solid = InstanceType<typeof Manifold>;
+  const owned: Solid[] = []; // everything allocated in wasm memory, freed whatever happens
+  const own = (solid: Solid) => {
+    owned.push(solid);
+    return solid;
+  };
+  try {
+    const solids: Solid[] = [];
+    const baseSolids: Solid[] = [];
+    const reports: PartReport[] = [];
+    for (const part of parts) {
+      progress(`Preparing ${part.name}`);
+      const welded = weld(part.positions, part.indices);
+      const shells = splitShells(welded.positions, welded.indices);
+      const report: PartReport = { name: part.name, triangles: welded.indices.length / 3, shells: shells.length, rejectedShells: 0, accepted: true };
+      for (const shell of shells) {
+        let problem: string | undefined;
+        try {
+          const solid = own(Manifold.ofMesh(new Mesh({ numProp: 3, vertProperties: shell.positions, triVerts: shell.indices })));
+          const status = solid.status();
+          if (status !== "NoError" || solid.isEmpty()) problem = status === "NoError" ? "empty" : String(status);
+          else if (solid.volume() <= 0) problem = "wound inside out (negative volume)";
+          else (part.name === "base" ? baseSolids : solids).push(solid);
+        } catch (error) {
+          problem = error instanceof Error ? error.message : String(error);
+        }
+        if (problem) {
+          report.rejectedShells++;
+          report.accepted = false;
+          report.problem ??= problem;
+        }
       }
-      if (problem) {
-        report.rejectedShells++;
-        report.accepted = false;
-        report.problem ??= problem;
+      reports.push(report);
+    }
+    const left = reports.filter((r) => !r.accepted);
+    if (left.length && !allowPartial) throw new Error(`These parts are not closed solids, so nothing was exported: ${left.map((r) => `${r.name} (${r.rejectedShells} of ${r.shells} shells: ${r.problem})`).join("; ")}`);
+    if (solids.length + baseSolids.length === 0) throw new Error("No part could be made into a solid: " + reports.map((r) => `${r.name}: ${r.problem}`).join("; "));
+
+    progress("Merging");
+    // The bust is cut flat (everything below `flatAt` is trimmed away), then the base is joined to the cut
+    let merged: Solid;
+    if (flatAt === undefined || solids.length === 0) merged = own(Manifold.union([...solids, ...baseSolids]));
+    else {
+      const cut = own(own(Manifold.union(solids)).trimByPlane([0, 0, 1], flatAt));
+      merged = own(Manifold.union([cut, ...baseSolids]));
+    }
+    const status = String(merged.status());
+    if (status !== "NoError" && !allowPartial) throw new Error(`The merge reported a problem (${status}), so nothing was exported`);
+
+    progress("Checking");
+    // Every separate body in the result: real parts, stray specks, and the pockets (negative volume) sealed inside
+    const SPECK = 0.5; // mm^3: the smallest real part, a tooth, is about 1.4
+    const pieces = merged.decompose().map(own);
+    const volumes = pieces.map((piece) => piece.volume());
+    const keep = pieces.filter((_, i) => volumes[i] <= 0 || volumes[i] >= SPECK);
+    const specks = pieces.length - keep.length;
+    const final = specks > 0 ? own(Manifold.compose(keep)) : merged;
+    const components = volumes.filter((volume) => volume >= SPECK).sort((a, b) => b - a).map((volume) => ({ volume }));
+    if (components.length !== 1 && !allowPartial) throw new Error(`The result is ${components.length} separate bodies (${components.map((c) => c.volume.toFixed(1)).join(", ")} mm³) instead of one solid, so nothing was exported`);
+
+    const mesh = final.getMesh();
+    const positions = new Float32Array((mesh.vertProperties.length / mesh.numProp) * 3);
+    for (let v = 0; v < positions.length / 3; v++) for (let k = 0; k < 3; k++) positions[v * 3 + k] = mesh.vertProperties[v * mesh.numProp + k];
+    const box = final.boundingBox();
+    const { stl, degenerate } = writeStl(positions, mesh.triVerts);
+    const report: PrintReport = {
+      parts: reports,
+      status,
+      triangles: mesh.triVerts.length / 3 - degenerate,
+      vertices: positions.length / 3,
+      volume: final.volume(),
+      surfaceArea: final.surfaceArea(),
+      genus: final.genus(),
+      components,
+      specks,
+      voids: volumes.filter((volume) => volume <= 0).length,
+      degenerate,
+      size: [box.max[0] - box.min[0], box.max[1] - box.min[1], box.max[2] - box.min[2]],
+      min: [box.min[0], box.min[1], box.min[2]],
+      seconds: (Date.now() - started) / 1000,
+    };
+    return { stl, report };
+  } finally {
+    for (const solid of owned) {
+      try {
+        solid.delete();
+      } catch {
+        // (already freed along with the solid it came from)
       }
     }
-    reports.push(report);
   }
-  if (solids.length + baseSolids.length === 0) throw new Error("No part could be made into a solid: " + reports.map((r) => `${r.name}: ${r.problem}`).join("; "));
-
-  progress("Merging");
-  // The bust is cut flat (everything below `flatAt` is trimmed away), then the base is joined to the cut
-  let merged: InstanceType<typeof Manifold>;
-  if (flatAt === undefined || solids.length === 0) merged = Manifold.union([...solids, ...baseSolids]);
-  else {
-    const bust = Manifold.union(solids);
-    const cut = bust.trimByPlane([0, 0, 1], flatAt);
-    merged = Manifold.union([cut, ...baseSolids]);
-    bust.delete();
-    cut.delete();
-  }
-  const status = String(merged.status());
-  const mesh = merged.getMesh();
-  const positions = new Float32Array((mesh.vertProperties.length / mesh.numProp) * 3);
-  for (let v = 0; v < positions.length / 3; v++) for (let k = 0; k < 3; k++) positions[v * 3 + k] = mesh.vertProperties[v * mesh.numProp + k];
-  const box = merged.boundingBox();
-  const { stl, degenerate } = writeStl(positions, mesh.triVerts);
-  progress("Checking");
-  const pieces = merged.decompose();
-  const volumes = pieces.map((piece) => piece.volume()).sort((a, b) => b - a);
-  const SPECK = 0.5; // mm^3: the smallest real part, a tooth, is about 1.4
-  const components = volumes.filter((volume) => volume >= SPECK).map((volume) => ({ volume }));
-  const report: PrintReport = {
-    parts: reports,
-    status,
-    triangles: mesh.triVerts.length / 3 - degenerate,
-    vertices: positions.length / 3,
-    volume: merged.volume(),
-    surfaceArea: merged.surfaceArea(),
-    genus: merged.genus(),
-    components,
-    specks: volumes.filter((volume) => volume > 0 && volume < SPECK).length,
-    voids: volumes.filter((volume) => volume <= 0).length,
-    degenerate,
-    size: [box.max[0] - box.min[0], box.max[1] - box.min[1], box.max[2] - box.min[2]],
-    min: [box.min[0], box.min[1], box.min[2]],
-    seconds: (Date.now() - started) / 1000,
-  };
-  for (const piece of pieces) piece.delete();
-  merged.delete();
-  for (const solid of [...solids, ...baseSolids]) solid.delete();
-  return { stl, report };
 }

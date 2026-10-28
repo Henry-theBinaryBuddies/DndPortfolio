@@ -235,7 +235,9 @@ describe("merging a bust into one printable solid", () => {
     const { positions, indices } = cube();
     const open: Part = { name: "open", positions, indices: indices.slice(0, indices.length - 6) }; // two triangles missing
     const good: Part = { name: "good", positions: Float32Array.from(positions, (v) => v * 10), indices };
-    const { report } = await mergeParts([open, good]);
+    // (by default it refuses: a file with a feature missing is never produced by accident)
+    await expect(mergeParts([open, good])).rejects.toThrow(/open/);
+    const { report } = await mergeParts([open, good], undefined, undefined, undefined, true);
     expect(report.parts.find((part) => part.name === "open")!.accepted).toBe(false);
     expect(report.parts.find((part) => part.name === "good")!.accepted).toBe(true);
     expect(report.volume).toBeCloseTo(1000, 1);
@@ -304,5 +306,27 @@ describe("the pedestal", () => {
     }
     for (const [key] of uses) expect(uses.get((key % 65536) * 65536 + Math.floor(key / 65536))).toBe(1);
     expect(volumeOf(geometry.attributes.position.array, index.array)).toBeGreaterThan(0);
+  });
+});
+
+describe("refusing to export what is not one solid", () => {
+  const box = (name: string, size: number, at: number): Part => {
+    const { positions, indices } = cube();
+    return { name, positions: Float32Array.from(positions, (v, i) => v * size + (i % 3 === 0 ? at : 0)), indices };
+  };
+  it("refuses two separate bodies by default, and reports both in a diagnostic export", async () => {
+    const parts = [box("a", 10, 0), box("b", 10, 50)];
+    await expect(mergeParts(parts)).rejects.toThrow(/2 separate bodies/);
+    const { report } = await mergeParts(parts, undefined, undefined, undefined, true);
+    expect(report.components.length).toBe(2);
+  });
+  it("removes a stray speck explicitly, so it is neither in the file nor hidden from the count", async () => {
+    const parts = [box("a", 10, 0), box("speck", 0.5, 50)];
+    const { stl, report } = await mergeParts(parts);
+    expect(report.specks).toBe(1);
+    expect(report.components.length).toBe(1);
+    expect(report.volume).toBeCloseTo(1000, 1);
+    expect(readStl(stl).count).toBe(report.triangles);
+    expect(Math.max(...readStl(stl).positions.filter((_, i) => i % 3 === 0))).toBeLessThanOrEqual(10.001);
   });
 });
