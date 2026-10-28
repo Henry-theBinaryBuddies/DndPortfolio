@@ -197,8 +197,19 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
       arch.push({ x: at.x, z: at.z + 0.002, nx: at.nx, nz: at.nz });
     }
     // (the lower gum is drawn back and slimmer, or it came out through the chin of a face with a small chin)
-    if (lower) gumLoft(into, arch.map((a) => ({ ...a, z: a.z - 0.026 })), LOWER_TOP - crown - 0.04, 0.02, 0.046);
-    else gumLoft(into, arch, UPPER_EDGE + crown + 0.04, 0.028, 0.046);
+    // Each gum reaches over the roots of its teeth (so the two are one solid, not touching at a point) and on
+    // into the roof or the jaw (so the whole is joined to the head): the upper from a little over the crowns up
+    // past the roof of the mouth, the lower from a little over the crowns down into the jaw. (The lower one is
+    // set back a little, or it came out through the chin of a face with a small chin.)
+    if (lower) {
+      const top = LOWER_TOP - crown + 0.015;
+      const bottom = -0.5;
+      gumLoft(into, arch.map((a) => ({ ...a, z: a.z - 0.02 })), (top + bottom) / 2, 0.028, (top - bottom) / 2);
+    } else {
+      const bottom = UPPER_EDGE + crown - 0.015;
+      const top = -0.225;
+      gumLoft(into, arch, (top + bottom) / 2, 0.028, (top - bottom) / 2);
+    }
 
     // Into the bust's coordinates: the skull's scaling, and for the lower row the jaw's turn
     for (let v = first; v < into.positions.length / 3; v++) {
@@ -217,13 +228,14 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
   // lower teeth back toward the throat
   if (p.jawOpen >= 0.02) {
     const first = into.positions.length / 3;
-    const tongue = new THREE.Vector3(0, -0.438, -0.075);
-    roundedBlock(into, tongue, new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), [0.075 * k.headWidth, 0.04, 0.15], 2.2);
+    const tongue = new THREE.Vector3(0, -0.43, -0.075);
+    roundedBlock(into, tongue, new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), [0.075 * k.headWidth, 0.05, 0.15], 2.2);
     for (let v = first; v < into.positions.length / 3; v++) {
       let y = into.positions[v * 3 + 1];
       let z = into.positions[v * 3 + 2];
       y += (k.headHeight - 1) * (y + 0.59);
-      if (jawAngle > 0) [y, z] = turnWithJaw(y, z, 0.8 * jawAngle);
+      // (turned as far as the floor it lies on, or it came free of it when the mouth was open)
+      if (jawAngle > 0) [y, z] = turnWithJaw(y, z, jawAngle);
       into.positions[v * 3 + 1] = y;
       into.positions[v * 3 + 2] = z;
     }

@@ -619,6 +619,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   };
   for (const side of [-1, 1]) {
     const first = half * 2 + lockVertices.length / 3;
+    const tubeFrom = index.length;
     const reachAlong: number[] = [];
     const path: { a: number; y: number }[] = [];
     let drift = 0;
@@ -670,6 +671,36 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
         else index.push(q0, q1, q2, q1, q3, q2);
       }
     }
+    // The tip is closed with a cap (its root closes itself: the tress grows from nothing there), so each lock
+    // is a closed solid
+    const tip = first + LOCK_ROWS * LOCK_SIDES;
+    const middle = half * 2 + lockVertices.length / 3;
+    let [mx, my, mz] = [0, 0, 0];
+    for (let j = 0; j < LOCK_SIDES; j++) {
+      const v = (tip - half * 2 + j) * 3;
+      mx += lockVertices[v] / LOCK_SIDES;
+      my += lockVertices[v + 1] / LOCK_SIDES;
+      mz += lockVertices[v + 2] / LOCK_SIDES;
+    }
+    lockVertices.push(mx, my, mz);
+    lockAt.push(side * 0.31, my, 0);
+    lockThick.push(0);
+    for (let j = 0; j < LOCK_SIDES; j++) {
+      const next = tip + ((j + 1) % LOCK_SIDES);
+      if (side > 0) index.push(middle, next, tip + j);
+      else index.push(middle, tip + j, next);
+    }
+    // Wound outward, whichever side it is on (by its volume: the two sides were built as mirror images, and
+    // one came out inside out)
+    let volume = 0;
+    const at = (v: number) => (v - half * 2) * 3;
+    for (let t = tubeFrom; t < index.length; t += 3) {
+      const [a, b, c] = [at(index[t]), at(index[t + 1]), at(index[t + 2])];
+      if (a < 0 || b < 0 || c < 0) continue;
+      const p = lockVertices;
+      volume += p[a] * (p[b + 1] * p[c + 2] - p[b + 2] * p[c + 1]) - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c]) + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c]);
+    }
+    if (volume < 0) for (let t = tubeFrom; t < index.length; t += 3) [index[t + 1], index[t + 2]] = [index[t + 2], index[t + 1]];
   }
 
 

@@ -20,7 +20,7 @@ import {
 } from "./params";
 
 // Builds the control panel and calls onChange with a fresh Params copy on every edit.
-export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void): void {
+export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void) => Promise<void>): void {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
   const raceSelect = document.createElement("select");
@@ -162,6 +162,28 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   reset.addEventListener("click", () => update(defaultParams()));
   actions.append(randomize, reset);
   panel.append(actions);
+
+  // Export: the bust as an STL, merged into one solid for printing (it takes a few seconds)
+  if (onExport) {
+    const exportSection = document.createElement("section");
+    exportSection.innerHTML = "<h2>Print</h2>";
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.id = "export-stl";
+    exportButton.textContent = "Export STL";
+    const status = document.createElement("p");
+    status.className = "hint";
+    status.id = "export-status";
+    status.textContent = "Merges the bust, with its base, into one solid: about 75-90 mm tall, sized for a 0.2 mm nozzle.";
+    exportButton.addEventListener("click", () => {
+      exportButton.disabled = true;
+      onExport({ ...params }, (text) => (status.textContent = text))
+        .catch((error: unknown) => (status.textContent = `Export failed: ${error instanceof Error ? error.message : String(error)}`))
+        .finally(() => (exportButton.disabled = false));
+    });
+    exportSection.append(exportButton, status);
+    panel.append(exportSection);
+  }
 
   syncUI();
 }

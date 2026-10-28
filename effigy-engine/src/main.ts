@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import "./style.css";
-import { buildBust, disposeObject } from "./builder";
+import { basePrism, buildBust, disposeObject } from "./builder";
+import { MM, PRINT } from "./print";
 import { loadAssets, type Assets } from "./assets";
 import { defaultParams, type Params } from "./params";
+import { exportStl, describe } from "./exportStl";
 import { mountPanel } from "./ui";
 
 const stage = document.getElementById("stage") as HTMLElement;
@@ -24,18 +26,18 @@ const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
 // worked out from each new bust.
 const faceButton = document.querySelector<HTMLButtonElement>('#framing [data-distance="face"]')!;
 const BUST_DISTANCE = 7.4;
-const CHIN_Y = 1.4; // just under the chin, as a height above the plinth
+let chinY = 1.4; // just under the chin (or the beard), as a height above the plinth: set from each bust
 let faceTop = 2.7;
 let distance = BUST_DISTANCE;
 function faceDistance() {
   // (with room to spare: the face sits in front of the turntable's centre, so it looks bigger than it is)
-  const halfHeight = ((faceTop - CHIN_Y) / 2) * 1.5;
+  const halfHeight = ((faceTop - chinY) / 2) * 1.5;
   return Math.min(BUST_DISTANCE - 1, Math.max(2.6, halfHeight / Math.tan(THREE.MathUtils.degToRad(16))));
 }
 function placeCamera() {
   const face = faceDistance();
   const t = Math.min(1, Math.max(0, (BUST_DISTANCE - distance) / (BUST_DISTANCE - face))); // 0 = full bust, 1 = the face
-  const targetY = 1.2 + ((faceTop + CHIN_Y) / 2 - 1.2) * t;
+  const targetY = 1.2 + ((faceTop + chinY) / 2 - 1.2) * t;
   camera.position.set(0, targetY + 0.5 - 0.5 * t, distance);
   camera.lookAt(0, targetY, 0);
 }
@@ -55,13 +57,10 @@ const rim = new THREE.DirectionalLight(0x7a8ab0, 1.0 * Math.PI);
 rim.position.set(3, 2, -3);
 scene.add(rim);
 
-// The miniature's base: 25 mm in print terms, and the footprint a token ring wraps around.
-const base = new THREE.Mesh(
-  new THREE.CylinderGeometry(1.75, 1.9, 0.1, 18),
-  new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.95, flatShading: true }),
-);
-base.position.y = -0.05;
-scene.add(base);
+// The miniature's base: the one that prints (see print.ts), following the underside of the bust, so it is
+// rebuilt with each bust. Its top is the plane the bust stands on.
+const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.95, flatShading: true });
+let base: THREE.Mesh | null = null;
 
 const pivot = new THREE.Group();
 scene.add(pivot);
@@ -81,8 +80,16 @@ function swap(params: Params, detail: boolean) {
   }
   figure = buildBust(params, assets, detail);
   pivot.add(figure);
-  // Refit the face framing to this bust's height (keeping the camera where it was if it is framing the face)
+  if (base) {
+    scene.remove(base);
+    base.geometry.dispose();
+  }
+  base = new THREE.Mesh(basePrism(figure.userData.outline, -PRINT.baseHeight * MM, 0), baseMaterial);
+  scene.add(base);
+  // Refit the face framing to this bust (keeping the camera where it was if it is framing the face): from
+  // the lowest point of its chin or beard to the highest point of its head
   const framingFace = Math.abs(distance - faceDistance()) < 0.01;
+  chinY = figure.userData.faceBottom - 0.12;
   faceTop = new THREE.Box3().setFromObject(figure).max.y;
   faceButton.dataset.distance = String(faceDistance());
   if (framingFace) distance = faceDistance();
@@ -204,7 +211,10 @@ if (import.meta.env.DEV) {
 }
 
 const initial = defaultParams();
-mountPanel(panel, initial, show);
+mountPanel(panel, initial, show, async (params, say) => {
+  if (!assets) throw new Error("the head model has not loaded");
+  say(describe(await exportStl(params, assets, say)));
+});
 resize();
 frame();
 

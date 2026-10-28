@@ -9,6 +9,7 @@ import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
 import { buildTeeth } from "./teeth";
 import { derive, type Params } from "./params";
+import { baseOutline, MM, PRINT } from "./print";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
 // (how light hits it). Meshes are parented into Groups, so the whole bust can
@@ -75,20 +76,29 @@ export function fitSphere(geometry: THREE.BufferGeometry, fit: EyeFit, scale = 1
   const u = new THREE.Vector3();
   let r = new Float32Array(pos.count);
   const limit = new Float32Array(pos.count);
-  for (let i = 0; i < pos.count; i++) {
-    u.fromBufferAttribute(pos, i).normalize();
-    r[i] = fit.shape(u) * scale;
-    limit[i] = fit.limit(u) * scale;
-  }
   const index = geometry.index!;
   // A sphere repeats the vertices along its seam and at its poles; they are welded here so the smoothing
   // treats them as one point (smoothed apart, they opened a crease down the eye)
   const same = new Int32Array(pos.count);
   const first = new Map<string, number>();
   for (let i = 0; i < pos.count; i++) {
-    const key = `${pos.getX(i).toFixed(5)},${pos.getY(i).toFixed(5)},${pos.getZ(i).toFixed(5)}`;
+    // (as whole numbers: along the seam a coordinate is about +-1e-16, which as text is "-0.00000" for one copy
+    // and "0.00000" for the other, and the two copies were never grouped)
+    const key = `${Math.round(pos.getX(i) * 1e5) + 0},${Math.round(pos.getY(i) * 1e5) + 0},${Math.round(pos.getZ(i) * 1e5) + 0}`;
     if (!first.has(key)) first.set(key, i);
     same[i] = first.get(key)!;
+  }
+  // (what it wants and what it may have are worked out once for each shared point: worked out for each copy,
+  // a rounding error could tip two copies of one seam vertex across a threshold, and the seam came apart)
+  for (let i = 0; i < pos.count; i++) {
+    if (same[i] !== i) continue;
+    u.fromBufferAttribute(pos, i).normalize();
+    r[i] = fit.shape(u) * scale;
+    limit[i] = fit.limit(u) * scale;
+  }
+  for (let i = 0; i < pos.count; i++) {
+    r[i] = r[same[i]];
+    limit[i] = limit[same[i]];
   }
   const average = (values: Float32Array) => {
     const sum = new Float32Array(pos.count);
@@ -138,6 +148,7 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
 
   const bust = sculptBust(p, base);
   const skin = new THREE.Mesh(bust.geometry, clay);
+  skin.name = "head";
   head.add(skin);
   // Surface lookups (horns, tusks) happen in the head's own space, so they use a probe mesh that is not moved
   const probe = new THREE.Mesh(bust.geometry);
@@ -154,6 +165,7 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
     ball.rotateX(Math.PI / 2); // spheres have their poles on y; turn one to face the front
     fitSphere(ball, socketFit(bust.positions, centre, eyeR));
     const eye = new THREE.Mesh(ball, clay);
+    eye.name = "eye";
     eye.position.copy(centre);
     head.add(eye);
   }
@@ -167,6 +179,7 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
       const rootPoint = topPoint(probe, side * 0.3, -0.3);
       if (!rootPoint) continue;
       const horn = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), clay);
+      horn.name = "horn";
       horn.scale.set(side * size, size, size);
       // Point it along the surface normal, leaned up and outward, with its base buried in the skull
       const direction = rootPoint.normal.clone().multiplyScalar(0.55).add(new THREE.Vector3(side * 0.3, 0.85, -0.1)).normalize();
@@ -205,6 +218,7 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
       const lean = Math.min(0.85, Math.max(0.35, clear.z / Math.max(clear.y, 1e-3)));
       const along = new THREE.Vector3(side * 0.12, 1, lean).normalize();
       const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), clay);
+      tusk.name = "tusk";
       tusk.scale.set(side * size, size, size);
       tusk.quaternion.setFromUnitVectors(UP, along);
       tusk.position.copy(exit).addScaledVector(along, -0.33 * size);
@@ -219,16 +233,47 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
 
   // Hair: a sculpted shell over the scalp, and, for long hair, a draped curtain for the lengths that hang
   // free; and a beard, sculpted like the hair
-  for (const form of [(detail ? buildHair : buildHairShell)(p, bust.positions, bust.normals, base), (detail ? buildHanging(p, bust.positions, base) : buildHangingHair(p, bust.positions, base)), (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base), (detail ? buildLocks : buildLockShell)(p, bust.positions, bust.normals, base)]) {
-    if (form) head.add(new THREE.Mesh(form, clay));
+  const beard = (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base);
+  const forms: [string, THREE.BufferGeometry | null][] = [
+    ["hair", (detail ? buildHair : buildHairShell)(p, bust.positions, bust.normals, base)],
+    ["curtain", detail ? buildHanging(p, bust.positions, base) : buildHangingHair(p, bust.positions, base)],
+    ["beard", beard],
+    ["locks", (detail ? buildLocks : buildLockShell)(p, bust.positions, bust.normals, base)],
+  ];
+  for (const [name, form] of forms) {
+    if (!form) continue;
+    const mesh = new THREE.Mesh(form, clay);
+    mesh.name = name;
+    head.add(mesh);
   }
+
+  // Where the bust stands, and how far down its face reaches, for the base and for framing the face: the
+  // outline of its underside (relative to the middle of the plinth), and the lowest point of the chin or the
+  // beard (in the plinth's coordinates: y = 0 is the top of the base)
+  const underside: [number, number][] = [];
+  for (const i of base.bottom) underside.push([bust.positions[i * 3] - bust.footprint.x, bust.positions[i * 3 + 2] - bust.footprint.z]);
+  root.userData.outline = baseOutline(underside, PRINT.baseMargin * MM);
+  let faceBottom = Infinity;
+  for (let i = 0; i < bust.positions.length; i += 3) {
+    if (bust.positions[i + 1] > -0.8 && bust.positions[i + 2] > -0.05) faceBottom = Math.min(faceBottom, bust.positions[i + 1]);
+  }
+  if (beard) for (let i = 0; i < beard.attributes.position.count; i++) faceBottom = Math.min(faceBottom, beard.attributes.position.getY(i));
+  root.userData.faceBottom = faceBottom - bust.baseY;
   // Teeth, once the mouth is open enough to show them (see teeth.ts)
   const teeth = buildTeeth(p);
-  if (teeth) head.add(new THREE.Mesh(teeth, clay));
+  if (teeth) {
+    const mesh = new THREE.Mesh(teeth, clay);
+    mesh.name = "teeth";
+    head.add(mesh);
+  }
 
   // Eyebrows, sculpted with carved hair (see brows.ts)
   const brows = buildBrows(p, bust.positions, bust.normals, base);
-  if (brows) head.add(new THREE.Mesh(brows, clay));
+  if (brows) {
+    const mesh = new THREE.Mesh(brows, clay);
+    mesh.name = "brows";
+    head.add(mesh);
+  }
 
   return root;
 }
@@ -242,4 +287,36 @@ export function disposeObject(object: THREE.Object3D): void {
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     for (const material of materials) material.dispose();
   });
+}
+
+// The base as a closed prism: the outline (convex, counter-clockwise, as (x, z)) from `bottom` up to `top`
+export function basePrism(outline: [number, number][], bottom: number, top: number): THREE.BufferGeometry {
+  const n = outline.length;
+  const positions: number[] = [];
+  for (const y of [bottom, top]) for (const [x, z] of outline) positions.push(x, y, z);
+  const index: number[] = [];
+  // The sides: counter-clockwise seen from above (x to the right, z toward the viewer), so outward is to the
+  // right of the direction of travel
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    index.push(i, n + j, n + i, i, j, n + j);
+  }
+  // The caps, as fans (the outline is convex), each winding the opposite way along the rim from the side
+  // that meets it, as a closed surface needs
+  for (let i = 1; i < n - 1; i++) {
+    index.push(n, n + i, n + i + 1);
+    index.push(0, i + 1, i);
+  }
+  // (wound outward whichever way round the outline runs)
+  let volume = 0;
+  for (let t = 0; t < index.length; t += 3) {
+    const [a, b, c] = [index[t] * 3, index[t + 1] * 3, index[t + 2] * 3];
+    volume += positions[a] * (positions[b + 1] * positions[c + 2] - positions[b + 2] * positions[c + 1]) - positions[a + 1] * (positions[b] * positions[c + 2] - positions[b + 2] * positions[c]) + positions[a + 2] * (positions[b] * positions[c + 1] - positions[b + 1] * positions[c]);
+  }
+  if (volume < 0) for (let t = 0; t < index.length; t += 3) [index[t + 1], index[t + 2]] = [index[t + 2], index[t + 1]];
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  geometry.computeVertexNormals();
+  return geometry;
 }

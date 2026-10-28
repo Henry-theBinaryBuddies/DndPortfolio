@@ -1,10 +1,10 @@
 # Effigy Engine
 
-A procedural 3D character and monster designer. Shape a grim bust with sliders, then export a printable STL and a VTT token (both planned).
+A procedural 3D character and monster designer. Shape a grim bust with sliders, then export a printable STL (a VTT token is planned).
 
 For now it is a sculpting tool only: everything is shown in one clay material, exactly the form that prints. Colour, paint, skin shaders and archetype presets were taken out until the sculpt is right; they are in git history (up to commit `ca8ec31`).
 
-Stack: TypeScript, Vite, Three.js, Vitest.
+Stack: TypeScript, Vite, Three.js, [manifold-3d](https://github.com/elalish/manifold) (merging parts into one solid), Vitest.
 
 ```
 npm install
@@ -19,7 +19,7 @@ The head, neck and shoulders are a **hand-sculpted CC0 base mesh** (Blender Stud
 
 Eyes, horns, tusks and hair are separate meshes. The eyeballs are fitted to their sockets so the lids rest on them; horns and tusks are sculpted assets (`tools/export_horns.py`) seated on the surface by ray casting; hair is a closed shell raised from the scalp (`src/hairShell.ts`; long hair adds a draped curtain for its hanging lengths). Beards are sculpted the same way over the lower face (`src/beard.ts`). Tusks belong to half-orcs only.
 
-Print target: an FDM printer with a 0.4 mm nozzle, busts 75-90 mm tall on a base about 50 mm across. Surface texture has to be real geometry at that scale (grooves at least about 0.8 mm wide), so hair and beard detail is sculpted, not shaded.
+Print target: an FDM printer with a 0.2 mm nozzle (one profile, in `src/print.ts`), busts 75-90 mm tall on a 4 mm base that follows the underside of the bust (the busts are 45-70 mm across at the bottom, so a 50 mm round base would not carry them). Surface texture has to be real geometry at that scale (grooves at least about 0.4 mm wide, ridges at least 0.6 mm), so hair and beard detail is sculpted, not shaded. These sizes are design targets: print a small detail coupon at your actual settings before relying on them.
 
 ## Layout
 
@@ -35,6 +35,7 @@ Print target: an FDM printer with a 0.4 mm nozzle, busts 75-90 mm tall on a base
 - `src/builder.ts` - assembles the head, eyes, tusks, horns, hair and beard into a Three.js group
 - `src/hairShell.ts`, `src/beard.ts` - hair and beard shells, and where a beard grows
 - `src/brows.ts` - sculpted eyebrows: the brow outline, raised and carved with grooves along the hair
+- `src/printable.ts`, `src/export.ts`, `src/exportWorker.ts`, `src/exportStl.ts` - the STL export: every part of the bust is baked into millimetres (Z up, mirrored parts re-wound), welded, split into its closed shells, and merged with manifold-3d in a worker into one solid; a binary STL and a report (pieces, voids, size, volume) come out. The **Export STL** button is in the panel.
 - `src/jaw.ts` - opening the mouth: the lower jaw turns about its hinge, with per-vertex weights solved on the mesh itself (the head has a real hollow mouth behind the lips, so opening parts them and the surface stays closed)
 - `src/teeth.ts` - an upper and a lower row of teeth with their gums, and a tongue, in the mouth's cavity (shown only when the mouth is parted); the lower row and the tongue turn with the jaw
 - `src/locks.ts` - dreadlocks and braids: each lock a closed tube that falls under gravity and rests on the head and shoulders, with spiral (dreads) or chevron (braids) grooves, over a close crop
@@ -48,7 +49,7 @@ Print target: an FDM printer with a 0.4 mm nozzle, busts 75-90 mm tall on a base
 
 1. Sculpted character model, races, gendered builds, hair and beards (done)
 2. Sculpted hair and beard texture: locks and grooves sized for FDM printing
-3. STL export: head, hair, beard, eyes, horns and tusks unioned into one closed solid (manifold-3d), checked for minimum thickness
+3. STL export: head, hair, beard, eyes, horns, tusks, teeth and base merged into one closed solid with manifold-3d (done: checked for being one solid and watertight). To do: a minimum-wall-thickness check, support/overhang review, an independent check with Trimesh and a slicer, and a printed detail coupon
 4. Circular PNG token export
 5. Colour and shading, archetype presets
 6. Clothing and accessories
