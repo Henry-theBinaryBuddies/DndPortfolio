@@ -71,13 +71,15 @@ let assets: Assets | null = null;
 
 // Rebuilds the bust from the current settings. The sculpt is a deformed copy of a real head mesh, so
 // this is fast enough to run on every slider movement.
-function show(params: Params) {
+let settle: number | undefined;
+
+function swap(params: Params, detail: boolean) {
   if (!assets) return;
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildBust(params, assets);
+  figure = buildBust(params, assets, detail);
   pivot.add(figure);
   // Refit the face framing to this bust's height (keeping the camera where it was if it is framing the face)
   const framingFace = Math.abs(distance - faceDistance()) < 0.01;
@@ -85,6 +87,14 @@ function show(params: Params) {
   faceButton.dataset.distance = String(faceDistance());
   if (framingFace) distance = faceDistance();
   placeCamera();
+}
+
+// Every edit shows a quick draft (without the carving), and the carved beard replaces it once the controls
+// have been still for a moment.
+function show(params: Params) {
+  swap(params, false);
+  window.clearTimeout(settle);
+  settle = window.setTimeout(() => swap(params, true), 160);
 }
 
 function resize() {

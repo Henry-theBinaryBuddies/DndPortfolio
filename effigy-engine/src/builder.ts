@@ -3,7 +3,7 @@ import { shapeGeometry, type Assets } from "./assets";
 import { buildBrows } from "./brows";
 import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
-import { buildBeard, buildHairShell, buildHangingHair } from "./hairShell";
+import { buildBeard, buildBeardShell, buildHairShell, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { derive, type Params } from "./params";
 
@@ -122,7 +122,9 @@ export function fitSphere(geometry: THREE.BufferGeometry, fit: EyeFit, scale = 1
 
 const UP = new THREE.Vector3(0, 1, 0);
 
-export function buildBust(p: Params, assets: Assets): THREE.Group {
+// With detail off the beard is its plain shell, without the carving (about 750,000 triangles, which takes
+// a moment to build): that is the quick draft shown while a slider moves.
+export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group {
   const root = new THREE.Group();
   const k = derive(p);
   const base = assets.head;
@@ -201,7 +203,7 @@ export function buildBust(p: Params, assets: Assets): THREE.Group {
 
   // Hair: a sculpted shell over the scalp, and, for long hair, a draped curtain for the lengths that hang
   // free; and a beard, sculpted like the hair
-  for (const form of [buildHairShell(p, bust.positions, bust.normals, base), buildHangingHair(p, bust.positions, base), buildBeard(p, bust.positions, bust.normals, base)]) {
+  for (const form of [buildHairShell(p, bust.positions, bust.normals, base), buildHangingHair(p, bust.positions, base), (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base)]) {
     if (form) head.add(new THREE.Mesh(form, clay));
   }
   // Eyebrows, sculpted with carved hair (see brows.ts)

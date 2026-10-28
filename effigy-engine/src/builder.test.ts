@@ -2,11 +2,12 @@ import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust, fitSphere, socketFit } from "./builder";
+import { BEARD_CARVING, carvingDepth } from "./beardCarve";
 import { BROW_CARVING, buildBrows } from "./brows";
 import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
 import { deformHead } from "./deform";
 import { sculptBust } from "./face";
-import { buildBeard, buildHairShell, buildHangingHair } from "./hairShell";
+import { buildBeard, buildBeardShell, buildHairShell, buildHangingHair } from "./hairShell";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
 import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
@@ -569,7 +570,7 @@ describe("buildBust", () => {
     for (const overrides of cases) {
       const p = params(overrides);
       const bust = sculptBust(p, base);
-      expect(folds(buildBeard(p, bust.positions, bust.normals, base)!), JSON.stringify(overrides)).toBe(0);
+      expect(folds(buildBeardShell(p, bust.positions, bust.normals, base)!), JSON.stringify(overrides)).toBe(0);
     }
     for (const hairStyle of ["cropped", "swept", "mohawk", "long"] as const) {
       const p = params({ hairStyle });
@@ -666,6 +667,134 @@ describe("sculpted eyebrows", () => {
         const bust = sculptBust(p, base);
         expect(() => buildBrows(p, bust.positions, bust.normals, base), `${race} ${body}`).not.toThrow();
       }
+    }
+  }, 120000);
+});
+
+describe("carved beards", () => {
+  it("are carved no finer than the printer can make, and no deeper than is worth printing", () => {
+    expect(BEARD_CARVING.lockGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
+    expect(BEARD_CARVING.fineGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
+    expect(BEARD_CARVING.lockDepth).toBeGreaterThanOrEqual(0.3 * MM);
+    expect(BEARD_CARVING.fineDepth).toBeGreaterThanOrEqual(0.2 * MM);
+    // The ridge left between a lock's groove and the finer one in its middle is wide enough to print
+    expect(BEARD_CARVING.lockPitch / 2 - (BEARD_CARVING.lockGroove + BEARD_CARVING.fineGroove) / 2).toBeGreaterThanOrEqual(0.5 * MM);
+    expect(BEARD_CARVING.lockPitch / 2 - (BEARD_CARVING.lockGroove + BEARD_CARVING.fineGroove) / 2).toBeGreaterThanOrEqual(MIN_FEATURE * 0.8);
+  });
+
+  it("run locks across the chin, each groove a lock's width apart, none deeper than the carving allows", () => {
+    // Along a line across the chin, count the grooves (local maxima of the carving's depth)
+    const grooves: number[] = [];
+    let most = 0;
+    let before = 0;
+    let rising = false;
+    const step = 0.0005;
+    for (let x = -0.15; x <= 0.15; x += step) {
+      const d = carvingDepth(x, -0.62, 0.1);
+      most = Math.max(most, d);
+      if (d > before) rising = true;
+      else if (d < before && rising && before > 0.05 * MM) {
+        grooves.push(x - step);
+        rising = false;
+      }
+      before = d;
+    }
+    expect(most).toBeLessThanOrEqual(BEARD_CARVING.lockDepth * 1.0001);
+    expect(most).toBeGreaterThan(0.3 * MM);
+    // Locks of 2 mm with a finer groove between: about a groove every mm across about 10 mm
+    expect(grooves.length).toBeGreaterThan(5);
+    expect(grooves.length).toBeLessThan(16);
+    for (let i = 1; i < grooves.length; i++) expect(grooves[i] - grooves[i - 1], `groove ${i}`).toBeGreaterThanOrEqual(0.3 * MM);
+  });
+
+  it("fan the moustache out from under the nose: its grooves run outward and down from it", () => {
+    // At a point beside the philtrum the grooves lie along the line out from under the nose, so the carving
+    // changes little along that line and a lot across it
+    const [px, py] = [0.06, -0.3];
+    const length = Math.hypot(px, py + 0.22);
+    const along = [px / length, (py + 0.22) / length];
+    const across = [-along[1], along[0]];
+    const variation = (direction: number[]) => {
+      let sum = 0;
+      for (let t = -0.015; t < 0.015; t += 0.0005) {
+        sum += Math.abs(carvingDepth(px + direction[0] * (t + 0.0005), py + direction[1] * (t + 0.0005), 0.2) - carvingDepth(px + direction[0] * t, py + direction[1] * t, 0.2));
+      }
+      return sum;
+    };
+    expect(variation(across)).toBeGreaterThan(2 * variation(along));
+  });
+
+  it("subdivide the shell finely enough to hold a groove, and stay closed", () => {
+    const p = params({ beardStyle: "full" });
+    const bust = sculptBust(p, base);
+    const shell = buildBeardShell(p, bust.positions, bust.normals, base)!;
+    const carved = buildBeard(p, bust.positions, bust.normals, base)!;
+    expect(carved.index!.count).toBe(shell.index!.count * 16);
+    // The typical edge, after quartering twice, is no more than a quarter of the finest groove's width
+    const edge = (g: THREE.BufferGeometry) => {
+      const pos = g.attributes.position;
+      const index = g.index!;
+      const lengths: number[] = [];
+      for (let t = 0; t < index.count; t += 60) {
+        const a = index.getX(t);
+        const b = index.getX(t + 1);
+        lengths.push(Math.hypot(pos.getX(a) - pos.getX(b), pos.getY(a) - pos.getY(b), pos.getZ(a) - pos.getZ(b)));
+      }
+      lengths.sort((x, y) => x - y);
+      return lengths[Math.floor(lengths.length * 0.5)];
+    };
+    expect(edge(carved)).toBeLessThan(BEARD_CARVING.fineGroove / 4);
+    // Carving never breaks the solid: every edge is shared by exactly two triangles
+    const index = carved.index!;
+    const uses = new Map<number, number>();
+    for (let t = 0; t < index.count; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const a = index.getX(t + e);
+        const b = index.getX(t + ((e + 1) % 3));
+        const k = a < b ? a * 2097152 + b : b * 2097152 + a;
+        uses.set(k, (uses.get(k) ?? 0) + 1);
+      }
+    }
+    let open = 0;
+    for (const n of uses.values()) if (n !== 2) open++;
+    expect(open).toBe(0);
+  }, 120000);
+
+  it("rebuild in a few seconds at most once their pattern is cached", () => {
+    const p = params({ beardStyle: "full" });
+    const bust = sculptBust(p, base);
+    buildBeard(p, bust.positions, bust.normals, base);
+    const start = performance.now();
+    buildBeard(p, bust.positions, bust.normals, base);
+    expect(performance.now() - start).toBeLessThan(3000);
+  }, 120000);
+
+  it("never sink under the lower lip's own bulge: the shell stays above the skin that faces forward there, at full lips and a heavy jaw", () => {
+    for (const overrides of [{ race: "dwarf" as const, lips: 0.75, jaw: 0.8 }, { lips: 0.75, jaw: 0.5 }, { lips: 0.25, jaw: 0.2 }]) {
+      const p = params({ beardStyle: "full", ...overrides });
+      const bust = sculptBust(p, base);
+      const shell = buildBeardShell(p, bust.positions, bust.normals, base)!;
+      const pos = shell.attributes.position;
+      const head = shell.attributes.headPos;
+      const hair = shell.attributes.hairAmount;
+      // Which skin vertex each shell vertex grows from
+      const at = new Map<string, number>();
+      for (let i = 0; i < base.positions.length; i += 3) at.set(`${base.positions[i].toFixed(5)},${base.positions[i + 1].toFixed(5)},${base.positions[i + 2].toFixed(5)}`, i);
+      let sunk = 0;
+      let checked = 0;
+      for (let j = 0; j < pos.count / 2; j++) {
+        const x = head.getX(j);
+        const y = head.getY(j);
+        if (hair.getX(j) < 0.5 || Math.abs(x) > 0.1 || y < -0.5 || y > -0.4) continue;
+        const v = at.get(`${x.toFixed(5)},${y.toFixed(5)},${head.getZ(j).toFixed(5)}`);
+        // (only the skin that faces the viewer: the crease behind the lip is hidden by it)
+        if (v === undefined || bust.normals[v + 2] < 0.5) continue;
+        const along = (pos.getX(j) - bust.positions[v]) * bust.normals[v] + (pos.getY(j) - bust.positions[v + 1]) * bust.normals[v + 1] + (pos.getZ(j) - bust.positions[v + 2]) * bust.normals[v + 2];
+        checked++;
+        if (along < 0) sunk++;
+      }
+      expect(checked, JSON.stringify(overrides)).toBeGreaterThan(20);
+      expect(sunk, JSON.stringify(overrides)).toBe(0);
     }
   }, 120000);
 });

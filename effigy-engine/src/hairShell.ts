@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { scalp, STRIP_HALF_WIDTH } from "./hair";
 import { beardWeight } from "./beard";
+import { carveBeard } from "./beardCarve";
 import type { HeadBase } from "./headMesh";
 import type { Params } from "./params";
 
@@ -100,7 +101,8 @@ export function buildHairShell(
 // style's thickness (times scale, per vertex, if given), carried along its comb by its lean. It is closed:
 // an outer surface, an inner one just under the skin, and walls joining them round the edge, so it is a
 // solid that prints and that never shows an open underside. Shared by the hair and the beard.
-function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBase, grow: Float32Array, style: Style, scale?: Float32Array): THREE.BufferGeometry | null {
+// (floor: where, per head vertex, 0..1, the shell is raised along the skin's own normal)
+function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBase, grow: Float32Array, style: Style, scale?: Float32Array, floor?: Float32Array): THREE.BufferGeometry | null {
   const indices = base.indices;
   const count = positions.length / 3;
 
@@ -233,8 +235,34 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
       }
       disp = next;
     }
+    // Where asked, kept from sinking under the skin it grows from, on the part of the face that faces the
+    // viewer: under a full lower lip the skin bulges (the lip is pushed out, the crease below it filled in)
+    // and a thin shell smoothed with its neighbours was dragged down into the bulge, leaving a crescent of
+    // skin showing through the beard. The shortfall is spread to the neighbours (pushing single points
+    // folded the shell), but only inside the floor's own area and only on skin that faces forward: in the
+    // crease behind the lip, or by the ear, the skin turns too sharply to push along.
+    const facing = (v: number) => smooth((normals[v * 3 + 2] - 0.3) / 0.3);
+    let push = new Float32Array(total);
+    if (floor) {
+      order.forEach((v, j) => {
+        const along = disp[j * 3] * normals[v * 3] + disp[j * 3 + 1] * normals[v * 3 + 1] + disp[j * 3 + 2] * normals[v * 3 + 2];
+        push[j] = Math.max(0, 2 * SKIN_GAP * anchor[j] - along) * facing(v);
+      });
+      for (let pass = 0; pass < 6; pass++) {
+        const next = new Float32Array(push);
+        for (let j = 0; j < total; j++) {
+          const near = links[j];
+          if (near.length === 0) continue;
+          let sum = 0;
+          for (const q of near) sum += push[q];
+          next[j] = Math.max(push[j], sum / near.length);
+        }
+        push = next;
+      }
+    }
     order.forEach((v, j) => {
-      for (let k = 0; k < 3; k++) out[j * 3 + k] = positions[v * 3 + k] + disp[j * 3 + k];
+      const lift = floor ? push[j] * floor[v] : 0;
+      for (let k = 0; k < 3; k++) out[j * 3 + k] = positions[v * 3 + k] + disp[j * 3 + k] + normals[v * 3 + k] * lift;
     });
   }
 
@@ -268,9 +296,18 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     }
   }
 
+  // Where each vertex lies on the undeformed head, so anything carved into the shell stays with the face
+  const headPos = new Float32Array(total * 6);
+  order.forEach((v, j) => {
+    for (let k = 0; k < 3; k++) {
+      headPos[j * 3 + k] = base.positions[v * 3 + k];
+      headPos[(total + j) * 3 + k] = base.positions[v * 3 + k];
+    }
+  });
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(out, 3));
   geometry.setAttribute("hairAmount", new THREE.BufferAttribute(amount, 1));
+  geometry.setAttribute("headPos", new THREE.BufferAttribute(headPos, 3));
   geometry.setIndex(closed);
   geometry.computeVertexNormals();
   return geometry;
@@ -329,17 +366,33 @@ function beardShaping(x: number, y: number, z: number): number {
   return underLip * moustache * throat * corners;
 }
 
-export function buildBeard(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+// The beard's own shape, before it is carved: a closed shell of the head's resolution
+export function buildBeardShell(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   if (p.beardStyle === "none") return null;
   const count = positions.length / 3;
   const grow = new Float32Array(count);
   const bp = base.positions;
   const scale = new Float32Array(count);
+  const floor = new Float32Array(count);
   for (let i = 0; i < count; i++) {
-    grow[i] = beardWeight(bp[i * 3], bp[i * 3 + 1], bp[i * 3 + 2], p.beardStyle, base.masks.lipsSoft[i]);
-    scale[i] = beardShaping(bp[i * 3], bp[i * 3 + 1], bp[i * 3 + 2]);
+    const ax = Math.abs(bp[i * 3]);
+    const y = bp[i * 3 + 1];
+    grow[i] = beardWeight(bp[i * 3], y, bp[i * 3 + 2], p.beardStyle, base.masks.lipsSoft[i]);
+    scale[i] = beardShaping(bp[i * 3], y, bp[i * 3 + 2]);
+    // Under the lower lip, across the width of the mouth
+    const band = (1 - smooth((ax - 0.15) / 0.06)) * smooth((y + 0.54) / 0.03) * (1 - smooth((y + 0.37) / 0.03));
+    floor[i] = band;
+    // ...where the skin tucks into the crease behind the lip, facing up and back, hidden by the lip: no hair
+    // there (it only folded over itself in the crease, and nobody sees it)
+    grow[i] *= 1 - band * smooth((base.normals[i * 3 + 1] - 0.35) / 0.25);
   }
-  return raiseShell(positions, normals, base, grow, BEARDS[p.beardStyle], scale);
+  return raiseShell(positions, normals, base, grow, BEARDS[p.beardStyle], scale, floor);
+}
+
+// The beard as it prints: its shape, subdivided and carved into locks (see beardCarve.ts)
+export function buildBeard(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+  const shell = buildBeardShell(p, positions, normals, base);
+  return shell ? carveBeard(shell, base, p.beardStyle) : null;
 }
 
 // Long hair's hanging lengths: a curtain draped from the scalp down the back, sculpted as one solid mass like
