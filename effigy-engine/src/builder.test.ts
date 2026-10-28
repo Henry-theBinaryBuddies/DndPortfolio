@@ -225,8 +225,49 @@ describe("deformation", () => {
     expect(front(fem)).toBeGreaterThan(front(masc));
   });
 
-  it("makes a muscular bust broader through the shoulders than a slight one", () => {
-    expect(extent(shape(params({ muscle: 1 })), -1.2, -1.0).x).toBeGreaterThan(extent(shape(params({ muscle: 0 })), -1.2, -1.0).x);
+  it("gives a muscular bust defined forms, not a broader frame", () => {
+    const slight = shape(params({ muscle: 0 }));
+    const strong = shape(params({ muscle: 1 }));
+    // Barely any broader through the shoulders (the deltoids' caps are most of it)...
+    expect(extent(strong, -1.2, -1.0).x / extent(slight, -1.2, -1.0).x).toBeLessThan(1.05);
+    // ...but the neck cords, collarbones and chest stand out: somewhere on the front of the neck and chest
+    // the surface moves by a couple of millimetres or more
+    let most = 0;
+    for (let i = 0; i < strong.length; i += 3) {
+      if (strong[i + 1] > -0.5 || strong[i + 1] < -1.6) continue;
+      most = Math.max(most, Math.hypot(strong[i] - slight[i], strong[i + 1] - slight[i + 1], strong[i + 2] - slight[i + 2]));
+    }
+    expect(most).toBeGreaterThan(0.012);
+  });
+
+  it("keeps stocky races' shoulders in proportion", () => {
+    const width = (race: Params["race"]) => extent(shape(applyRace(defaultParams(), race)), -1.2, -1.0).x;
+    for (const race of ["dwarf", "half-orc"] as const) expect(width(race) / width("human"), race).toBeLessThan(1.2);
+  });
+
+  it("keeps the neck round however wide the jaw, skull or shoulders: as deep for its width as the sculpt's", () => {
+    // The neck's depth over its width just below the jaw
+    const roundness = (positions: Float32Array) => {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minZ = Infinity;
+      let maxZ = -Infinity;
+      for (let i = 0; i < positions.length; i += 3) {
+        if (Math.abs(positions[i + 1] + 0.72) > 0.012 || Math.hypot(positions[i] - base.neck.x, positions[i + 2] - base.neck.z) > 0.5) continue;
+        minX = Math.min(minX, positions[i]);
+        maxX = Math.max(maxX, positions[i]);
+        minZ = Math.min(minZ, positions[i + 2]);
+        maxZ = Math.max(maxZ, positions[i + 2]);
+      }
+      return (maxZ - minZ) / (maxX - minX);
+    };
+    const sculpt = roundness(base.positions);
+    for (const race of RACES) {
+      const p = applyRace(defaultParams(), race);
+      p.muscle = 1;
+      p.jaw = 0.8;
+      expect(roundness(shape(p)) / sculpt, race).toBeGreaterThan(0.92);
+    }
   });
 
 

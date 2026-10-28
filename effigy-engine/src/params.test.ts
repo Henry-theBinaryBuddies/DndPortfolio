@@ -50,11 +50,13 @@ describe("anatomy derived from the sliders", () => {
     expect(derive({ ...defaultParams(), age: 1 }).gaunt).toBeGreaterThan(derive({ ...defaultParams(), age: 0 }).gaunt);
   });
 
-  it("widens the shoulders and thickens the neck with muscle", () => {
+  it("defines the muscles with the Muscle slider rather than enlarging the bust, and fat softens them", () => {
     const slight = derive({ ...defaultParams(), muscle: 0 });
     const strong = derive({ ...defaultParams(), muscle: 1 });
-    expect(strong.shoulders).toBeGreaterThan(slight.shoulders);
-    expect(strong.neckGirth).toBeGreaterThan(slight.neckGirth);
+    expect(strong.definition).toBeGreaterThan(slight.definition + 0.6);
+    expect(strong.shoulders / slight.shoulders).toBeLessThan(1.05);
+    expect(strong.neckGirth / slight.neckGirth).toBeLessThan(1.1);
+    expect(derive({ ...defaultParams(), muscle: 1, weight: 1 }).definition).toBeLessThan(strong.definition);
   });
 
   it("keeps every derived value inside a believable range for any slider setting", () => {

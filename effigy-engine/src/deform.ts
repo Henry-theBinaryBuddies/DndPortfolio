@@ -61,6 +61,13 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     const nz = base.normals[i * 3 + 2] + f * (fem.normals[i * 3 + 2] - base.normals[i * 3 + 2]);
     const ax = Math.abs(x0);
     const side = x0 < 0 ? -1 : 1;
+    // The column of the neck, between the jaw and the shoulders: it is kept round, so widening the jaw, the
+    // shoulders or the skull side to side leaves it alone (they stretched it wide without deepening it, and
+    // the throat flattened into a wall)
+    const neckR = Math.hypot(x0 - axis.x, z0 - axis.z);
+    const neckness = smooth((-0.5 - y0) / 0.12) * (1 - smooth((-1.0 - y0) / 0.1)) * (1 - smooth((neckR - 0.4) / 0.1));
+    // Facing the viewer, for the forms of the front of the neck and chest
+    const front = smooth((nz - 0.1) / 0.4);
 
     // Nothing moves right at the eyes, so the lids keep fitting the eyeballs
     const eyeDistance = Math.sqrt((ax - eyeX) * (ax - eyeX) + y0 * y0 + z0 * z0);
@@ -131,9 +138,27 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // The wings of the nose and the ridge of the nasal bones
     push(blob(0.1, -0.21, 0.15, 0.03, 0.035, 0.05), 0.008 + 0.01 * edge);
     push(blob(0, -0.06, 0.17, 0.026, 0.1, 0.08), 0.008 * edge + k.noseBridge * 0.02);
-    // The cords of the neck: the muscle that runs from behind each ear down to the notch between the collarbones
-    const cord = distanceToSegment3(ax, y0, z0, 0.34, -0.42, -0.42, 0.07, -0.92, -0.12);
-    push(Math.exp(-((cord / 0.04) ** 2)) * smooth((-0.45 - y0) / 0.1), (0.005 + 0.01 * Math.max(0, gender) + 0.006 * (p.muscle - 0.45)) * (0.6 + 0.5 * k.angularity));
+    // The cords of the neck (sternocleidomastoids): a strap of muscle from behind each ear, wrapping round
+    // the side of the neck, to the notch between the collarbones. It is followed round the neck as an angle
+    // from the front (as a straight line from ear to notch it ran inside the neck and barely showed), wide in
+    // the middle and narrowing to a tendon at the notch, with a groove along its front edge.
+    {
+      const t = smooth((-0.42 - y0) / 0.51); // 0 under the ear, 1 at the notch
+      // (ending either side of the notch, as the tendons do: closing on the middle, they left a crease)
+      const angle = 1.75 - 1.45 * t;
+      const half = 0.075 - 0.04 * t * t;
+      const arc = (Math.atan2(ax, z0 - axis.z) - angle) * neckR;
+      const along = smooth((-0.4 - y0) / 0.08) * (1 - smooth((-0.97 - y0) / 0.04));
+      // (rounded across, with a soft hollow before its front edge: as a plateau with a narrow groove its edges
+      // read as the seam of a collar)
+      const strap = Math.exp(-((arc / half) ** 2)) * along;
+      // (the hollow fades out low on the neck, where the two cords close in on the notch: carried down, the
+      // two hollows met in a crease down the middle of the throat)
+      const edge = Math.exp(-(((arc + 1.5 * half) / (0.6 * half)) ** 2)) * along * (1 - smooth((t - 0.45) / 0.35));
+      const shown = (0.004 + 0.018 * k.definition) * (0.7 + 0.4 * m) * (0.7 + 0.5 * k.angularity);
+      push(strap, shown);
+      push(edge, -0.3 * shown);
+    }
 
     // Lips: fuller lips grow taller about the mouth line and push forward; thinner ones only flatten
     // (squashing them toward the mouth line pinches the corners open). Half the fullness is in the red of
@@ -162,7 +187,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // (The jaw widens from below the mouth: widened from just under the cheekbones, it swelled the cheeks
     // into balloons.)
     const jaw = smooth((-0.3 - y0) / 0.14) * (1 - smooth((-0.66 - y0) / 0.12));
-    dx += x0 * (k.jawWidth - 1 + 0.06 * Math.max(0, gender)) * jaw;
+    dx += x0 * (k.jawWidth - 1 + 0.06 * Math.max(0, gender)) * jaw * (1 - neckness);
 
     // Ears: scaled, and swept up into a point for elven ears
     const ear = blob(0.44, -0.08, -0.45, 0.09, 0.2, 0.16);
@@ -172,21 +197,41 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     dx += side * earDelta * 0.12 * ear;
     dz -= Math.max(0, earDelta) * 0.1 * earTip;
 
-    // Neck: thicker with muscle and weight (the sculpted bodies already give the build's neck); an
-    // Adam's apple on masculine ones
+    // Neck: thicker with weight (the sculpted bodies already give the build's neck), evenly all round
     const neckBand = smooth((-0.62 - y0) / 0.12) * (1 - smooth((-0.95 - y0) / 0.12));
     const girth = k.neckGirth - 1 + 0.04 * Math.max(0, gender);
     dx += (x0 - axis.x) * girth * neckBand;
     dz += (z0 - axis.z) * girth * neckBand;
-    const adamsApple = Math.exp(-((ax / 0.07) ** 2) - (((y0 + 0.8) / 0.06) ** 2)) * Math.max(0, nz);
-    const apple = 0.035 * Math.max(0, gender) * adamsApple;
-    dx += nx * apple;
-    dy += ny * apple;
-    dz += nz * apple;
+    // The Adam's apple: the point of the larynx a third of the way down the throat, an upright wedge that
+    // stands out most at its top and slopes away below, plain on masculine necks and only a hint on others
+    // (placed at the base of the neck it never showed, and as a round bump it read as a button)
+    {
+      const dy0 = y0 + 0.72;
+      const apple = Math.exp(-((ax / (0.03 + 0.15 * Math.max(0, -dy0))) ** 2) - (dy0 / (dy0 > 0 ? 0.035 : 0.09)) ** 2) * front;
+      push(apple, 0.005 + 0.022 * Math.max(0, gender));
+    }
+    // The notch between the collarbones at the base of the throat
+    push(Math.exp(-((ax / 0.05) ** 2) - ((y0 + 0.95) / 0.04) ** 2) * front, -(0.003 + 0.008 * k.definition));
 
-    // Shoulders: broader with muscle and with the race's frame (the build's own breadth is in the sculpt)
-    const shoulders = smooth((-0.85 - y0) / 0.25);
+    // Shoulders: a little broader with the race's frame (the build's own breadth is in the sculpt), never at
+    // the neck
+    const shoulders = smooth((-0.9 - y0) / 0.25) * (1 - neckness);
     dx += x0 * (k.shoulders - 1) * shoulders;
+    // Muscle shows as form: the collarbones with the hollow above each, the slope of the trapezius from the
+    // neck to the shoulder, the cap of the deltoid, and on masculine chests the pectorals parted by the
+    // breastbone
+    // (broad and gentle: narrower than the mesh carries here, the ridge and hollow came out ragged)
+    const clavicle = distanceToSegment2(ax, y0, 0.08, -0.97, 0.72, -0.91);
+    push(Math.exp(-((clavicle / 0.035) ** 2)) * front, 0.003 + 0.006 * k.definition);
+    const aboveClavicle = distanceToSegment2(ax, y0, 0.18, -0.89, 0.5, -0.85);
+    push(Math.exp(-((aboveClavicle / 0.05) ** 2)) * front, -(0.002 + 0.008 * k.definition));
+    push(blob(0.5, -0.82, axis.z - 0.1, 0.2, 0.08, 0.25) * (1 - front), 0.014 * k.definition);
+    push(Math.exp(-(((ax - 0.85) / 0.14) ** 2) - ((y0 + 1.08) / 0.16) ** 2) * (1 - neckness), 0.012 * k.definition);
+    const pecs = Math.exp(-(((ax - 0.38) / 0.22) ** 2) - ((y0 + 1.38) / 0.16) ** 2) * front;
+    push(pecs, (0.006 + 0.028 * k.definition) * (0.3 + 0.7 * m));
+    // (soft, and starting below the notch: run up to it, it made a seam down the throat)
+    const sternum = Math.exp(-((ax / 0.06) ** 2)) * smooth((-1.15 - y0) / 0.12) * (1 - smooth((-1.65 - y0) / 0.1)) * front;
+    push(sternum, -0.006 * k.definition * m);
     // A fuller chest with weight
     const chest = Math.exp(-(((ax - 0.25) / 0.2) ** 2) - (((y0 + 1.4) / 0.2) ** 2)) * Math.max(0, nz);
     const chestPush = 0.03 * k.fullness;
@@ -211,10 +256,11 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     }
 
     // Skull breadth and height scale the whole head about the middle of its width and the chin
+    // (In the neck the breadth is matched front to back, so the neck stays round)
     const head = smooth((y0 + 0.75) / 0.25);
     out[i * 3] = (x0 + dx) * (1 + (k.headWidth - 1) * head);
     out[i * 3 + 1] = y0 + dy + (k.headHeight - 1) * (y0 - menton) * head;
-    out[i * 3 + 2] = z0 + dz;
+    out[i * 3 + 2] = z0 + dz + (z0 - axis.z) * (k.headWidth - 1) * head * neckness;
   }
 
   // The eyes follow the skull scaling, so they stay centred in their sockets

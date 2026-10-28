@@ -256,6 +256,7 @@ export interface Derived {
   lipFull: number;
   shoulders: number; // shoulder breadth before the masculine/feminine adjustment
   neckGirth: number;
+  definition: number; // how clearly the muscles show (neck cords, collarbones, trapezius, chest): 0..1
 }
 
 export function derive(p: Params): Derived {
@@ -280,8 +281,12 @@ export function derive(p: Params): Derived {
     gaunt: clamp01(sk.gaunt + 0.35 * p.age + 0.9 * (0.5 - p.weight)),
     fullness: clamp01((p.weight - 0.5) * 2),
     lipFull: 0.7 + 1.0 * clamp01(p.lips + sk.lipBase),
-    shoulders: sk.shoulders * (0.9 + 0.28 * p.muscle + 0.14 * (p.weight - 0.5)),
-    neckGirth: 1 + 0.25 * (p.muscle - 0.45) + 0.2 * (p.weight - 0.5),
+    // Muscle defines the anatomy rather than enlarging it: it barely widens the shoulders (scaled up with
+    // muscle, a stocky race's frame went far too broad), and a race's own frame counts for half
+    shoulders: (1 + 0.5 * (sk.shoulders - 1)) * (0.985 + 0.03 * p.muscle + 0.1 * (p.weight - 0.5)),
+    neckGirth: 1 + 0.08 * (p.muscle - 0.45) + 0.15 * (p.weight - 0.5),
+    // ...it shows in the muscles' forms instead, softened by weight (fat covers them)
+    definition: clamp01(0.15 + 1.1 * (p.muscle - 0.2)) * (1 - 0.6 * clamp01((p.weight - 0.5) * 2)),
   };
 }
 
