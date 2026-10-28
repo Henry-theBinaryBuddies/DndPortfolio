@@ -1,4 +1,5 @@
 import { LANDMARK, type HeadBase, type Vec3 } from "./headMesh";
+import { JAW_MAX, jawWeights, turnWithJaw } from "./jaw";
 import { derive, masculinity, type Params } from "./params";
 
 // Every slider, race and build becomes a small, smooth displacement of the base head's vertices in the
@@ -48,6 +49,9 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
   const lipScale = k.lipFull * (1 + 0.15 * (1 - m));
   const { menton, stomion } = LANDMARK;
   const axis = base.neck;
+  // The lower jaw turns about its hinge to open the mouth (see jaw.ts)
+  const jawAngle = p.jawOpen * JAW_MAX;
+  const jawField = jawAngle > 0 ? jawWeights(base) : null;
 
   // The shoulders and chest come from two sculpted bodies; the build blends between them
   const f = 1 - m;
@@ -239,6 +243,41 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     dy += ny * chest * chestPush;
     dz += nz * chest * chestPush;
 
+    // Expressions. A scowl draws the brows down and together, with a furrow between them; a snarl lifts the
+    // upper lip and the wings of the nose, deepening the folds beside them; a smile draws the corners of
+    // the mouth up and back and lifts the cheeks. (Each fades out by the eye, where nothing may move.)
+    if (p.scowl > 0) {
+      const s = p.scowl;
+      // (the brow's inner end comes down furthest, and the whole ridge rolls forward over the eyes)
+      dy -= 0.06 * s * blob(0.1, 0.12, 0.19, 0.1, 0.06, 0.12) * mask;
+      dy -= 0.03 * s * blob(0.24, 0.12, 0.17, 0.1, 0.06, 0.12) * mask;
+      dx -= side * 0.035 * s * blob(0.12, 0.1, 0.19, 0.1, 0.06, 0.12) * mask;
+      push(blob(0.12, 0.13, 0.2, 0.16, 0.05, 0.1), 0.014 * s);
+      push(blob(0.035, 0.07, 0.2, 0.03, 0.07, 0.08), -0.016 * s);
+      push(blob(0.035, 0.2, 0.19, 0.05, 0.1, 0.1), -0.008 * s);
+    }
+    if (p.snarl > 0) {
+      const s = p.snarl;
+      // The edge of the lip rolls up (the lip's base, under the nose, moves far less)
+      // (broad and gentle: lifted as a narrow band, the edge of the lip crumpled into a zigzag)
+      const lip = blob(0.06, -0.33, 0.12, 0.12, 0.055, 0.12);
+      dy += 0.05 * s * lip;
+      dz += 0.006 * s * lip;
+      dy += 0.014 * s * blob(0.06, -0.27, 0.14, 0.12, 0.05, 0.1);
+      dy += 0.025 * s * blob(0.1, -0.22, 0.15, 0.05, 0.04, 0.06) * mask;
+      push(Math.exp(-((foldDistance / 0.025) ** 2)) * Math.max(0, nz) * foldEnd, -0.018 * s);
+      push(blob(0.045, -0.13, 0.19, 0.05, 0.04, 0.06), -0.01 * s);
+    }
+    if (p.smile > 0) {
+      const s = p.smile;
+      const corner = blob(0.13, -0.36, 0.1, 0.06, 0.07, 0.1);
+      dy += 0.07 * s * corner;
+      dx += side * 0.04 * s * corner;
+      dz -= 0.018 * s * corner;
+      push(blob(0.27, -0.2, 0.12, 0.1, 0.08, 0.1), 0.035 * s);
+      push(blob(0.18, -0.39, 0.09, 0.035, 0.045, 0.07), -0.016 * s);
+    }
+
     // Heavy lids: the upper lid slides down over the eyeball. Each lid vertex turns about the eye's own
     // centre (about its horizontal axis), so it keeps its distance from the eye and can never cut into it.
     // The turn is strongest at the lid's edge and fades out toward the corners of the eye and up the lid.
@@ -261,6 +300,12 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     out[i * 3] = (x0 + dx) * (1 + (k.headWidth - 1) * head);
     out[i * 3 + 1] = y0 + dy + (k.headHeight - 1) * (y0 - menton) * head;
     out[i * 3 + 2] = z0 + dz + (z0 - axis.z) * (k.headWidth - 1) * head * neckness;
+    // The jaw, last: whatever else has shaped the face goes with it
+    if (jawField && jawField[i] > 0) {
+      const [ty, tz] = turnWithJaw(out[i * 3 + 1], out[i * 3 + 2], jawAngle * jawField[i]);
+      out[i * 3 + 1] = ty;
+      out[i * 3 + 2] = tz;
+    }
   }
 
   // The eyes follow the skull scaling, so they stay centred in their sockets

@@ -35,6 +35,8 @@ Print target: an FDM printer with a 0.4 mm nozzle, busts 75-90 mm tall on a base
 - `src/builder.ts` - assembles the head, eyes, tusks, horns, hair and beard into a Three.js group
 - `src/hairShell.ts`, `src/beard.ts` - hair and beard shells, and where a beard grows
 - `src/brows.ts` - sculpted eyebrows: the brow outline, raised and carved with grooves along the hair
+- `src/jaw.ts` - opening the mouth: the lower jaw turns about its hinge, with per-vertex weights solved on the mesh itself (the head has a real hollow mouth behind the lips, so opening parts them and the surface stays closed)
+- `src/teeth.ts` - an upper and a lower row of teeth with their gums, and a tongue, in the mouth's cavity (shown only when the mouth is parted); the lower row and the tongue turn with the jaw
 - `src/locks.ts` - dreadlocks and braids: each lock a closed tube that falls under gravity and rests on the head and shoulders, with spiral (dreads) or chevron (braids) grooves, over a close crop
 - `src/carve.ts` - subdivides a hair or beard shell and cuts a groove pattern into its outer surface
 - `src/beardCarve.ts`, `src/hairCarve.ts` - the patterns: broad locks with a finer groove down each, running the way the hair is combed (a moustache fan for beards; radiating from the crown for a crop; down the curtain and locks of long hair), sized for the printer

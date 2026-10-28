@@ -20,7 +20,11 @@ export type NumericKey =
   | "lids"
   | "eyebrows"
   | "horns"
-  | "tusks";
+  | "tusks"
+  | "jawOpen"
+  | "snarl"
+  | "scowl"
+  | "smile";
 
 export const RACES = ["human", "elf", "half-elf", "dwarf", "halfling", "gnome", "half-orc", "tiefling"] as const;
 export type Race = (typeof RACES)[number];
@@ -49,7 +53,7 @@ export interface Params extends Record<NumericKey, number> {
   beardStyle: BeardStyle;
 }
 
-export type Group = "Body" | "Face" | "Fantasy";
+export type Group = "Body" | "Face" | "Expression" | "Fantasy";
 
 export interface NumericDef {
   key: NumericKey;
@@ -84,6 +88,13 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("jaw", "Jaw", "Face", 0.5, 0.2, 0.8),
   def("lids", "Heavy lids", "Face", 0.4, 0.1, 0.75),
   def("eyebrows", "Eyebrows", "Face", 0.5), // (0: none)
+  // Expressions (0 is the face at rest): the jaw turns about its hinge and parts the lips; a snarl lifts the
+  // upper lip and wrinkles the nose; a scowl draws the brows down and together; a smile draws the corners of
+  // the mouth up and back
+  def("jawOpen", "Jaw open", "Expression", 0),
+  def("snarl", "Snarl", "Expression", 0),
+  def("scowl", "Scowl", "Expression", 0),
+  def("smile", "Smile", "Expression", 0),
   def("horns", "Horn size", "Fantasy", 0.5),
   def("tusks", "Tusk size", "Fantasy", 0.5),
 ];
@@ -320,7 +331,7 @@ export function randomParams(rng: () => number = Math.random): Params {
   params.hairStyle = pick(HAIR_STYLES);
   params.beardStyle = pick(BEARD_STYLES);
   // Fantasy features belong to the race, so only the anatomical sliders are randomized.
-  const keep: NumericKey[] = ["horns", "tusks"];
+  const keep: NumericKey[] = ["horns", "tusks", "jawOpen", "snarl", "scowl", "smile"];
   for (const d of NUMERIC_DEFS) {
     if (keep.includes(d.key)) continue;
     const raw = d.min + rng() * (d.max - d.min);

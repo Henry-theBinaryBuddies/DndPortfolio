@@ -11,6 +11,8 @@ import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, b
 import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
 import { braidPattern, buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
 import { scalp } from "./hair";
+import { jawWeights } from "./jaw";
+import { buildTeeth } from "./teeth";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import type { HeadBase } from "./headMesh";
 import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
@@ -1040,6 +1042,166 @@ describe("dreadlocks and braids", () => {
       const p = params({ hairStyle });
       const bust = sculptBust(p, base);
       expect(buildLockShell(p, bust.positions, bust.normals, base), hairStyle).toBeNull();
+    }
+  }, 120000);
+});
+
+describe("the open mouth, teeth and expressions", () => {
+  const closedAt = (overrides: Partial<Params> = {}) => shape(params(overrides));
+  // The nearest base vertex to a point, to follow one place on the face through the deformation
+  const vertexAt = (x: number, y: number, z: number) => {
+    let best = 0;
+    let at = Infinity;
+    for (let i = 0; i < base.positions.length; i += 3) {
+      const d = Math.hypot(base.positions[i] - x, base.positions[i + 1] - y, base.positions[i + 2] - z);
+      if (d < at) {
+        at = d;
+        best = i;
+      }
+    }
+    return best;
+  };
+
+  it("weights the jaw 1 at the chin and lower lip and 0 at the skull, the back of the throat and the neck, with the upper lip going with the face", () => {
+    const w = jawWeights(base);
+    for (const weight of w) {
+      expect(weight).toBeGreaterThanOrEqual(0);
+      expect(weight).toBeLessThanOrEqual(1);
+    }
+    expect(w[vertexAt(0, -0.55, 0.09) / 3]).toBeGreaterThan(0.99); // the chin
+    expect(w[vertexAt(0, -0.2, 0.1) / 3]).toBe(0); // above the lip
+    expect(w[vertexAt(0, 0.4, 0) / 3]).toBe(0); // the skull
+    expect(w[vertexAt(0, -1.2, -0.3) / 3]).toBe(0); // the chest
+    expect(w[vertexAt(0, -0.42, 0.13) / 3]).toBeGreaterThan(0.95); // the lower lip
+    expect(w[vertexAt(0, -0.33, 0.15) / 3]).toBeLessThan(0.25); // the upper lip
+  }, 120000);
+
+  it("opens the mouth: the chin drops and swings back, the lips part, and nothing not on the jaw moves", () => {
+    const shut = closedAt();
+    const open = closedAt({ jawOpen: 1 });
+    const w = jawWeights(base);
+    const chin = vertexAt(0, -0.55, 0.09);
+    expect(open[chin + 1]).toBeLessThan(shut[chin + 1] - 0.15);
+    expect(open[chin + 2]).toBeLessThan(shut[chin + 2]);
+    // The upper and lower lips part along the mouth line
+    const upper = vertexAt(0, -0.35, 0.14);
+    const lower = vertexAt(0, -0.375, 0.14);
+    const gap = (out: Float32Array) => Math.hypot(out[upper] - out[lower], out[upper + 1] - out[lower + 1], out[upper + 2] - out[lower + 2]);
+    expect(gap(open)).toBeGreaterThan(gap(shut) + 0.12);
+    // Whatever the jaw does not hold stays exactly where it was
+    for (let i = 0; i < w.length; i++) {
+      if (w[i] > 0) continue;
+      expect(open[i * 3 + 1], `vertex ${i}`).toBe(shut[i * 3 + 1]);
+      expect(open[i * 3 + 2], `vertex ${i}`).toBe(shut[i * 3 + 2]);
+    }
+  }, 120000);
+
+  it("opens a little more with each step of the slider", () => {
+    const chin = vertexAt(0, -0.55, 0.09);
+    let before = Infinity;
+    for (const jawOpen of [0, 0.25, 0.5, 0.75, 1]) {
+      const y = closedAt({ jawOpen })[chin + 1];
+      expect(y).toBeLessThan(before);
+      before = y;
+    }
+  }, 120000);
+
+  it("scowls, snarls and smiles where a face does: brows down and in, the lip's edge up, the corners of the mouth up and out", () => {
+    const rest = closedAt();
+    const brow = vertexAt(0.1, 0.12, 0.19);
+    const scowl = closedAt({ scowl: 1 });
+    expect(scowl[brow + 1]).toBeLessThan(rest[brow + 1] - 0.025);
+    expect(scowl[brow]).toBeLessThan(rest[brow]);
+    const lip = vertexAt(0.06, -0.345, 0.12);
+    expect(closedAt({ snarl: 1 })[lip + 1]).toBeGreaterThan(rest[lip + 1] + 0.025);
+    const corner = vertexAt(0.13, -0.36, 0.1);
+    const smile = closedAt({ smile: 1 });
+    expect(smile[corner + 1]).toBeGreaterThan(rest[corner + 1] + 0.03);
+    expect(smile[corner]).toBeGreaterThan(rest[corner]);
+    // An expression stays in the face: the neck and chest do not move
+    const chest = vertexAt(0, -1.3, 0.1);
+    for (const key of ["scowl", "snarl", "smile"] as const) {
+      expect(closedAt({ [key]: 1 })[chest + 1], key).toBe(rest[chest + 1]);
+    }
+  }, 120000);
+
+  it("never breaks at any expression, race or build: no NaN, nothing far from where it was", () => {
+    for (const race of RACES) {
+      for (const body of ["masculine", "feminine"] as const) {
+        const p = applyRace({ ...defaultParams(), body }, race);
+        p.jawOpen = 1;
+        p.snarl = 1;
+        p.scowl = 1;
+        p.smile = 1;
+        const out = shape(p);
+        let furthest = 0;
+        for (let i = 0; i < out.length; i++) {
+          expect(Number.isFinite(out[i]), `${race} ${body}`).toBe(true);
+          furthest = Math.max(furthest, Math.abs(out[i] - base.positions[i]));
+        }
+        expect(furthest, `${race} ${body}`).toBeLessThan(1.0);
+      }
+    }
+  }, 120000);
+
+  it("shows teeth only when the mouth is parted, as closed solids wound outward", () => {
+    expect(buildTeeth(params({}))).toBeNull();
+    for (const overrides of [{ jawOpen: 0.5 }, { snarl: 0.8 }, { smile: 0.9 }]) {
+      const teeth = buildTeeth(params(overrides))!;
+      expect(teeth, JSON.stringify(overrides)).not.toBeNull();
+      const index = teeth.index!;
+      const pos = teeth.attributes.position;
+      const uses = new Map<number, number>();
+      let volume = 0;
+      for (let t = 0; t < index.count; t += 3) {
+        const [a, b, c] = [index.getX(t), index.getX(t + 1), index.getX(t + 2)];
+        for (const [i, j] of [[a, b], [b, c], [c, a]]) {
+          const k = i < j ? i * 4194304 + j : j * 4194304 + i;
+          uses.set(k, (uses.get(k) ?? 0) + 1);
+        }
+        const [A, B, C] = [a, b, c].map((i) => new THREE.Vector3().fromBufferAttribute(pos, i));
+        volume += A.dot(B.clone().cross(C)) / 6;
+      }
+      let open = 0;
+      for (const n of uses.values()) if (n !== 2) open++;
+      expect(open, JSON.stringify(overrides)).toBe(0);
+      expect(volume, JSON.stringify(overrides)).toBeGreaterThan(0);
+    }
+  });
+
+  it("sets the teeth in the cavity behind the lips, the lower row going down with the jaw", () => {
+    const lowest = (geometry: THREE.BufferGeometry) => {
+      const pos = geometry.attributes.position;
+      let y = Infinity;
+      for (let i = 0; i < pos.count; i++) y = Math.min(y, pos.getY(i));
+      return y;
+    };
+    expect(lowest(buildTeeth(params({ jawOpen: 0.8 }))!)).toBeLessThan(lowest(buildTeeth(params({ jawOpen: 0.1 }))!) - 0.05);
+    // Every tooth is behind the front of the lips and inside the width of the mouth's cavity
+    const box = new THREE.Box3().setFromBufferAttribute(buildTeeth(params({ jawOpen: 0.3 }))!.attributes.position as THREE.BufferAttribute);
+    expect(box.max.z).toBeLessThan(0.14);
+    expect(Math.max(box.max.x, -box.min.x)).toBeLessThan(0.2);
+    expect(box.max.y).toBeLessThan(-0.15);
+  });
+
+  it("carries a half-orc's tusks with the jaw, so they rise out of the open mouth", () => {
+    const tuskVertices = assets.shapes.tusk.positions.length / 3;
+    const tusks = (jawOpen: number) => {
+      const found: THREE.Mesh[] = [];
+      const p = applyRace({ ...defaultParams(), hairStyle: "none" }, "half-orc");
+      p.jawOpen = jawOpen;
+      buildBust(p, assets).traverse((o) => {
+        if (o instanceof THREE.Mesh && o.geometry.attributes.position.count === tuskVertices) found.push(o);
+      });
+      return found;
+    };
+    const shut = tusks(0);
+    const open = tusks(0.6);
+    expect(shut.length).toBe(2);
+    expect(open.length).toBe(2);
+    for (let i = 0; i < 2; i++) {
+      expect(open[i].position.y).toBeLessThan(shut[i].position.y - 0.05);
+      expect(open[i].position.z).toBeLessThan(shut[i].position.z);
     }
   }, 120000);
 });

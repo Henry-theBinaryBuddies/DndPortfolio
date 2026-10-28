@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import { shapeGeometry, type Assets } from "./assets";
 import { buildBrows } from "./brows";
+import { JAW_MAX, turnWithJaw } from "./jaw";
 import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
+import { buildTeeth } from "./teeth";
 import { derive, type Params } from "./params";
 
 // In Three.js a visible thing is a Mesh: a geometry (the shape) plus a material
@@ -177,15 +179,23 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
   // Tusks: only half-orcs have them. Each grows from the lower jaw inside the mouth and comes out
   // between the lips beside the middle of the mouth, leaning forward so it rises in front of the upper lip
   // and a little outward. A third of it (the root and its flared base) stays hidden inside the mouth; the lips are shaped around it in deform.ts (the lower lip swells over it, the upper lip lifts).
+  // It belongs to the lower jaw, so it is placed with the mouth shut (as above) and then turned with the jaw
+  // as far as the mouth is open: the tusk rises out of the open mouth instead of staying where the lips were.
+  const jawAngle = p.jawOpen * JAW_MAX;
   if (k.tusks > 0.03) {
+    let shut = probe;
+    if (jawAngle > 0) {
+      shut = new THREE.Mesh(sculptBust({ ...p, jawOpen: 0 }, base).geometry);
+      shut.updateMatrixWorld(true);
+    }
     const geometry = shapeGeometry(assets.shapes.tusk);
     // The tusk asset is one unit long. The largest stays small enough for its hidden root to fit behind the
     // lower lip (any bigger and the root shows in front of the chin).
     const size = 0.09 + 0.09 * k.tusks;
     const rootX = TUSK_X * (1 + 0.8 * (k.mouthWidth - 1));
     for (const side of [-1, 1]) {
-      const mouth = frontPoint(probe, side * rootX, LANDMARK.stomion);
-      const upperLip = frontPoint(probe, side * rootX, LANDMARK.stomion + 0.035);
+      const mouth = frontPoint(shut, side * rootX, LANDMARK.stomion);
+      const upperLip = frontPoint(shut, side * rootX, LANDMARK.stomion + 0.035);
       if (!mouth || !upperLip) continue;
       // Where it leaves the mouth: on the mouth line, just inside the lips
       const exit = mouth.position.clone().add(new THREE.Vector3(0, 0, -0.015));
@@ -198,6 +208,11 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
       tusk.scale.set(side * size, size, size);
       tusk.quaternion.setFromUnitVectors(UP, along);
       tusk.position.copy(exit).addScaledVector(along, -0.33 * size);
+      if (jawAngle > 0) {
+        const [y, z] = turnWithJaw(tusk.position.y, tusk.position.z, jawAngle);
+        tusk.position.set(tusk.position.x, y, z);
+        tusk.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), jawAngle));
+      }
       head.add(tusk);
     }
   }
@@ -207,6 +222,10 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
   for (const form of [(detail ? buildHair : buildHairShell)(p, bust.positions, bust.normals, base), (detail ? buildHanging(p, bust.positions, base) : buildHangingHair(p, bust.positions, base)), (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base), (detail ? buildLocks : buildLockShell)(p, bust.positions, bust.normals, base)]) {
     if (form) head.add(new THREE.Mesh(form, clay));
   }
+  // Teeth, once the mouth is open enough to show them (see teeth.ts)
+  const teeth = buildTeeth(p);
+  if (teeth) head.add(new THREE.Mesh(teeth, clay));
+
   // Eyebrows, sculpted with carved hair (see brows.ts)
   const brows = buildBrows(p, bust.positions, bust.normals, base);
   if (brows) head.add(new THREE.Mesh(brows, clay));

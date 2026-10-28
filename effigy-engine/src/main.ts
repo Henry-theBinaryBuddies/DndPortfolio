@@ -188,6 +188,8 @@ function syncToolbar() {
 if (import.meta.env.DEV) {
   (window as unknown as { effigy: unknown }).effigy = {
     scene,
+    THREE, // (for cutting the bust open in a script, to look inside)
+    renderer,
     render(view?: { yaw?: number; distance?: number }) {
       if (view?.yaw !== undefined) yaw = view.yaw;
       if (view?.distance !== undefined) {
