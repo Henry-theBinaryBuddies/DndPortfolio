@@ -34,6 +34,8 @@ export interface PrintReport {
   components: { volume: number }[]; // separate solid pieces: 1 for a bust that is all one solid
   specks: number; // slivers under half a cubic millimetre left where surfaces only graze (too small to print or matter)
   voids: number; // enclosed empty pockets inside it (each counts as a piece of negative volume)
+  separated: number; // vertices moved a few microns apart where two surfaces touched exactly along an edge
+  badEdges: number; // edges of the file that are not shared by exactly two triangles, once separated (0 for a clean file)
   degenerate: number; // zero-area triangles left out of the file (distinct points that coincide at float precision)
   size: [number, number, number]; // mm, along x, y, z
   min: [number, number, number];
@@ -207,6 +209,83 @@ export function readStl(buffer: ArrayBuffer): { positions: Float32Array; count: 
   return { positions, count };
 }
 
+// Checks a mesh the way an STL file is read: there, triangles are joined only by sharing the same numbers, so
+// vertices at the same position are one vertex, whatever their index. Every edge of a closed solid is used by
+// exactly two triangles. Where two surfaces touch exactly along an edge (a lock lying against the skin) the
+// merge keeps them apart with duplicate vertices, but the file would show four triangles on that edge, which
+// slicers have to guess at. Returns, per vertex, which position it shares with others, and the edges that fail.
+export function edgeProblems(positions: ArrayLike<number>, triangles: ArrayLike<number>): { group: Int32Array; size: Int32Array; bad: Set<number>; open: number; shared: number } {
+  const count = positions.length / 3;
+  const group = new Int32Array(count);
+  const byPosition = new Map<string, number>();
+  let groups = 0;
+  for (let v = 0; v < count; v++) {
+    // (+ 0 so that -0 and 0 are the same place)
+    const key = `${positions[v * 3] + 0},${positions[v * 3 + 1] + 0},${positions[v * 3 + 2] + 0}`;
+    let g = byPosition.get(key);
+    if (g === undefined) byPosition.set(key, (g = groups++));
+    group[v] = g;
+  }
+  const size = new Int32Array(groups);
+  for (let v = 0; v < count; v++) size[group[v]]++;
+  const uses = new Map<number, number>();
+  for (let t = 0; t < triangles.length; t += 3) {
+    // (a triangle with two corners at one place is left out of the file by writeStl, so it is not counted)
+    if (group[triangles[t]] === group[triangles[t + 1]] || group[triangles[t + 1]] === group[triangles[t + 2]] || group[triangles[t]] === group[triangles[t + 2]]) continue;
+    for (let e = 0; e < 3; e++) {
+      const a = group[triangles[t + e]];
+      const b = group[triangles[t + ((e + 1) % 3)]];
+      const key = Math.min(a, b) * groups + Math.max(a, b);
+      uses.set(key, (uses.get(key) ?? 0) + 1);
+    }
+  }
+  const bad = new Set<number>();
+  let open = 0;
+  let shared = 0;
+  for (const [key, n] of uses) {
+    if (n === 2) continue;
+    if (n === 1) open++;
+    else shared++;
+    bad.add(Math.floor(key / groups));
+    bad.add(key % groups);
+  }
+  return { group, size, bad, open, shared };
+}
+
+// Moves apart the surfaces that touch exactly along an edge (see edgeProblems): each of the duplicate vertices
+// on such an edge is pushed a few microns outward along its own surface's normal, which leaves a gap far below
+// anything that prints. Repeats with a larger step if needed. Returns how many vertices moved and what is
+// still wrong afterwards.
+export function separateKisses(positions: Float32Array, triangles: ArrayLike<number>, step = 0.003): { moved: number; open: number; shared: number } {
+  const moved = new Set<number>();
+  let problems = edgeProblems(positions, triangles);
+  for (let round = 1; round <= 4 && problems.open + problems.shared > 0; round++) {
+    const count = positions.length / 3;
+    const normal = new Float64Array(count * 3);
+    for (let t = 0; t < triangles.length; t += 3) {
+      const [a, b, c] = [triangles[t] * 3, triangles[t + 1] * 3, triangles[t + 2] * 3];
+      const ux = positions[b] - positions[a];
+      const uy = positions[b + 1] - positions[a + 1];
+      const uz = positions[b + 2] - positions[a + 2];
+      const vx = positions[c] - positions[a];
+      const vy = positions[c + 1] - positions[a + 1];
+      const vz = positions[c + 2] - positions[a + 2];
+      const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+      for (const i of [a, b, c]) for (let k = 0; k < 3; k++) normal[i + k] += n[k];
+    }
+    for (let v = 0; v < count; v++) {
+      const g = problems.group[v];
+      if (!problems.bad.has(g) || problems.size[g] < 2) continue;
+      const length = Math.hypot(normal[v * 3], normal[v * 3 + 1], normal[v * 3 + 2]);
+      if (length === 0) continue;
+      for (let k = 0; k < 3; k++) positions[v * 3 + k] += (normal[v * 3 + k] / length) * step * round;
+      moved.add(v);
+    }
+    problems = edgeProblems(positions, triangles);
+  }
+  return { moved: moved.size, open: problems.open, shared: problems.shared };
+}
+
 // Unions the parts into one solid. By default it is all or nothing: it throws if any part cannot be made into
 // a valid solid, if the merge reports a problem, or if the result is not exactly one connected solid, so a
 // file with a feature missing, or with loose pieces, is never produced by accident. `allowPartial` is for a
@@ -280,6 +359,11 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
     const positions = new Float32Array((mesh.vertProperties.length / mesh.numProp) * 3);
     for (let v = 0; v < positions.length / 3; v++) for (let k = 0; k < 3; k++) positions[v * 3 + k] = mesh.vertProperties[v * mesh.numProp + k];
     const box = final.boundingBox();
+    // The file as it will be read must be a clean closed surface: surfaces that only touch along an edge are
+    // separated, and anything still wrong refuses the export
+    const kisses = separateKisses(positions, mesh.triVerts);
+    const badEdges = kisses.open + kisses.shared;
+    if (badEdges > 0 && !allowPartial) throw new Error(`${badEdges} edges of the file are not shared by exactly two triangles (${kisses.open} open, ${kisses.shared} shared by more), so nothing was exported`);
     const { stl, degenerate } = writeStl(positions, mesh.triVerts);
     const report: PrintReport = {
       parts: reports,
@@ -292,6 +376,8 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
       components,
       specks,
       voids: volumes.filter((volume) => volume <= 0).length,
+      separated: kisses.moved,
+      badEdges,
       degenerate,
       size: [box.max[0] - box.min[0], box.max[1] - box.min[1], box.max[2] - box.min[2]],
       min: [box.min[0], box.min[1], box.min[2]],

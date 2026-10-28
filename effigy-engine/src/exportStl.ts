@@ -19,6 +19,8 @@ export function describe(report: PrintReport): string {
   if (left.length) lines.push(`Left out (not closed solids): ${left.map((part) => `${part.name} (${part.rejectedShells} of ${part.shells}: ${part.problem})`).join("; ")}. This file is incomplete.`);
   if (report.components.length > 1) lines.push(`Pieces of ${report.components.slice(1).map((c) => c.volume.toFixed(1)).join(", ")} mm³ are not joined to the bust.`);
   if (report.specks) lines.push(`${report.specks} stray specks under 0.5 mm³ were removed.`);
+  if (report.separated) lines.push(`${report.separated} points where two surfaces touched exactly along an edge were moved a few microns apart.`);
+  if (report.badEdges) lines.push(`${report.badEdges} edges of the file are not shared by exactly two triangles.`);
   if (report.voids) lines.push(`${report.voids} small enclosed pockets inside it.`);
   if (report.status !== "NoError") lines.push(`The merge reported: ${report.status}.`);
   lines.push("The eyes are printed 7% larger than in the preview, so they join the head.");

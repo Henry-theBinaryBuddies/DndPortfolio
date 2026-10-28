@@ -6,7 +6,7 @@ import { basePrism, pedestalGeometry } from "./builder";
 import { collectParts } from "./export";
 import { applyRace, defaultParams, type Params } from "./params";
 import { baseOutline, convexHull, MM, pedestalRings, PEDESTAL_SIDES, PRINT, radiusAt } from "./print";
-import { mergeParts, readStl, splitShells, weld, writeStl, type Part, type PrintReport } from "./printable";
+import { edgeProblems, mergeParts, readStl, separateKisses, splitShells, weld, writeStl, type Part, type PrintReport } from "./printable";
 
 let assets: Assets;
 beforeAll(() => {
@@ -328,5 +328,30 @@ describe("refusing to export what is not one solid", () => {
     expect(report.volume).toBeCloseTo(1000, 1);
     expect(readStl(stl).count).toBe(report.triangles);
     expect(Math.max(...readStl(stl).positions.filter((_, i) => i % 3 === 0))).toBeLessThanOrEqual(10.001);
+  });
+});
+
+describe("the file as a slicer reads it", () => {
+  const cubeAt = (name: string, x: number, y: number): Part => {
+    const { positions, indices } = cube();
+    return { name, positions: Float32Array.from(positions, (v, i) => v + (i % 3 === 0 ? x : i % 3 === 1 ? y : 0)), indices };
+  };
+  it("counts an edge shared by four triangles, which two surfaces touching along a line produce", async () => {
+    // Two cubes that meet only along one edge: the merge keeps them apart, but the file would show that edge four times
+    const parts = [cubeAt("a", 0, 0), cubeAt("b", 1, 1)];
+    const wasm = await import("./printable").then((m) => m.loadManifold());
+    const kept = parts.map((part) => wasm.Manifold.ofMesh(new wasm.Mesh({ numProp: 3, vertProperties: part.positions, triVerts: part.indices })));
+    const joined = wasm.Manifold.union(kept).getMesh();
+    const positions = new Float32Array(joined.vertProperties);
+    const before = edgeProblems(positions, joined.triVerts);
+    expect(before.shared, "the touching edge").toBeGreaterThan(0);
+    const after = separateKisses(positions, joined.triVerts);
+    expect(after.moved).toBeGreaterThan(0);
+    expect(after.open + after.shared).toBe(0);
+  });
+  it("leaves a clean cube alone", () => {
+    const { positions, indices } = cube();
+    const result = separateKisses(Float32Array.from(positions), indices);
+    expect(result).toEqual({ moved: 0, open: 0, shared: 0 });
   });
 });
