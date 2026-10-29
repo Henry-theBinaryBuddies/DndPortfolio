@@ -298,6 +298,21 @@ describe("the pedestal", () => {
     const hull = convexHull(footprint);
     for (let k = 0; k < PEDESTAL_SIDES; k++) expect(top[k]).toBeCloseTo(radiusAt(hull, (k / PEDESTAL_SIDES) * 2 * Math.PI), 6);
   });
+  it("flares no steeper than the print's overhang limit, for narrow and broad busts alike", () => {
+    for (const farthest of [28, 33, 37]) {
+      const reach = Array.from({ length: PEDESTAL_SIDES }, (_, k) => (24 + (farthest - 24) * (0.5 + 0.5 * Math.cos((k / PEDESTAL_SIDES) * 4 * Math.PI))) * MM);
+      const rings = pedestalRings(reach, -PRINT.baseHeight * MM, 2.9 * MM);
+      let steepest = 0;
+      for (let i = 5; i < rings.length; i++) {
+        const dy = rings[i][1] - rings[i - 1][1];
+        for (let k = 0; k < PEDESTAL_SIDES; k++) {
+          const grow = Math.hypot(rings[i][k * 3], rings[i][k * 3 + 2]) - Math.hypot(rings[i - 1][k * 3], rings[i - 1][k * 3 + 2]);
+          steepest = Math.max(steepest, Math.atan2(grow, dy));
+        }
+      }
+      expect((steepest * 180) / Math.PI).toBeLessThan(52); // (the broadest busts have too little stem to flare at exactly 45)
+    }
+  });
   it("is a closed solid wound outward", () => {
     const geometry = pedestalGeometry(reachOfHull(footprint), -PRINT.baseHeight * MM, 1.6 * MM);
     const index = geometry.index!;

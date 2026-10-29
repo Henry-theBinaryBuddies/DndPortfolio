@@ -100,6 +100,11 @@ const ease = (t: number) => {
   return c * c * (3 - 2 * c);
 };
 
+// The flare's profile: mostly a straight cone (the least steep way to widen by a given amount), eased at its ends.
+// Its steepest slope is FLARE_PEAK times the straight slope.
+const FLARE_PEAK = 0.65 + 0.35 * 1.5;
+const flareEase = (t: number) => 0.65 * Math.min(1, Math.max(0, t)) + 0.35 * ease(t);
+
 export const PEDESTAL_SIDES = 96;
 
 // The pedestal, as rings of points from its foot to its top (in head units: each ring is (x, y, z) triples, y up).
@@ -122,10 +127,16 @@ export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: num
     [rim, () => disc],
     [discTop, () => foot],
   ];
+  // The flare is an overhang: each layer sticks out past the one below. It starts as low as the bust's reach
+  // needs, so that its steepest part stays near PRINT.overhang (45 degrees from vertical) and prints without supports.
+  const stem = top - discTop;
+  const flare = (farthest - waist) / (PRINT.overhang / FLARE_PEAK);
+  const start = Math.min(0.6, Math.max(0.12, 1 - flare / stem));
   for (let s = 1; s <= stemSteps; s++) {
     const t = s / stemSteps;
-    const y = discTop + (top - discTop) * t;
-    heights.push([y, (k) => waist + (foot - waist) * (1 - ease(t / 0.45)) + (reach[k] - waist) * ease((t - 0.45) / 0.55)]);
+    const y = discTop + stem * t;
+    const u = flareEase((t - start) / (1 - start));
+    heights.push([y, (k) => waist + (foot - waist) * (1 - ease(t / start)) + (reach[k] - waist) * u]);
   }
   return heights.map(([y, radius]) => {
     const ring: number[] = [];

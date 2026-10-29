@@ -122,5 +122,8 @@ export function findUnderside(positions: ArrayLike<number>, indices: ArrayLike<n
     const above = reachOf(levels[i], footprint.x, footprint.z);
     for (let b = 0; b < PEDESTAL_SIDES; b++) reach[b] = Math.min(reach[b], above[b]);
   }
-  return { cut: cutLevel * STEP, footprint, reach: Float32Array.from(reach, (r) => Math.max(r - INSET * MM, 0.5 * r)) };
+  // (each direction's sector holds the farthest point of the outline, which overstates a ragged outline between
+  // the points: a direction may reach no farther than its neighbours do, so the top stays inside the section)
+  const eroded = reach.map((r, b) => Math.min(r, reach[(b + PEDESTAL_SIDES - 1) % PEDESTAL_SIDES], reach[(b + 1) % PEDESTAL_SIDES]));
+  return { cut: cutLevel * STEP, footprint, reach: Float32Array.from(eroded, (r) => Math.max(r - INSET * MM, 0.5 * r)) };
 }
