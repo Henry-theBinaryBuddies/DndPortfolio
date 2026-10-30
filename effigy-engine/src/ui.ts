@@ -178,10 +178,11 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     diagnosticButton.title = "Keeps whatever can be merged, even if a part is missing: for finding out what is wrong, never for printing";
     const gussetLabel = document.createElement("label");
     gussetLabel.className = "option";
-    gussetLabel.title = "A wedge under the chin, sloping back to the neck at 45 degrees, so the chin needs no supports. It makes the throat heavier; leave it off to print the chin with the slicer's supports instead";
+    gussetLabel.title = "A wedge under the chin, sloping back to the neck at 45 degrees, so the chin needs no supports. It makes the throat heavier; untick it to print the chin with the slicer's supports instead";
     const gussetBox = document.createElement("input");
     gussetBox.type = "checkbox";
     gussetBox.id = "export-gusset";
+    gussetBox.checked = true;
     gussetLabel.append(gussetBox, " Throat gusset (no chin supports)");
     const status = document.createElement("p");
     status.className = "status";
