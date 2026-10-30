@@ -1,5 +1,11 @@
-Side Quest:
-Need to conceive what this might be.
-This may end up being a safe place to implement a project or aspect
-that had to be abandoned previously.
-TBD...
+Side Quest
+
+Effigy Engine
+
+A designer for 3D busts of fantasy characters, built to end up as a miniature on the table. Pick a race (human, elf, half-elf, dwarf, halfling, gnome, half-orc or tiefling) and shape the face with sliders for age, weight, muscle, brow, cheekbones, nose, lips, jaw and heavy lids. Add hair (cropped, swept, mohawk, long, dreadlocks or braids), a beard, horns or tusks, and open the jaw for teeth, a tongue and an expression. The sculpt is grey clay on purpose: I wanted the shape right before adding any colour.
+
+The shape starts from a hand-sculpted base head (a free, public-domain base mesh from Blender Studio) that the code deforms for each race and slider, so the faces come from an artist's sculpt and not from primitives. Hair, beards and eyebrows are carved shells with strands cut into them.
+
+Export STL merges the head, hair, beard, eyes, horns, teeth and a turned pedestal base into one closed solid, sized for a 0.2 mm nozzle (a bust 75-90 mm tall on a 24 mm base). The export refuses to save a file that is not exactly one solid, and it is checked a second time with an independent tool. The underside is cut flat where it stops hanging out, the pedestal flares no steeper than 45 degrees so it prints without supports, the hollow behind closed lips is filled in, and an optional throat gusset removes the last big overhang under the chin. A wall-thickness check reports how much of the surface is thinner than two nozzle widths.
+
+Built with TypeScript, Three.js and Vite, with manifold-3d doing the solid geometry in a background worker, and 110 automated tests. The base head was prepared with Blender and Python. Not hosted: it is a tool I run on my own computer. The first print was a dwarf with dreadlocks and an open mouth.

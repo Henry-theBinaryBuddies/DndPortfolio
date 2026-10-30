@@ -1,0 +1,7 @@
+Side Quest (Effigy Engine):
+
+Started a side project: a designer for 3D busts of fantasy characters that could end up as a printed miniature and a token for the table. I chose TypeScript, Three.js and Vite because I had never used them, so Claude explained each idea as it came up.
+
+The first faces were built from simple shapes and looked bizarre next to a hand-sculpted half-orc I had as a reference. Claude's honest verdict was that shapes made from primitives could not get there. I chose to start from a real sculpt instead: a free, public-domain base head from Blender Studio, prepared with Blender and a Python script, then deformed by the code for each race and slider. Subdividing it once gave enough detail for sharper cheekbones and jaws.
+
+Then a long list: eight races with their own skull, ears, nose and jaw; sliders bounded so no combination makes a monster by accident; a feminine build made from the difference between the male and female body meshes; flat slanted cuts at the shoulders instead of arm stumps; generated horns and orc tusks. I dropped the dragonborn when it looked wrong. A second AI, Codex, reviewed screenshots and code after each stage, and I worked through its findings in order.

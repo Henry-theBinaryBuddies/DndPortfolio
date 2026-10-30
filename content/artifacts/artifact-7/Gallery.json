@@ -1,0 +1,32 @@
+[
+  {
+    "src": "./assets/screenshots/artifact-7/01-human.jpg",
+    "alt": "A grey clay bust of a human man with swept-back hair, seen from three-quarter view, standing on a round turned pedestal base.",
+    "caption": "The default bust in grey clay on its printable base. The shoulders are cut flat and the bust stands on a turned pedestal."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/02-dwarf-dreadlocks.jpg",
+    "alt": "A grey clay bust of a bearded dwarf with a ring of dreadlocks and his mouth slightly open.",
+    "caption": "A dwarf with dreadlocks, a full beard and the jaw slightly open: the model that was printed first."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/03-halforc-open-mouth.jpg",
+    "alt": "A grey clay bust of a half-orc with a mohawk, a scowl, the mouth open and a small tusk showing.",
+    "caption": "A half-orc with the jaw open and snarling: teeth, a tongue and a tusk that turns with the jaw."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/04-tiefling-horns.jpg",
+    "alt": "A grey clay bust of a tiefling with a swept hairstyle and curled ram horns.",
+    "caption": "A tiefling with ram horns. Horns come from a handful of generated shapes and are joined to the skull."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/05-human-braids.jpg",
+    "alt": "A grey clay bust of a bearded man with two long braids hanging beside his face.",
+    "caption": "Braids and a short beard. Hair and beards are carved shells with their strands cut in."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/06-chin-overhang.jpg",
+    "alt": "Two side sections of a bust through the middle of the face. On the left the underside of the chin is marked red as a flat overhang; on the right a straight sloping wedge joins the chin to the neck and the red is gone.",
+    "caption": "Why the throat gusset exists: without it the chin's flat underside hangs about 9 mm over air and needs supports; with it the underside is a 45 degree slope that prints on its own."
+  }
+]

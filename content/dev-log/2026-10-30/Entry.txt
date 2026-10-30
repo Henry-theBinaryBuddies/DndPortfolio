@@ -1,0 +1,7 @@
+Side Quest (Effigy Engine):
+
+First print. I made the throat gusset the default, Claude gave me starting slicer settings for a 0.2 mm nozzle, and I printed a dwarf with dreadlocks and an open mouth. The slicer said about 5 hours. Claude had guessed more than a day, which was wrong.
+
+Most of it came out well. A couple of the dreadlocks did not anchor and turned into plastic spaghetti. I do not know yet whether that is the design (the locks hang away from the head, and I never measured overhangs on hair, only on bare busts) or my printer's calibration. I will share photos and the STL, and Claude will measure those locks' overhang, wall thickness and the gap below them to tell the two apart.
+
+Linked Effigy Engine into this portfolio as the Artifact 7 side quest.
