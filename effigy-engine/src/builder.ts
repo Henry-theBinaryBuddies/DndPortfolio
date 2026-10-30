@@ -7,6 +7,7 @@ import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
+import { buildMouthFill } from "./mouthFill";
 import { buildTeeth } from "./teeth";
 import { derive, type Params } from "./params";
 import { MM, PEDESTAL_SIDES, pedestalRings } from "./print";
@@ -267,6 +268,13 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
   if (teeth) {
     const mesh = new THREE.Mesh(teeth, clay);
     mesh.name = "teeth";
+    head.add(mesh);
+  }
+  // With the jaw shut, the hollow behind the lips is filled solid (see mouthFill.ts)
+  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen);
+  if (fill) {
+    const mesh = new THREE.Mesh(fill, clay);
+    mesh.name = "mouthFill";
     head.add(mesh);
   }
 

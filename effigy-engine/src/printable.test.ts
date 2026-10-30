@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
-import { basePrism, pedestalGeometry } from "./builder";
+import { basePrism, buildBust, pedestalGeometry } from "./builder";
 import { collectBust, collectParts } from "./export";
 import { applyRace, defaultParams, type Params } from "./params";
 import { baseOutline, convexHull, MM, pedestalRings, PEDESTAL_SIDES, PRINT, radiusAt, reachOfHull } from "./print";
@@ -198,6 +198,27 @@ describe("merging a bust into one printable solid", () => {
     expect(file.count).toBe(report.triangles);
     expect(file.unpaired).toBe(0);
     expect(Math.abs(file.volume - report.volume) / report.volume).toBeLessThan(0.002);
+  }, 300000);
+
+  it("fills the hollow behind closed lips, and leaves an open mouth open", async () => {
+    expect(buildBust(params({ jawOpen: 0 }), assets).getObjectByName("mouthFill")).toBeDefined();
+    expect(buildBust(params({ jawOpen: 0.4 }), assets).getObjectByName("mouthFill")).toBeUndefined();
+    const { stl, report } = await merge(params({ hairStyle: "none", beardStyle: "none" }));
+    expectOneSolid("filled mouth", report);
+    // The roof of the hollow was a flat ceiling about 56 mm above the cut, 100+ mm2 over open air: now there is none
+    // (what is left in this band is the undersides of the nostrils)
+    const { positions, count } = readStl(stl);
+    let ceiling = 0;
+    for (let t = 0; t < count; t++) {
+      const [a, b, c] = [0, 1, 2].map((k) => Array.from(positions.subarray((t * 3 + k) * 3, (t * 3 + k) * 3 + 3)));
+      const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+      const w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      const cross = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+      const area = Math.hypot(...cross) / 2;
+      const z = (a[2] + b[2] + c[2]) / 3;
+      if (area > 0 && cross[2] / (2 * area) < -0.9 && z > 55 && z < 61 && (a[1] + b[1] + c[1]) / 3 < -3) ceiling += area;
+    }
+    expect(ceiling).toBeLessThan(40);
   }, 300000);
 
   it("joins the eyes, brows, teeth, tongue and tusks to the head: a half-orc with its mouth open is one solid", async () => {
