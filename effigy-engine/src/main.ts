@@ -212,9 +212,9 @@ if (import.meta.env.DEV) {
 }
 
 const initial = defaultParams();
-mountPanel(panel, initial, show, async (params, say, partial) => {
+mountPanel(panel, initial, show, async (params, say, partial, gusset) => {
   if (!assets) throw new Error("the head model has not loaded");
-  say(describe(await exportStl(params, assets, say, partial)));
+  say(describe(await exportStl(params, assets, say, partial, gusset)));
 });
 resize();
 frame();

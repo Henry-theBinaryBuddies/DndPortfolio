@@ -20,7 +20,7 @@ import {
 } from "./params";
 
 // Builds the control panel and calls onChange with a fresh Params copy on every edit.
-export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean) => Promise<void>): void {
+export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean) => Promise<void>): void {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
   const raceSelect = document.createElement("select");
@@ -176,6 +176,13 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     diagnosticButton.id = "export-partial";
     diagnosticButton.textContent = "Diagnostic export (partial)";
     diagnosticButton.title = "Keeps whatever can be merged, even if a part is missing: for finding out what is wrong, never for printing";
+    const gussetLabel = document.createElement("label");
+    gussetLabel.className = "option";
+    gussetLabel.title = "A wedge under the chin, sloping back to the neck at 45 degrees, so the chin needs no supports. It makes the throat heavier; leave it off to print the chin with the slicer's supports instead";
+    const gussetBox = document.createElement("input");
+    gussetBox.type = "checkbox";
+    gussetBox.id = "export-gusset";
+    gussetLabel.append(gussetBox, " Throat gusset (no chin supports)");
     const status = document.createElement("p");
     status.className = "status";
     status.id = "export-status";
@@ -188,7 +195,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
       // (whatever goes wrong, the buttons come back)
       let started: Promise<void>;
       try {
-        started = onExport({ ...params }, (text) => (status.textContent = text), partial);
+        started = onExport({ ...params }, (text) => (status.textContent = text), partial, gussetBox.checked);
       } catch (error) {
         started = Promise.reject(error);
       }
@@ -201,7 +208,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     };
     exportButton.addEventListener("click", () => run(false));
     diagnosticButton.addEventListener("click", () => run(true));
-    exportSection.append(exportButton, diagnosticButton, status);
+    exportSection.append(exportButton, diagnosticButton, gussetLabel, status);
     panel.append(exportSection);
   }
 

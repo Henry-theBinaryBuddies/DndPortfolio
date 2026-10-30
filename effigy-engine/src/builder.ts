@@ -7,6 +7,7 @@ import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
+import { buildThroatGusset } from "./gusset";
 import { buildMouthFill } from "./mouthFill";
 import { buildTeeth } from "./teeth";
 import { derive, type Params } from "./params";
@@ -138,7 +139,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // With detail off the beard is its plain shell, without the carving (about 750,000 triangles, which takes
 // a moment to build): that is the quick draft shown while a slider moves.
-export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group {
+export function buildBust(p: Params, assets: Assets, detail = true, gusset = false): THREE.Group {
   const root = new THREE.Group();
   const k = derive(p);
   const base = assets.head;
@@ -275,6 +276,13 @@ export function buildBust(p: Params, assets: Assets, detail = true): THREE.Group
   if (fill) {
     const mesh = new THREE.Mesh(fill, clay);
     mesh.name = "mouthFill";
+    head.add(mesh);
+  }
+  // Optionally, a wedge under the chin so it needs no supports (see gusset.ts)
+  const wedge = gusset ? buildThroatGusset(bust.geometry, bust.positions, bust.normals) : null;
+  if (wedge) {
+    const mesh = new THREE.Mesh(wedge, clay);
+    mesh.name = "gusset";
     head.add(mesh);
   }
 

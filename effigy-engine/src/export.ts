@@ -18,8 +18,8 @@ export function collectParts(p: Params, assets: Assets): Part[] {
 }
 
 // The parts, and how high above the bust's lowest point it is cut flat (mm)
-export function collectBust(p: Params, assets: Assets): { parts: Part[]; flatCut: number } {
-  const bust = buildBust(p, assets, true);
+export function collectBust(p: Params, assets: Assets, gusset = false): { parts: Part[]; flatCut: number } {
+  const bust = buildBust(p, assets, true, gusset);
   bust.updateMatrixWorld(true);
   const parts: Part[] = [];
   const v = new THREE.Vector3();

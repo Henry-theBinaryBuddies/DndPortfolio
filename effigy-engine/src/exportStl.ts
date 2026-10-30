@@ -33,8 +33,8 @@ export function describe(report: PrintReport): string {
 // Collects the parts and has the worker merge them. It resolves with the report once the file has been
 // offered for download, and rejects on any failure (collecting, the worker dying, the merge refusing), always
 // leaving nothing listening and a worker that can be used again. By default a bust that cannot be made into
-// exactly one solid is refused; `partial` is the explicit diagnostic export, which keeps what can be merged.
-export function exportStl(params: Params, assets: Assets, say: (text: string) => void, partial = false): Promise<PrintReport> {
+// exactly one solid is refused; `partial` is the explicit diagnostic export, which keeps what can be merged; `gusset` adds the wedge under the chin (see gusset.ts).
+export function exportStl(params: Params, assets: Assets, say: (text: string) => void, partial = false, gusset = false): Promise<PrintReport> {
   const id = nextId++;
   say("Collecting the parts");
   // (a tick to let the message show: collecting the parts is a second or so on the page's own thread)
@@ -62,7 +62,7 @@ export function exportStl(params: Params, assets: Assets, say: (text: string) =>
       try {
         worker ??= new Worker(new URL("./exportWorker.ts", import.meta.url), { type: "module" });
         w = worker;
-        const { parts, flatCut } = collectBust(params, assets);
+        const { parts, flatCut } = collectBust(params, assets, gusset);
         const transfer = parts.flatMap((part) => [part.positions.buffer, part.indices.buffer]);
         onMessage = (event: MessageEvent) => {
           if (event.data.id !== id) return;
@@ -77,7 +77,7 @@ export function exportStl(params: Params, assets: Assets, say: (text: string) =>
           try {
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([event.data.stl], { type: "model/stl" }));
-            link.download = `effigy-${params.race}-${params.body}-${params.hairStyle}${partial ? "-partial" : ""}.stl`;
+            link.download = `effigy-${params.race}-${params.body}-${params.hairStyle}${gusset ? "-gusset" : ""}${partial ? "-partial" : ""}.stl`;
             link.click();
             URL.revokeObjectURL(link.href);
             finish(false);

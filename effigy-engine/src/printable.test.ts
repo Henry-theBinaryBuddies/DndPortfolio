@@ -221,6 +221,28 @@ describe("merging a bust into one printable solid", () => {
     expect(ceiling).toBeLessThan(40);
   }, 300000);
 
+  it("adds a throat gusset only when asked, and it is still one solid with the chin's underside gone", async () => {
+    const plain = params({ hairStyle: "none", beardStyle: "none" });
+    expect(buildBust(plain, assets).getObjectByName("gusset")).toBeUndefined();
+    expect(buildBust(plain, assets, true, true).getObjectByName("gusset")).toBeDefined();
+    const { parts, flatCut } = collectBust(plain, assets, true);
+    const { stl, report } = await mergeParts(parts, undefined, undefined, flatCut);
+    expectOneSolid("throat gusset", report);
+    // The chin's underside was a flat ceiling about 46 mm above the cut, 50-130 mm2: now a 45 degree slope
+    const { positions, count } = readStl(stl);
+    let ceiling = 0;
+    for (let t = 0; t < count; t++) {
+      const [a, b, c] = [0, 1, 2].map((k) => Array.from(positions.subarray((t * 3 + k) * 3, (t * 3 + k) * 3 + 3)));
+      const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+      const w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      const cross = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+      const area = Math.hypot(...cross) / 2;
+      const z = (a[2] + b[2] + c[2]) / 3;
+      if (area > 0 && cross[2] / (2 * area) < -0.9 && z > 40 && z < 50) ceiling += area;
+    }
+    expect(ceiling).toBeLessThan(10);
+  }, 300000);
+
   it("joins the eyes, brows, teeth, tongue and tusks to the head: a half-orc with its mouth open is one solid", async () => {
     const orc = applyRace(defaultParams(), "half-orc");
     orc.jawOpen = 0.5;
