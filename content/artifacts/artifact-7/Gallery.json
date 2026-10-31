@@ -28,5 +28,25 @@
     "src": "./assets/screenshots/artifact-7/06-chin-overhang.jpg",
     "alt": "Two side sections of a bust through the middle of the face. On the left the underside of the chin is marked red as a flat overhang; on the right a straight sloping wedge joins the chin to the neck and the red is gone.",
     "caption": "Why the throat gusset exists: without it the chin's flat underside hangs about 9 mm over air and needs supports; with it the underside is a 45 degree slope that prints on its own."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/07-print-front.jpg",
+    "alt": "A black 3D-printed bust of a bearded dwarf with dreadlocks and an open mouth, photographed from the front on its flared round base.",
+    "caption": "The first print, from the front: face, open mouth and beard came out clean on a 0.2 mm nozzle. This is the bust the throat gusset was made for."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/08-print-back.jpg",
+    "alt": "The back of the printed dwarf bust. A curtain of dreadlocks hangs down the back of the head; on the left the lock ends are frayed with thin loose strands.",
+    "caption": "The back. Most locks printed as solid rods, but on the left the lock ends are frayed into loose strands: tips that began in mid-air."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/09-print-three-quarter.jpg",
+    "alt": "A three-quarter view of the printed dwarf bust showing the dreadlocks ending in a ragged fringe at brow level.",
+    "caption": "The fringe of locks around the brow ends in a ragged edge. The model measures many lock tips with several millimetres of air under them."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/10-print-top.jpg",
+    "alt": "A view from above of the printed dwarf bust. The dreadlocks radiate from the crown like a rope-textured pom-pom.",
+    "caption": "From above: the locks fan out from the crown. Printed bottom-up, every lock that ends in open air has to start its tip on nothing."
   }
 ]

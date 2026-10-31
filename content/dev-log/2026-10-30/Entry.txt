@@ -2,6 +2,10 @@ Side Quest (Effigy Engine):
 
 First print. I made the throat gusset the default, Claude gave me starting slicer settings for a 0.2 mm nozzle, and I printed a dwarf with dreadlocks and an open mouth. The slicer said about 5 hours. Claude had guessed more than a day, which was wrong.
 
-Most of it came out well. A couple of the dreadlocks did not anchor and turned into plastic spaghetti. I do not know yet whether that is the design (the locks hang away from the head, and I never measured overhangs on hair, only on bare busts) or my printer's calibration. I will share photos and the STL, and Claude will measure those locks' overhang, wall thickness and the gap below them to tell the two apart.
+Most of it came out well. A couple of the dreadlocks did not anchor and turned into plastic spaghetti. I suspected my printer's calibration.
+
+I sent Claude the photos, the STL and the gcode (Oct 31) and it measured the locks. The face, mouth and beard printed cleanly. The failures are at the tips of the locks, and the model explains them: about 310 downward-facing spots in the hair have 2 mm or more of air under them, 242 of those with more than 5 mm, some with 30 to 40 mm of clear drop to the shoulders. A printer builds from the bottom up, so a lock that ends in open air has to start its rounded tip on nothing. Where a lock leans on the head, the tip has something to grip, which is why most of them were fine. So it is mostly the design, not calibration. I never measured overhangs on hair, only on bare busts.
+
+The gcode also showed my slicer settings were not Claude's suggested ones. It was sliced at 0.2 mm layers, 0.4 mm lines and 200 degrees, with the outer wall at 35 mm/s and only four small support pieces (nothing under the hair). Those settings are rougher than the plan, so calibration could still add to the fraying. The next step is to change the model first, so lock tips end on something or are supported, and then reprint on slower settings.
 
 Linked Effigy Engine into this portfolio as the Artifact 7 side quest.
