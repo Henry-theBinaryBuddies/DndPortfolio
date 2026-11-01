@@ -1,0 +1,7 @@
+Side Quest (Effigy Engine):
+
+From a viewer to something that prints. First more hair: dreadlocks and braids, then an open mouth with teeth, a tongue and expressions, and a jaw that slides forward as it opens, which ended the folds in the throat.
+
+Then the export. It gathers every part of the bust (head, hair, beard, eyes, horns, tusks, teeth) and merges them into one closed solid with manifold-3d, in a background worker so the page does not freeze. A bust needs a base, so it stands on a turned pedestal (a disc with a sloped rim and a waisted stem, like the reference photo of dragon busts) that turns with it. The underside is cut flat where it stops hanging out.
+
+The most useful change: the export refuses to save anything that is not exactly one complete solid, and says what is wrong. I then checked the files with a separate tool, Trimesh, that did not share any of my code. It found places where surfaces touched along an edge, which I fixed. A wall-thickness check found 0.1 to 1.8 percent of the surface thinner than two nozzle widths: ears, lips, nostrils and the tips of hair.

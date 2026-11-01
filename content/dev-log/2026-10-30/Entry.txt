@@ -1,0 +1,11 @@
+Side Quest (Effigy Engine):
+
+First print. I made the throat gusset the default, Claude gave me starting slicer settings for a 0.2 mm nozzle, and I printed a dwarf with dreadlocks and an open mouth. The slicer said about 5 hours. Claude had guessed more than a day, which was wrong.
+
+Most of it came out well. A couple of the dreadlocks did not anchor and turned into plastic spaghetti. I suspected my printer's calibration.
+
+I sent Claude the photos, the STL and the gcode (Oct 31) and it looked at the locks. The face, mouth and beard printed cleanly. The fraying is at the ends of the locks, and the model shows why: of the 58 dreadlocks, 39 ended their rounded tips 3 to 10 mm clear of the head and shoulders. A printer builds from the bottom up, so a lock that ends in open air has to start its tip on nothing. (Some of those tips probably rested on neighbouring locks, which that count ignores, which is likely why only a couple came out as spaghetti.) So it was mostly the design, not my printer. I had never measured overhangs on hair, only on bare busts.
+
+The gcode also showed my slicer settings were not Claude's suggested ones. It was sliced at 0.2 mm layers, 0.4 mm lines and 200 degrees, with the outer wall at 35 mm/s and only four small support pieces (nothing under the hair). Those settings are rougher than the plan, so they could still add to the fraying. The model fix is in the Oct 31 entry.
+
+Linked Effigy Engine into this portfolio as the Artifact 7 side quest.

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Effigy Engine</title>
+  </head>
+  <body>
+    <main class="app">
+      <section class="stage" id="stage">
+        <canvas id="view"></canvas>
+        <div class="toolbar" id="toolbar">
+          <div class="segmented" id="views">
+            <button data-yaw="0">Front</button>
+            <button data-yaw="0.785">Three-quarter</button>
+            <button data-yaw="1.571">Profile</button>
+          </div>
+          <div class="segmented" id="framing">
+            <button data-distance="7.4">Bust</button>
+            <button data-distance="face">Face</button>
+          </div>
+          <div class="segmented">
+            <button id="rotate" aria-pressed="true">Turntable</button>
+          </div>
+        </div>
+        <p class="hint">Drag to turn, scroll to zoom</p>
+      </section>
+      <aside class="panel" id="panel">
+        <h1>Effigy Engine</h1>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

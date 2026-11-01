@@ -1,0 +1,7 @@
+Side Quest (Effigy Engine):
+
+An overhang review for a printer with no supports. I measured every downward-facing surface on the exported files. My first numbers were wrong: I had drawn the line between the pedestal and the bust in the wrong place. I caught it, redid it, and the real figure was worse. The pedestal's flare was 61 to 65 degrees from vertical on four of the six busts. Reshaping it brought it to 45 degrees at most.
+
+The bust had two more big overhangs. The hollow mouth behind closed lips has a flat ceiling over air, with no way to remove supports from inside it, so with the jaw closed the export now fills it. The chin sticks out about 9 mm past the neck, so I added an optional throat gusset: a wedge that slopes back to the neck at 45 degrees. With both, the steep overhang (over 55 degrees) fell from 215 to 361 mm2 per bust to 54 to 122 mm2, and every export was still one solid.
+
+I also found that some tests were timing out because this computer runs them slower than before, so the default test timeout is now 60 seconds. 110 tests pass.

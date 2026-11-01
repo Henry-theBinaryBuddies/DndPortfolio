@@ -1,0 +1,7 @@
+Side Quest (Effigy Engine):
+
+Fixed the dreadlock tips. Each lock fell for a set length and ended wherever it was, so 39 of the dwarf's 58 locks ended in open air, and all three braids did. Now a lock goes on falling, straight down and sliding along whatever it meets, until its tip rests on the head, neck or shoulders, and the end presses a little into it so the two print as one. The locks come out longer: on the dwarf they now reach the neck and shoulders, where before many stopped at ear level.
+
+A new test checks that every lock's tip has body under it, and it failed on the old code and passes on the new. With the fix, none of the 58 dreadlock tips or 3 braid tips float. The export is still one solid. All 111 tests pass.
+
+I have not reprinted this yet. The routing rule to keep locks from leaning more than 44 degrees over open air turned out to change little, because the locks' paths were already nearly all lying on the scalp or shoulders: 19 mm of unsupported steep path in all before, 5 mm after. The small downward-facing spots all over the hair are the spiral grooves, which a printer handles as shallow ridges, so I am leaving them. Next is a reprint, with the slicer settings from the plan.
