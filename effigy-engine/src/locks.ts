@@ -100,6 +100,35 @@ interface Fall {
   // Where it is drawn to, from where it is and how far along it is
   target: (p: THREE.Vector3, i: number) => THREE.Vector3;
   rate: number; // how quickly it turns toward that
+  // After its length, it goes on falling (this many more steps at most) until it rests on the body
+  land?: number;
+}
+
+// A printer builds upward, so the end of a lock is laid first: over open air it has nothing to start on
+// (and comes out as loose strands). A lock therefore goes on until its tip is on the head, neck or
+// shoulders, and its end presses a little into them so the two print as one.
+const LANDED = 1.3; // (times the clearance) near enough to the body to be resting on it
+const SINK = 0.5; // the end pressed this far (of the clearance) toward what it rests on
+const UNDER = 0.9; // body must also be this far (of the lock's radius) below the tip...
+const LANDED_UNDER = 1.5; // ...within this (times the clearance)
+const PLUMB = new THREE.Vector3(0, -1, 0);
+const STEEP = 0.72; // cosine of the steepest lean a lock may have over open air (44 degrees from vertical)
+const HELD = 1.65; // body within this many radii of the point just under a lock holds it up
+const EXTRA_RINGS = 10; // a lock has this many more rings than its length needs, whatever distance it falls to land
+
+// The path again as exactly `n` points evenly spaced along it, ends included
+function resample(path: THREE.Vector3[], n: number): THREE.Vector3[] {
+  const at = [0];
+  for (let i = 1; i < path.length; i++) at.push(at[i - 1] + path[i].distanceTo(path[i - 1]));
+  const out: THREE.Vector3[] = [];
+  let k = 1;
+  for (let j = 0; j < n; j++) {
+    const s = (at[at.length - 1] * j) / (n - 1);
+    while (k < path.length - 1 && at[k] < s) k++;
+    const span = at[k] - at[k - 1];
+    out.push(path[k - 1].clone().lerp(path[k], span > 0 ? Math.min(1, Math.max(0, (s - at[k - 1]) / span)) : 1));
+  }
+  return out;
 }
 
 // The path of a lock: out of the scalp, then drawn toward its target, kept clear of the body all the way
@@ -109,8 +138,20 @@ function fall(cloud: Cloud, spec: Fall): THREE.Vector3[] {
   const path = [p.clone()];
   const q = new THREE.Vector3();
   const away = new THREE.Vector3();
-  for (let i = 1; i <= spec.steps; i++) {
-    d.lerp(spec.target(p, i).normalize(), spec.rate).normalize();
+  for (let i = 1; i <= spec.steps + (spec.land ?? 0); i++) {
+    // (past its length it falls straight down, sliding along whatever it meets, until it rests)
+    const aim = spec.land !== undefined && i > spec.steps ? PLUMB : spec.target(p, i).normalize();
+    d.lerp(aim, spec.rate).normalize();
+    // Where nothing is under the lock it may lean no more than 44 degrees from the vertical: more is an
+    // overhang a printer cannot lay over open air. (Along the scalp or the shoulders it can lie as it likes.)
+    if (spec.land !== undefined && Math.abs(d.y) < STEEP) {
+      const ahead = p.clone().addScaledVector(d, spec.step);
+      const held = cloud.nearest(ahead.x, ahead.y - UNDER * spec.radius, ahead.z);
+      if (!held || held.d >= spec.radius * HELD) {
+        const side = Math.hypot(d.x, d.z) || 1;
+        d.set((d.x / side) * Math.sqrt(1 - STEEP * STEEP), -STEEP, (d.z / side) * Math.sqrt(1 - STEEP * STEEP));
+      }
+    }
     const before = p.clone();
     p.addScaledVector(d, spec.step);
     // (the clearance builds up over the first steps: it starts in the scalp)
@@ -125,8 +166,22 @@ function fall(cloud: Cloud, spec: Fall): THREE.Vector3[] {
     }
     d.lerp(p.clone().sub(before).normalize(), 0.5).normalize();
     path.push(p.clone());
+    if (spec.land !== undefined && i >= spec.steps) {
+      // At rest when touching the body, and with body under the tip too (a wall beside it that falls away
+      // below does not hold it up)
+      const near = cloud.nearest(p.x, p.y, p.z);
+      const under = cloud.nearest(p.x, p.y - UNDER * spec.radius, p.z);
+      if (near && near.d < clearance * LANDED && under && under.d < clearance * LANDED_UNDER) {
+        cloud.point(near.i, q);
+        p.lerp(q, SINK);
+        path.push(p.clone());
+        break;
+      }
+    }
   }
-  return path;
+  // (the same number of rings for a lock wherever it lands, so the same locks come out however the body
+  // is shaped, and a rebuild can reuse their subdivision: see carveShell)
+  return spec.land === undefined ? path : resample(path, spec.steps + 1 + EXTRA_RINGS);
 }
 
 // Tubes: each a closed solid (a ring of vertices at each point of its path, joined along its length, with a
@@ -205,6 +260,7 @@ class Tubes {
   }
 }
 
+const LAND_STEPS = 40; // at most about 58 mm further (the shoulders are never as far as that)
 const down = new THREE.Vector3(0, -1, -0.15);
 const back = new THREE.Vector3(0, 0.25, -1);
 
@@ -267,12 +323,16 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
       radius,
       target: (p) => (front && p.z > -0.3 ? back : down),
       rate: 0.35,
+      land: LAND_STEPS,
     });
     const phase = h * 6.28;
-    // A rope: thick all the way, a little knobbly, closing in a rounded end
+    // A rope: thick all the way, a little knobbly, closing in a rounded end (as long as it always was,
+    // however far the lock went on to land)
+    const total = path.reduce((sum, point, i) => (i ? sum + point.distanceTo(path[i - 1]) : 0), 0);
+    const cap = Math.min(0.5, (0.1 * length) / total);
     tubes.add(
       path,
-      (t) => radius * (1 + 0.07 * Math.sin(t * 40 + phase)) * (t > 0.9 ? Math.sqrt(Math.max(0, 1 - ((t - 0.9) / 0.1) ** 2)) : 1),
+      (t) => radius * (1 + 0.07 * Math.sin(t * 40 + phase)) * (t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1),
       10,
       () => null,
     );
@@ -307,13 +367,15 @@ function braidShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     const step = 0.05;
     // Down the side of the neck, then forward over the shoulder onto the chest; the back one hangs straight
     const aim = new THREE.Vector3(-w.side * 0.35, -1, w.side === 0 ? -0.1 : 0.4);
-    const path = fall(cloud, { start, direction: n, steps: 30, step, radius: w.radius, target: () => aim, rate: 0.3 });
+    const path = fall(cloud, { start, direction: n, steps: 30, step, radius: w.radius, target: () => aim, rate: 0.3, land: LAND_STEPS });
+    const total = path.reduce((sum, point, i) => (i ? sum + point.distanceTo(path[i - 1]) : 0), 0);
+    const cap = Math.min(0.5, (0.07 * 30 * step) / total);
     const q = new THREE.Vector3();
     const toward = new THREE.Vector3();
     const smoothOut = new THREE.Vector3(0, 0, 1);
     tubes.add(
       path,
-      (t) => w.radius * (1 - 0.4 * t ** 1.5) * (1 + 0.05 * Math.cos((t * 30 * Math.PI) / 2)) * (t > 0.93 ? Math.sqrt(Math.max(0, 1 - ((t - 0.93) / 0.07) ** 2)) : 1),
+      (t) => w.radius * (1 - 0.4 * t ** 1.5) * (1 + 0.05 * Math.cos((t * 30 * Math.PI) / 2)) * (t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1),
       12,
       (i) => {
         // Away from the nearest part of the body, so the chevrons lie on the side that shows

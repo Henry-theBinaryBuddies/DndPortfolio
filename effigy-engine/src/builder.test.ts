@@ -1010,6 +1010,52 @@ describe("dreadlocks and braids", () => {
     }
   }, 120000);
 
+  it("end on the body: the tip of every lock rests on the head, neck or shoulders, so it prints without supports", () => {
+    for (const style of styles) {
+      const { shell, bust } = shellOf(style);
+      const pos = shell.attributes.position;
+      const along = shell.attributes.headPos;
+      const thick = shell.attributes.thick;
+      const bottom = new THREE.Box3().setFromArray(bust.positions).min.y;
+      const cell = 0.1;
+      const grid = new Map<string, number[]>();
+      for (let i = 0; i < bust.positions.length; i += 3) {
+        const key = `${Math.floor(bust.positions[i] / cell)},${Math.floor(bust.positions[i + 1] / cell)},${Math.floor(bust.positions[i + 2] / cell)}`;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key)!.push(i);
+      }
+      // (the middle of the cap at the far end of each tube: zero thick, some way along it)
+      let tips = 0;
+      const floating: number[] = [];
+      for (let v = 0; v < pos.count; v++) {
+        if (thick.getX(v) !== 0 || along.getZ(v) < 0.1) continue;
+        tips++;
+        const cx = Math.floor(pos.getX(v) / cell);
+        const cy = Math.floor(pos.getY(v) / cell);
+        const cz = Math.floor(pos.getZ(v) / cell);
+        let rests = false; // (or it reached the flat cut the bust stands on, which has no vertices of its own)
+        for (let x = -1; x <= 1; x++) {
+          for (let y = -1; y <= 1; y++) {
+            for (let z = -1; z <= 1; z++) {
+              for (const i of grid.get(`${cx + x},${cy + y},${cz + z}`) ?? []) {
+                const dx = pos.getX(v) - bust.positions[i];
+                const dy = pos.getY(v) - LOCKS.braidRadius[0] - bust.positions[i + 1];
+                const dz = pos.getZ(v) - bust.positions[i + 2];
+                const d = Math.hypot(dx, dy, dz);
+                // body within a lock's thickness of a point just under the tip (a wall that falls away
+                // below it would not hold it up)
+                if (d < 1.3 * LOCKS.braidRadius[0]) rests = true;
+              }
+            }
+          }
+        }
+        if (!rests && pos.getY(v) > bottom + 0.05) floating.push(v);
+      }
+      expect(tips, style).toBeGreaterThan(2);
+      expect(floating.length, `${style}: tips with nothing under them`).toBe(0);
+    }
+  }, 120000);
+
   it("carve their grooves with every triangle quartered twice, still closed, cutting only inward", () => {
     for (const style of styles) {
       const { p, bust, shell } = shellOf(style);
