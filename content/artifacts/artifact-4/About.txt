@@ -10,6 +10,6 @@ My part went through two versions. First I built a Daily.co integration: the ser
 
 Built with React and Vite on Vercel, and a Node, Express and Socket.IO server on Render's free tier (the first visit after it sleeps can take up to a minute). The shared plan, branches, reviewed pull requests and a running log are in the repository.
 
-Not yet verified: a real call between two people on real devices. The page and the call frame load, but I could not test mic and camera in my own testing browser.
+Tested for real: the three of us joined one room from our own devices and the call worked, with Adrian, Henry and John each in a tile with their own camera. That test also found a problem we have not solved: the YouTube player asked us to sign in to confirm we were not bots, so the shared video would not play. Still to do: find out whether that is YouTube treating the embed as suspicious or something we can fix, and test on a phone.
 
 Live: https://couch-crew.vercel.app

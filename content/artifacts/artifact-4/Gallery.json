@@ -8,5 +8,10 @@
     "src": "./assets/screenshots/artifact-4/02-room.jpg",
     "alt": "A CouchCrew room with a row of genre themes, a Watch Together box with a YouTube link field, a Video and Screen Share box holding the Jitsi call frame, and a chat box underneath.",
     "caption": "Inside a room: the shared YouTube player, the video call (my part) and chat. The call frame is Jitsi Meet, loaded when you press Join call."
+  },
+  {
+    "src": "./assets/screenshots/artifact-4/03-three-way-call.png",
+    "alt": "A CouchCrew room on a narrow screen. The Watch Together box shows a YouTube message reading Sign in to confirm you're not a bot. Below it the video call shows three tiles: Adrian as a blue letter A, Henry in front of a world map, and John in front of a window.",
+    "caption": "The first real test, with all three of us in one room. The call works. The YouTube player did not: it asked us to sign in to prove we were not bots."
   }
 ]
