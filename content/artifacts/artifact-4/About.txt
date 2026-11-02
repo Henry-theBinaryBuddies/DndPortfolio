@@ -1,5 +1,15 @@
-Artifact 4:
-For Someone Else
+Artifact 4
 
-Project will need to be conceived by someone else.
-TBD...
+CouchCrew
+
+A watch-party site made for someone else: Adrian, who watches movies with his long-distance partner, and anyone else who wants to watch something together without being in the same room. Make a room, send the link, and everyone who opens it lands in the same place with text chat, a video call, screen share and a shared YouTube player. It runs in a phone browser, so nobody needs an app or a laptop.
+
+We were a team of three, each with a job and a branch. Adrian built the rooms, presence and chat backbone, then the leader role (one person controls what is playing) and the genre themes. John built the synced YouTube playback and researched whether Netflix and Hulu could be synced too. I built the audio, video and screen share.
+
+My part went through two versions. First I built a Daily.co integration: the server made a Daily room for each CouchCrew room so the API key stayed off the browser, and the page had its own tile grid with mute, camera and share-screen buttons. Then Adrian tested it live and Daily refused the call because its free minutes need a card on file. The team did not want a billing account for a class project, so the video panel now embeds Jitsi Meet's free public server, which needs no account or key. We lost the custom tiles and kept mic, camera and screen share. On a phone the frame is taller so Jitsi's controls fit; phone browsers usually cannot share a screen at all, so screen share is a laptop feature and "one person shares their Netflix tab" is the way to watch anything that cannot be synced.
+
+Built with React and Vite on Vercel, and a Node, Express and Socket.IO server on Render's free tier (the first visit after it sleeps can take up to a minute). The shared plan, branches, reviewed pull requests and a running log are in the repository.
+
+Not yet verified: a real call between two people on real devices. The page and the call frame load, but I could not test mic and camera in my own testing browser.
+
+Live: https://couch-crew.vercel.app

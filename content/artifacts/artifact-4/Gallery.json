@@ -1,0 +1,12 @@
+[
+  {
+    "src": "./assets/screenshots/artifact-4/01-home.jpg",
+    "alt": "The CouchCrew home page: a theatre screen with red curtains, the title CouchCrew, a Create a Room button and a Join with a code link, a chat box beside it, and the start of a row of genre themes below.",
+    "caption": "The home page. One button makes a room and puts its link in the address bar; the link is what you send."
+  },
+  {
+    "src": "./assets/screenshots/artifact-4/02-room.jpg",
+    "alt": "A CouchCrew room with a row of genre themes, a Watch Together box with a YouTube link field, a Video and Screen Share box holding the Jitsi call frame, and a chat box underneath.",
+    "caption": "Inside a room: the shared YouTube player, the video call (my part) and chat. The call frame is Jitsi Meet, loaded when you press Join call."
+  }
+]
