@@ -7,3 +7,15 @@ It merged, and then Adrian tested it live and Daily ended the call with "account
 Today I pulled his version into my branch and tested the live site in a browser: the room opens, Join call loads the Jitsi frame with camera, microphone and screen-share permissions set. It was far too small, though. In the narrow video column the frame was about 290 by 165 pixels, and 210 pixels tall on a phone, so I made it at least 420 pixels tall on desktop and 70% of the screen height on phones. My testing browser blocks the camera, so I could not hold a call myself. Then the three of us tried it for real, each on our own device: the call worked, with all three of us in tiles. The YouTube player did not. It asked us to sign in to confirm we were not bots, so nothing played. We do not yet know whether that is YouTube distrusting the embed or something we can fix. Still to do: look into that, and test on a phone (browsers there generally cannot share a screen, so that button may be missing).
 
 Built the Artifact 4 card for this portfolio.
+
+Side Quest (Effigy Engine):
+
+Tabletop size. The busts printed about twice as big as a gaming board wants, so the export can now fit the whole bust, hair, beard and shoulders included, inside a one inch square on a 25 mm base. Scaling alone could not do it: a bust is far wider and deeper than it is tall (70 mm across at the shoulders and 45 mm front to back at 80 mm tall), so it gives either the height or the base, never both. There is now a Torso size slider that slims the body below the neck, and the export scales the bust as large as the square allows and slims the torso only as far as that needs. On the busts tried, it is the head and hair that set the size, not the shoulders: a dwarf with dreadlocks comes out 40 mm tall (I wanted 45 to 55), 25 x 25 mm across, on a 5 mm base, with the torso at 67%. It tips over only past about 30 degrees, and is about 11 g of plastic. Its details are half the size too, so the carving will need the 0.2 mm nozzle; I have not resized it yet.
+
+Removed the braids. They looked more like paytas than cornrows.
+
+Codex audited the work again, and Claude fixed what it found: the wall thickness sampler had been skipping some of the surface it meant to measure (the figures in the README were remeasured; a full-size dwarf has 0.4% of its surface under 0.4 mm), the export could have thrown away a small part such as a tooth on a miniature as a "speck" and still called it one solid (the cutoff now shrinks with the print), and the report now gives the real bust height. Along the way, the throat gusset went from about 17 seconds to under one, with identical results, by casting its rays through a bounding volume hierarchy. 120 tests pass.
+
+Still open from the audit: the preview shows the full-size sculpt, not the slimmed tabletop print, and the export still runs its fitting on the page's own thread (a few seconds now).
+
+Meanwhile the second test print, the dwarf with the landed dreadlock tips at full size on the same settings, is printing.

@@ -265,14 +265,12 @@ describe("merging a bust into one printable solid", () => {
     expect(Math.abs(file.volume - report.volume) / report.volume).toBeLessThan(0.002);
   }, 600000);
 
-  it("merges dreadlocks, braids and long hair's side locks, each lock joined to the head", async () => {
+  it("merges dreadlocks and long hair's side locks, each lock joined to the head", async () => {
     const dwarf = applyRace(defaultParams(), "dwarf");
     dwarf.hairStyle = "dreadlocks";
-    const braids = applyRace({ ...defaultParams(), body: "feminine" }, "human");
-    braids.hairStyle = "braids";
     const elf = applyRace({ ...defaultParams(), body: "feminine" }, "elf");
     elf.hairStyle = "long";
-    for (const [label, p] of [["dreadlocks", dwarf], ["braids", braids], ["long hair", elf]] as const) {
+    for (const [label, p] of [["dreadlocks", dwarf], ["long hair", elf]] as const) {
       const { report } = await merge(p);
       expectOneSolid(label, report);
     }
@@ -390,6 +388,26 @@ describe("refusing to export what is not one solid", () => {
     expect(report.volume).toBeCloseTo(1000, 1);
     expect(readStl(stl).count).toBe(report.triangles);
     expect(Math.max(...readStl(stl).positions.filter((_, i) => i % 3 === 0))).toBeLessThanOrEqual(10.001);
+  });
+});
+
+describe("specks on a miniature", () => {
+  const box = (name: string, size: number, at: number): Part => {
+    const { positions, indices } = cube();
+    return { name, positions: Float32Array.from(positions, (v, i) => v * size + (i % 3 === 0 ? at : 0)), indices };
+  };
+  it("do not hide a real feature that came loose: a miniature's tooth is 0.128 mm³, a speck only at full size", async () => {
+    // (a 0.5 mm cube is 0.125 mm³: about a tooth at 45% scale)
+    const parts = [box("body", 10, 0), box("tooth", 0.5, 50)];
+    await expect(mergeParts(parts, undefined, undefined, undefined, false, 0.45)).rejects.toThrow(/2 separate bodies/);
+    const full = await mergeParts(parts);
+    expect(full.report.specks).toBe(1);
+    expect(full.report.speckVolumes[0]).toBeCloseTo(0.125, 3);
+    expect(full.report.speckLimit).toBeCloseTo(0.5, 6);
+    // ...while a real speck is still removed at the small size
+    const real = await mergeParts([box("body", 10, 0), box("speck", 0.2, 50)], undefined, undefined, undefined, false, 0.45);
+    expect(real.report.specks).toBe(1);
+    expect(real.report.speckLimit).toBeCloseTo(0.5 * 0.45 ** 3, 6);
   });
 });
 

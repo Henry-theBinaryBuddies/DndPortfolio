@@ -221,6 +221,11 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // the neck
     const shoulders = smooth((-0.9 - y0) / 0.25) * (1 - neckness);
     dx += x0 * (k.shoulders - 1) * shoulders;
+    // The torso's size (a slimmer one for a bust that must fit a small base): the shoulders, chest and back
+    // closed in toward the neck's axis, from the base of the neck, both across and front to back
+    const torso = smooth((-0.6 - y0) / 0.4) * (1 - neckness) * (p.torso - 1);
+    dx += (x0 - axis.x) * torso;
+    dz += (z0 - axis.z) * torso;
     // Muscle shows as form: the collarbones with the hollow above each, the slope of the trapezius from the
     // neck to the shoulder, the cap of the deltoid, and on masculine chests the pectorals parted by the
     // breastbone

@@ -9,7 +9,7 @@ import { deformHead } from "./deform";
 import { sculptBust } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
-import { braidPattern, buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
+import { buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
 import { scalp } from "./hair";
 import { jawWeights } from "./jaw";
 import { buildTeeth } from "./teeth";
@@ -905,8 +905,8 @@ describe("carved hair", () => {
   }, 300000);
 });
 
-describe("dreadlocks and braids", () => {
-  const styles = ["dreadlocks", "braids"] as const;
+describe("dreadlocks", () => {
+  const styles = ["dreadlocks"] as const;
   const shellOf = (hairStyle: (typeof styles)[number], overrides: Partial<Params> = {}) => {
     const p = params({ hairStyle, ...overrides });
     const bust = sculptBust(p, base);
@@ -927,11 +927,8 @@ describe("dreadlocks and braids", () => {
     return open;
   };
 
-  it("are sized so they print: thick ropes and plaits, grooves no finer than the nozzle can hold", () => {
+  it("are sized so they print: thick ropes", () => {
     expect(LOCKS.dreadRadius * 2).toBeGreaterThanOrEqual(2.4 * MM);
-    expect(LOCKS.braidRadius[0] * 2).toBeGreaterThanOrEqual(3.6 * MM);
-    expect(LOCKS.braidGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
-    expect(LOCKS.braidPitch - LOCKS.braidGroove).toBeGreaterThanOrEqual(MIN_FEATURE * 2);
     expect(LOCKS.dreadSpacing).toBeGreaterThan(LOCKS.dreadRadius * 2 * 1.2);
   });
 
@@ -1039,12 +1036,12 @@ describe("dreadlocks and braids", () => {
             for (let z = -1; z <= 1; z++) {
               for (const i of grid.get(`${cx + x},${cy + y},${cz + z}`) ?? []) {
                 const dx = pos.getX(v) - bust.positions[i];
-                const dy = pos.getY(v) - LOCKS.braidRadius[0] - bust.positions[i + 1];
+                const dy = pos.getY(v) - 1.45 * LOCKS.dreadRadius - bust.positions[i + 1];
                 const dz = pos.getZ(v) - bust.positions[i + 2];
                 const d = Math.hypot(dx, dy, dz);
                 // body within a lock's thickness of a point just under the tip (a wall that falls away
                 // below it would not hold it up)
-                if (d < 1.3 * LOCKS.braidRadius[0]) rests = true;
+                if (d < 1.9 * LOCKS.dreadRadius) rests = true;
               }
             }
           }
@@ -1071,16 +1068,11 @@ describe("dreadlocks and braids", () => {
     }
   }, 300000);
 
-  it("carve continuously round a lock (no seam) and, on a braid, the same either side of its middle", () => {
+  it("carve continuously round a lock (no seam)", () => {
     const at = (angle: number, length: number) => [Math.cos(angle), Math.sin(angle), length] as const;
     for (const length of [0.05, 0.13, 0.31]) {
       expect(Math.abs(dreadPattern(...at(Math.PI - 1e-4, length)) - dreadPattern(...at(-Math.PI + 1e-4, length)))).toBeLessThan(0.0005);
-      for (const angle of [0.3, 1.1, 2.5]) expect(braidPattern(...at(angle, length))).toBeCloseTo(braidPattern(...at(-angle, length)), 8);
     }
-    // ...and a braid's grooves are deep enough to show
-    let most = 0;
-    for (let length = 0; length < 0.4; length += 0.002) most = Math.max(most, braidPattern(...at(0.4, length)));
-    expect(most).toBeGreaterThan(0.3 * MM);
   });
 
   it("are only for the styles that have them", () => {

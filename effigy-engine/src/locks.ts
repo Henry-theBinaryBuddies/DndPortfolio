@@ -1,15 +1,14 @@
 import * as THREE from "three";
-import { carveShell, hash, vee, type Pattern } from "./carve";
+import { carveShell, hash, type Pattern } from "./carve";
 import { scalp } from "./hair";
 import { HAIR_CARVING, locks } from "./hairCarve";
 import type { HeadBase } from "./headMesh";
 import type { Params } from "./params";
 import { MM } from "./print";
 
-// Dreadlocks and braids: hair as separate locks, each a closed tube. They are blocky on purpose, as a
+// Dreadlocks: hair as separate locks, each a closed tube. They are blocky on purpose, as a
 // sculptor makes them on a miniature (and as a printer can print them): a dreadlock is a rope with a spiral
-// groove, a braid is a thick plait with chevron grooves, where real hair would be strands far finer than a
-// 0.2 mm nozzle. Each starts in the scalp, which a close crop (hairShell.ts) covers between the roots, falls
+// groove, where real hair would be strands far finer than a 0.2 mm nozzle. Each starts in the scalp, which a close crop (hairShell.ts) covers between the roots, falls
 // under gravity, and rests on the head and shoulders rather than passing through them. Where they start
 // comes from the undeformed head, so there are always the same locks however the face is shaped (and a
 // rebuild is cheap); where they lie comes from the reshaped body.
@@ -18,10 +17,6 @@ export const LOCKS = {
   dreadRadius: 1.4 * MM, // each dreadlock is 2.8 mm thick
   dreadSpacing: 0.115, // between roots (head units): about 3.7 mm
   dreadGrooves: 3, // spiral grooves round a dreadlock
-  braidPitch: 3.2 * MM, // one plait every 3.2 mm
-  braidGroove: 0.6 * MM,
-  braidDepth: 0.5 * MM,
-  braidRadius: [2 * MM, 2.4 * MM] as const, // the two braids at the sides, and the one down the back
 };
 
 // The point of the tube's surface at the angle θ round it from the side turned away from the body, and how
@@ -31,18 +26,6 @@ export const dreadPattern: Pattern = (c, s, length) => {
   const angle = Math.atan2(s, c);
   const across = (angle / (2 * Math.PI)) * LOCKS.dreadGrooves * HAIR_CARVING.lockPitch + 0.9 * length;
   return locks(across, length, LOCKS.dreadGrooves);
-};
-
-// Chevrons down the front of a braid: grooves slanting back from the middle line, each side a mirror of the
-// other, as the plaits of a braid lie
-export const braidPattern: Pattern = (c, s, length) => {
-  const angle = Math.abs(Math.atan2(s, c));
-  const pitch = LOCKS.braidPitch;
-  const phase = length / pitch + angle * 0.55;
-  const plait = Math.floor(phase);
-  const deep = LOCKS.braidDepth * vee(phase, LOCKS.braidGroove / pitch / 2) * (0.85 + 0.3 * hash(plait));
-  const fine = 0.5 * LOCKS.braidDepth * vee(phase + 0.5, 0.8 * LOCKS.braidGroove / pitch / 2);
-  return Math.max(deep, fine);
 };
 
 // The points of the reshaped body, to find what a lock must stay clear of
@@ -340,66 +323,14 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
   return tubes.geometry();
 }
 
-// The three braids: one behind each ear, falling over the shoulder to the chest, and one down the back
-function braidShell(positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry {
-  const cloud = new Cloud(positions);
-  const tubes = new Tubes();
-  const bp = base.positions;
-  const where: { x: number; y: number; z: number; side: number; radius: number }[] = [
-    { x: 0.36, y: 0.12, z: -0.38, side: 1, radius: LOCKS.braidRadius[0] },
-    { x: -0.36, y: 0.12, z: -0.38, side: -1, radius: LOCKS.braidRadius[0] },
-    { x: 0, y: 0.1, z: -0.55, side: 0, radius: LOCKS.braidRadius[1] },
-  ];
-  for (const w of where) {
-    // The scalp vertex nearest the wanted place
-    let v = 0;
-    let best = Infinity;
-    for (let i = 0; i < bp.length / 3; i++) {
-      if (scalp(bp[i * 3], bp[i * 3 + 1], bp[i * 3 + 2]) < 0.7) continue;
-      const d = Math.hypot(bp[i * 3] - w.x, bp[i * 3 + 1] - w.y, bp[i * 3 + 2] - w.z);
-      if (d < best) {
-        best = d;
-        v = i;
-      }
-    }
-    const n = new THREE.Vector3(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]);
-    const start = new THREE.Vector3(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]).addScaledVector(n, -0.02);
-    const step = 0.05;
-    // Down the side of the neck, then forward over the shoulder onto the chest; the back one hangs straight
-    const aim = new THREE.Vector3(-w.side * 0.35, -1, w.side === 0 ? -0.1 : 0.4);
-    const path = fall(cloud, { start, direction: n, steps: 30, step, radius: w.radius, target: () => aim, rate: 0.3, land: LAND_STEPS });
-    const total = path.reduce((sum, point, i) => (i ? sum + point.distanceTo(path[i - 1]) : 0), 0);
-    const cap = Math.min(0.5, (0.07 * 30 * step) / total);
-    const q = new THREE.Vector3();
-    const toward = new THREE.Vector3();
-    const smoothOut = new THREE.Vector3(0, 0, 1);
-    tubes.add(
-      path,
-      (t) => w.radius * (1 - 0.4 * t ** 1.5) * (1 + 0.05 * Math.cos((t * 30 * Math.PI) / 2)) * (t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1),
-      12,
-      (i) => {
-        // Away from the nearest part of the body, so the chevrons lie on the side that shows
-        const near = cloud.nearest(path[i].x, path[i].y, path[i].z);
-        if (!near) return smoothOut;
-        cloud.point(near.i, q);
-        toward.copy(path[i]).sub(q);
-        if (toward.lengthSq() > 1e-10) smoothOut.lerp(toward.normalize(), 0.5).normalize();
-        return smoothOut;
-      },
-    );
-  }
-  return tubes.geometry();
-}
-
-// The locks of a dreadlocks or braids style, as a closed solid made of tubes; null for any other style
+// The locks of a dreadlocks style, as a closed solid made of tubes; null for any other style
 export function buildLockShell(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   if (p.hairStyle === "dreadlocks") return dreadShell(positions, normals, base);
-  if (p.hairStyle === "braids") return braidShell(positions, normals, base);
   return null;
 }
 
 // ...and as they print: subdivided, with their grooves carved in
 export function buildLocks(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   const shell = buildLockShell(p, positions, normals, base);
-  return shell ? carveShell(shell, base, p.hairStyle, p.hairStyle === "braids" ? braidPattern : dreadPattern) : null;
+  return shell ? carveShell(shell, base, p.hairStyle, dreadPattern) : null;
 }

@@ -342,8 +342,8 @@ export function basePrism(outline: [number, number][], bottom: number, top: numb
 
 // The pedestal as a closed solid (see pedestalRings), from `bottom` up to `top`: a round disc and a waisted stem
 // flaring out to the outline of the bust at its cut
-export function pedestalGeometry(reach: ArrayLike<number>, bottom: number, top: number): THREE.BufferGeometry {
-  const rings = pedestalRings(reach, bottom, top);
+export function pedestalGeometry(reach: ArrayLike<number>, bottom: number, top: number, fixedDisc?: number): THREE.BufferGeometry {
+  const rings = pedestalRings(reach, bottom, top, fixedDisc);
   const n = PEDESTAL_SIDES;
   const positions: number[] = rings.flat();
   const index: number[] = [];

@@ -11,12 +11,13 @@ interface Request {
   parts: Part[];
   flatCut: number; // mm above the bust's lowest point where it is cut flat
   partial?: boolean; // a diagnostic export: keep what can be merged instead of refusing
+  scale?: number; // the print's size as a fraction of the sculpt's (1 at full size)
 }
 
 self.onmessage = async (event: MessageEvent<Request>) => {
-  const { id, parts, flatCut, partial } = event.data;
+  const { id, parts, flatCut, partial, scale } = event.data;
   try {
-    const { stl, report } = await mergeParts(parts, (text) => self.postMessage({ id, progress: text }), wasmUrl, flatCut, partial);
+    const { stl, report } = await mergeParts(parts, (text) => self.postMessage({ id, progress: text }), wasmUrl, flatCut, partial, scale);
     self.postMessage({ id, stl, report }, { transfer: [stl] });
   } catch (error) {
     self.postMessage({ id, error: error instanceof Error ? error.message : String(error) });

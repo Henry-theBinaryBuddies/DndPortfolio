@@ -69,9 +69,8 @@ const STYLES: Record<Exclude<HairStyle, "none">, Style> = {
   },
   // Long hair: a cap over the scalp (the hanging lengths are a draped curtain, see buildHangingHair)
   long: { thickness: (_x, y) => 0.025 + 0.02 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1], lean: 0.3 },
-  // Dreadlocks and braids are tubes (see locks.ts) rooted in a close crop, so the scalp is covered between them
+  // Dreadlocks are tubes (see locks.ts) rooted in a close crop, so the scalp is covered between them
   dreadlocks: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, -1, 0], lean: 0 },
-  braids: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1], lean: 0 },
 };
 
 // The smallest lift off the skin, so the shell never fights the skin for the same depth at the hairline

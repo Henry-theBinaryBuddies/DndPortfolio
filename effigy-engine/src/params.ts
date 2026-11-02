@@ -12,6 +12,7 @@ export type NumericKey =
   | "age"
   | "weight"
   | "muscle"
+  | "torso"
   | "brow"
   | "cheekbones"
   | "noseSize"
@@ -37,8 +38,8 @@ export const HORN_STYLES = ["none", "ram", "goat", "bull", "demon", "antelope", 
 export type HornStyle = (typeof HORN_STYLES)[number];
 
 // (Long hair is still rough, so no race starts with it; it is there to choose.)
-// (dreadlocks and braids are built from tubes over a close crop: see locks.ts)
-export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dreadlocks", "braids"] as const;
+// (dreadlocks are built from tubes over a close crop: see locks.ts)
+export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dreadlocks"] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
 // Beards are sculpted like the hair (see beard.ts)
@@ -81,6 +82,8 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("age", "Age", "Body", 0.3),
   def("weight", "Weight", "Body", 0.5, 0.15, 0.85),
   def("muscle", "Muscle", "Body", 0.45, 0.1, 0.9),
+  // (1 is the race's own frame; slimmer is for prints that must fit a small base: see fit.ts)
+  def("torso", "Torso size", "Body", 1, 0.45, 1.1),
   def("brow", "Brow ridge", "Face", 0.5, 0.2, 0.8),
   def("cheekbones", "Cheekbones", "Face", 0.5, 0.2, 0.8),
   def("noseSize", "Nose size", "Face", 0.5, 0.25, 0.75),

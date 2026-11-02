@@ -20,6 +20,17 @@ export const PRINT = {
   baseOverlap: 0.4, // mm: the base reaches this far up inside the bust, so the two are joined, not just touching
 };
 
+// Tabletop size (see fit.ts): the whole bust, hair and shoulders included, stands within a one inch square of a
+// gaming board, on a round base a little under that, and is about as tall as a miniature's head and shoulders
+// are wanted. All in millimetres as printed (the sculpt is scaled to fit).
+export const TABLETOP = {
+  base: 25, // mm: the base's width (a square is 25.4 mm)
+  bustHeight: [45, 55] as const, // mm, the bust itself (without its base)
+  aim: 50, // mm: the height aimed for
+  plinth: 5, // mm: the whole base is this tall: a low disc, not a tall stem
+  torso: 0.45, // the least the Torso size slider goes to, which the fit may slim the body to
+};
+
 export const MIN_GROOVE = 0.4 * MM; // the narrowest groove that prints
 export const MIN_FEATURE = 0.6 * MM; // the thinnest raised feature that prints
 
@@ -112,10 +123,11 @@ export const PEDESTAL_SIDES = 96;
 // out under the bust to the section of the bust at its flat cut (`reach`: how far that outline reaches from the
 // middle in each of PEDESTAL_SIDES directions), so the bust has solid support wherever it reaches (a bust
 // whose flat bottom hung out over a narrow stem would print as a bridge).
-export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: number): number[][] {
+// (`disc`: the disc's radius, head units, where it is fixed and not the least that the bust needs)
+export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: number, fixedDisc?: number): number[][] {
   const farthest = Math.max(...Array.from(reach));
   const nearest = Math.min(...Array.from(reach));
-  const disc = Math.max(PRINT.baseRadius * MM, farthest + PRINT.baseMargin * MM);
+  const disc = fixedDisc ?? Math.max(PRINT.baseRadius * MM, farthest + PRINT.baseMargin * MM);
   const waist = Math.min(16 * MM, Math.max(10 * MM, 0.65 * nearest));
   const foot = disc - PRINT.discBevel * MM;
   const discTop = bottom + PRINT.discHeight * MM;

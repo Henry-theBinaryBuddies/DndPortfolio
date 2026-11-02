@@ -62,9 +62,8 @@ const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   cropped: crop,
   // A crest swept back: locks run along its length, side by side across its width
   mohawk: (x, y, z) => locks(x + 0.008 * Math.sin(z * 11 + y * 5), z),
-  // (dreadlocks and braids grow from a close crop)
+  // (dreadlocks grow from a close crop)
   dreadlocks: crop,
-  braids: crop,
 };
 
 export function hairPattern(style: Exclude<HairStyle, "none">): Pattern {

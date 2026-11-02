@@ -20,7 +20,7 @@ import {
 } from "./params";
 
 // Builds the control panel and calls onChange with a fresh Params copy on every edit.
-export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean) => Promise<void>): void {
+export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>): void {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
   const raceSelect = document.createElement("select");
@@ -184,19 +184,27 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     gussetBox.id = "export-gusset";
     gussetBox.checked = true;
     gussetLabel.append(gussetBox, " Throat gusset (no chin supports)");
+    const tabletopLabel = document.createElement("label");
+    tabletopLabel.className = "option";
+    tabletopLabel.title = "Fit the whole bust, hair and shoulders included, inside a one inch (25.4 mm) square on a 25 mm base, about 50 mm tall. The shoulders are narrowed as far as it takes. Untick it for the full-size print, about 110 mm tall on a 60 mm base";
+    const tabletopBox = document.createElement("input");
+    tabletopBox.type = "checkbox";
+    tabletopBox.id = "export-tabletop";
+    tabletopBox.checked = true;
+    tabletopLabel.append(tabletopBox, " Tabletop size (1 inch base, about 50 mm)");
     const status = document.createElement("p");
     status.className = "status";
     status.id = "export-status";
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    status.textContent = "Merges the bust, with its base, into one solid: about 75-90 mm tall on a 24 mm base, sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
+    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base, about 45-50 mm tall (the torso is slimmed to fit); unticked it is the full size, about 110 mm tall on a 60 mm base. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
     const run = (partial: boolean) => {
       exportButton.disabled = true;
       diagnosticButton.disabled = true;
       // (whatever goes wrong, the buttons come back)
       let started: Promise<void>;
       try {
-        started = onExport({ ...params }, (text) => (status.textContent = text), partial, gussetBox.checked);
+        started = onExport({ ...params }, (text) => (status.textContent = text), partial, gussetBox.checked, tabletopBox.checked);
       } catch (error) {
         started = Promise.reject(error);
       }
@@ -209,7 +217,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     };
     exportButton.addEventListener("click", () => run(false));
     diagnosticButton.addEventListener("click", () => run(true));
-    exportSection.append(exportButton, diagnosticButton, gussetLabel, status);
+    exportSection.append(exportButton, diagnosticButton, gussetLabel, tabletopLabel, status);
     panel.append(exportSection);
   }
 

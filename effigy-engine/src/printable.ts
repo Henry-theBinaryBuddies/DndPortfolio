@@ -34,7 +34,9 @@ export interface PrintReport {
   surfaceArea: number; // mm^2
   genus: number; // 0 for a solid with no holes through it
   components: { volume: number }[]; // separate solid pieces: 1 for a bust that is all one solid
-  specks: number; // slivers under half a cubic millimetre left where surfaces only graze (too small to print or matter)
+  specks: number; // slivers left where surfaces only graze, under half a cubic millimetre at full size (too small to print or matter)
+  speckLimit: number; // mm^3: the size below which a separate body counts as a speck, which scales with the print (a tooth is smaller on a miniature)
+  speckVolumes: number[]; // mm^3: the largest few that were discarded, so a real feature is not lost without a trace
   voids: number; // enclosed empty pockets inside it (each counts as a piece of negative volume)
   separated: number; // vertices moved a few microns apart where two surfaces touched exactly along an edge
   badEdges: number; // edges of the file that are not shared by exactly two triangles, once separated (0 for a clean file)
@@ -295,7 +297,7 @@ const WALL_SAMPLES = 60000; // points measured over the surface: about a tenth o
 // file with a feature missing, or with loose pieces, is never produced by accident. `allowPartial` is for a
 // diagnostic export: it leaves out what cannot be made into a solid and reports it. Stray specks (bodies too
 // small to be real parts) are removed explicitly, and counted, either way.
-export async function mergeParts(parts: Part[], progress: (text: string) => void = () => {}, wasmUrl?: string, flatAt?: number, allowPartial = false): Promise<{ stl: ArrayBuffer; report: PrintReport }> {
+export async function mergeParts(parts: Part[], progress: (text: string) => void = () => {}, wasmUrl?: string, flatAt?: number, allowPartial = false, scale = 1): Promise<{ stl: ArrayBuffer; report: PrintReport }> {
   const started = Date.now();
   const wasm = await loadManifold(wasmUrl);
   const { Manifold, Mesh } = wasm;
@@ -350,11 +352,14 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
 
     progress("Checking");
     // Every separate body in the result: real parts, stray specks, and the pockets (negative volume) sealed inside
-    const SPECK = 0.5; // mm^3: the smallest real part, a tooth, is about 1.4
+    // (the smallest real part, a tooth, is about 1.4 mm³ at full size: the limit shrinks with the print's volume, or a
+    // tooth that came loose on a miniature would be thrown away as a speck and the file still pass as one solid)
+    const SPECK = 0.5 * scale ** 3; // mm^3
     const pieces = merged.decompose().map(own);
     const volumes = pieces.map((piece) => piece.volume());
     const keep = pieces.filter((_, i) => volumes[i] <= 0 || volumes[i] >= SPECK);
     const specks = pieces.length - keep.length;
+    const speckVolumes = volumes.filter((v) => v > 0 && v < SPECK).sort((a, b) => b - a).slice(0, 5);
     const final = specks > 0 ? own(Manifold.compose(keep)) : merged;
     const components = volumes.filter((volume) => volume >= SPECK).sort((a, b) => b - a).map((volume) => ({ volume }));
     if (components.length !== 1 && !allowPartial) throw new Error(`The result is ${components.length} separate bodies (${components.map((c) => c.volume.toFixed(1)).join(", ")} mm³) instead of one solid, so nothing was exported`);
@@ -382,6 +387,8 @@ export async function mergeParts(parts: Part[], progress: (text: string) => void
       genus: final.genus(),
       components,
       specks,
+      speckLimit: SPECK,
+      speckVolumes,
       voids: volumes.filter((volume) => volume <= 0).length,
       separated: kisses.moved,
       badEdges,

@@ -3,7 +3,7 @@ import { buildBust, disposeObject, pedestalGeometry } from "./builder";
 import type { Assets } from "./assets";
 import type { Params } from "./params";
 import type { Part } from "./printable";
-import { MM, PRINT } from "./print";
+import { MM, PRINT, TABLETOP } from "./print";
 
 // The parts of a bust as the printer will have them, ready to be merged (see printable.ts): each mesh with
 // its place in the bust baked into its vertices (the horns and tusks are mirrored by a negative scale, which
@@ -17,9 +17,11 @@ export function collectParts(p: Params, assets: Assets): Part[] {
   return collectBust(p, assets).parts;
 }
 
-// The parts, and how high above the bust's lowest point it is cut flat (mm)
-export function collectBust(p: Params, assets: Assets, gusset = false): { parts: Part[]; flatCut: number } {
-  const bust = buildBust(p, assets, true, gusset);
+// The parts, and how high above the bust's lowest point it is cut flat (mm). With a `scale`, they are the
+// tabletop print (see fit.ts): the whole sculpt scaled by it, on the small low base.
+export function collectBust(p: Params, assets: Assets, gusset = false, scale?: number, detail = true): { parts: Part[]; flatCut: number } {
+  const k = scale ?? 1;
+  const bust = buildBust(p, assets, detail, gusset);
   bust.updateMatrixWorld(true);
   const parts: Part[] = [];
   const v = new THREE.Vector3();
@@ -29,9 +31,9 @@ export function collectBust(p: Params, assets: Assets, gusset = false): { parts:
     for (let i = 0; i < position.count; i++) {
       v.fromBufferAttribute(position, i).applyMatrix4(matrix);
       // y up, face toward +z  ->  Z up, face toward -y: a turn of a quarter about x, which keeps handedness
-      positions[i * 3] = v.x * MILLIMETRES;
-      positions[i * 3 + 1] = -v.z * MILLIMETRES;
-      positions[i * 3 + 2] = v.y * MILLIMETRES;
+      positions[i * 3] = v.x * MILLIMETRES * k;
+      positions[i * 3 + 1] = -v.z * MILLIMETRES * k;
+      positions[i * 3 + 2] = v.y * MILLIMETRES * k;
     }
     const indices = Uint32Array.from(geometry.index!.array);
     if (matrix.determinant() < 0) for (let t = 0; t < indices.length; t += 3) [indices[t + 1], indices[t + 2]] = [indices[t + 2], indices[t + 1]];
@@ -52,10 +54,12 @@ export function collectBust(p: Params, assets: Assets, gusset = false): { parts:
     add(object.name || "part", object.geometry, matrix);
   });
   // The base reaches a little way up inside the bust, so the two are joined and not merely touching
-  const prism = pedestalGeometry(bust.userData.reach, -PRINT.baseHeight * MM, (bust.userData.flatCut + PRINT.baseOverlap) * MM);
+  // (at tabletop size it is a fixed width and low, in the sculpt's own millimetres: the scale brings it to print size)
+  const baseHeight = scale === undefined ? PRINT.baseHeight : TABLETOP.plinth / k;
+  const prism = pedestalGeometry(bust.userData.reach, -baseHeight * MM, (bust.userData.flatCut + PRINT.baseOverlap) * MM, scale === undefined ? undefined : (TABLETOP.base / 2 / k) * MM);
   add("base", prism, new THREE.Matrix4());
   prism.dispose();
-  const flatCut = bust.userData.flatCut as number;
+  const flatCut = (bust.userData.flatCut as number) * k;
   disposeObject(bust);
   return { parts, flatCut };
 }
