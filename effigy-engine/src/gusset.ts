@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { MeshBVH } from "three-mesh-bvh";
 import { hullGeometry } from "./hull";
 
 // A throat gusset, an option for the export. The chin sticks out about 9 mm past the neck, and its underside is a
@@ -16,17 +17,19 @@ const SINK = 0.04; // how far the wedge's back goes into the neck, so it joins i
 const MAX_REACH = 0.6; // no wedge reaches back farther than this (head units): then it is not the neck behind
 
 export function buildThroatGusset(geometry: THREE.BufferGeometry, positions: ArrayLike<number>, normals: ArrayLike<number>): THREE.BufferGeometry | null {
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
-  mesh.updateMatrixWorld(true);
-  const caster = new THREE.Raycaster();
-  caster.firstHitOnly = true;
+  // (a bounding volume hierarchy over a copy of the triangles: building one reorders them, and the head's own
+  // order must stay as it is; cast through it, each ray tests a few dozen triangles rather than all of them)
+  const copy = new THREE.BufferGeometry();
+  copy.setAttribute("position", geometry.attributes.position);
+  copy.setIndex(new THREE.BufferAttribute(Uint32Array.from(geometry.index!.array), 1));
+  const bvh = new MeshBVH(copy);
+  const ray = new THREE.Ray();
   const back = new THREE.Vector3(0, 0, -1);
   // How far back from (x, y, z) the head's surface is, going straight back along the face; null if it is not there
   const reachBack = (x: number, y: number, z: number): number | null => {
-    caster.set(new THREE.Vector3(x, y, z), back);
-    caster.far = MAX_REACH;
-    const hit = caster.intersectObject(mesh, false)[0];
-    return hit ? hit.distance : null;
+    ray.set(new THREE.Vector3(x, y, z), back);
+    const hit = bvh.raycastFirst(ray, THREE.DoubleSide, 0, MAX_REACH);
+    return hit && hit.distance <= MAX_REACH ? hit.distance : null;
   };
   const points: THREE.Vector3[] = [];
   for (let i = 0; i < positions.length / 3; i++) {
@@ -40,7 +43,8 @@ export function buildThroatGusset(geometry: THREE.BufferGeometry, positions: Arr
     if (reach === null) continue;
     points.push(new THREE.Vector3(x, y + 0.03, z), new THREE.Vector3(x, y, z), new THREE.Vector3(x, y - reach, z - reach - SINK));
   }
-  mesh.material.dispose();
+  copy.setIndex(null);
+  copy.dispose();
   if (points.length < 30) return null;
   return hullGeometry(points);
 }
