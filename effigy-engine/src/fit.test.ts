@@ -36,6 +36,32 @@ describe("the Torso size slider", () => {
     // (and the default is the sculpt as it always was: nothing moves at 1)
     expect(halfWidth({ ...full, torso: 1 }, -1.6, -1.0)).toBe(halfWidth(full, -1.6, -1.0));
   });
+
+  it("never folds the neck or shoulders over themselves, however slim, on any build", () => {
+    // (a fold shows as a triangle turned the other way from the same triangle at full size)
+    const index = assets.head.indices;
+    const folded = (p: Params) => {
+      const a = sculptBust(p, assets.head).positions;
+      const b = sculptBust({ ...p, torso: 1 }, assets.head).positions;
+      const normal = (v: Float32Array, t: number) => {
+        const [i, j, k] = [index[t] * 3, index[t + 1] * 3, index[t + 2] * 3];
+        const [ux, uy, uz] = [v[j] - v[i], v[j + 1] - v[i + 1], v[j + 2] - v[i + 2]];
+        const [wx, wy, wz] = [v[k] - v[i], v[k + 1] - v[i + 1], v[k + 2] - v[i + 2]];
+        return [uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx];
+      };
+      let count = 0;
+      for (let t = 0; t < index.length; t += 3) {
+        const [n, m] = [normal(a, t), normal(b, t)];
+        if (n[0] * m[0] + n[1] * m[1] + n[2] * m[2] < 0) count++;
+      }
+      return count;
+    };
+    for (const race of ["human", "half-orc", "dwarf"] as const) {
+      for (const body of ["masculine", "feminine"] as const) {
+        for (const torso of [0.9, 0.7, 0.45]) expect(folded({ ...applyRace({ ...defaultParams(), body }, race), torso }), `${race} ${body} ${torso}`).toBe(0);
+      }
+    }
+  }, 300000);
 });
 
 describe("tabletop size", () => {

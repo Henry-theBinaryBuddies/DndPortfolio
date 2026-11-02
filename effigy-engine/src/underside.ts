@@ -11,7 +11,7 @@ const STEP = 0.25; // mm between slices
 const LEVELS = 41; // slices, from the lowest point up to 10 mm
 const REACH_UP = 24; // slices (6 mm) above a candidate cut over which the outline is checked
 const NOISE = 0.15; // mm: growth beyond the allowed slope that is ignored
-const INSET = 0.2; // mm: the pedestal's top stays this far inside the section, so it never sticks out as a ledge
+const INSET = 0.05; // mm: the pedestal's top stays this far inside the section, so it never sticks out as a ledge, and meets it flush
 
 export interface Underside {
   cut: number; // mm above the lowest point

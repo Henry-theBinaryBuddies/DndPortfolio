@@ -30,9 +30,13 @@ function distanceToSegment2(px: number, py: number, ax: number, ay: number, bx: 
   return Math.hypot(px - ax - abx * t, py - ay - aby * t);
 }
 
-// Where each tusk comes out of the mouth, partway between the middle and the corner, where the lower lip
-// is thick enough to hide its root (before the mouth is widened)
-export const TUSK_X = 0.075;
+// Where each tusk comes up between the lips: over the lower canine, which it stands in place of (see
+// teeth.ts lowerCanine: on a half-orc's broad teeth that is about 0.11 out, before the head is widened)
+export const TUSK_X = 0.11;
+
+// The core of the neck that slimming the torso leaves alone (head units from the neck's axis: the neck is 0.23
+// from it under the jaw and 0.4 where the shoulders begin)
+const TORSO_CORE = 0.22;
 
 export interface Deformed {
   positions: Float32Array;
@@ -177,13 +181,15 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // instead of ending in a shelf
     push(blob(0, stomion - 0.085, 0.15, 0.1, 0.028, 0.1), 0.004 + 0.015 * Math.max(0, lipScale - 1));
     dx += x0 * (k.mouthWidth - 1) * 0.8 * lips;
-    // Tusks come up out of the mouth: the lower lip swells a little over each one, and the upper lip is
-    // lifted and pushed forward where the tusk passes in front of it
+    // Tusks are teeth of the lower jaw that come up between the lips (see builder.ts): the lips part around
+    // each one, the upper lip drawn up and back so the tusk stands in front of it, the lower lip drawn down a
+    // little so its base shows in the parting. (Swelling the lower lip over it, as before, made it look stuck on.)
     if (k.tusks > 0) {
-      push(blob(TUSK_X, stomion - 0.035, 0.16, 0.03, 0.03, 0.06), 0.02 * k.tusks);
-      const lifted = blob(TUSK_X, stomion + 0.025, 0.16, 0.03, 0.025, 0.06) * k.tusks;
-      dy += 0.012 * lifted;
-      push(lifted, 0.008);
+      const upper = blob(TUSK_X, stomion + 0.03, 0.16, 0.035, 0.03, 0.06) * (0.6 + 0.4 * k.tusks);
+      dy += 0.014 * upper;
+      push(upper, -0.022);
+      const lower = blob(TUSK_X, stomion - 0.02, 0.16, 0.03, 0.02, 0.06) * (0.6 + 0.4 * k.tusks);
+      dy -= 0.006 * lower;
     }
 
     // Chin projection and jaw breadth (the jaw runs from below the mouth to the chin)
@@ -221,11 +227,16 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // the neck
     const shoulders = smooth((-0.9 - y0) / 0.25) * (1 - neckness);
     dx += x0 * (k.shoulders - 1) * shoulders;
-    // The torso's size (a slimmer one for a bust that must fit a small base): the shoulders, chest and back
-    // closed in toward the neck's axis, from the base of the neck, both across and front to back
-    const torso = smooth((-0.6 - y0) / 0.4) * (1 - neckness) * (p.torso - 1);
-    dx += (x0 - axis.x) * torso;
-    dz += (z0 - axis.z) * torso;
+    // The torso's size (a slimmer one for a bust that must fit a small base): from the base of the neck down,
+    // the shoulders, chest and back are closed in toward the neck, both across and front to back. Only what
+    // lies outside the neck's core is squeezed, in proportion to how far outside it is, so nothing is ever
+    // pulled through the neck (closed in toward its axis instead, the shoulders folded over the neck).
+    const torso = smooth((-0.6 - y0) / 0.4) * (p.torso - 1);
+    if (torso !== 0 && neckR > TORSO_CORE) {
+      const squeeze = (torso * (neckR - TORSO_CORE)) / neckR;
+      dx += (x0 - axis.x) * squeeze;
+      dz += (z0 - axis.z) * squeeze;
+    }
     // Muscle shows as form: the collarbones with the hollow above each, the slope of the trapezius from the
     // neck to the shoulder, the cap of the deltoid, and on masculine chests the pectorals parted by the
     // breastbone

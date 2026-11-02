@@ -18,4 +18,6 @@ Codex audited the work again, and Claude fixed what it found: the wall thickness
 
 Then a print preview: a button that shows the bust exactly as it will print (slimmed, scaled, on its small base, over the one inch square drawn under it) with its size, before saving; the export then saves those very parts. Still open from the audit: the fitting runs on the page's own thread, so the page stops for about five seconds.
 
+Later the same day, from my notes on the sculpt: tusks are teeth now, not things stuck to the lips. Each stands in the lower jaw in place of the canine and runs forward through the parting of the lips, which part round it, then curves up in front of the upper lip. The Torso size slider folded the shoulders over the neck below about 0.9 (314 folded triangles at 0.7); it now squeezes only what lies outside the neck, so nothing crosses it at any setting. Ram horns curled back into the skull; they now drift outward as they coil, as a ram's do, and a test checks every horn style for clearance. And the base is a turned pedestal now, taller (14 mm at tabletop size, since a board has no ceiling), with a foot, a cove, two collars and a flare that meets the torso flush, every part of it printable without supports.
+
 Meanwhile the second test print, the dwarf with the landed dreadlock tips at full size on the same settings, is printing.

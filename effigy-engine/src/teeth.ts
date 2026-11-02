@@ -157,6 +157,17 @@ function archAt(distance: number): { x: number; z: number; tx: number; tz: numbe
   return { x: side * x, z: ARCH_Z(x), tx: (side * 1) / length, tz: (side * slope * side) / length, nx: (-slope * side) / length, nz: 1 / length };
 }
 
+// Where the lower canine stands, with the mouth shut, in the bust's own coordinates (the place of a half-orc's
+// tusk, which stands in for it: see builder.ts): x and z of its middle on the arch (on the right; the left
+// mirrors it), and the heights of its top and of the gum it stands in
+export function lowerCanine(p: Params): { x: number; z: number; top: number; gum: number } {
+  const k = derive(p);
+  const scale = 0.92 + 0.25 * k.angularity;
+  const at = archAt((WIDTHS[0] + WIDTHS[1] + WIDTHS[2] / 2) * scale);
+  const skull = (y: number) => y + (k.headHeight - 1) * (y + 0.59);
+  return { x: Math.abs(at.x) * k.headWidth, z: at.z + 0.006, top: skull(LOWER_TOP), gum: skull(LOWER_TOP - CROWN * 0.9) };
+}
+
 // Both rows as one geometry of closed solids, in the bust's own coordinates: carried by the skull's scaling,
 // and the lower row turned with the jaw as far as it is open. Null when the mouth is shut (nothing shows).
 export function buildTeeth(p: Params): THREE.BufferGeometry | null {
@@ -179,6 +190,8 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
     }
     for (const side of [-1, 1]) {
       WIDTHS.forEach((w, i) => {
+        // (a half-orc's tusk stands in place of the lower canine: see builder.ts)
+        if (lower && i === 2 && k.tusks > 0.03) return;
         const at = archAt(side * centres[i]);
         const tangent = new THREE.Vector3(at.tx, 0, at.tz).normalize();
         const normal = new THREE.Vector3(at.nx, 0, at.nz).normalize();

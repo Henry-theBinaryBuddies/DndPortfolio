@@ -2,14 +2,14 @@ import * as THREE from "three";
 import { shapeGeometry, type Assets } from "./assets";
 import { buildBrows } from "./brows";
 import { JAW, turnWithJaw } from "./jaw";
-import { TUSK_X } from "./deform";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
 import { buildThroatGusset } from "./gusset";
 import { buildMouthFill } from "./mouthFill";
-import { buildTeeth } from "./teeth";
+import { buildTeeth, lowerCanine } from "./teeth";
+import { tuskGeometry } from "./tusk";
 import { derive, type Params } from "./params";
 import { MM, PEDESTAL_SIDES, pedestalRings } from "./print";
 
@@ -195,9 +195,9 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     }
   }
 
-  // Tusks: only half-orcs have them. Each grows from the lower jaw inside the mouth and comes out
-  // between the lips beside the middle of the mouth, leaning forward so it rises in front of the upper lip
-  // and a little outward. A third of it (the root and its flared base) stays hidden inside the mouth; the lips are shaped around it in deform.ts (the lower lip swells over it, the upper lip lifts).
+  // Tusks: only half-orcs have them. Each is a tooth of the lower jaw standing in place of the lower canine: from
+  // its root in the gum it runs forward through the parting of the lips, which part around it (see deform.ts),
+  // and curves up in front of the upper lip and a little outward (see tusk.ts).
   // It belongs to the lower jaw, so it is placed with the mouth shut (as above) and then turned with the jaw
   // as far as the mouth is open: the tusk rises out of the open mouth instead of staying where the lips were.
   const jawAngle = p.jawOpen * JAW.max;
@@ -207,32 +207,43 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
       shut = new THREE.Mesh(sculptBust({ ...p, jawOpen: 0 }, base).geometry);
       shut.updateMatrixWorld(true);
     }
-    const geometry = shapeGeometry(assets.shapes.tusk);
-    // The tusk asset is one unit long. The largest stays small enough for its hidden root to fit behind the
-    // lower lip (any bigger and the root shows in front of the chin).
-    const size = 0.09 + 0.09 * k.tusks;
-    const rootX = TUSK_X * (1 + 0.8 * (k.mouthWidth - 1));
+    const canine = lowerCanine(p);
+    // Thicker as the slider rises, and longer above the lip
+    const thick = 0.028 + 0.018 * k.tusks;
+    const rise = 0.05 + 0.07 * k.tusks;
     for (const side of [-1, 1]) {
-      const mouth = frontPoint(shut, side * rootX, LANDMARK.stomion);
-      const upperLip = frontPoint(shut, side * rootX, LANDMARK.stomion + 0.035);
-      if (!mouth || !upperLip) continue;
-      // Where it leaves the mouth: on the mouth line, just inside the lips
-      const exit = mouth.position.clone().add(new THREE.Vector3(0, 0, -0.015));
-      // Aimed to pass just in front of the upper lip, so even a small tusk's tip clears it instead of
-      // seeming to pierce it, however full the lips or heavy the jaw
-      const clear = upperLip.position.clone().add(new THREE.Vector3(0, 0, 0.008)).sub(exit);
-      const lean = Math.min(0.85, Math.max(0.35, clear.z / Math.max(clear.y, 1e-3)));
-      const along = new THREE.Vector3(side * 0.12, 1, lean).normalize();
-      const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), clay);
-      tusk.name = "tusk";
-      tusk.scale.set(side * size, size, size);
-      tusk.quaternion.setFromUnitVectors(UP, along);
-      tusk.position.copy(exit).addScaledVector(along, -0.33 * size);
+      const x = side * canine.x;
+      const parting = frontPoint(shut, x, LANDMARK.stomion);
+      const upperLip = frontPoint(shut, x, LANDMARK.stomion + 0.035);
+      if (!parting || !upperLip) continue;
+      // It turns forward inside the lips, out of sight, and leaves the parting at the front of the lips; it passes
+      // just in front of the upper lip (drawn back there) and rises from there: up, a little forward and outward
+      const exit = parting.position.clone().add(new THREE.Vector3(0, 0.002, -0.012));
+      const clear = upperLip.position.clone().add(new THREE.Vector3(side * 0.006, 0, thick * 1.1));
+      const up = new THREE.Vector3(side * 0.25, 1, 0.3).normalize();
+      const path = [
+        // the root, in the gum below the row of teeth, and where it leaves the gum
+        new THREE.Vector3(x, canine.gum - 0.04, canine.z - 0.005),
+        new THREE.Vector3(x, canine.gum + 0.01, canine.z + 0.005),
+        // forward through the parting, below the line of the lips
+        new THREE.Vector3(x, LANDMARK.stomion - 0.012, (canine.z + exit.z) / 2 + 0.01),
+        exit,
+        clear,
+        // the tip
+        clear.clone().addScaledVector(up, rise),
+      ];
+      const geometry = tuskGeometry(path, thick, thick * 0.3);
       if (jawAngle > 0) {
-        const [y, z] = turnWithJaw(tusk.position.y, tusk.position.z, jawAngle);
-        tusk.position.set(tusk.position.x, y, z);
-        tusk.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), jawAngle));
+        const position = geometry.attributes.position;
+        for (let i = 0; i < position.count; i++) {
+          const [y, z] = turnWithJaw(position.getY(i), position.getZ(i), jawAngle);
+          position.setY(i, y);
+          position.setZ(i, z);
+        }
+        geometry.computeVertexNormals();
       }
+      const tusk = new THREE.Mesh(geometry, clay);
+      tusk.name = "tusk";
       head.add(tusk);
     }
   }

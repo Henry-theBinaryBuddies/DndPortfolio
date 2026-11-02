@@ -1,20 +1,21 @@
 import { readFileSync } from "node:fs";
 import * as THREE from "three";
+import { MeshBVH } from "three-mesh-bvh";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust, fitSphere, socketFit } from "./builder";
 import { BEARD_CARVING, carvingDepth } from "./beardCarve";
 import { BROW_CARVING, buildBrows } from "./brows";
 import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
 import { deformHead } from "./deform";
-import { sculptBust } from "./face";
+import { frontPoint, sculptBust } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
 import { buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
 import { scalp } from "./hair";
-import { jawWeights } from "./jaw";
-import { buildTeeth } from "./teeth";
+import { JAW, jawWeights, turnWithJaw } from "./jaw";
+import { buildTeeth, lowerCanine } from "./teeth";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
-import type { HeadBase } from "./headMesh";
+import { LANDMARK, type HeadBase } from "./headMesh";
 import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
 
 let assets: Assets;
@@ -390,6 +391,42 @@ describe("buildBust", () => {
     const shapes = new Set(["ram", "goat", "bull", "demon", "antelope", "stubby"].map((name) => JSON.stringify(Array.from(assets.shapes[name as ShapeName].positions.slice(0, 12)))));
     expect(shapes.size).toBeGreaterThan(1);
   });
+
+  it("grows every horn out from the skull and clear of it: no horn curls back into the head", () => {
+    for (const race of ["human", "tiefling", "half-orc"] as const) {
+      for (const hornStyle of ["ram", "goat", "bull", "demon", "antelope", "stubby"] as const) {
+        for (const horns of [0.5, 1]) {
+          const group = buildBust({ ...applyRace(defaultParams(), race), hairStyle: "none", hornStyle, horns }, assets, false);
+          group.updateMatrixWorld(true);
+          const skin = group.getObjectByName("head") as THREE.Mesh;
+          // (a copy of the skin to cast through: building the hierarchy reorders the triangles)
+          const copy = new THREE.BufferGeometry();
+          copy.setAttribute("position", skin.geometry.attributes.position);
+          copy.setIndex(new THREE.BufferAttribute(Uint32Array.from(skin.geometry.index!.array), 1));
+          const bvh = new MeshBVH(copy);
+          const toSkin = skin.matrixWorld.clone().invert();
+          const ray = new THREE.Ray();
+          const direction = new THREE.Vector3(0.31, 0.83, 0.47).normalize();
+          let inside = 0;
+          group.traverse((object) => {
+            if (!(object instanceof THREE.Mesh) || object.name !== "horn") return;
+            const position = object.geometry.attributes.position;
+            const v = new THREE.Vector3();
+            for (let i = 0; i < position.count; i++) {
+              v.fromBufferAttribute(position, i);
+              // (the root is buried in the skull on purpose: only the horn beyond its first third)
+              if (v.length() < 0.35) continue;
+              v.applyMatrix4(object.matrixWorld).applyMatrix4(toSkin);
+              ray.set(v, direction);
+              // inside the skin when a ray from it crosses the skin an odd number of times
+              if (bvh.raycast(ray, THREE.DoubleSide).length % 2 === 1) inside++;
+            }
+          });
+          expect(inside, `${race} ${hornStyle} ${horns}`).toBe(0);
+        }
+      }
+    }
+  }, 300000);
 
   it("gives tusks to half-orcs only", () => {
     const tusked = (race: Params["race"]) => countObjects(buildBust(applyRace({ ...defaultParams(), hairStyle: "none" }, race), assets));
@@ -1222,25 +1259,99 @@ describe("the open mouth, teeth and expressions", () => {
     expect(box.max.y).toBeLessThan(-0.15);
   });
 
+  // The tusks of a half-orc, by name, and the middle of each (in the head's own space)
+  const tusksOf = (p: Params) => {
+    const group = buildBust({ ...p, hairStyle: "none" }, assets, false);
+    group.updateMatrixWorld(true);
+    const found: { mesh: THREE.Mesh; box: THREE.Box3 }[] = [];
+    group.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.name === "tusk") {
+        o.geometry.computeBoundingBox();
+        found.push({ mesh: o, box: o.geometry.boundingBox!.clone() });
+      }
+    });
+    return { group, found };
+  };
+
   it("carries a half-orc's tusks with the jaw, so they rise out of the open mouth", () => {
-    const tuskVertices = assets.shapes.tusk.positions.length / 3;
-    const tusks = (jawOpen: number) => {
-      const found: THREE.Mesh[] = [];
-      const p = applyRace({ ...defaultParams(), hairStyle: "none" }, "half-orc");
-      p.jawOpen = jawOpen;
-      buildBust(p, assets).traverse((o) => {
-        if (o instanceof THREE.Mesh && o.geometry.attributes.position.count === tuskVertices) found.push(o);
-      });
-      return found;
-    };
-    const shut = tusks(0);
-    const open = tusks(0.6);
+    const orc = applyRace(defaultParams(), "half-orc");
+    const shut = tusksOf({ ...orc, jawOpen: 0 }).found;
+    const open = tusksOf({ ...orc, jawOpen: 0.6 }).found;
     expect(shut.length).toBe(2);
     expect(open.length).toBe(2);
+    // (each goes down with the jaw, as the lower jaw turns and glides: its root end where the jaw takes it)
     for (let i = 0; i < 2; i++) {
-      expect(open[i].position.y).toBeLessThan(shut[i].position.y - 0.05);
-      expect(open[i].position.z).toBeLessThan(shut[i].position.z);
+      const [a, b] = [shut[i].box.getCenter(new THREE.Vector3()), open[i].box.getCenter(new THREE.Vector3())];
+      expect(b.y).toBeLessThan(a.y - 0.05);
+      const rootOf = (mesh: THREE.Mesh) => new THREE.Vector3().fromBufferAttribute(mesh.geometry.attributes.position, mesh.geometry.attributes.position.count - 2);
+      const [y, z] = turnWithJaw(rootOf(shut[i].mesh).y, rootOf(shut[i].mesh).z, 0.6 * JAW.max);
+      expect(rootOf(open[i].mesh).y).toBeCloseTo(y, 4);
+      expect(rootOf(open[i].mesh).z).toBeCloseTo(z, 4);
     }
+  }, 120000);
+
+  it("roots each tusk in the lower jaw in place of the canine, and brings it out between the lips, in front of the upper lip", () => {
+    for (const tusks of [0.2, 0.6, 1]) {
+      const p = { ...applyRace(defaultParams(), "half-orc"), tusks };
+      const { group, found } = tusksOf(p);
+      const skin = group.getObjectByName("head") as THREE.Mesh;
+      const copy = new THREE.BufferGeometry();
+      copy.setAttribute("position", skin.geometry.attributes.position);
+      copy.setIndex(new THREE.BufferAttribute(Uint32Array.from(skin.geometry.index!.array), 1));
+      const bvh = new MeshBVH(copy);
+      const inside = (v: THREE.Vector3) => bvh.raycast(new THREE.Ray(v, new THREE.Vector3(0.31, 0.83, 0.47).normalize()), THREE.DoubleSide).length % 2 === 1;
+      const canine = lowerCanine(p);
+      expect(found.length).toBe(2);
+      for (const { mesh } of found) {
+        const position = mesh.geometry.attributes.position;
+        // (the two end points of the swept tube: the root's, then the tip's)
+        const root = new THREE.Vector3().fromBufferAttribute(position, position.count - 2);
+        const tip = new THREE.Vector3().fromBufferAttribute(position, position.count - 1);
+        // the root is in the jaw, under the canine's place on the arch
+        expect(Math.abs(Math.abs(root.x) - canine.x), `tusks ${tusks}`).toBeLessThan(0.005);
+        expect(root.y).toBeLessThan(canine.gum);
+        expect(inside(root), `root inside, tusks ${tusks}`).toBe(true);
+        // the tip is out in the air, above the line of the lips and in front of the upper lip
+        expect(inside(tip), `tip outside, tusks ${tusks}`).toBe(false);
+        expect(tip.y).toBeGreaterThan(LANDMARK.stomion + 0.035);
+        const lip = frontPoint(new THREE.Mesh(skin.geometry), tip.x, LANDMARK.stomion + 0.035)!;
+        expect(tip.z).toBeGreaterThan(lip.position.z);
+      }
+    }
+  }, 300000);
+
+  it("builds each tusk as a closed solid wound outward: every edge shared by two triangles running opposite ways", () => {
+    for (const jawOpen of [0, 0.6]) {
+      for (const { mesh } of tusksOf({ ...applyRace(defaultParams(), "half-orc"), tusks: 1, jawOpen }).found) {
+        const index = mesh.geometry.index!.array;
+        const p = mesh.geometry.attributes.position.array;
+        const edges = new Map<string, number>();
+        let volume = 0;
+        for (let t = 0; t < index.length; t += 3) {
+          for (let e = 0; e < 3; e++) edges.set(`${index[t + e]},${index[t + ((e + 1) % 3)]}`, (edges.get(`${index[t + e]},${index[t + ((e + 1) % 3)]}`) ?? 0) + 1);
+          const [a, b, c] = [index[t] * 3, index[t + 1] * 3, index[t + 2] * 3];
+          volume += p[a] * (p[b + 1] * p[c + 2] - p[b + 2] * p[c + 1]) - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c]) + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c]);
+        }
+        for (const [key, n] of edges) {
+          const [from, to] = key.split(",");
+          expect(n).toBe(1);
+          expect(edges.get(`${to},${from}`)).toBe(1);
+        }
+        expect(volume).toBeGreaterThan(0);
+      }
+    }
+  }, 120000);
+
+  it("parts the lips round a tusk instead of swelling the lower lip over it", () => {
+    const front = (tusks: number) => {
+      const p = { ...applyRace(defaultParams(), "half-orc"), tusks };
+      const mesh = new THREE.Mesh(sculptBust(p, base).geometry);
+      mesh.updateMatrixWorld(true);
+      const x = lowerCanine(p).x;
+      return frontPoint(mesh, x, LANDMARK.stomion - 0.035)!.position.z;
+    };
+    // (the lower lip comes no further forward where the tusk comes up than it does without one)
+    expect(front(1)).toBeLessThanOrEqual(front(0) + 0.002);
   }, 120000);
 });
 

@@ -10,11 +10,9 @@ export const MM = 1 / 32; // one print millimetre, in head units
 export const PRINT = {
   nozzle: 0.2, // mm
   bustHeight: [75, 90] as const, // mm, the bust itself (without its base)
-  baseHeight: 24, // mm: the whole pedestal, disc and stem (below the bust's flat underside)
-  baseRadius: 25, // mm: the disc is at least this wide (a 50 mm base), and wider when the bust's underside needs it
-  baseMargin: 2, // mm: how far the disc reaches beyond the farthest corner of the bust's underside
-  discHeight: 3, // mm: the disc's rim, with its sloped top
-  discBevel: 2, // mm: how far the sloped top of the disc comes in
+  baseHeight: 34, // mm: the whole pedestal, foot, shaft and flare (below the bust's flat underside)
+  baseRadius: 25, // mm: the foot is at least this wide (a 50 mm base), and wider when the bust's underside needs it
+  baseMargin: 2, // mm: how far the foot reaches beyond the farthest corner of the bust's underside
   flatCut: 1.2, // mm: the least the bust is cut flat above its lowest point (see underside.ts: it goes higher where the underside hangs out)
   overhang: 1, // mm of outward growth allowed per mm of height above the cut: 1 is 45 degrees
   baseOverlap: 0.4, // mm: the base reaches this far up inside the bust, so the two are joined, not just touching
@@ -27,7 +25,7 @@ export const TABLETOP = {
   base: 25, // mm: the base's width (a square is 25.4 mm)
   bustHeight: [45, 55] as const, // mm, the bust itself (without its base)
   aim: 50, // mm: the height aimed for
-  plinth: 5, // mm: the whole base is this tall: a low disc, not a tall stem
+  plinth: 14, // mm: the whole base is this tall (a board has no ceiling: height costs nothing, and buys the base its shape)
   torso: 0.45, // the least the Torso size slider goes to, which the fit may slim the body to
 };
 
@@ -106,6 +104,19 @@ export function radiusAt(hull: Point[], angle: number): number {
   return reach;
 }
 
+// The pedestal's turned profile, from the foot up, in print millimetres at full size (see pedestalRings). Every
+// part either narrows going up or widens no faster than 45 degrees, so it all prints without supports: a molding
+// that juts out is a diamond in section (out at an angle, then back in), never a round bead with an undercut.
+const SOCLE = {
+  bevel: 0.4, // the first layer's chamfer, so it does not squash out into an elephant's foot
+  band: 2.6, // the foot's upright band
+  chamfer: 1.0, // a 45 degree chamfer in from the top of the band (as far in as it is high)
+  ledge: 0.6, // then a flat step in: a ledge facing up, which prints like any top surface
+  cove: 3.5, // a concave sweep in from the ledge to the foot of the shaft
+  collar: [0.7, 0.8], // a ring round the shaft: out this far, over this height, and back in (41 degrees)
+  shaft: 1.2, // how much wider the shaft is at its foot than at its waist
+};
+
 const ease = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
@@ -119,36 +130,61 @@ const flareEase = (t: number) => 0.65 * Math.min(1, Math.max(0, t)) + 0.35 * eas
 export const PEDESTAL_SIDES = 96;
 
 // The pedestal, as rings of points from its foot to its top (in head units: each ring is (x, y, z) triples, y up).
-// Like the busts on turned bases it stands on a round disc with a sloped rim, narrows to a waist and flares
-// out under the bust to the section of the bust at its flat cut (`reach`: how far that outline reaches from the
-// middle in each of PEDESTAL_SIDES directions), so the bust has solid support wherever it reaches (a bust
+// A turned socle (see SOCLE): a round foot with a chamfered band, a ledge and a cove sweeping in to a shaft with a
+// collar at its foot, narrowing to a waist; then a second collar, and a flare out under the bust that ends at
+// the section of the bust at its flat cut (`reach`: how far that outline reaches from the middle in each of
+// PEDESTAL_SIDES directions), so the bust has solid support wherever it reaches and meets it flush (a bust
 // whose flat bottom hung out over a narrow stem would print as a bridge).
-// (`disc`: the disc's radius, head units, where it is fixed and not the least that the bust needs)
+// (`fixedDisc`: the foot's radius, head units, where it is fixed and not the least that the bust needs. The
+// moldings are sized at full size and shrink with the print, as everything else does.)
 export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: number, fixedDisc?: number): number[][] {
   const farthest = Math.max(...Array.from(reach));
   const nearest = Math.min(...Array.from(reach));
   const disc = fixedDisc ?? Math.max(PRINT.baseRadius * MM, farthest + PRINT.baseMargin * MM);
-  const waist = Math.min(16 * MM, Math.max(10 * MM, 0.65 * nearest));
-  const foot = disc - PRINT.discBevel * MM;
-  const discTop = bottom + PRINT.discHeight * MM;
-  const rim = bottom + PRINT.discHeight * MM * 0.4;
-  const stemSteps = 24;
-  const heights: [number, (k: number) => number][] = [
-    [bottom, () => disc - 0.4 * MM], // (a small bevel at the foot, so the first layer does not flare out)
-    [bottom + 0.4 * MM, () => disc],
-    [rim, () => disc],
-    [discTop, () => foot],
-  ];
-  // The flare is an overhang: each layer sticks out past the one below. It starts as low as the bust's reach
-  // needs, so that its steepest part stays near PRINT.overhang (45 degrees from vertical) and prints without supports.
-  const stem = top - discTop;
+  // (the moldings must fit between the foot and the shaft, however small the foot)
+  const inner = disc - (SOCLE.chamfer + SOCLE.ledge) * MM;
+  const waist = Math.min(16 * MM, Math.max(10 * MM, 0.65 * nearest), inner - (SOCLE.shaft + SOCLE.collar[0] + 1) * MM);
+  const shaftFoot = waist + SOCLE.shaft * MM;
+  const heights: [number, (k: number) => number][] = [];
+  const ring = (y: number, radius: (k: number) => number) => heights.push([y, radius]);
+  let y = bottom;
+  ring(y, () => disc - SOCLE.bevel * MM);
+  ring((y += SOCLE.bevel * MM), () => disc);
+  ring((y += (SOCLE.band - SOCLE.bevel) * MM), () => disc);
+  ring((y += SOCLE.chamfer * MM), () => disc - SOCLE.chamfer * MM);
+  // (a ledge: two rings at one height, the second further in)
+  ring(y, () => inner);
+  // The cove: concave, steep at first and easing in to the shaft
+  const coveSteps = 8;
+  for (let s = 1; s <= coveSteps; s++) {
+    const t = s / coveSteps;
+    ring(y + SOCLE.cove * MM * t, () => shaftFoot + (inner - shaftFoot) * (1 - t) ** 2);
+  }
+  y += SOCLE.cove * MM;
+  const collar = (at: number, radius: number) => {
+    ring(at + SOCLE.collar[1] * MM, () => radius + SOCLE.collar[0] * MM);
+    ring(at + 2 * SOCLE.collar[1] * MM, () => radius);
+    return at + 2 * SOCLE.collar[1] * MM;
+  };
+  y = collar(y, shaftFoot);
+  // The shaft narrows to its waist, then the flare. The flare is an overhang: each layer sticks out past the one
+  // below. It starts as low as the bust's reach needs, so that its steepest part stays near PRINT.overhang (45
+  // degrees from vertical) and prints without supports; a second collar marks where it begins.
+  const stem = top - y - 2 * SOCLE.collar[1] * MM;
   const flare = (farthest - waist) / (PRINT.overhang / FLARE_PEAK);
-  const start = Math.min(0.6, Math.max(0.12, 1 - flare / stem));
-  for (let s = 1; s <= stemSteps; s++) {
-    const t = s / stemSteps;
-    const y = discTop + stem * t;
-    const u = flareEase((t - start) / (1 - start));
-    heights.push([y, (k) => waist + (foot - waist) * (1 - ease(t / start)) + (reach[k] - waist) * u]);
+  const start = Math.min(0.6, Math.max(0.06, 1 - flare / stem));
+  const shaftSteps = 6;
+  for (let s = 1; s <= shaftSteps; s++) {
+    const t = s / shaftSteps;
+    ring(y + stem * start * t, () => waist + (shaftFoot - waist) * (1 - ease(t)));
+  }
+  y = collar(y + stem * start, waist);
+  const flareSteps = 18;
+  const rest = top - y;
+  for (let s = 1; s <= flareSteps; s++) {
+    const t = s / flareSteps;
+    const u = flareEase(t);
+    ring(y + rest * t, (k) => waist + (reach[k] - waist) * u);
   }
   return heights.map(([y, radius]) => {
     const ring: number[] = [];

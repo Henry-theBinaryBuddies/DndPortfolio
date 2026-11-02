@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { beforeAll, describe, expect, it } from "vitest";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import { applyRace, defaultParams } from "./params";
-import { MM } from "./print";
+import { MM, TABLETOP } from "./print";
 import { copyParts, describePrint, preparePrint, previewGroup, printKey, printSize } from "./printPreview";
 
 let assets: Assets;
@@ -43,7 +43,7 @@ describe("the print preview", () => {
     const size = printSize(prepared.parts, prepared.flatCut);
     expect(size.width).toBeLessThanOrEqual(25.4);
     expect(size.depth).toBeLessThanOrEqual(25.4);
-    expect(size.overall).toBeCloseTo(prepared.tabletop!.height + prepared.flatCut + 5, 1);
+    expect(size.overall).toBeCloseTo(prepared.tabletop!.height + prepared.flatCut + TABLETOP.plinth, 1);
     expect(describePrint(prepared)).toMatch(new RegExp(`${prepared.tabletop!.height.toFixed(1)} mm bust`));
   }, 300000);
 
