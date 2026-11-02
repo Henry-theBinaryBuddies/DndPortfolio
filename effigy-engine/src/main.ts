@@ -5,6 +5,7 @@ import { MM, PRINT } from "./print";
 import { loadAssets, type Assets } from "./assets";
 import { defaultParams, type Params } from "./params";
 import { exportStl, describe } from "./exportStl";
+import { describePrint, disposePreview, preparePrint, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
 
 const stage = document.getElementById("stage") as HTMLElement;
@@ -68,6 +69,17 @@ scene.add(pivot);
 
 let figure: THREE.Group | null = null;
 let assets: Assets | null = null;
+// The print preview (see printPreview.ts), shown in place of the sculpt until the sculpt is edited
+let printView: { group: THREE.Group; prepared: Prepared } | null = null;
+
+function leavePrint() {
+  if (!printView) return;
+  pivot.remove(printView.group);
+  disposePreview(printView.group);
+  printView = null;
+  if (figure) figure.visible = true;
+  if (base) base.visible = true;
+}
 
 // Rebuilds the bust from the current settings. The sculpt is a deformed copy of a real head mesh, so
 // this is fast enough to run on every slider movement.
@@ -87,6 +99,8 @@ function swap(params: Params, detail: boolean) {
   }
   base = new THREE.Mesh(pedestalGeometry(figure.userData.reach, -PRINT.baseHeight * MM, (figure.userData.flatCut + PRINT.baseOverlap) * MM), baseMaterial);
   pivot.add(base); // (it turns with the bust, so the flare under the bust stays under it)
+  // (a finer rebuild that lands while the print is shown stays hidden behind it)
+  figure.visible = base.visible = !printView;
   // Refit the face framing to this bust (keeping the camera where it was if it is framing the face): from
   // the lowest point of its chin or beard to the highest point of its head
   const framingFace = Math.abs(distance - faceDistance()) < 0.01;
@@ -100,6 +114,7 @@ function swap(params: Params, detail: boolean) {
 // Every edit shows a quick draft (without the carving), and the carved beard replaces it once the controls
 // have been still for a moment.
 function show(params: Params) {
+  leavePrint();
   swap(params, false);
   window.clearTimeout(settle);
   settle = window.setTimeout(() => swap(params, true), 160);
@@ -212,10 +227,31 @@ if (import.meta.env.DEV) {
 }
 
 const initial = defaultParams();
-mountPanel(panel, initial, show, async (params, say, partial, gusset, tabletop) => {
-  if (!assets) throw new Error("the head model has not loaded");
-  say(describe(await exportStl(params, assets, say, partial, gusset, tabletop)));
-});
+mountPanel(
+  panel,
+  initial,
+  show,
+  async (params, say, partial, gusset, tabletop) => {
+    if (!assets) throw new Error("the head model has not loaded");
+    // (the print as previewed, if it was, with these same settings)
+    const prepared = printView?.prepared.key === printKey(params, gusset, tabletop) ? printView.prepared : undefined;
+    say(describe(await exportStl(params, assets, say, partial, gusset, tabletop, prepared)));
+  },
+  async (params, say, gusset, tabletop) => {
+    if (!assets) throw new Error("the head model has not loaded");
+    say(tabletop ? "Fitting the bust to the square" : "Collecting the parts");
+    // (a moment for the message to show: this runs a few seconds on the page's own thread)
+    await new Promise((resolve) => window.setTimeout(resolve, 30));
+    const prepared = preparePrint(params, assets, gusset, tabletop);
+    leavePrint();
+    const group = previewGroup(prepared);
+    pivot.add(group);
+    printView = { group, prepared };
+    if (figure) figure.visible = false;
+    if (base) base.visible = false;
+    say(describePrint(prepared));
+  },
+);
 resize();
 frame();
 

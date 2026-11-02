@@ -37,6 +37,8 @@ const measure = (parts: Part[], flatCut: number): Size & { halfX: number; halfY:
     if (part.name === "base") continue;
     const p = part.positions;
     for (let i = 0; i < p.length; i += 3) {
+      // (below the flat cut is trimmed away in the merge: a lock that slid down the back past it does not print)
+      if (p[i + 2] < flatCut) continue;
       halfX = Math.max(halfX, Math.abs(p[i]));
       halfY = Math.max(halfY, Math.abs(p[i + 1]));
       top = Math.max(top, p[i + 2]);

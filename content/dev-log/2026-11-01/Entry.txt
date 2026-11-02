@@ -16,6 +16,6 @@ Removed the braids. They looked more like paytas than cornrows.
 
 Codex audited the work again, and Claude fixed what it found: the wall thickness sampler had been skipping some of the surface it meant to measure (the figures in the README were remeasured; a full-size dwarf has 0.4% of its surface under 0.4 mm), the export could have thrown away a small part such as a tooth on a miniature as a "speck" and still called it one solid (the cutoff now shrinks with the print), and the report now gives the real bust height. Along the way, the throat gusset went from about 17 seconds to under one, with identical results, by casting its rays through a bounding volume hierarchy. 120 tests pass.
 
-Still open from the audit: the preview shows the full-size sculpt, not the slimmed tabletop print, and the export still runs its fitting on the page's own thread (a few seconds now).
+Then a print preview: a button that shows the bust exactly as it will print (slimmed, scaled, on its small base, over the one inch square drawn under it) with its size, before saving; the export then saves those very parts. Still open from the audit: the fitting runs on the page's own thread, so the page stops for about five seconds.
 
 Meanwhile the second test print, the dwarf with the landed dreadlock tips at full size on the same settings, is printing.

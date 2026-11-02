@@ -1,6 +1,6 @@
 import type { Assets } from "./assets";
-import { collectBust } from "./export";
-import { collectTabletop, type Tabletop } from "./fit";
+import type { Tabletop } from "./fit";
+import { copyParts, preparePrint, type Prepared } from "./printPreview";
 import type { Params } from "./params";
 import { PRINT, TABLETOP } from "./print";
 import type { PrintReport } from "./printable";
@@ -42,8 +42,9 @@ export function describe(report: ExportResult): string {
 // offered for download, and rejects on any failure (collecting, the worker dying, the merge refusing), always
 // leaving nothing listening and a worker that can be used again. By default a bust that cannot be made into
 // exactly one solid is refused; `partial` is the explicit diagnostic export, which keeps what can be merged; `gusset` adds the wedge under the chin, on by default (see gusset.ts); `tabletop` fits the
-// bust to a gaming board's one inch square, on by default (see fit.ts).
-export function exportStl(params: Params, assets: Assets, say: (text: string) => void, partial = false, gusset = true, tabletop = true): Promise<ExportResult> {
+// bust to a gaming board's one inch square, on by default (see fit.ts). `prepared` is the print as previewed, if it
+// was (see printPreview.ts): the file is then made from those very parts.
+export function exportStl(params: Params, assets: Assets, say: (text: string) => void, partial = false, gusset = true, tabletop = true, prepared?: Prepared): Promise<ExportResult> {
   const id = nextId++;
   say("Collecting the parts");
   // (a tick to let the message show: collecting the parts is a second or so on the page's own thread)
@@ -71,8 +72,10 @@ export function exportStl(params: Params, assets: Assets, say: (text: string) =>
       try {
         worker ??= new Worker(new URL("./exportWorker.ts", import.meta.url), { type: "module" });
         w = worker;
-        const fitted = tabletop ? collectTabletop(params, assets, gusset) : null;
-        const { parts, flatCut } = fitted ?? collectBust(params, assets, gusset);
+        const ready = prepared ?? preparePrint(params, assets, gusset, tabletop);
+        const fitted = ready.tabletop;
+        const parts = copyParts(ready.parts);
+        const flatCut = ready.flatCut;
         const transfer = parts.flatMap((part) => [part.positions.buffer, part.indices.buffer]);
         onMessage = (event: MessageEvent) => {
           if (event.data.id !== id) return;

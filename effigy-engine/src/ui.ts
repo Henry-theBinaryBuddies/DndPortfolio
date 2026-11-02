@@ -20,7 +20,7 @@ import {
 } from "./params";
 
 // Builds the control panel and calls onChange with a fresh Params copy on every edit.
-export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>): void {
+export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>, onPreview?: (p: Params, say: (text: string) => void, gusset: boolean, tabletop: boolean) => Promise<void>): void {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
   const raceSelect = document.createElement("select");
@@ -29,7 +29,12 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const beardSelect = document.createElement("select");
   const bodyButtons = new Map<Body, HTMLButtonElement>();
 
-  const emit = () => onChange({ ...params });
+  // (any edit goes back from the print preview to the sculpt: see main.ts)
+  let leavePreview = () => {};
+  const emit = () => {
+    leavePreview();
+    onChange({ ...params });
+  };
 
   const syncUI = () => {
     raceSelect.value = params.race;
@@ -186,7 +191,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     gussetLabel.append(gussetBox, " Throat gusset (no chin supports)");
     const tabletopLabel = document.createElement("label");
     tabletopLabel.className = "option";
-    tabletopLabel.title = "Fit the whole bust, hair and shoulders included, inside a one inch (25.4 mm) square on a 25 mm base, about 50 mm tall. The shoulders are narrowed as far as it takes. Untick it for the full-size print, about 110 mm tall on a 60 mm base";
+    tabletopLabel.title = "Fit the whole bust, hair and shoulders included, inside a one inch (25.4 mm) square on a 25 mm base, as near 50 mm tall as that allows. The torso is slimmed as far as it takes. Untick it for the full-size print, about 110 mm tall on a 60 mm base. Preview print shows the result";
     const tabletopBox = document.createElement("input");
     tabletopBox.type = "checkbox";
     tabletopBox.id = "export-tabletop";
@@ -197,10 +202,46 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     status.id = "export-status";
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base, about 45-50 mm tall (the torso is slimmed to fit); unticked it is the full size, about 110 mm tall on a 60 mm base. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
+    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base, about 40-45 mm tall (the torso is slimmed to fit); unticked it is the full size, about 110 mm tall on a 60 mm base. Preview print shows it as it will print first. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
+    // The print preview: the bust as the export will make it, in place of the sculpt, until the sculpt is edited
+    const previewButton = document.createElement("button");
+    previewButton.type = "button";
+    previewButton.id = "export-preview";
+    previewButton.textContent = "Preview print";
+    previewButton.title = "Shows the bust as it will print (at tabletop size: slimmed, scaled and on its small base, over the one inch square) and its size, before you save it";
+    let previewing = false;
+    leavePreview = () => {
+      previewing = false;
+      previewButton.textContent = "Preview print";
+    };
+    const busy = (on: boolean) => {
+      for (const button of [exportButton, diagnosticButton, previewButton]) button.disabled = on;
+    };
+    const preview = () => {
+      if (!onPreview) return;
+      busy(true);
+      let started: Promise<void>;
+      try {
+        started = onPreview({ ...params }, (text) => (status.textContent = text), gussetBox.checked, tabletopBox.checked);
+      } catch (error) {
+        started = Promise.reject(error);
+      }
+      started
+        .then(() => {
+          previewing = true;
+          previewButton.textContent = "Back to sculpt";
+        })
+        .catch((error: unknown) => (status.textContent = `Preview failed: ${error instanceof Error ? error.message : String(error)}`))
+        .finally(() => busy(false));
+    };
+    previewButton.addEventListener("click", () => {
+      if (!previewing) preview();
+      else emit();
+    });
+    // (a changed print option shows the new print)
+    for (const box of [gussetBox, tabletopBox]) box.addEventListener("change", () => previewing && preview());
     const run = (partial: boolean) => {
-      exportButton.disabled = true;
-      diagnosticButton.disabled = true;
+      busy(true);
       // (whatever goes wrong, the buttons come back)
       let started: Promise<void>;
       try {
@@ -210,14 +251,11 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
       }
       started
         .catch((error: unknown) => (status.textContent = `Export failed: ${error instanceof Error ? error.message : String(error)}`))
-        .finally(() => {
-          exportButton.disabled = false;
-          diagnosticButton.disabled = false;
-        });
+        .finally(() => busy(false));
     };
     exportButton.addEventListener("click", () => run(false));
     diagnosticButton.addEventListener("click", () => run(true));
-    exportSection.append(exportButton, diagnosticButton, gussetLabel, tabletopLabel, status);
+    exportSection.append(previewButton, exportButton, diagnosticButton, gussetLabel, tabletopLabel, status);
     panel.append(exportSection);
   }
 
