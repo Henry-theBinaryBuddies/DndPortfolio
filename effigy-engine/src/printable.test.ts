@@ -5,7 +5,7 @@ import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets"
 import { basePrism, buildBust, pedestalGeometry } from "./builder";
 import { collectBust, collectParts } from "./export";
 import { applyRace, defaultParams, type Params } from "./params";
-import { baseOutline, convexHull, MM, pedestalRings, PEDESTAL_SIDES, PRINT, radiusAt, reachOfHull } from "./print";
+import { baseOutline, convexHull, MM, pedestalRings, PEDESTAL_SIDES, PRINT, radiusAt, reachOfHull, TABLETOP } from "./print";
 import { edgeProblems, mergeParts, readStl, separateKisses, splitShells, weld, writeStl, type Part, type PrintReport } from "./printable";
 import { measureWalls, summariseWalls } from "./thickness";
 
@@ -352,6 +352,32 @@ describe("the pedestal", () => {
         }
       }
       expect((steepest * 180) / Math.PI).toBeLessThan(46);
+    }
+  });
+  it("at tabletop size, keeps its moldings big enough to print at any scale, and still juts out nowhere steeper than the limit", () => {
+    for (const k of [0.42, 0.51, 0.6]) {
+      // (as export.ts builds it: in the sculpt's units, which the scale k brings to print size)
+      const printed = (mm: number) => (mm / k) * MM;
+      for (const farthest of [10, 12.5]) {
+        const reach = Array.from({ length: PEDESTAL_SIDES }, (_, s) => printed(8 + (farthest - 8) * (0.5 + 0.5 * Math.cos((s / PEDESTAL_SIDES) * 4 * Math.PI))));
+        const rings = pedestalRings(reach, -printed(TABLETOP.plinth), printed(1), printed(TABLETOP.base / 2), printed(1));
+        const radius = (i: number) => Math.hypot(rings[i][0], rings[i][2]) / printed(1);
+        let steepest = 0;
+        // the rings that jut out from the shaft: higher than both rings beside them
+        const juts: number[] = [];
+        for (let i = 1; i < rings.length; i++) {
+          const dy = rings[i][1] - rings[i - 1][1];
+          for (let s = 0; s < PEDESTAL_SIDES; s++) {
+            const grow = Math.hypot(rings[i][s * 3], rings[i][s * 3 + 2]) - Math.hypot(rings[i - 1][s * 3], rings[i - 1][s * 3 + 2]);
+            steepest = Math.max(steepest, Math.atan2(grow, dy));
+          }
+          if (i + 1 < rings.length && radius(i) > radius(i - 1) + 1e-9 && radius(i) > radius(i + 1) + 1e-9) juts.push(radius(i) - Math.max(radius(i - 1), radius(i + 1)));
+        }
+        expect((steepest * 180) / Math.PI).toBeLessThan(46);
+        expect(juts.length).toBe(3);
+        for (const jut of juts) expect(jut).toBeGreaterThanOrEqual(0.5);
+        expect(radius(1)).toBeCloseTo(TABLETOP.base / 2, 6);
+      }
     }
   });
   it("is a closed solid wound outward", () => {

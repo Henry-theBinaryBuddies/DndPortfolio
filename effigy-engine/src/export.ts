@@ -54,9 +54,11 @@ export function collectBust(p: Params, assets: Assets, gusset = false, scale?: n
     add(object.name || "part", object.geometry, matrix);
   });
   // The base reaches a little way up inside the bust, so the two are joined and not merely touching
-  // (at tabletop size it is a fixed width and low, in the sculpt's own millimetres: the scale brings it to print size)
+  // (at tabletop size it is a fixed width and low, in the sculpt's own millimetres: the scale brings it to print
+  // size, and its moldings are sized in printed millimetres, so they do not shrink with it)
   const baseHeight = scale === undefined ? PRINT.baseHeight : TABLETOP.plinth / k;
-  const prism = pedestalGeometry(bust.userData.reach, -baseHeight * MM, (bust.userData.flatCut + PRINT.baseOverlap) * MM, scale === undefined ? undefined : (TABLETOP.base / 2 / k) * MM);
+  const tabletop = scale !== undefined;
+  const prism = pedestalGeometry(bust.userData.reach, -baseHeight * MM, (bust.userData.flatCut + PRINT.baseOverlap) * MM, tabletop ? (TABLETOP.base / 2 / k) * MM : undefined, tabletop ? MM / k : undefined);
   add("base", prism, new THREE.Matrix4());
   prism.dispose();
   const flatCut = (bust.userData.flatCut as number) * k;
