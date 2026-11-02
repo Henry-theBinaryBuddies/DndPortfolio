@@ -282,8 +282,14 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     mesh.name = "teeth";
     head.add(mesh);
   }
-  // With the jaw shut, the hollow behind the lips is filled solid (see mouthFill.ts)
-  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen);
+  // The hollow behind the lips is filled solid: all of it with the jaw shut, and with it open, all but a shallow
+  // recess behind the front teeth (see mouthFill.ts)
+  let teethFront: number | undefined;
+  if (teeth) {
+    const position = teeth.attributes.position;
+    for (let i = 0; i < position.count; i++) if (Math.abs(position.getX(i)) < 0.05) teethFront = Math.max(teethFront ?? -Infinity, position.getZ(i));
+  }
+  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen, teethFront);
   if (fill) {
     const mesh = new THREE.Mesh(fill, clay);
     mesh.name = "mouthFill";

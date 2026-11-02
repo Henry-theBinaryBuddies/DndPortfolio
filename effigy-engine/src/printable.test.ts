@@ -200,26 +200,37 @@ describe("merging a bust into one printable solid", () => {
     expect(Math.abs(file.volume - report.volume) / report.volume).toBeLessThan(0.002);
   }, 300000);
 
-  it("fills the hollow behind closed lips, and leaves an open mouth open", async () => {
+  it("fills the hollow behind the lips, all of it when they are closed and all but a shallow recess behind the teeth when open", async () => {
     expect(buildBust(params({ jawOpen: 0 }), assets).getObjectByName("mouthFill")).toBeDefined();
-    expect(buildBust(params({ jawOpen: 0.4 }), assets).getObjectByName("mouthFill")).toBeUndefined();
-    const { stl, report } = await merge(params({ hairStyle: "none", beardStyle: "none" }));
-    expectOneSolid("filled mouth", report);
-    // The roof of the hollow was a flat ceiling about 56 mm above the cut, 100+ mm2 over open air: now there is none
-    // (what is left in this band is the undersides of the nostrils)
-    const { positions, count } = readStl(stl);
-    let ceiling = 0;
-    for (let t = 0; t < count; t++) {
-      const [a, b, c] = [0, 1, 2].map((k) => Array.from(positions.subarray((t * 3 + k) * 3, (t * 3 + k) * 3 + 3)));
-      const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-      const w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-      const cross = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
-      const area = Math.hypot(...cross) / 2;
-      const z = (a[2] + b[2] + c[2]) / 3;
-      if (area > 0 && cross[2] / (2 * area) < -0.9 && z > 55 && z < 61 && (a[1] + b[1] + c[1]) / 3 < -3) ceiling += area;
+    // Open, the filling stops a little behind the front teeth, so the mouth still shows open, with its teeth
+    const open = buildBust(params({ jawOpen: 0.4 }), assets);
+    const fill = open.getObjectByName("mouthFill") as THREE.Mesh;
+    const teeth = open.getObjectByName("teeth") as THREE.Mesh;
+    expect(fill).toBeDefined();
+    fill.geometry.computeBoundingBox();
+    teeth.geometry.computeBoundingBox();
+    expect(fill.geometry.boundingBox!.max.z).toBeLessThan(teeth.geometry.boundingBox!.max.z - 2.5 * MM);
+    expect(fill.geometry.boundingBox!.max.z).toBeGreaterThan(teeth.geometry.boundingBox!.max.z - 4 * MM);
+    // The roof of the hollow was a flat ceiling about 56 mm above the cut, 100+ mm2 over open air (and with the
+    // jaw open it printed as a 15 mm bridge that sagged into a hole): now there is none (what is left in this
+    // band is the undersides of the nostrils, and with the jaw open the roof of the shallow recess)
+    for (const jawOpen of [0, 0.4]) {
+      const { stl, report } = await merge(params({ hairStyle: "none", beardStyle: "none", jawOpen }));
+      expectOneSolid(`filled mouth, jaw ${jawOpen}`, report);
+      const { positions, count } = readStl(stl);
+      let ceiling = 0;
+      for (let t = 0; t < count; t++) {
+        const [a, b, c] = [0, 1, 2].map((k) => Array.from(positions.subarray((t * 3 + k) * 3, (t * 3 + k) * 3 + 3)));
+        const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const cross = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+        const area = Math.hypot(...cross) / 2;
+        const z = (a[2] + b[2] + c[2]) / 3;
+        if (area > 0 && cross[2] / (2 * area) < -0.9 && z > 55 && z < 61 && (a[1] + b[1] + c[1]) / 3 < -3) ceiling += area;
+      }
+      expect(ceiling, `jaw ${jawOpen}`).toBeLessThan(40);
     }
-    expect(ceiling).toBeLessThan(40);
-  }, 300000);
+  }, 600000);
 
   it("adds a throat gusset only when asked, and it is still one solid with the chin's underside gone", async () => {
     const plain = params({ hairStyle: "none", beardStyle: "none" });
