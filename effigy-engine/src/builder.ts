@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { MeshBVH } from "three-mesh-bvh";
 import { shapeGeometry, type Assets } from "./assets";
 import { buildBrows } from "./brows";
 import { JAW, turnWithJaw } from "./jaw";
@@ -290,7 +291,7 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     const position = teeth.attributes.position;
     for (let i = 0; i < position.count; i++) if (Math.abs(position.getX(i)) < 0.05) teethFront = Math.max(teethFront ?? -Infinity, position.getZ(i));
   }
-  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen, teethFront);
+  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen, teethFront, base, frontOutside(bust.positions, base.indices));
   if (fill) {
     const mesh = new THREE.Mesh(fill, clay);
     mesh.name = "mouthFill";
@@ -313,6 +314,36 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   }
 
   return root;
+}
+
+// Whether a point around the mouth is outside the face, in front of its skin: some ray from it, forward or
+// slanting forward, meets no skin. (Inside the hollow of the mouth every one of them meets its walls; just outside
+// the upper lip, under the nose, one straight forward can still meet the pout of the lip, but the slanting ones do
+// not.) The whole head is searched, as a bounding volume hierarchy: searching only the face around the mouth, rays
+// from inside left through the edges of what was searched, and read as outside. It is built once for the head's
+// triangles and refitted to each bust's shape, which is far quicker than building it again.
+const OUT_RAYS = [[0, 0, 1], [0.7, 0, 0.7], [-0.7, 0, 0.7], [0, 0.7, 0.7], [0, -0.7, 0.7]].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
+const headSearch = new WeakMap<ArrayLike<number>, { geometry: THREE.BufferGeometry; bvh: MeshBVH }>();
+function frontOutside(positions: Float32Array, indices: ArrayLike<number>): (v: THREE.Vector3) => boolean {
+  let search = headSearch.get(indices);
+  if (!search) {
+    // (over a copy of the triangles: building one reorders them, and the head's own order must stay as it is)
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(Float32Array.from(positions), 3));
+    geometry.setIndex(new THREE.BufferAttribute(Uint32Array.from(indices), 1));
+    search = { geometry, bvh: new MeshBVH(geometry) };
+    headSearch.set(indices, search);
+  } else {
+    (search.geometry.attributes.position.array as Float32Array).set(positions);
+    search.bvh.refit();
+  }
+  const { bvh } = search;
+  const ray = new THREE.Ray();
+  return (v) =>
+    OUT_RAYS.some((direction) => {
+      ray.set(v, direction);
+      return !bvh.raycastFirst(ray, THREE.DoubleSide);
+    });
 }
 
 // Geometry and materials live on the GPU, and JavaScript's garbage collector

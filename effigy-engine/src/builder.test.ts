@@ -882,8 +882,9 @@ describe("hair round the ears", () => {
           const p = { ...applyRace(defaultParams(), race), body, hairStyle };
           const { positions, normals } = sculptBust(p, base);
           const shell = buildHairShell(p, positions, normals, base)!;
-          // (next to none of the ear under the cap of hair, within a millimetre outside it: at most a stray vertex of its rim)
-          expect(covered(positions, normals, shell, 1 * MM), `${race} ${body} ${hairStyle}: cap`).toBeLessThan(0.01);
+          // (next to none of the ear under the cap of hair, within a millimetre outside it: a stray vertex of its rim,
+          // or, on an elf, whose ear lies back against the head with the hair close behind it, the edge of its rim: 2.5%)
+          expect(covered(positions, normals, shell, 1 * MM), `${race} ${body} ${hairStyle}: cap`).toBeLessThan(0.03);
           if (hairStyle === "dreadlocks") {
             // the locks pass over the top of the ear and down behind it: little of it has one lying on it (an elf's
             // point reaches up among the locks, so a little of its tip has one close above: 6% of the ear; a human's 3%)
@@ -891,6 +892,16 @@ describe("hair round the ears", () => {
             expect(share, `${race} ${body}: locks`).toBeLessThan(0.08);
           }
         }
+      }
+    }
+  }, 300000);
+
+  it("keeps beards off the ears too: the sideburns stop at the ear, never over its lobe", () => {
+    for (const race of ["human", "dwarf", "half-orc", "elf", "gnome"] as const) {
+      for (const beardStyle of ["short", "full"] as const) {
+        const p = { ...applyRace(defaultParams(), race), beardStyle };
+        const { positions, normals } = sculptBust(p, base);
+        expect(covered(positions, normals, buildBeardShell(p, positions, normals, base)!, 1 * MM), `${race} ${beardStyle}`).toBeLessThan(0.01);
       }
     }
   }, 300000);

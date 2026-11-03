@@ -83,7 +83,7 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("weight", "Weight", "Body", 0.5, 0.15, 0.85),
   def("muscle", "Muscle", "Body", 0.45, 0.1, 0.9),
   // (1 is the race's own frame; slimmer is for prints that must fit a small base: see fit.ts)
-  def("torso", "Torso size", "Body", 1, 0.45, 1.1),
+  def("torso", "Torso size", "Body", 1, 0.6, 1.1),
   def("brow", "Brow ridge", "Face", 0.5, 0.2, 0.8),
   def("cheekbones", "Cheekbones", "Face", 0.5, 0.2, 0.8),
   def("noseSize", "Nose size", "Face", 0.5, 0.25, 0.75),

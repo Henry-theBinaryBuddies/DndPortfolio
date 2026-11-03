@@ -195,8 +195,11 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // Chin projection and jaw breadth (the jaw runs from below the mouth to the chin)
     push(blob(0, -0.5, 0.1, 0.14, 0.09, 0.14), (k.chin - 0.4) * 0.15 + 0.02 + 0.02 * m);
     // (The jaw widens from below the mouth: widened from just under the cheekbones, it swelled the cheeks
-    // into balloons.)
-    const jaw = smooth((-0.3 - y0) / 0.14) * (1 - smooth((-0.66 - y0) / 0.12));
+    // into balloons. And only down to the lower edge of the jaw, from the chin back to its angle and up the back of
+    // the bone: widened below it as well, as far as the neck's column, a broad jaw pushed out the flesh under its
+    // angle while the neck beside it stayed put, and a dwarf or an orc had a lump on each side of the neck.)
+    const jawLine = z0 > 0.12 ? -0.58 : z0 > -0.12 ? -0.46 - (0.12 * (z0 + 0.12)) / 0.24 : -0.46 + (0.24 * (-0.12 - z0)) / 0.26;
+    const jaw = smooth((-0.3 - y0) / 0.14) * (1 - smooth((-0.66 - y0) / 0.12)) * smooth((y0 - jawLine + 0.05) / 0.08) * smooth((z0 + 0.46) / 0.1);
     dx += x0 * (k.jawWidth - 1 + 0.06 * Math.max(0, gender)) * jaw * (1 - neckness);
 
     // Ears: scaled, and swept up into a point for elven ears

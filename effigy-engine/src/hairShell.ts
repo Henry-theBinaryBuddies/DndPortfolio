@@ -96,7 +96,7 @@ export function buildHairShell(
 // How clear of the ears each vertex of the reshaped head is (0 on them, 1 away): along the surface from the ear
 // (see earClear in headMesh.ts), and straight across from it too, since a reshaped ear can lie back over scalp far
 // from where it grows (an elf's point is drawn up over the side of the head, onto scalp the hair would cover)
-const EAR_NEAR = { margin: 0.02, fade: 0.05 };
+const EAR_NEAR = { margin: 0.02, fade: 0.05 }; // (more than along the surface: an ear lying back over the scalp, as an elf's point does, needs the hair beneath it thinned well clear)
 export function earClearance(positions: Float32Array, base: HeadBase): Float32Array {
   const count = positions.length / 3;
   const clear = Float32Array.from(base.masks.earClear);
@@ -412,6 +412,8 @@ function beardShaping(x: number, y: number, z: number): number {
   return underLip * moustache * throat * corners;
 }
 
+const BEARD_EAR = 0.35; // the beard is full where the ear clearance (see earClearance) reaches this
+
 // The beard's own shape, before it is carved: a closed shell of the head's resolution
 export function buildBeardShell(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   if (p.beardStyle === "none") return null;
@@ -432,6 +434,12 @@ export function buildBeardShell(p: Params, positions: Float32Array, normals: Flo
     // there (it only folded over itself in the crease, and nobody sees it)
     grow[i] *= 1 - band * smooth((base.normals[i * 3 + 1] - 0.35) / 0.25);
   }
+  // Off the ears, as the hair is (the beard's sideburns met the ear's lobe and painted over it): but only right at
+  // the ear, the beard as full as ever up to it. (A full beard's thick edge folds over itself at the slightest
+  // change beside the ear: faded out as far off as the hair's hairline, or held off by its spread-out margin, it
+  // did. A beard keeps only the triangles where it grows, so cut back at the ear, none lie on it.)
+  const clear = earClearance(positions, base);
+  for (let i = 0; i < count; i++) grow[i] *= Math.min(1, clear[i] / BEARD_EAR);
   return raiseShell(positions, normals, base, grow, BEARDS[p.beardStyle], scale, floor);
 }
 

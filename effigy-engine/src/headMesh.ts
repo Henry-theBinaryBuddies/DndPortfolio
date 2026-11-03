@@ -10,8 +10,9 @@ export const SCALE = 5;
 const SMOOTH_PASSES = 3;
 
 // The ears on the undeformed head: where the flap stands out past the skull (head units), and how far off it the
-// hair may start (see earClear below)
-const EAR = { out: 0.41, low: -0.3, high: 0.12, back: -0.7, front: -0.2, margin: 0.03, fade: 0.05, reach: 0.2 };
+// hair may start (see earClear below): close, so the hairline comes down to the ear and round it (further off, it
+// rode high up the side of the skull)
+const EAR = { out: 0.41, low: -0.3, high: 0.12, back: -0.7, front: -0.2, margin: 0.008, fade: 0.025, reach: 0.2 };
 
 // Where the eyes sit in the source file's own units (metres): the midpoint between the eyes, and the
 // eyeball radius that fits this head's eyelids. The bundle's own eyeball mesh is larger (12.4 mm), but the

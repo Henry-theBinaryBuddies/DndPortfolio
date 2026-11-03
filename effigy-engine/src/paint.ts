@@ -219,7 +219,7 @@ export function headPaint(base: HeadBase, geometry: THREE.BufferGeometry, p: Par
 
     const dark = Math.max(base.masks.nostrils[i], 0.3 * base.masks.mouthLine[i] * front) * head;
     const lip = base.masks.lipsSoft[i] * 0.85 * head * front;
-    const stubble = p.beardStyle === "none" ? 0 : beardWeight(base.positions[i * 3], base.positions[i * 3 + 1], base.positions[i * 3 + 2], p.beardStyle, base.masks.lipsSoft[i]) * (0.8 + 0.4 * noise3(x * 90, y * 90, z * 90));
+    const stubble = p.beardStyle === "none" ? 0 : beardWeight(base.positions[i * 3], base.positions[i * 3 + 1], base.positions[i * 3 + 2], p.beardStyle, base.masks.lipsSoft[i]) * (0.8 + 0.4 * noise3(x * 90, y * 90, z * 90)) * earClear[i];
     const grime = noise3(x * 3 + 5, y * 3, z * 3) * 0.6 + noise3(x * 9, y * 9 + 3, z * 9) * 0.4;
 
     a.set([shade, lip, dark, Math.max(blush * 0.35, earFlush * 0.4)], i * 4);

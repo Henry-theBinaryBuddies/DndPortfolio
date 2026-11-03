@@ -58,7 +58,7 @@ describe("the Torso size slider", () => {
     };
     for (const race of ["human", "half-orc", "dwarf"] as const) {
       for (const body of ["masculine", "feminine"] as const) {
-        for (const torso of [0.9, 0.7, 0.45]) expect(folded({ ...applyRace({ ...defaultParams(), body }, race), torso }), `${race} ${body} ${torso}`).toBe(0);
+        for (const torso of [0.9, 0.7, 0.6]) expect(folded({ ...applyRace({ ...defaultParams(), body }, race), torso }), `${race} ${body} ${torso}`).toBe(0);
       }
     }
   }, 300000);

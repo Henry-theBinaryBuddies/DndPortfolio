@@ -26,7 +26,7 @@ export const TABLETOP = {
   bustHeight: [45, 55] as const, // mm, the bust itself (without its base)
   aim: 50, // mm: the height aimed for
   plinth: 18, // mm: the whole base is this tall (a board has no ceiling: height costs nothing, and buys the base its shape)
-  torso: 0.45, // the least the Torso size slider goes to, which the fit may slim the body to
+  torso: 0.6, // the least the Torso size slider goes to, which the fit may slim the body to (thinner, the body deforms too far)
 };
 export const SQUARE = 25.4; // mm: one square of a gaming board, which a tabletop print stands inside
 
