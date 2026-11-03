@@ -356,13 +356,31 @@ function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.Perspecti
   };
   // (no nearer than the close framing; then as near as lets everything in)
   let [near, far] = [close, close * 4];
-  if (fits(near)) return lens;
-  while (!fits(far) && far < 60) far *= 1.5;
-  for (let k = 0; k < 18; k++) {
-    const middle = (near + far) / 2;
-    if (fits(middle)) far = middle;
-    else near = middle;
-  }
+  if (!fits(near)) {
+    while (!fits(far) && far < 60) far *= 1.5;
+    for (let k = 0; k < 18; k++) {
+      const middle = (near + far) / 2;
+      if (fits(middle)) far = middle;
+      else near = middle;
+    }
+  } else far = near;
+  // The sample chose the distance; every point above the chin is checked against it, so a horn's tip that fell
+  // between the sampled points is not cut by the rim (stepped back a little at a time until all are in)
+  const all: THREE.Vector3[] = [];
+  bust.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.visible) return;
+    const position = object.geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld);
+      if (v.y >= chinY - 0.1) all.push(v);
+    }
+  });
+  const allFit = (distance: number) => {
+    place(y, distance);
+    const p = new THREE.Vector3();
+    return all.every((v) => Math.hypot(p.copy(v).project(lens).x, p.y) <= inside);
+  };
+  for (let k = 0; k < 40 && !allFit(far); k++) far *= 1.02;
   place(y, far);
   return lens;
 }

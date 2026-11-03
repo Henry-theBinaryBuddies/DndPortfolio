@@ -18,6 +18,7 @@ export interface Prepared {
   flatCut: number; // mm
   tabletop: Tabletop | null; // how it was fitted, at tabletop size
   scale: number; // the print's size as a fraction of the sculpt's
+  warnings: string[]; // at full size, what the build could not do as it should (at tabletop size they are among its notes)
 }
 
 export const printKey = (p: Params, gusset: boolean, tabletop: boolean) => JSON.stringify([p, gusset, tabletop]);
@@ -26,10 +27,10 @@ export function preparePrint(p: Params, assets: Assets, gusset: boolean, tableto
   const key = printKey(p, gusset, tabletop);
   if (tabletop) {
     const fitted = collectTabletop(p, assets, gusset);
-    return { key, parts: fitted.parts, flatCut: fitted.flatCut, tabletop: fitted, scale: fitted.scale };
+    return { key, parts: fitted.parts, flatCut: fitted.flatCut, tabletop: fitted, scale: fitted.scale, warnings: [] };
   }
-  const { parts, flatCut } = collectBust(p, assets, gusset);
-  return { key, parts, flatCut, tabletop: null, scale: 1 };
+  const { parts, flatCut, warnings } = collectBust(p, assets, gusset);
+  return { key, parts, flatCut, tabletop: null, scale: 1, warnings };
 }
 
 // Copies of the parts, to hand to the export's worker (handing them over empties the originals)
@@ -101,7 +102,10 @@ export function describePrint(prepared: Prepared): string {
     const t = prepared.tabletop;
     lines.push(`Print preview, tabletop size: the sculpt at ${Math.round(t.scale * 100)}%, a ${t.height.toFixed(1)} mm bust (${TABLETOP.bustHeight[0]}-${TABLETOP.bustHeight[1]} mm wanted), ${overall.toFixed(1)} mm tall overall, ${width.toFixed(1)} x ${depth.toFixed(1)} mm across: inside the one inch (25.4 mm) square drawn under it, on a ${TABLETOP.base} mm base.`);
     if (t.notes.length) lines.push(t.notes.join(" "));
-  } else lines.push(`Print preview, full size: a ${bust.toFixed(0)} mm bust on a ${base.toFixed(0)} mm base, ${overall.toFixed(0)} mm tall overall, ${width.toFixed(0)} x ${depth.toFixed(0)} mm across.`);
+  } else {
+    lines.push(`Print preview, full size: a ${bust.toFixed(0)} mm bust on a ${base.toFixed(0)} mm base, ${overall.toFixed(0)} mm tall overall, ${width.toFixed(0)} x ${depth.toFixed(0)} mm across.`);
+    if (prepared.warnings.length) lines.push(prepared.warnings.join(" "));
+  }
   lines.push("These are the parts as the export merges them, with the throat gusset if it is ticked and the eyes 7% larger so they join the head. Export STL saves exactly this; any change to the sculpt goes back to it.");
   return lines.join(" ");
 }

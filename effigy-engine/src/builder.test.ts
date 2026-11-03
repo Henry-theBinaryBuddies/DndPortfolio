@@ -1237,6 +1237,8 @@ describe("the filling of the mouth", () => {
         }
       }
       expect(out, JSON.stringify(overrides)).toBe(0);
+      // ...and it says so itself, for the print to report (see builder.ts)
+      expect(fill.geometry.userData.outside ?? 0, JSON.stringify(overrides)).toBe(0);
     }
   }, 300000);
 });

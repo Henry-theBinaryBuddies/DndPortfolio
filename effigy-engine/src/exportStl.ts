@@ -14,7 +14,7 @@ let nextId = 1;
 // What came out: the merge's report, which character it was (`made`), how tall the base is where the bust meets it
 // (`baseHeight`, mm: measured on the parts, not the nominal height), and for a tabletop print how it was fitted
 // (see fit.ts)
-export type ExportResult = PrintReport & { made: string; baseHeight: number; tabletop?: Pick<Tabletop, "scale" | "height" | "notes"> };
+export type ExportResult = PrintReport & { made: string; baseHeight: number; tabletop?: Pick<Tabletop, "scale" | "height" | "notes">; warnings?: string[] };
 
 export function describe(report: ExportResult): string {
   const lines: string[] = [];
@@ -23,6 +23,7 @@ export function describe(report: ExportResult): string {
   const bust = overall - report.baseHeight;
   lines.push(`Exported ${report.made}. ${report.components.length === 1 ? "One solid" : `${report.components.length} separate pieces`}: ${report.size[0].toFixed(0)} x ${report.size[1].toFixed(0)} mm and ${overall.toFixed(0)} mm tall overall (a ${bust.toFixed(0)} mm bust on a ${report.baseHeight.toFixed(0)} mm base), ${(report.volume / 1000).toFixed(1)} cm³, ${(report.triangles / 1000).toFixed(0)}k triangles.`);
   if (report.tabletop) lines.push(`Tabletop size: the sculpt at ${Math.round(report.tabletop.scale * 100)}% on a ${TABLETOP.base} mm base. ${report.tabletop.notes.join(" ")}`.trim());
+  if (report.warnings?.length) lines.push(report.warnings.join(" "));
   const left = report.parts.filter((part) => !part.accepted);
   if (left.length) lines.push(`Left out (not closed solids): ${left.map((part) => `${part.name} (${part.rejectedShells} of ${part.shells}: ${part.problem})`).join("; ")}. This file is incomplete.`);
   if (report.components.length > 1) lines.push(`Pieces of ${report.components.slice(1).map((c) => c.volume.toFixed(1)).join(", ")} mm³ are not joined to the bust.`);
@@ -103,7 +104,7 @@ export function exportStl(params: Params, assets: Assets, say: (text: string) =>
             link.click();
             URL.revokeObjectURL(link.href);
             finish(false);
-            resolve({ ...report, made: `${params.race}, ${params.body}, ${params.hairStyle} hair, ${tabletop ? "tabletop size" : "full size"}`, baseHeight, tabletop: fitted ? { scale: fitted.scale, height: fitted.height, notes: fitted.notes } : undefined });
+            resolve({ ...report, made: `${params.race}, ${params.body}, ${params.hairStyle} hair, ${tabletop ? "tabletop size" : "full size"}`, baseHeight, tabletop: fitted ? { scale: fitted.scale, height: fitted.height, notes: fitted.notes } : undefined, warnings: ready.warnings });
           } catch (error) {
             fail(error);
           }

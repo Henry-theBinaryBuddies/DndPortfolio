@@ -99,5 +99,5 @@ export function collectTabletop(p: Params, assets: Assets, gusset = true): Table
   // (never hand back a file that does not fit the square it was asked to)
   if (fitted.reach > half * 1.002) throw new Error(`The bust still reaches ${fitted.reach.toFixed(1)} mm from the middle of its base, past the ${half} mm that fits a ${TABLETOP.base} mm base`);
   if (fitted.height < TABLETOP.bustHeight[0]) notes.push(`The bust is ${fitted.height.toFixed(0)} mm tall, under the ${TABLETOP.bustHeight[0]} mm wanted: ${fitted.limit} reach ${fitted.reach.toFixed(1)} mm from the middle of the base, which sets the size.`);
-  return { parts: built.parts, flatCut: built.flatCut, scale: printScale, params, height: fitted.height, width: fitted.halfX * 2, depth: fitted.halfY * 2, base: TABLETOP.plinth, notes };
+  return { parts: built.parts, flatCut: built.flatCut, scale: printScale, params, height: fitted.height, width: fitted.halfX * 2, depth: fitted.halfY * 2, base: TABLETOP.plinth, notes: [...notes, ...built.warnings] };
 }

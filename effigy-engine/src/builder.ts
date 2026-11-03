@@ -296,6 +296,8 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     const mesh = new THREE.Mesh(fill, clay);
     mesh.name = "mouthFill";
     head.add(mesh);
+    // (if it could not be kept inside the face everywhere, the print says so: see mouthFill.ts)
+    if (fill.userData.outside) root.userData.warnings = [`The filling of the mouth could not be kept inside the face everywhere (${fill.userData.outside} places): look under the nose and at the lips before printing.`];
   }
   // Optionally, a wedge under the chin so it needs no supports (see gusset.ts)
   const wedge = gusset ? buildThroatGusset(bust.geometry, bust.positions, bust.normals) : null;

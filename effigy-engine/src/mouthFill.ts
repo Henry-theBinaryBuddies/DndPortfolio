@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { hullGeometry } from "./hull";
+import { LANDMARK } from "./headMesh";
 import { MM } from "./print";
 
 // The base head has a hollow mouth behind its lips: a pocket about 13 x 16 x 9 mm at print scale, whose roof is
@@ -99,6 +100,22 @@ export function buildMouthFill(positions: ArrayLike<number>, normals: ArrayLike<
     for (const v of wall) if (out.some((point) => point.distanceTo(v) < PULL.near) || corners.some((corner) => corner.distanceToSquared(v) < 1e-12)) v.lerp(centre, PULL.by);
     hull.dispose();
     hull = hullGeometry(wall);
+  }
+  // A last look at the hull as it is returned: if the rounds ran out with some of it still outside the face, it says so
+  // (`userData.outside`, how many of the points tried; see builder.ts), rather than giving up without a word
+  if (check) {
+    const position = hull.attributes.position;
+    const index = hull.index!;
+    const [a, b, c] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    let outside = 0;
+    for (let t = 0; t < index.count; t += 3) {
+      a.fromBufferAttribute(position, index.getX(t));
+      b.fromBufferAttribute(position, index.getX(t + 1));
+      c.fromBufferAttribute(position, index.getX(t + 2));
+      // (in the parting of the closed lips it shows as the dark of the mouth, as it should)
+      for (const point of [a.clone().add(b).add(c).divideScalar(3), a.clone().lerp(b, 0.5)]) if (point.z >= centre.z && Math.abs(point.y - LANDMARK.stomion) > 0.025 && check(point)) outside++;
+    }
+    hull.userData.outside = outside;
   }
   return hull;
 }

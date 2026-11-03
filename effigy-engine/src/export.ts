@@ -19,7 +19,8 @@ export function collectParts(p: Params, assets: Assets): Part[] {
 
 // The parts, and how high above the bust's lowest point it is cut flat (mm). With a `scale`, they are the
 // tabletop print (see fit.ts): the whole sculpt scaled by it, on the small low base.
-export function collectBust(p: Params, assets: Assets, gusset = false, scale?: number, detail = true): { parts: Part[]; flatCut: number } {
+// (`warnings`: what the build found it could not do as it should, for the print preview and the export to say)
+export function collectBust(p: Params, assets: Assets, gusset = false, scale?: number, detail = true): { parts: Part[]; flatCut: number; warnings: string[] } {
   const k = scale ?? 1;
   const bust = buildBust(p, assets, detail, gusset);
   bust.updateMatrixWorld(true);
@@ -62,6 +63,7 @@ export function collectBust(p: Params, assets: Assets, gusset = false, scale?: n
   add("base", prism, new THREE.Matrix4());
   prism.dispose();
   const flatCut = (bust.userData.flatCut as number) * k;
+  const warnings = (bust.userData.warnings as string[] | undefined) ?? [];
   disposeObject(bust);
-  return { parts, flatCut };
+  return { parts, flatCut, warnings };
 }
