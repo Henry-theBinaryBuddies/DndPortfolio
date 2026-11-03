@@ -7,8 +7,10 @@ import { EYE_COLORS, HAIR_COLORS, HORN_COLORS, SKIN_TONES, TEETH_COLORS, type Pa
 type ColorKey = "skin" | "eyes" | "hair" | "horns" | "teeth";
 
 export const TOKEN_SIZES = [256, 512, 1024] as const;
+// "whole": the head with all its horns, hair and ears inside the round; "close": a larger face, horns may be cropped
+export type TokenFraming = "whole" | "close";
 
-export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, say: (text: string) => void) => Promise<void>): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void } {
+export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, say: (text: string) => void) => Promise<void>): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void } {
   let paint = { ...initial };
   const rows = new Map<ColorKey, { entries: { swatch: Swatch; button: HTMLButtonElement }[]; picker: HTMLInputElement }>();
   const glowBox = document.createElement("input");
@@ -105,6 +107,18 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     }
     sizeSelect.value = "512";
     sizeRow.append(sizeSelect);
+    const framingRow = document.createElement("label");
+    framingRow.className = "row select";
+    framingRow.innerHTML = "<span>Framing</span>";
+    const framingSelect = document.createElement("select");
+    framingSelect.id = "token-framing";
+    for (const [value, text] of [["whole", "Whole head and horns"], ["close", "Close portrait (may crop horns)"]] as const) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      framingSelect.append(option);
+    }
+    framingRow.append(framingSelect);
     const button = document.createElement("button");
     button.type = "button";
     button.id = "export-token";
@@ -115,19 +129,19 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     status.id = "token-status";
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    status.textContent = "Saves the bust as it is painted, turned a little toward three-quarter view, as a round token.";
+    status.textContent = "Saves the bust as it is painted, turned a little toward three-quarter view, as a round token: the whole head with its horns inside the rim, or a closer portrait that may crop wide horns.";
     const say = (text: string) => (status.textContent = text);
     button.addEventListener("click", () => {
       button.disabled = true;
       let started: Promise<void>;
       try {
-        started = onToken(Number(sizeSelect.value), say);
+        started = onToken(Number(sizeSelect.value), framingSelect.value as TokenFraming, say);
       } catch (error) {
         started = Promise.reject(error);
       }
       started.catch((error: unknown) => say(`Token failed: ${error instanceof Error ? error.message : String(error)}`)).finally(() => (button.disabled = false));
     });
-    tokenSection.append(sizeRow, button, status);
+    tokenSection.append(sizeRow, framingRow, button, status);
   }
 
   sync();

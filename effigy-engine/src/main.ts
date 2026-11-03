@@ -8,7 +8,7 @@ import { exportStl, describe } from "./exportStl";
 import { describePrint, disposePreview, preparePrint, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
 import { defaultPaint, Painter, racePaint } from "./paint";
-import { mountPaint } from "./paintPanel";
+import { mountPaint, type TokenFraming } from "./paintPanel";
 import { frameToken, RIM, tokenBackdrop } from "./token";
 
 const stage = document.getElementById("stage") as HTMLElement;
@@ -306,33 +306,90 @@ mountPanel(
 // The token (see token.ts): the painted head and shoulders, turned a little toward three-quarter view, drawn
 // square over a dark backdrop at the size asked for, then framed and saved
 const TOKEN_YAW = 0.35;
-async function saveToken(size: number, say: (text: string) => void) {
+const TOKEN_FOV = 22;
+
+// The camera for the token. Head and shoulders: from above the head to below the chin by about a head's depth.
+// "whole" also fits everything above the chin (the head, its ears, hair and horns) inside the round within the
+// rim, as it is seen turned to the token's view: measured from its own points as they fall in the picture, since
+// horns that reach out sideways add width and depth, not height, and the frame is round, not square. "close" frames
+// the height alone, a larger face, and wide horns may run into the rim.
+function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.PerspectiveCamera {
+  const top = faceTop + 0.08;
+  const bottom = chinY - 0.7;
+  const lens = new THREE.PerspectiveCamera(TOKEN_FOV, 1, 0.1, 80);
+  const tan = Math.tan(THREE.MathUtils.degToRad(TOKEN_FOV / 2));
+  const place = (y: number, distance: number) => {
+    lens.position.set(0, y + 0.03 * distance, distance);
+    lens.lookAt(0, y, 0);
+    lens.updateMatrixWorld(true);
+  };
+  // (with room to spare at the top: the frame is round)
+  const halfHeight = ((top - bottom) / 2 / (1 - 2 * RIM)) * 1.08;
+  const close = halfHeight / tan;
+  if (framing === "close") {
+    place((top + bottom) / 2, close);
+    return lens;
+  }
+  // The points that must stay inside the round, in the token's own turn (a sample of each part: a few thousand do)
+  pivot.rotation.y = TOKEN_YAW;
+  pivot.updateMatrixWorld(true);
+  const points: THREE.Vector3[] = [new THREE.Vector3(0, bottom, 0)];
+  bust.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.visible) return;
+    const position = object.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(position.count / 3000));
+    for (let i = 0; i < position.count; i += step) {
+      const v = new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld);
+      if (v.y >= chinY - 0.1) points.push(v);
+    }
+  });
+  const highest = points.reduce((h, v) => Math.max(h, v.y), top);
+  const y = (highest + bottom) / 2;
+  const inside = (1 - 2 * RIM) * 0.96; // (the round within the rim, as a share of the half-width, with a little room)
+  const fits = (distance: number) => {
+    place(y, distance);
+    const p = new THREE.Vector3();
+    return points.every((v) => {
+      p.copy(v).project(lens);
+      return Math.hypot(p.x, p.y) <= inside;
+    });
+  };
+  // (no nearer than the close framing; then as near as lets everything in)
+  let [near, far] = [close, close * 4];
+  if (fits(near)) return lens;
+  while (!fits(far) && far < 60) far *= 1.5;
+  for (let k = 0; k < 18; k++) {
+    const middle = (near + far) / 2;
+    if (fits(middle)) far = middle;
+    else near = middle;
+  }
+  place(y, far);
+  return lens;
+}
+
+async function saveToken(size: number, framing: TokenFraming, say: (text: string) => void) {
   if (!assets || !figure || !current) throw new Error("the head model has not loaded");
+  // (the character as it was when asked for: the picture and its name are of this, whatever is edited meanwhile)
+  const asked = current.params;
   say("Painting the token");
   await new Promise((resolve) => window.setTimeout(resolve, 30));
+  if (current.params !== asked) throw new Error("the character changed before the token was painted: save it again");
   // (the carved hair and beard, if a slider has only just moved and the draft is on show)
   if (!current.detail) {
     window.clearTimeout(settle);
     swap(current.params, true);
   }
   const bust = figure!;
-  // Head and shoulders: from above the head to below the chin by about a head's depth, inside the rim
-  const top = faceTop + 0.08;
-  const bottom = chinY - 0.7;
-  // (with room to spare: the frame is round, and horns reach out toward its corners)
-  const half = ((top - bottom) / 2 / (1 - 2 * RIM)) * 1.08;
-  const lens = new THREE.PerspectiveCamera(22, 1, 0.1, 50);
-  const y = (top + bottom) / 2;
-  lens.position.set(0, y + 0.2, half / Math.tan(THREE.MathUtils.degToRad(11)));
-  lens.lookAt(0, y, 0);
-  const backdrop = tokenBackdrop(size);
   const saved = { ratio: renderer.getPixelRatio(), background: scene.background, fog: scene.fog, yaw: pivot.rotation.y, print: printView?.group.visible, figure: bust.visible, base: base?.visible, clay: clayOn };
+  const backdrop = tokenBackdrop(size);
   let framed: HTMLCanvasElement;
   try {
     if (printView) printView.group.visible = false;
     bust.visible = true;
     if (base) base.visible = false;
     if (clayOn) painter?.apply(bust, current!.params, false);
+    // (inside, so the turn it makes to measure is always undone)
+    const lens = tokenLens(bust, framing);
     pivot.rotation.y = TOKEN_YAW;
     scene.background = backdrop;
     scene.fog = null;
@@ -357,10 +414,11 @@ async function saveToken(size: number, say: (text: string) => void) {
   if (!blob) throw new Error("the browser could not make the picture");
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `effigy-${current!.params.race}-${current!.params.body}-token-${size}.png`;
+  link.download = `effigy-${asked.race}-${asked.body}-token-${size}.png`;
   link.click();
   URL.revokeObjectURL(link.href);
-  say(`Saved a ${size} x ${size} px token (${Math.round(blob.size / 1024)} KB).`);
+  const edited = current?.params !== asked ? " (of the character as it was when you asked: it has changed since)" : "";
+  say(`Saved a ${size} x ${size} px token of the ${asked.race}${edited} (${Math.round(blob.size / 1024)} KB).`);
 }
 
 const paintPanel = mountPaint(

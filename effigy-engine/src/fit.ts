@@ -30,13 +30,25 @@ interface Size {
   height: number; // mm, above the flat cut
 }
 
-const measure = (parts: Part[], flatCut: number): Size & { halfX: number; halfY: number } => {
+// What each named part is called in the notes (see builder.ts for the names)
+const PART_NAMES: Record<string, string> = { head: "the head and shoulders", horn: "the horns", hair: "the hair", curtain: "the hair", locks: "the dreadlocks", beard: "the beard", tusk: "the tusks", brows: "the brows" };
+
+const measure = (parts: Part[], flatCut: number): Size & { halfX: number; halfY: number; limit: string } => {
   // (below the flat cut is trimmed away in the merge: a lock that slid down the back past it does not print, but
   // where it crosses the cut it does)
   const { min, max } = printBounds(parts, flatCut, false);
   const halfX = Math.max(-min[0], max[0]);
   const halfY = Math.max(-min[1], max[1]);
-  return { reach: Math.max(halfX, halfY), height: max[2] - flatCut, halfX, halfY };
+  // (and which part reaches farthest: that is what sets the size)
+  let limit = "the bust";
+  let farthest = -Infinity;
+  for (const part of parts) {
+    if (part.name === "base") continue;
+    const b = printBounds([part], flatCut, false);
+    const reach = Math.max(-b.min[0], b.max[0], -b.min[1], b.max[1]);
+    if (reach > farthest) [farthest, limit] = [reach, PART_NAMES[part.name] ?? "the bust"];
+  }
+  return { reach: Math.max(halfX, halfY), height: max[2] - flatCut, halfX, halfY, limit };
 };
 
 export function collectTabletop(p: Params, assets: Assets, gusset = true): Tabletop {
@@ -86,6 +98,6 @@ export function collectTabletop(p: Params, assets: Assets, gusset = true): Table
   }
   // (never hand back a file that does not fit the square it was asked to)
   if (fitted.reach > half * 1.002) throw new Error(`The bust still reaches ${fitted.reach.toFixed(1)} mm from the middle of its base, past the ${half} mm that fits a ${TABLETOP.base} mm base`);
-  if (fitted.height < TABLETOP.bustHeight[0]) notes.push(`The bust is ${fitted.height.toFixed(0)} mm tall, under the ${TABLETOP.bustHeight[0]} mm wanted: the head and its hair reach ${(m.reach * printScale).toFixed(1)} mm from the middle of the base, which sets the size.`);
+  if (fitted.height < TABLETOP.bustHeight[0]) notes.push(`The bust is ${fitted.height.toFixed(0)} mm tall, under the ${TABLETOP.bustHeight[0]} mm wanted: ${fitted.limit} reach ${fitted.reach.toFixed(1)} mm from the middle of the base, which sets the size.`);
   return { parts: built.parts, flatCut: built.flatCut, scale: printScale, params, height: fitted.height, width: fitted.halfX * 2, depth: fitted.halfY * 2, base: TABLETOP.plinth, notes };
 }
