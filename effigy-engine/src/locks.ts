@@ -85,6 +85,12 @@ interface Fall {
   rate: number; // how quickly it turns toward that
   // After its length, it goes on falling (this many more steps at most) until it rests on the body
   land?: number;
+  // Or, instead of a length: it falls until its tip is down to this height (at most `steps` three times over), the
+  // same on any body, so a lock is as long on a thick neck as on a thin one
+  endY?: number;
+  // ...and to come to rest it leans in toward the neck's axis (x, z) as it falls, instead of dropping plumb: dropping
+  // plumb beside a slim neck, it found nothing until the shoulders and came out far longer there
+  rest?: { x: number; z: number };
 }
 
 // A printer builds upward, so the end of a lock is laid first: over open air it has nothing to start on
@@ -95,6 +101,7 @@ const SINK = 0.5; // the end pressed this far (of the clearance) toward what it 
 const UNDER = 0.9; // body must also be this far (of the lock's radius) below the tip...
 const LANDED_UNDER = 1.5; // ...within this (times the clearance)
 const PLUMB = new THREE.Vector3(0, -1, 0);
+const REST_LEAN = 0.8; // how far in toward the neck a lock leans as it comes to rest (against 1 down: about 39 degrees)
 const STEEP = 0.72; // cosine of the steepest lean a lock may have over open air (44 degrees from vertical)
 const HELD = 1.65; // body within this many radii of the point just under a lock holds it up
 const EXTRA_RINGS = 10; // a lock has this many more rings than its length needs, whatever distance it falls to land
@@ -121,9 +128,16 @@ function fall(cloud: Cloud, spec: Fall): THREE.Vector3[] {
   const path = [p.clone()];
   const q = new THREE.Vector3();
   const away = new THREE.Vector3();
-  for (let i = 1; i <= spec.steps + (spec.land ?? 0); i++) {
-    // (past its length it falls straight down, sliding along whatever it meets, until it rests)
-    const aim = spec.land !== undefined && i > spec.steps ? PLUMB : spec.target(p, i).normalize();
+  // (how many steps its length took: a fixed count, or as many as brought it down to endY)
+  let length = spec.steps;
+  const most = spec.endY === undefined ? spec.steps : spec.steps * 3;
+  const toRest = new THREE.Vector3();
+  for (let i = 1; i <= length + (spec.land ?? 0); i++) {
+    // (past its length it falls straight down, or leans in toward the neck, sliding along whatever it meets, until
+    // it rests)
+    if (spec.endY !== undefined && i === length + 1 && p.y > spec.endY && length < most) length++;
+    const resting = spec.land !== undefined && i > length;
+    const aim = !resting ? spec.target(p, i).normalize() : spec.rest ? toRest.set(spec.rest.x - p.x, 0, spec.rest.z - p.z).setLength(REST_LEAN).add(PLUMB).normalize() : PLUMB;
     d.lerp(aim, spec.rate).normalize();
     // Where nothing is under the lock it may lean no more than 44 degrees from the vertical: more is an
     // overhang a printer cannot lay over open air. (Along the scalp or the shoulders it can lie as it likes.)
@@ -149,7 +163,7 @@ function fall(cloud: Cloud, spec: Fall): THREE.Vector3[] {
     }
     d.lerp(p.clone().sub(before).normalize(), 0.5).normalize();
     path.push(p.clone());
-    if (spec.land !== undefined && i >= spec.steps) {
+    if (spec.land !== undefined && i >= length) {
       // At rest when touching the body, and with body under the tip too (a wall beside it that falls away
       // below does not hold it up)
       const near = cloud.nearest(p.x, p.y, p.z);
@@ -243,6 +257,10 @@ class Tubes {
   }
 }
 
+// How far down a dreadlock falls before it rests: from this height, and up to this much lower (head units: the jaw is
+// about -0.55)
+const DREAD_END = [-0.42, 0.33];
+const DREAD_EAR = 0.08; // no dreadlock is rooted nearer an ear than this (head units, along the surface)
 const LAND_STEPS = 40; // at most about 58 mm further (the shoulders are never as far as that)
 const down = new THREE.Vector3(0, -1, -0.15);
 const back = new THREE.Vector3(0, 0.25, -1);
@@ -275,7 +293,10 @@ export function dreadRoots(base: HeadBase): number[] {
     const y = bp[v * 3 + 1];
     const z = bp[v * 3 + 2];
     if (y < -0.05 || scalp(x, y, z) < 0.9) continue;
-    if (base.masks.earClear[v] < 0.95) continue; // (not on or beside the ears)
+    if (base.masks.earDistance[v] < DREAD_EAR) continue; // (not on or beside the ears: rooted close behind one, a lock hangs over its lobe)
+    // (and below the top of the ear, beside the head, only well behind it: the hair comes down behind the ear, but a
+    // lock rooted there hangs past the back of the ear and over its lobe)
+    if (Math.abs(x) > 0.25 && y < 0.1 && z > -0.62) continue;
     order.push(v);
   }
   // A repeatable shuffle
@@ -324,6 +345,9 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
       target: (p) => (front && p.z > -0.3 ? back : besideEar(p) ? behind : down),
       rate: 0.35,
       land: LAND_STEPS,
+      // (each down to its own height, the same on any race and build: the longest to below the jaw)
+      endY: DREAD_END[0] - DREAD_END[1] * h,
+      rest: base.neck,
     });
     const phase = h * 6.28;
     // A rope: thick all the way, a little knobbly, closing in a rounded end (as long as it always was,

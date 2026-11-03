@@ -17,7 +17,10 @@ export function scalp(x: number, y: number, z: number): number {
   const side = 0.12;
   const back = -0.42;
   const toSide = smooth((-z - 0.18) / 0.2);
-  const toBack = smooth((-z - 0.55) / 0.15);
+  // (down to the nape from just behind the ear, so the hair comes down behind it: dropping only from well behind the
+  // ear, it left a band of bare skin between the ear and the hair; on the ear itself the hair keeps off, see
+  // earClear in headMesh.ts)
+  const toBack = smooth((-z - 0.44) / 0.12);
   const threshold = (front + (side - front) * toSide) * (1 - toBack) + back * toBack;
   return smooth((y - threshold) / 0.04);
 }

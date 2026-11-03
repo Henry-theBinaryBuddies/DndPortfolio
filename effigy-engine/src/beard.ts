@@ -42,9 +42,15 @@ export function beardWeight(x: number, y: number, z: number, style: BeardStyle, 
   let w = smooth((topLine(ax) - y) / 0.03) * smooth((y + 0.7 - 0.1 * smooth((ax - 0.15) / 0.2)) / 0.1);
   // In front of the ears, and not round the back of the neck
   w *= smooth((z + 0.5) / 0.1);
-  // (the whole ear, its front edge included: the beard's sideburn ran up over it)
+  // ...and at the height of the ear, only in front of it: the sideburn stops at the ear's front edge (it wrapped round
+  // behind the ear and up its back). Its back edge runs down the front of the ear to the lobe, then back along the
+  // jaw toward the neck, one slanting line (cut square, it left a bare gap between the sideburn and the beard behind)
+  const backEdge = -0.27 - 0.23 * smooth((-0.3 - y) / 0.25);
+  w *= smooth((z - backEdge + 0.03) / 0.06);
+  // (the whole ear, its front edge included: the beard's sideburn ran up over it; and deep into it, the opening of
+  // the ear as well as its rim, which is set further in than the side of the head: the beard grew into it)
   // (a soft edge: cut off sharply, the shell folded where the sideburn stopped)
-  w *= 1 - smooth((ax - 0.33) / 0.04) * smooth((y + 0.26) / 0.06) * smooth((0.27 - y) / 0.04) * smooth((-0.13 - z) / 0.12);
+  w *= 1 - smooth((ax - 0.27) / 0.04) * smooth((y + 0.26) / 0.06) * smooth((0.27 - y) / 0.04) * smooth((-0.13 - z) / 0.12);
   // Off the lips, with a rounded margin round the mouth
   w *= (1 - smooth(lips * 1.6)) * mouthClearance(ax, y);
   // A goatee: the moustache and the front of the chin only (not under it)
