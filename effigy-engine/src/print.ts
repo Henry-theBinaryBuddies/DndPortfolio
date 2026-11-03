@@ -105,8 +105,9 @@ export function radiusAt(hull: Point[], angle: number): number {
 }
 
 // The pedestal's turned profile, from the foot up, in printed millimetres at either size (see pedestalRings: at
-// full size the shaft and flare are taller, the moldings the same). Sized so every molding survives a
-// 0.4 mm nozzle: a ring that juts out less than about 0.5 mm prints as a faint line. Every part either narrows
+// full size the shaft and flare are taller, the moldings the same). Sized so every molding survives even a
+// 0.4 mm nozzle, on which a ring that juts out less than about 0.5 mm prints as a faint line (the 0.2 mm
+// nozzle the rest is sized for draws them sharper). Every part either narrows
 // going up or widens no faster than 45 degrees, so it all prints without supports: a molding that juts out is a
 // diamond in section (out at an angle, then back in), never a round bead with an undercut.
 const SOCLE = {
