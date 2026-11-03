@@ -64,4 +64,12 @@ describe("the paint", () => {
     bust.traverse((o) => o instanceof THREE.Mesh && expect(o.material).toBe(painter.materials.clay));
     expect(Object.values(painter.materials).every((m) => m.userData.shared)).toBe(true);
   }, 120000);
+
+  it("writes every ramp in its shaders with its edges in order (GLSL leaves smoothstep undefined otherwise)", () => {
+    const file = readFileSync(new URL("./paint.ts", import.meta.url));
+    const source = new TextDecoder().decode(new Uint8Array(file.buffer, file.byteOffset, file.byteLength));
+    const calls = [...source.matchAll(/smoothstep\(\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)\s*,/g)];
+    expect(calls.length).toBeGreaterThan(10);
+    for (const [call, from, to] of calls) expect(Number(from), call).toBeLessThan(Number(to));
+  });
 });

@@ -26,6 +26,14 @@ scene.background = new THREE.Color(0x14110f);
 const fog = new THREE.Fog(0x14110f, 5, 10); // (see placeCamera)
 scene.fog = fog;
 
+// The view is drawn only when something in it changes: while it turns or is dragged, and after anything calls
+// redraw (a new bust, paint, the camera moving); left still, it costs nothing
+let dirty = true;
+let drawnYaw = NaN;
+function redraw() {
+  dirty = true;
+}
+
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
 // Scrolling zooms. Close in, the camera aims at the face instead of the whole bust. "Face" framing fits
 // everything from the chin to the highest point of the head (the skull, horns or a mohawk), so it is
@@ -60,6 +68,7 @@ function placeCamera() {
   }
   camera.position.set(0, targetY + 0.5 - 0.5 * t, distance + extra);
   camera.lookAt(0, targetY, 0);
+  redraw();
   // (the fog keeps its distance from the bust as the camera moves back)
   fog.near = FOG.near + extra;
   fog.far = FOG.far + extra;
@@ -113,8 +122,11 @@ let painter: Painter | null = null;
 let clayOn = false;
 let current: { params: Params; detail: boolean } | null = null; // the settings of the bust on show
 
+// (each step is timed, as a User Timing measure named "effigy:...", to be read in the browser's performance tools or
+// with performance.getEntriesByType("measure"))
 function swap(params: Params, detail: boolean) {
   if (!assets) return;
+  const started = performance.now();
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
@@ -122,6 +134,7 @@ function swap(params: Params, detail: boolean) {
   figure = buildBust(params, assets, detail);
   painter ??= new Painter(assets.head, paint);
   painter.apply(figure, params, clayOn);
+  performance.measure(detail ? "effigy:carved build" : "effigy:draft build", { start: started });
   current = { params, detail };
   // (the token preview, once the carved build has landed: see below)
   if (detail) tokenPreviewSoon();
@@ -145,9 +158,29 @@ function swap(params: Params, detail: boolean) {
 }
 
 // Every edit shows a quick draft (without the carving), and the carved beard replaces it once the controls
-// have been still for a moment.
+// have been still for a moment. The draft is built for the latest settings only: a slider dragged while a draft is
+// being built moves on several steps, and the next draft is of where it got to, not of each step in between. (It
+// waits for the next frame, so the slider is seen to move before the build holds up the page.)
+let pending: Params | null = null;
 function show(params: Params) {
   leavePrint();
+  if (!pending) {
+    const asked = performance.now();
+    const build = () => {
+      if (!pending) return;
+      const latest = pending;
+      pending = null;
+      draft(latest);
+      performance.measure("effigy:edit to draft", { start: asked });
+    };
+    requestAnimationFrame(() => window.setTimeout(build));
+    // (and in any case soon: a page that is hidden, or covered, may draw no frames)
+    window.setTimeout(build, 50);
+  }
+  pending = params;
+}
+
+function draft(params: Params) {
   // (a new race brings its own colours: a half-orc's green skin, a tiefling's red; the grime stays)
   if (current && params.race !== current.params.race) {
     paint = racePaint(paint, params.race);
@@ -202,13 +235,15 @@ canvas.addEventListener("pointermove", (e) => {
 function frame() {
   requestAnimationFrame(frame);
   if (turntable && !dragging && performance.now() > hold) yaw += 0.003;
-  draw();
+  if (dirty || yaw !== drawnYaw) draw();
   syncToolbar();
 }
 
 function draw() {
   pivot.rotation.y = yaw;
   renderer.render(scene, camera);
+  dirty = false;
+  drawnYaw = yaw;
 }
 
 // The viewport toolbar: fixed views for comparing shapes at matching angles, bust or face framing, and the
@@ -238,6 +273,7 @@ clayButton.addEventListener("click", () => {
   clayOn = !clayOn;
   clayButton.setAttribute("aria-pressed", String(clayOn));
   if (figure && current) painter?.apply(figure, current.params, clayOn);
+  redraw();
 });
 
 // The view and framing buttons light up while the camera is at their setting
@@ -260,6 +296,9 @@ if (import.meta.env.DEV) {
     scene,
     THREE, // (for cutting the bust open in a script, to look inside)
     renderer,
+    get tokenWork() {
+      return tokenWork; // (how often the token has been fitted: see tokenLens)
+    },
     render(view?: { yaw?: number; distance?: number }) {
       if (view?.yaw !== undefined) yaw = view.yaw;
       if (view?.distance !== undefined) {
@@ -318,7 +357,24 @@ const TOKEN_FOV = 22;
 // Then, either way, the bust is brought down (and, if that is not enough, nearer) until its shoulders and chest
 // run on under the lower half of the rim, so no cut edge of the bust shows inside the round (see shouldersUnderRim).
 // For "whole" the horns come first: it goes only as near as keeps them in.
+// The camera is found once for each bust and framing, and kept: a change of backdrop or paint cannot move the bust's
+// outline, so stepping through the backdrops draws the bust again but searches for nothing.
+const lenses = new WeakMap<THREE.Object3D, Map<TokenFraming, THREE.PerspectiveCamera>>();
+const tokenWork = { fits: 0, silhouettes: 0 }; // (counted, for the browser tests: see e2e/token.spec.ts)
 function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.PerspectiveCamera {
+  let known = lenses.get(bust);
+  if (!known) lenses.set(bust, (known = new Map()));
+  let lens = known.get(framing);
+  if (!lens) {
+    lens = fitTokenLens(bust, framing);
+    known.set(framing, lens);
+  }
+  return lens;
+}
+
+function fitTokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.PerspectiveCamera {
+  tokenWork.fits++;
+  const started = performance.now();
   const top = faceTop + 0.08;
   const bottom = chinY - 0.7;
   const lens = new THREE.PerspectiveCamera(TOKEN_FOV, 1, 0.1, 80);
@@ -391,6 +447,7 @@ function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.Perspecti
     }
   }
   place(best.y, best.distance);
+  performance.measure("effigy:token fit", { start: started });
   return lens;
 }
 
@@ -403,6 +460,7 @@ const silhouetteMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const silhouettePixels = new Uint8Array(SILHOUETTE * SILHOUETTE * 4);
 const UNDER_RIM = Array.from({ length: 15 }, (_, i) => THREE.MathUtils.degToRad(200 + i * 10)); // the lower half of the round
 function shouldersUnderRim(lens: THREE.PerspectiveCamera, aim: () => void): number {
+  tokenWork.silhouettes++;
   aim();
   // (cut flat underneath as the bust is: see builder.ts)
   silhouetteMaterial.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -((figure?.userData.flatCut as number) ?? 0) * MM)];
@@ -440,6 +498,7 @@ function paintToken(size: number, framing: TokenFraming, picture: HTMLImageEleme
     swap(current!.params, true);
   }
   const bust = figure!;
+  const started = performance.now();
   const saved = { ratio: renderer.getPixelRatio(), background: scene.background, fog: scene.fog, yaw: pivot.rotation.y, print: printView?.group.visible, figure: bust.visible, base: base?.visible, clay: clayOn };
   const backdrop = tokenBackdrop(size, picture ?? undefined);
   try {
@@ -456,7 +515,9 @@ function paintToken(size: number, framing: TokenFraming, picture: HTMLImageEleme
     renderer.setSize(size, size, false);
     renderer.render(scene, lens);
     // (read back at once, in the same task as the render, before the canvas is cleared for the next frame)
-    return frameToken(canvas, size);
+    const framed = frameToken(canvas, size);
+    performance.measure("effigy:token", { start: started });
+    return framed;
   } finally {
     scene.background = saved.background;
     scene.fog = saved.fog;
@@ -520,6 +581,7 @@ const paintPanel = mountPaint(
   (next) => {
     paint = next;
     painter?.setPaint(paint);
+    redraw();
     tokenPreviewSoon();
   },
   saveToken,

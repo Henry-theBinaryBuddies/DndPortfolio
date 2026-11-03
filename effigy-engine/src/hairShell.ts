@@ -99,28 +99,60 @@ export function buildHairShell(
 const EAR_NEAR = { margin: 0.02, fade: 0.05 }; // (more than along the surface: an ear lying back over the scalp, as an elf's point does, needs the hair beneath it thinned well clear)
 // (`near`: how far off the reshaped ear, straight across, it starts to clear, and over how far; `alongSurface` false
 // for the straight distance alone)
+// (the hair, the beard and the paint each ask for these of the same bust, so each is worked out once per reshaped
+// head and settings and shared: read it, never write to it)
+const clearances = new WeakMap<Float32Array, Map<string, Float32Array>>();
 export function earClearance(positions: Float32Array, base: HeadBase, near = EAR_NEAR, alongSurface = true): Float32Array {
+  const setting = `${near.margin},${near.fade},${alongSurface}`;
+  let known = clearances.get(positions);
+  if (!known) clearances.set(positions, (known = new Map()));
+  const cached = known.get(setting);
+  if (cached) return cached;
+
   const count = positions.length / 3;
   const clear = alongSurface ? Float32Array.from(base.masks.earClear) : new Float32Array(count).fill(1);
   const cell = near.margin + near.fade;
-  const grid = new Map<string, number[]>();
-  const key = (x: number, y: number, z: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+  // The ear's own vertices, by cell (a cell's number packs its three coordinates), and the box round them: a vertex
+  // further than a cell outside the box is clear of the ear
+  const grid = new Map<number, number[]>();
+  const key = (cx: number, cy: number, cz: number) => ((cx + 512) * 1024 + cy + 512) * 1024 + cz + 512;
+  const low = [Infinity, Infinity, Infinity];
+  const high = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < count; i++) {
     if (base.masks.earClear[i] > 0) continue;
-    const k = key(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-    (grid.get(k) ?? grid.set(k, []).get(k)!).push(i);
+    for (let k = 0; k < 3; k++) {
+      low[k] = Math.min(low[k], positions[i * 3 + k]);
+      high[k] = Math.max(high[k], positions[i * 3 + k]);
+    }
+    const at = key(Math.floor(positions[i * 3] / cell), Math.floor(positions[i * 3 + 1] / cell), Math.floor(positions[i * 3 + 2] / cell));
+    (grid.get(at) ?? grid.set(at, []).get(at)!).push(i);
   }
   for (let i = 0; i < count; i++) {
     if (clear[i] === 0) continue;
-    const [x, y, z] = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
-    const [cx, cy, cz] = [Math.floor(x / cell), Math.floor(y / cell), Math.floor(z / cell)];
-    let d = Infinity;
+    const x = positions[i * 3];
+    const y = positions[i * 3 + 1];
+    const z = positions[i * 3 + 2];
+    if (x < low[0] - cell || x > high[0] + cell || y < low[1] - cell || y > high[1] + cell || z < low[2] - cell || z > high[2] + cell) continue;
+    const cx = Math.floor(x / cell);
+    const cy = Math.floor(y / cell);
+    const cz = Math.floor(z / cell);
+    let d2 = Infinity;
     for (let dx = -1; dx <= 1; dx++)
       for (let dy = -1; dy <= 1; dy++)
-        for (let dz = -1; dz <= 1; dz++)
-          for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) d = Math.min(d, Math.hypot(positions[j * 3] - x, positions[j * 3 + 1] - y, positions[j * 3 + 2] - z));
+        for (let dz = -1; dz <= 1; dz++) {
+          const ear = grid.get(key(cx + dx, cy + dy, cz + dz));
+          if (!ear) continue;
+          for (const j of ear) {
+            const ex = positions[j * 3] - x;
+            const ey = positions[j * 3 + 1] - y;
+            const ez = positions[j * 3 + 2] - z;
+            d2 = Math.min(d2, ex * ex + ey * ey + ez * ez);
+          }
+        }
+    const d = Math.sqrt(d2);
     if (d < cell) clear[i] = Math.min(clear[i], smooth((d - near.margin) / near.fade));
   }
+  known.set(setting, clear);
   return clear;
 }
 
@@ -421,7 +453,7 @@ const BEARD_UNDER_EAR = { margin: 0.004, fade: 0.16, thin: 0.05 }; // straight f
 // the hair, so none of it reaches the lobe or the bowl of the ear just inside its rim
 const BEARD_EAR = { margin: 0.03, fade: 0.04 };
 export function beardEarClearance(positions: Float32Array, base: HeadBase): Float32Array {
-  const clear = earClearance(positions, base);
+  const clear = Float32Array.from(earClearance(positions, base));
   for (let i = 0; i < clear.length; i++) clear[i] = Math.min(clear[i], smooth((base.masks.earDistance[i] - BEARD_EAR.margin) / BEARD_EAR.fade));
   return clear;
 }

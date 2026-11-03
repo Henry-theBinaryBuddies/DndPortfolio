@@ -197,6 +197,9 @@ test.describe("the token", () => {
     // (drawn: a picture in the round, and its corners clear)
     expect(Math.max(...plain)).toBeGreaterThan(40);
     expect(plain[3]).toBe(0);
+    // (how often the token's camera has been fitted to a bust, and its silhouette drawn to fit it: see tokenLens)
+    const work = () => page.evaluate(() => ({ ...(window as unknown as { effigy: { tokenWork: { fits: number; silhouettes: number } } }).effigy.tokenWork }));
+    const fitted = await work();
     // stepping on to the next backdrop and back
     await page.click("#token-backdrop-next");
     const first = await page.inputValue("#token-backdrop");
@@ -205,6 +208,8 @@ test.describe("the token", () => {
     expect(differ(stepped, plain)).toBeGreaterThan(1.2);
     await page.click("#token-backdrop-previous");
     expect(differ(await preview("", "whole"), plain)).toBeLessThan(0.5);
+    // (the bust is the same, so stepping through the backdrops fits nothing again)
+    expect(await work()).toEqual(fitted);
     // the framing (redrawn for it: for a head without horns both framings are the same picture, as the close one
     // already holds the whole head; the horns test above shows them apart)
     await page.selectOption("#token-framing", "close");

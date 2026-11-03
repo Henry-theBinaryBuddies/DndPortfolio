@@ -14,6 +14,8 @@ npm run test:browser   # Playwright, in Chromium (first: npx playwright install 
 npm run build
 ```
 
+Each build and token is timed in the browser as a User Timing measure (`effigy:draft build`, `effigy:carved build`, `effigy:edit to draft`, `effigy:token fit`, `effigy:token`): see the Performance panel, or `performance.getEntriesByType("measure")` in the console. A slider dragged during a build is built once for where it got to, not for every step; the view is drawn only when something in it changes; and the token's camera is fitted once per bust and framing, so stepping through backdrops fits nothing again.
+
 ## How the bust is made
 
 The head, neck and shoulders are a **hand-sculpted CC0 base mesh** (Blender Studio's Human Base Meshes, see `public/models/README.md`), subdivided once to about 53,000 vertices so it can carry sharp structure, so the lips, nostrils, eyelids, ears and collarbones are real anatomy. Every slider, race and build is a small, smooth **deformation of that mesh**: push the brow outward, hollow the cheek, lengthen the nose tip, scale the lips about the mouth line, widen the jaw, stretch the ears. Nothing moves right around the eyes, so the lids always fit the eyeballs. The mesh is a closed solid, so it is already printable.
