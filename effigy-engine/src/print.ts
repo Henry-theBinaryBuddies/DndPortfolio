@@ -28,6 +28,7 @@ export const TABLETOP = {
   plinth: 18, // mm: the whole base is this tall (a board has no ceiling: height costs nothing, and buys the base its shape)
   torso: 0.45, // the least the Torso size slider goes to, which the fit may slim the body to
 };
+export const SQUARE = 25.4; // mm: one square of a gaming board, which a tabletop print stands inside
 
 export const MIN_GROOVE = 0.4 * MM; // the narrowest groove that prints
 export const MIN_FEATURE = 0.6 * MM; // the thinnest raised feature that prints

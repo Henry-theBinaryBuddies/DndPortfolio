@@ -20,7 +20,8 @@ renderer.localClippingEnabled = true; // (the bust is cut flat underneath: see F
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x14110f);
-scene.fog = new THREE.Fog(0x14110f, 5, 10);
+const fog = new THREE.Fog(0x14110f, 5, 10); // (see placeCamera)
+scene.fog = fog;
 
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
 // Scrolling zooms. Close in, the camera aims at the face instead of the whole bust. "Face" framing fits
@@ -36,12 +37,29 @@ function faceDistance() {
   const halfHeight = ((faceTop - chinY) / 2) * 1.5;
   return Math.min(BUST_DISTANCE - 1, Math.max(2.6, halfHeight / Math.tan(THREE.MathUtils.degToRad(16))));
 }
+// The print preview stands on a taller base than the sculpt (and at tabletop size over the one inch square), so
+// while it is shown the full-bust framing is fitted to it instead: `printFrame` is the middle of its height, and
+// the half height and the farthest it reaches from the turntable's axis, in scene units. Framing the face is the same.
+let printFrame: { y: number; halfHeight: number; radius: number } | null = null;
+const FOG = { near: fog.near, far: fog.far };
 function placeCamera() {
   const face = faceDistance();
   const t = Math.min(1, Math.max(0, (BUST_DISTANCE - distance) / (BUST_DISTANCE - face))); // 0 = full bust, 1 = the face
-  const targetY = 1.2 + ((faceTop + chinY) / 2 - 1.2) * t;
-  camera.position.set(0, targetY + 0.5 - 0.5 * t, distance);
+  const bustY = printFrame?.y ?? 1.2;
+  const targetY = bustY + ((faceTop + chinY) / 2 - bustY) * t;
+  // (how much farther back the whole print needs the camera than the sculpt does: it turns, so its farthest reach is
+  // toward the camera at some point, and it must fit the view's height and its width, whichever is narrower)
+  let extra = 0;
+  if (printFrame) {
+    const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const fits = Math.max(printFrame.halfHeight / tan, printFrame.radius / (tan * camera.aspect)) * 1.12 + printFrame.radius;
+    extra = Math.max(0, fits - BUST_DISTANCE) * (1 - t);
+  }
+  camera.position.set(0, targetY + 0.5 - 0.5 * t, distance + extra);
   camera.lookAt(0, targetY, 0);
+  // (the fog keeps its distance from the bust as the camera moves back)
+  fog.near = FOG.near + extra;
+  fog.far = FOG.far + extra;
 }
 placeCamera();
 faceButton.dataset.distance = String(faceDistance());
@@ -77,6 +95,8 @@ function leavePrint() {
   pivot.remove(printView.group);
   disposePreview(printView.group);
   printView = null;
+  printFrame = null;
+  placeCamera();
   if (figure) figure.visible = true;
   if (base) base.visible = true;
 }
@@ -125,6 +145,7 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  placeCamera(); // (a narrow view needs the print preview farther off)
 }
 new ResizeObserver(resize).observe(stage);
 
@@ -245,6 +266,11 @@ mountPanel(
     const prepared = preparePrint(params, assets, gusset, tabletop);
     leavePrint();
     const group = previewGroup(prepared);
+    // (measured before it joins the turning pivot, so in its own frame: the board's square included)
+    const box = new THREE.Box3().setFromObject(group);
+    const radius = Math.max(...[box.min.x, box.max.x].flatMap((x) => [box.min.z, box.max.z].map((z) => Math.hypot(x, z))));
+    printFrame = { y: (box.min.y + box.max.y) / 2, halfHeight: (box.max.y - box.min.y) / 2, radius };
+    placeCamera();
     pivot.add(group);
     printView = { group, prepared };
     if (figure) figure.visible = false;

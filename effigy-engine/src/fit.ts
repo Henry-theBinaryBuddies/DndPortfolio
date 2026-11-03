@@ -1,4 +1,5 @@
 import type { Assets } from "./assets";
+import { printBounds } from "./bounds";
 import { collectBust } from "./export";
 import type { Params } from "./params";
 import { TABLETOP } from "./print";
@@ -30,21 +31,12 @@ interface Size {
 }
 
 const measure = (parts: Part[], flatCut: number): Size & { halfX: number; halfY: number } => {
-  let halfX = 0;
-  let halfY = 0;
-  let top = -Infinity;
-  for (const part of parts) {
-    if (part.name === "base") continue;
-    const p = part.positions;
-    for (let i = 0; i < p.length; i += 3) {
-      // (below the flat cut is trimmed away in the merge: a lock that slid down the back past it does not print)
-      if (p[i + 2] < flatCut) continue;
-      halfX = Math.max(halfX, Math.abs(p[i]));
-      halfY = Math.max(halfY, Math.abs(p[i + 1]));
-      top = Math.max(top, p[i + 2]);
-    }
-  }
-  return { reach: Math.max(halfX, halfY), height: top - flatCut, halfX, halfY };
+  // (below the flat cut is trimmed away in the merge: a lock that slid down the back past it does not print, but
+  // where it crosses the cut it does)
+  const { min, max } = printBounds(parts, flatCut, false);
+  const halfX = Math.max(-min[0], max[0]);
+  const halfY = Math.max(-min[1], max[1]);
+  return { reach: Math.max(halfX, halfY), height: max[2] - flatCut, halfX, halfY };
 };
 
 export function collectTabletop(p: Params, assets: Assets, gusset = true): Tabletop {

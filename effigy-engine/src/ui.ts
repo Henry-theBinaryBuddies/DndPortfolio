@@ -30,9 +30,10 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const bodyButtons = new Map<Body, HTMLButtonElement>();
 
   // (any edit goes back from the print preview to the sculpt: see main.ts)
-  let leavePreview = () => {};
-  const emit = () => {
-    leavePreview();
+  // (`edited`: false only for going back from the preview to the same sculpt, which leaves what was measured true)
+  let leavePreview = (_edited: boolean) => {};
+  const emit = (edited = true) => {
+    leavePreview(edited);
     onChange({ ...params });
   };
 
@@ -191,18 +192,18 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     gussetLabel.append(gussetBox, " Throat gusset (no chin supports)");
     const tabletopLabel = document.createElement("label");
     tabletopLabel.className = "option";
-    tabletopLabel.title = "Fit the whole bust, hair and shoulders included, inside a one inch (25.4 mm) square on a 25 mm base, as near 50 mm tall as that allows. The torso is slimmed as far as it takes. Untick it for the full-size print, about 110 mm tall on a 60 mm base. Preview print shows the result";
+    tabletopLabel.title = "Fit the whole bust, hair and shoulders included, inside a one inch (25.4 mm) square on a 25 mm base, the bust as near 50 mm tall as that allows (the head and hair usually set it at 40-45 mm), on an 18 mm stand: about 60 mm tall in all. The torso is slimmed as far as it takes. Untick it for the full-size print, a 75-90 mm bust and about 120 mm tall in all. Preview print shows the result";
     const tabletopBox = document.createElement("input");
     tabletopBox.type = "checkbox";
     tabletopBox.id = "export-tabletop";
     tabletopBox.checked = true;
-    tabletopLabel.append(tabletopBox, " Tabletop size (1 inch base, about 50 mm)");
+    tabletopLabel.append(tabletopBox, " Tabletop size (1 inch base, about 60 mm tall with its stand)");
     const status = document.createElement("p");
     status.className = "status";
     status.id = "export-status";
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base, about 40-45 mm tall (the torso is slimmed to fit); unticked it is the full size, about 110 mm tall on a 60 mm base. Preview print shows it as it will print first. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
+    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base: a bust about 40-45 mm tall (the torso is slimmed to fit) on an 18 mm stand, about 60 mm in all. Unticked it is the full size: a 75-90 mm bust, about 120 mm in all. Preview print shows it as it will print first. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
     // The print preview: the bust as the export will make it, in place of the sculpt, until the sculpt is edited
     const previewButton = document.createElement("button");
     previewButton.type = "button";
@@ -210,9 +211,23 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     previewButton.textContent = "Preview print";
     previewButton.title = "Shows the bust as it will print (at tabletop size: slimmed, scaled and on its small base, over the one inch square) and its size, before you save it";
     let previewing = false;
-    leavePreview = () => {
+    // What the status says belongs to the settings it was measured on. Each edit starts a new generation: a report
+    // from before it is taken down, and what an operation started before it says later is labelled as such, so it
+    // is never read as a measure of the bust now shown.
+    let generation = 0;
+    let reported = false; // the status is about a preview or an export, not the opening note
+    const sayFor = (started: number) => (text: string) => {
+      status.textContent = started === generation ? text : `For the earlier settings: ${text}`;
+      reported = true;
+    };
+    const invalidate = () => {
+      generation++;
+      if (reported) status.textContent = "The settings have changed since this was measured: preview or export again to measure them.";
+    };
+    leavePreview = (edited) => {
       previewing = false;
       previewButton.textContent = "Preview print";
+      if (edited) invalidate();
     };
     const busy = (on: boolean) => {
       for (const button of [exportButton, diagnosticButton, previewButton]) button.disabled = on;
@@ -220,37 +235,49 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     const preview = () => {
       if (!onPreview) return;
       busy(true);
+      const at = generation;
+      const say = sayFor(at);
       let started: Promise<void>;
       try {
-        started = onPreview({ ...params }, (text) => (status.textContent = text), gussetBox.checked, tabletopBox.checked);
+        started = onPreview({ ...params }, say, gussetBox.checked, tabletopBox.checked);
       } catch (error) {
         started = Promise.reject(error);
       }
       started
         .then(() => {
+          // (edited while it was being made: it shows the bust as it was, so go back to the sculpt as it is)
+          if (at !== generation) {
+            onChange({ ...params });
+            return;
+          }
           previewing = true;
           previewButton.textContent = "Back to sculpt";
         })
-        .catch((error: unknown) => (status.textContent = `Preview failed: ${error instanceof Error ? error.message : String(error)}`))
+        .catch((error: unknown) => say(`Preview failed: ${error instanceof Error ? error.message : String(error)}`))
         .finally(() => busy(false));
     };
     previewButton.addEventListener("click", () => {
       if (!previewing) preview();
-      else emit();
+      else emit(false);
     });
-    // (a changed print option shows the new print)
-    for (const box of [gussetBox, tabletopBox]) box.addEventListener("change", () => previewing && preview());
+    // (a changed print option changes what was measured, and shows the new print if it is being previewed)
+    for (const box of [gussetBox, tabletopBox])
+      box.addEventListener("change", () => {
+        invalidate();
+        if (previewing) preview();
+      });
     const run = (partial: boolean) => {
       busy(true);
+      const say = sayFor(generation);
       // (whatever goes wrong, the buttons come back)
       let started: Promise<void>;
       try {
-        started = onExport({ ...params }, (text) => (status.textContent = text), partial, gussetBox.checked, tabletopBox.checked);
+        started = onExport({ ...params }, say, partial, gussetBox.checked, tabletopBox.checked);
       } catch (error) {
         started = Promise.reject(error);
       }
       started
-        .catch((error: unknown) => (status.textContent = `Export failed: ${error instanceof Error ? error.message : String(error)}`))
+        .catch((error: unknown) => say(`Export failed: ${error instanceof Error ? error.message : String(error)}`))
         .finally(() => busy(false));
     };
     exportButton.addEventListener("click", () => run(false));

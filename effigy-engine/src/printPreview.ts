@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import type { Assets } from "./assets";
+import { printBounds } from "./bounds";
 import { collectBust } from "./export";
 import { collectTabletop, type Tabletop } from "./fit";
 import type { Params } from "./params";
-import { MM, TABLETOP } from "./print";
+import { MM, SQUARE, TABLETOP } from "./print";
 import type { Part } from "./printable";
 
 // The print, before it is saved: the parts exactly as the export will merge them (at tabletop size the slimmed
@@ -35,19 +36,10 @@ export function preparePrint(p: Params, assets: Assets, gusset: boolean, tableto
 export const copyParts = (parts: Part[]): Part[] => parts.map((part) => ({ name: part.name, positions: part.positions.slice(), indices: part.indices.slice() }));
 
 // How far the print reaches across, front to back and overall (mm): the bust above its flat cut (below it is trimmed
-// away in the merge), and the base
-export function printSize(parts: Part[], flatCut: number): { width: number; depth: number; overall: number } {
-  let [x0, x1, y0, y1, z0, z1] = [Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity];
-  for (const part of parts) {
-    const v = part.positions;
-    for (let i = 0; i < v.length; i += 3) {
-      if (part.name !== "base" && v[i + 2] < flatCut) continue;
-      [x0, x1] = [Math.min(x0, v[i]), Math.max(x1, v[i])];
-      [y0, y1] = [Math.min(y0, v[i + 1]), Math.max(y1, v[i + 1])];
-      [z0, z1] = [Math.min(z0, v[i + 2]), Math.max(z1, v[i + 2])];
-    }
-  }
-  return { width: x1 - x0, depth: y1 - y0, overall: z1 - z0 };
+// away in the merge), and the base; and how tall the bust and the base are, where they meet at the cut
+export function printSize(parts: Part[], flatCut: number): { width: number; depth: number; overall: number; bust: number; base: number } {
+  const { min, max } = printBounds(parts, flatCut);
+  return { width: max[0] - min[0], depth: max[1] - min[1], overall: max[2] - min[2], bust: max[2] - flatCut, base: flatCut - min[2] };
 }
 
 // The parts as a scene group, at the sculpt's own size (so the view frames it as it framed the sculpt), turned
@@ -80,7 +72,7 @@ export function previewGroup(prepared: Prepared): THREE.Group {
   }
   if (prepared.tabletop) {
     // (a hair above the table, so it is not lost in the base's underside)
-    const half = (25.4 / 2) * toScene;
+    const half = (SQUARE / 2) * toScene;
     const y = bottom * toScene + 0.002;
     const corners = [new THREE.Vector3(-half, y, -half), new THREE.Vector3(half, y, -half), new THREE.Vector3(half, y, half), new THREE.Vector3(-half, y, half)];
     const square = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(corners), new THREE.LineBasicMaterial({ color: 0xb8431f }));
@@ -103,13 +95,13 @@ export function disposePreview(group: THREE.Group) {
 
 // What the preview shows, in words
 export function describePrint(prepared: Prepared): string {
-  const { width, depth, overall } = printSize(prepared.parts, prepared.flatCut);
+  const { width, depth, overall, bust, base } = printSize(prepared.parts, prepared.flatCut);
   const lines: string[] = [];
   if (prepared.tabletop) {
     const t = prepared.tabletop;
     lines.push(`Print preview, tabletop size: the sculpt at ${Math.round(t.scale * 100)}%, a ${t.height.toFixed(1)} mm bust (${TABLETOP.bustHeight[0]}-${TABLETOP.bustHeight[1]} mm wanted), ${overall.toFixed(1)} mm tall overall, ${width.toFixed(1)} x ${depth.toFixed(1)} mm across: inside the one inch (25.4 mm) square drawn under it, on a ${TABLETOP.base} mm base.`);
     if (t.notes.length) lines.push(t.notes.join(" "));
-  } else lines.push(`Print preview, full size: ${overall.toFixed(0)} mm tall overall, ${width.toFixed(0)} x ${depth.toFixed(0)} mm across.`);
+  } else lines.push(`Print preview, full size: a ${bust.toFixed(0)} mm bust on a ${base.toFixed(0)} mm base, ${overall.toFixed(0)} mm tall overall, ${width.toFixed(0)} x ${depth.toFixed(0)} mm across.`);
   lines.push("These are the parts as the export merges them, with the throat gusset if it is ticked and the eyes 7% larger so they join the head. Export STL saves exactly this; any change to the sculpt goes back to it.");
   return lines.join(" ");
 }

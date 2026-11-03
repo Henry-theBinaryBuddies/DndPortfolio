@@ -136,18 +136,20 @@ export function measureWalls(positions: Float32Array, triangles: ArrayLike<numbe
 
 export interface WallReport {
   samples: number;
-  thinner: { limit: number; share: number }[]; // the share (0..1) of the surface thinner than each limit, mm
-  misses: number; // measured points whose ray found no far side (counted as not thin: they are not measured)
+  thinner: { limit: number; share: number }[]; // the share (0..1) of the measured surface thinner than each limit, mm
+  misses: number; // sampled points whose ray found no far side: not measured, so left out of the shares (not counted as thick)
   worst: { at: [number, number, number]; samples: number; thinnest: number }[]; // where the thin surface is, most first
 }
 
 export const WALL_LIMITS = [0.4, 0.6]; // mm: two nozzle widths, and the thinnest feature meant to print (see print.ts)
 
-// Summarises a measurement: the share of the surface under each limit, and the places where thin wall gathers
-// (cells of `cell` mm holding the most points thinner than the first limit)
+// Summarises a measurement: the share of the measured surface under each limit (a miss is no measurement either
+// way, so it is in neither side of the share), and the places where thin wall gathers (cells of `cell` mm holding
+// the most points thinner than the first limit)
 export function summariseWalls({ points, thickness }: WallSamples, limits = WALL_LIMITS, cell = 2, top = 5): WallReport {
   const samples = thickness.length;
-  const thinner = limits.map((limit) => ({ limit, share: samples ? thickness.filter((t) => t < limit).length / samples : 0 }));
+  const measured = thickness.filter((t) => Number.isFinite(t)).length;
+  const thinner = limits.map((limit) => ({ limit, share: measured ? thickness.filter((t) => t < limit).length / measured : 0 }));
   const cells = new Map<string, { sum: [number, number, number]; samples: number; thinnest: number }>();
   for (let i = 0; i < samples; i++) {
     if (!(thickness[i] < limits[0])) continue;
@@ -162,5 +164,5 @@ export function summariseWalls({ points, thickness }: WallSamples, limits = WALL
     .sort((p, q) => q.samples - p.samples)
     .slice(0, top)
     .map((e) => ({ at: e.sum.map((s) => Math.round((s / e.samples) * 10) / 10) as [number, number, number], samples: e.samples, thinnest: Math.round(e.thinnest * 1000) / 1000 }));
-  return { samples, thinner, misses: thickness.filter((t) => !Number.isFinite(t)).length, worst };
+  return { samples, thinner, misses: samples - measured, worst };
 }

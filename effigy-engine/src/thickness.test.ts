@@ -65,4 +65,11 @@ describe("measureWalls samples the surface by area", () => {
     expect(report.misses).toBe(50);
     expect(report.thinner[0].share).toBe(0);
   });
+
+  it("gives the thin share out of the walls it measured, leaving the misses out of both sides", () => {
+    // one point measured at 0.2 mm, one that found no far side: all that was measured is thin
+    const report = summariseWalls({ points: new Float32Array(6), thickness: new Float32Array([0.2, Infinity]) });
+    expect(report.thinner[0].share).toBe(1);
+    expect(report.misses).toBe(1);
+  });
 });
