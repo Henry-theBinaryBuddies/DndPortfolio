@@ -46,8 +46,8 @@ export interface HeadBase {
   bottom: Uint32Array; // the vertices on that underside, used to centre the bust on its plinth
   // Per-vertex landmark weights (0..1) measured on the undeformed head, so they stay on the lips however
   // the face is reshaped. lipsSoft is the red of the lips with a gentle edge, for lip fullness and for
-  // keeping a beard off the lips.
-  masks: { lipsSoft: Float32Array };
+  // keeping a beard off the lips; mouthLine and nostrils are where the paint darkens.
+  masks: { lipsSoft: Float32Array; mouthLine: Float32Array; nostrils: Float32Array };
   neck: { x: number; z: number }; // centre line of the neck
   // The same vertices with the shoulders and chest wrapped onto a sculpted female body instead of a male
   // one (see tools/export_head.py). The build blends between the two.
@@ -170,12 +170,18 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     return c * c * (3 - 2 * c);
   };
   const lipsSoft = new Float32Array(vertexCount);
+  const mouthLine = new Float32Array(vertexCount);
+  const nostrils = new Float32Array(vertexCount);
   for (let i = 0; i < vertexCount; i++) {
     const x = Math.abs(positions[i * 3]);
     const y = positions[i * 3 + 1];
     const z = positions[i * 3 + 2];
+    const ny = normals[i * 3 + 1];
     const mouthWindow = (1 - smooth((x - 0.125) / 0.02)) * smooth((z - 0.06) / 0.06);
     lipsSoft[i] = smooth((y - (LANDMARK.stomion - 0.08)) / 0.04) * (1 - smooth((y - (LANDMARK.stomion + 0.04)) / 0.04)) * mouthWindow;
+    mouthLine[i] = Math.exp(-(((y - LANDMARK.stomion) / 0.008) ** 2)) * (1 - smooth((x - 0.13) / 0.02)) * smooth((z - 0.06) / 0.06);
+    // The underside of the nose, where the nostrils open
+    nostrils[i] = Math.exp(-(((x - 0.055) / 0.035) ** 2) - ((y + 0.225) / 0.05) ** 2) * smooth((-ny - 0.2) / 0.3) * smooth((z - 0.08) / 0.05);
   }
 
   const half = SOURCE.eyeHalfSpacing * SCALE;
@@ -188,7 +194,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     eyes: { left: [half, 0, 0], right: [-half, 0, 0], radius: SOURCE.eyeRadius * SCALE },
     baseY,
     bottom: Uint32Array.from(underside),
-    masks: { lipsSoft },
+    masks: { lipsSoft, mouthLine, nostrils },
     neck: { x: neckX / neckCount, z: neckZ / neckCount },
     feminine: { positions: femininePositions, normals: normalsOf(femininePositions) },
   };

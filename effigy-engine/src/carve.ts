@@ -140,6 +140,7 @@ export function carveShell(shell: THREE.BufferGeometry, owner: object, key: stri
   geometry.setIndex(new THREE.BufferAttribute(plan.index, 1));
   geometry.computeVertexNormals();
   const normal = geometry.attributes.normal.array as Float32Array;
+  const groove = new Float32Array(count); // how deep each vertex was carved, for the paint to darken the grooves
   for (let v = 0; v < count; v++) {
     if (!outer[v]) continue;
     // Not at the faded edge of the hair, and never through the shell
@@ -149,8 +150,10 @@ export function carveShell(shell: THREE.BufferGeometry, owner: object, key: stri
     pos[v * 3] -= normal[v * 3] * depth;
     pos[v * 3 + 1] -= normal[v * 3 + 1] * depth;
     pos[v * 3 + 2] -= normal[v * 3 + 2] * depth;
+    groove[v] = depth;
   }
   geometry.setAttribute("hairAmount", new THREE.BufferAttribute(hair, 1));
+  geometry.setAttribute("groove", new THREE.BufferAttribute(groove, 1));
   geometry.attributes.position.needsUpdate = true;
   geometry.computeVertexNormals();
   return geometry;

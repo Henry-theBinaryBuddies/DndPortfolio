@@ -7,6 +7,9 @@ import { defaultParams, type Params } from "./params";
 import { exportStl, describe } from "./exportStl";
 import { describePrint, disposePreview, preparePrint, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
+import { defaultPaint, Painter, racePaint } from "./paint";
+import { mountPaint } from "./paintPanel";
+import { frameToken, RIM, tokenBackdrop } from "./token";
 
 const stage = document.getElementById("stage") as HTMLElement;
 const canvas = document.getElementById("view") as HTMLCanvasElement;
@@ -104,6 +107,11 @@ function leavePrint() {
 // Rebuilds the bust from the current settings. The sculpt is a deformed copy of a real head mesh, so
 // this is fast enough to run on every slider movement.
 let settle: number | undefined;
+// The bust's colours (see paint.ts), apart from its sculpt: a change of colour repaints the bust as it is
+let paint = defaultPaint(defaultParams().race);
+let painter: Painter | null = null;
+let clayOn = false;
+let current: { params: Params; detail: boolean } | null = null; // the settings of the bust on show
 
 function swap(params: Params, detail: boolean) {
   if (!assets) return;
@@ -112,6 +120,9 @@ function swap(params: Params, detail: boolean) {
     disposeObject(figure);
   }
   figure = buildBust(params, assets, detail);
+  painter ??= new Painter(assets.head, paint);
+  painter.apply(figure, params, clayOn);
+  current = { params, detail };
   pivot.add(figure);
   if (base) {
     pivot.remove(base);
@@ -135,6 +146,12 @@ function swap(params: Params, detail: boolean) {
 // have been still for a moment.
 function show(params: Params) {
   leavePrint();
+  // (a new race brings its own colours: a half-orc's green skin, a tiefling's red; the grime stays)
+  if (current && params.race !== current.params.race) {
+    paint = racePaint(paint, params.race);
+    paintPanel.set(paint);
+    painter?.setPaint(paint);
+  }
   swap(params, false);
   window.clearTimeout(settle);
   settle = window.setTimeout(() => swap(params, true), 160);
@@ -213,6 +230,13 @@ for (const button of toolbar.querySelectorAll<HTMLButtonElement>("[data-distance
   });
 }
 rotateButton.addEventListener("click", () => setTurntable(!turntable));
+// Clay shows the bare form, in the one plain material of the print
+const clayButton = document.getElementById("clay") as HTMLButtonElement;
+clayButton.addEventListener("click", () => {
+  clayOn = !clayOn;
+  clayButton.setAttribute("aria-pressed", String(clayOn));
+  if (figure && current) painter?.apply(figure, current.params, clayOn);
+});
 
 // The view and framing buttons light up while the camera is at their setting
 const viewButtons = [...toolbar.querySelectorAll<HTMLButtonElement>("[data-yaw]")];
@@ -278,6 +302,77 @@ mountPanel(
     say(describePrint(prepared));
   },
 );
+
+// The token (see token.ts): the painted head and shoulders, turned a little toward three-quarter view, drawn
+// square over a dark backdrop at the size asked for, then framed and saved
+const TOKEN_YAW = 0.35;
+async function saveToken(size: number, say: (text: string) => void) {
+  if (!assets || !figure || !current) throw new Error("the head model has not loaded");
+  say("Painting the token");
+  await new Promise((resolve) => window.setTimeout(resolve, 30));
+  // (the carved hair and beard, if a slider has only just moved and the draft is on show)
+  if (!current.detail) {
+    window.clearTimeout(settle);
+    swap(current.params, true);
+  }
+  const bust = figure!;
+  // Head and shoulders: from above the head to below the chin by about a head's depth, inside the rim
+  const top = faceTop + 0.08;
+  const bottom = chinY - 0.7;
+  // (with room to spare: the frame is round, and horns reach out toward its corners)
+  const half = ((top - bottom) / 2 / (1 - 2 * RIM)) * 1.08;
+  const lens = new THREE.PerspectiveCamera(22, 1, 0.1, 50);
+  const y = (top + bottom) / 2;
+  lens.position.set(0, y + 0.2, half / Math.tan(THREE.MathUtils.degToRad(11)));
+  lens.lookAt(0, y, 0);
+  const backdrop = tokenBackdrop(size);
+  const saved = { ratio: renderer.getPixelRatio(), background: scene.background, fog: scene.fog, yaw: pivot.rotation.y, print: printView?.group.visible, figure: bust.visible, base: base?.visible, clay: clayOn };
+  let framed: HTMLCanvasElement;
+  try {
+    if (printView) printView.group.visible = false;
+    bust.visible = true;
+    if (base) base.visible = false;
+    if (clayOn) painter?.apply(bust, current!.params, false);
+    pivot.rotation.y = TOKEN_YAW;
+    scene.background = backdrop;
+    scene.fog = null;
+    renderer.setPixelRatio(1);
+    renderer.setSize(size, size, false);
+    renderer.render(scene, lens);
+    // (read back at once, in the same task as the render, before the canvas is cleared for the next frame)
+    framed = frameToken(canvas, size);
+  } finally {
+    scene.background = saved.background;
+    scene.fog = saved.fog;
+    pivot.rotation.y = saved.yaw;
+    if (printView) printView.group.visible = saved.print ?? true;
+    bust.visible = saved.figure;
+    if (base) base.visible = saved.base ?? true;
+    if (saved.clay) painter?.apply(bust, current!.params, true);
+    renderer.setPixelRatio(saved.ratio);
+    resize();
+    backdrop.dispose();
+  }
+  const blob = await new Promise<Blob | null>((resolve) => framed.toBlob(resolve, "image/png"));
+  if (!blob) throw new Error("the browser could not make the picture");
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `effigy-${current!.params.race}-${current!.params.body}-token-${size}.png`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  say(`Saved a ${size} x ${size} px token (${Math.round(blob.size / 1024)} KB).`);
+}
+
+const paintPanel = mountPaint(
+  paint,
+  (next) => {
+    paint = next;
+    painter?.setPaint(paint);
+  },
+  saveToken,
+);
+// (after the Character section, where the race and styles are chosen)
+panel.querySelector("section")!.after(paintPanel.section, ...(paintPanel.tokenSection ? [paintPanel.tokenSection] : []));
 resize();
 frame();
 

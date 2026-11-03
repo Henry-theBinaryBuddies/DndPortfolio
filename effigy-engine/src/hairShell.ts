@@ -88,17 +88,19 @@ export function buildHairShell(
 
   // How much hair grows at each vertex
   const grow = new Float32Array(count);
-  for (let i = 0; i < count; i++) {
-    const x = positions[i * 3];
-    const y = positions[i * 3 + 1];
-    const z = positions[i * 3 + 2];
-    let w = scalp(x, y, z);
-    if (p.hairStyle === "mohawk") w *= 1 - smooth((Math.abs(x) - STRIP_HALF_WIDTH) / 0.05);
-    // The ears are not scalp
-    if (Math.abs(x) > 0.4 && y > -0.3 && y < 0.2 && z > -0.7 && z < -0.2) w = 0;
-    grow[i] = w;
-  }
+  for (let i = 0; i < count; i++) grow[i] = hairGrowth(p, positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
   return raiseShell(positions, normals, base, grow, style);
+}
+
+// How much hair grows at a point of the head (0..1), for the style: the scalp, less the shaved sides of a
+// mohawk and the ears. (The paint shades the scalp under the hair with it too: see paint.ts.)
+export function hairGrowth(p: Params, x: number, y: number, z: number): number {
+  if (p.hairStyle === "none") return 0;
+  let w = scalp(x, y, z);
+  if (p.hairStyle === "mohawk") w *= 1 - smooth((Math.abs(x) - STRIP_HALF_WIDTH) / 0.05);
+  // The ears are not scalp
+  if (Math.abs(x) > 0.4 && y > -0.3 && y < 0.2 && z > -0.7 && z < -0.2) w = 0;
+  return w;
 }
 
 // The hair as it prints: its shell, subdivided and carved into locks (see hairCarve.ts)

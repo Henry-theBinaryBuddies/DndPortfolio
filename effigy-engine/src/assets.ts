@@ -53,6 +53,7 @@ export async function loadAssets(): Promise<Assets> {
 export function shapeGeometry(asset: ShapeAsset): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(asset.positions, 3));
+  geometry.setAttribute("along", new THREE.BufferAttribute(asset.t, 1)); // 0 at the root, 1 at the tip, for the paint
   geometry.setIndex(new THREE.BufferAttribute(asset.indices, 1));
   geometry.computeVertexNormals();
   return geometry;

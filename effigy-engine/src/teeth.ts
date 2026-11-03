@@ -176,6 +176,7 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
   const into = { positions: [] as number[], index: [] as number[] };
   const scale = 0.92 + 0.25 * k.angularity; // broader teeth on a heavier face
   const jawAngle = p.jawOpen * JAW.max;
+  const soft: [number, number][] = []; // the vertices of the gums and the tongue (the rest are teeth), for the paint
 
   for (const lower of [false, true]) {
     const first = into.positions.length / 3;
@@ -214,6 +215,7 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
     // into the roof or the jaw (so the whole is joined to the head): the upper from a little over the crowns up
     // past the roof of the mouth, the lower from a little over the crowns down into the jaw. (The lower one is
     // set back a little, or it came out through the chin of a face with a small chin.)
+    const gumFrom = into.positions.length / 3;
     if (lower) {
       const top = LOWER_TOP - crown + 0.015;
       const bottom = -0.5;
@@ -223,6 +225,7 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
       const top = -0.225;
       gumLoft(into, arch, (top + bottom) / 2, 0.028, (top - bottom) / 2);
     }
+    soft.push([gumFrom, into.positions.length / 3]);
 
     // Into the bust's coordinates: the skull's scaling, and for the lower row the jaw's turn
     for (let v = first; v < into.positions.length / 3; v++) {
@@ -252,9 +255,13 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
       into.positions[v * 3 + 1] = y;
       into.positions[v * 3 + 2] = z;
     }
+    soft.push([first, into.positions.length / 3]);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(into.positions, 3));
+  const tissue = new Float32Array(into.positions.length / 3);
+  for (const [from, to] of soft) tissue.fill(1, from, to);
+  geometry.setAttribute("tissue", new THREE.BufferAttribute(tissue, 1));
   geometry.setIndex(into.index);
   geometry.computeVertexNormals();
   return geometry;

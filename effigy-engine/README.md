@@ -1,8 +1,8 @@
 # Effigy Engine
 
-A procedural 3D character and monster designer. Shape a grim bust with sliders, then export a printable STL (a VTT token is planned).
+A procedural 3D character and monster designer. Shape a grim bust with sliders, paint it, then export a printable STL or a round PNG token for a virtual tabletop.
 
-For now it is a sculpting tool only: everything is shown in one clay material, exactly the form that prints. Colour, paint, skin shaders and archetype presets were taken out until the sculpt is right; they are in git history (up to commit `ca8ec31`).
+The sculpt is the form that prints; the paint is only for the picture. **Paint** (`src/paint.ts`, `src/paintPanel.ts`) colours the skin, eyes (optionally glowing), hair, beard and brows, horns, and teeth and tusks, with a Grime slider; each race starts with its own colours. The skin is a shader: pores, furrows and age creases as a per-pixel height field, and per-vertex weights worked out for each bust (shading in the hollows, flushed cheeks, the red of the lips, age, stubble, the scalp under the hair, grime). The hair is darker down its carved grooves. A change of colour only changes the materials' settings and never rebuilds the bust, and none of it reaches the STL or the print preview, which stay clay. **Clay** in the toolbar shows the bare form. **Save token PNG** (`src/token.ts`) saves the painted head and shoulders, turned a little toward three-quarter view, in a round frame with a dark iron rim, transparent outside it, at 256, 512 or 1024 px. Archetype presets from the first version are in git history (up to commit `ca8ec31`); clothing and armour are still to come.
 
 Stack: TypeScript, Vite, Three.js, [manifold-3d](https://github.com/elalish/manifold) (merging parts into one solid), Vitest.
 
@@ -57,7 +57,7 @@ Tabletop size (the "Tabletop size" checkbox on the export, on by default; the fi
 1. Sculpted character model, races, gendered builds, hair and beards (done)
 2. Sculpted hair and beard texture: locks and grooves sized for FDM printing
 3. STL export: head, hair, beard, eyes, horns, tusks, teeth and base merged into one closed solid with manifold-3d (done: checked for being one solid and watertight). To do: a minimum-wall-thickness check, support/overhang review, an independent check with Trimesh and a slicer, and a printed detail coupon
-4. Circular PNG token export
-5. Colour and shading, archetype presets
-6. Clothing and accessories
+4. Circular PNG token export (done)
+5. Colour and shading (done: realistic skin, eyes, hair, horns, teeth, grime); archetype presets
+6. Clothing, armour and accessories
 7. Monster body plans

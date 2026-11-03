@@ -20,7 +20,8 @@ import { MM, PEDESTAL_SIDES, pedestalRings } from "./print";
 // The bust's origin is the middle of its plinth: y = 0 is the top of the base, and the sculpted head
 // is shifted so the centre of its underside lands on the plinth's centre.
 //
-// Everything is one plain clay material: for now the bust is the sculpt alone, the form that prints.
+// Everything is one plain clay material, the form that prints; the viewer paints it afterwards, part by part
+// (see paint.ts), so each mesh is named for what it is.
 
 // The eyeball's radius in each direction, so it fills its socket. The sculpt's lids were made for an eye
 // with a bulging cornea, so a plain sphere leaves a gap behind the lids (a dark wedge in profile, and lids
@@ -315,13 +316,14 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
 }
 
 // Geometry and materials live on the GPU, and JavaScript's garbage collector
-// cannot free them. Whenever a bust is replaced we release them by hand.
+// cannot free them. Whenever a bust is replaced we release them by hand. (The paint's materials are
+// shared by every bust in turn, so they are kept: see paint.ts.)
 export function disposeObject(object: THREE.Object3D): void {
   object.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
     child.geometry.dispose();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
-    for (const material of materials) material.dispose();
+    for (const material of materials) if (!material.userData.shared) material.dispose();
   });
 }
 
