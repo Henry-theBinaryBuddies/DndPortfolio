@@ -9,7 +9,7 @@ import { describePrint, disposePreview, preparePrint, previewGroup, printKey, ty
 import { mountPanel } from "./ui";
 import { defaultPaint, Painter, racePaint } from "./paint";
 import { mountPaint, type TokenFraming } from "./paintPanel";
-import { frameToken, RIM, tokenBackdrop } from "./token";
+import { backdropPicture, frameToken, loadBackdrops, RIM, tokenBackdrop } from "./token";
 
 const stage = document.getElementById("stage") as HTMLElement;
 const canvas = document.getElementById("view") as HTMLCanvasElement;
@@ -385,12 +385,14 @@ function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.Perspecti
   return lens;
 }
 
-async function saveToken(size: number, framing: TokenFraming, say: (text: string) => void) {
+async function saveToken(size: number, framing: TokenFraming, backdropFile: string, say: (text: string) => void) {
   if (!assets || !figure || !current) throw new Error("the head model has not loaded");
   // (the character as it was when asked for: the picture and its name are of this, whatever is edited meanwhile)
   const asked = current.params;
   say("Painting the token");
-  await new Promise((resolve) => window.setTimeout(resolve, 30));
+  // (the backdrop's picture, if one is chosen, loaded while the message shows)
+  const [picture] = await Promise.all([backdropFile ? backdropPicture(backdropFile).catch(() => null) : null, new Promise((resolve) => window.setTimeout(resolve, 30))]);
+  if (backdropFile && !picture) throw new Error(`the backdrop ${backdropFile} could not be loaded`);
   if (current.params !== asked) throw new Error("the character changed before the token was painted: save it again");
   // (the carved hair and beard, if a slider has only just moved and the draft is on show)
   if (!current.detail) {
@@ -399,7 +401,7 @@ async function saveToken(size: number, framing: TokenFraming, say: (text: string
   }
   const bust = figure!;
   const saved = { ratio: renderer.getPixelRatio(), background: scene.background, fog: scene.fog, yaw: pivot.rotation.y, print: printView?.group.visible, figure: bust.visible, base: base?.visible, clay: clayOn };
-  const backdrop = tokenBackdrop(size);
+  const backdrop = tokenBackdrop(size, picture ?? undefined);
   let framed: HTMLCanvasElement;
   try {
     if (printView) printView.group.visible = false;
@@ -446,6 +448,7 @@ const paintPanel = mountPaint(
     painter?.setPaint(paint);
   },
   saveToken,
+  loadBackdrops(),
 );
 // (after the Character section, where the race and styles are chosen)
 panel.querySelector("section")!.after(paintPanel.section, ...(paintPanel.tokenSection ? [paintPanel.tokenSection] : []));

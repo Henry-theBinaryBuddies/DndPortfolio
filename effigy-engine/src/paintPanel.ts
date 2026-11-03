@@ -1,4 +1,5 @@
 import { EYE_COLORS, HAIR_COLORS, HORN_COLORS, SKIN_TONES, TEETH_COLORS, type Paint, type Swatch } from "./paint";
+import type { Backdrop } from "./token";
 
 // The Paint section of the panel: a row of swatches for each colour, with a picker for any other colour, the
 // glow of the eyes and the grime; and the token, the painted bust saved as a picture for a virtual tabletop.
@@ -10,7 +11,7 @@ export const TOKEN_SIZES = [256, 512, 1024] as const;
 // "whole": the head with all its horns, hair and ears inside the round; "close": a larger face, horns may be cropped
 export type TokenFraming = "whole" | "close";
 
-export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, say: (text: string) => void) => Promise<void>): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void } {
+export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([])): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void } {
   let paint = { ...initial };
   const rows = new Map<ColorKey, { entries: { swatch: Swatch; button: HTMLButtonElement }[]; picker: HTMLInputElement }>();
   const glowBox = document.createElement("input");
@@ -119,6 +120,25 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
       framingSelect.append(option);
     }
     framingRow.append(framingSelect);
+    // What stands behind the bust: the plain glow, or one of the pictures in public/backdrops (see token.ts)
+    const backdropRow = document.createElement("label");
+    backdropRow.className = "row select";
+    backdropRow.innerHTML = "<span>Backdrop</span>";
+    const backdropSelect = document.createElement("select");
+    backdropSelect.id = "token-backdrop";
+    const plain = document.createElement("option");
+    plain.value = "";
+    plain.textContent = "Plain dark glow";
+    backdropSelect.append(plain);
+    backdropRow.append(backdropSelect);
+    void backdrops.then((list) => {
+      for (const backdrop of list) {
+        const option = document.createElement("option");
+        option.value = backdrop.file;
+        option.textContent = backdrop.label;
+        backdropSelect.append(option);
+      }
+    });
     const button = document.createElement("button");
     button.type = "button";
     button.id = "export-token";
@@ -135,13 +155,13 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
       button.disabled = true;
       let started: Promise<void>;
       try {
-        started = onToken(Number(sizeSelect.value), framingSelect.value as TokenFraming, say);
+        started = onToken(Number(sizeSelect.value), framingSelect.value as TokenFraming, backdropSelect.value, say);
       } catch (error) {
         started = Promise.reject(error);
       }
       started.catch((error: unknown) => say(`Token failed: ${error instanceof Error ? error.message : String(error)}`)).finally(() => (button.disabled = false));
     });
-    tokenSection.append(sizeRow, framingRow, button, status);
+    tokenSection.append(sizeRow, framingRow, backdropRow, button, status);
   }
 
   sync();

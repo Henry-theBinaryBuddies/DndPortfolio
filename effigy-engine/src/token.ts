@@ -6,17 +6,59 @@ import * as THREE from "three";
 
 export const RIM = 0.065; // the rim's width, as a share of the token's width
 
-// The backdrop behind the bust: a dim glow in the middle, falling off to near black at the rim
-export function tokenBackdrop(size: number): THREE.CanvasTexture {
+// The pictures that can stand behind the bust instead of the plain glow, listed in public/backdrops/backdrops.json
+// (a page cannot list a folder): each a file there, and the label the picker shows
+export interface Backdrop {
+  file: string;
+  label: string;
+}
+
+const BACKDROPS = `${import.meta.env.BASE_URL}backdrops/`;
+
+// The list, or none if it cannot be read (then only the plain glow is offered)
+export async function loadBackdrops(): Promise<Backdrop[]> {
+  try {
+    const response = await fetch(`${BACKDROPS}backdrops.json`);
+    if (!response.ok) return [];
+    const list = (await response.json()) as Backdrop[];
+    return list.filter((b) => typeof b.file === "string" && typeof b.label === "string");
+  } catch {
+    return [];
+  }
+}
+
+// A backdrop's picture, loaded once
+const pictures = new Map<string, Promise<HTMLImageElement>>();
+export function backdropPicture(file: string): Promise<HTMLImageElement> {
+  let picture = pictures.get(file);
+  if (!picture) {
+    const image = new Image();
+    image.src = `${BACKDROPS}${encodeURIComponent(file)}`;
+    picture = image.decode().then(() => image);
+    // (one that fails to load is tried afresh next time)
+    picture.catch(() => pictures.delete(file));
+    pictures.set(file, picture);
+  }
+  return picture;
+}
+
+// The backdrop behind the bust: a picture (cropped to its middle square, to fill the token), or a dim glow in the
+// middle falling off to near black at the rim
+export function tokenBackdrop(size: number, picture?: HTMLImageElement): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const g = canvas.getContext("2d")!;
-  const glow = g.createRadialGradient(size * 0.5, size * 0.42, 0, size * 0.5, size * 0.5, size * 0.6);
-  glow.addColorStop(0, "#3a302a");
-  glow.addColorStop(0.55, "#1c1714");
-  glow.addColorStop(1, "#080605");
-  g.fillStyle = glow;
-  g.fillRect(0, 0, size, size);
+  if (picture) {
+    const side = Math.min(picture.naturalWidth, picture.naturalHeight);
+    g.drawImage(picture, (picture.naturalWidth - side) / 2, (picture.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+  } else {
+    const glow = g.createRadialGradient(size * 0.5, size * 0.42, 0, size * 0.5, size * 0.5, size * 0.6);
+    glow.addColorStop(0, "#3a302a");
+    glow.addColorStop(0.55, "#1c1714");
+    glow.addColorStop(1, "#080605");
+    g.fillStyle = glow;
+    g.fillRect(0, 0, size, size);
+  }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;

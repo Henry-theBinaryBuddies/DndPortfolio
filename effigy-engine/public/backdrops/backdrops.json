@@ -1,0 +1,12 @@
+[
+  { "file": "dungeon-stone.png", "label": "Dungeon stone" },
+  { "file": "misty-forest.png", "label": "Misty forest" },
+  { "file": "ember-forge.png", "label": "Ember forge" },
+  { "file": "arcane-study.png", "label": "Arcane study" },
+  { "file": "moonlit-graveyard.png", "label": "Moonlit graveyard" },
+  { "file": "icy-cavern.png", "label": "Icy cavern" },
+  { "file": "ruined-temple.png", "label": "Ruined temple" },
+  { "file": "storm-coast.png", "label": "Storm coast" },
+  { "file": "underdark-grotto.png", "label": "Underdark grotto" },
+  { "file": "shadowed-tavern.png", "label": "Shadowed tavern" }
+]

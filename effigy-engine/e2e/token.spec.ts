@@ -50,12 +50,14 @@ interface Picture {
   // cuts shows there (the whole-head framing keeps everything within 97% of the way to the rim, see tokenLens)
   rimBright: number;
   centreColour: [number, number, number];
+  backdropColour: [number, number, number]; // up and to the left, inside the rim, where the backdrop shows past the head
 }
 
 // Saves a token through the button and reads the file back in the page
-async function saveToken(page: Page, size: number, framing: "whole" | "close"): Promise<{ name: string; picture: Picture }> {
+async function saveToken(page: Page, size: number, framing: "whole" | "close", backdrop = ""): Promise<{ name: string; picture: Picture }> {
   await page.selectOption("#token-size", String(size));
   await page.selectOption("#token-framing", framing);
+  await page.selectOption("#token-backdrop", backdrop);
   const [download] = await Promise.all([page.waitForEvent("download", { timeout: 120000 }), page.click("#export-token")]);
   const file = readFileSync((await download.path())!);
   const picture = await page.evaluate(
@@ -82,7 +84,8 @@ async function saveToken(page: Page, size: number, framing: "whole" | "close"): 
           if ((0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / 255 > 0.12) rimBright++;
         }
       const m = at(Math.floor(c), Math.floor(c * 1.05));
-      return { width: image.width, height: image.height, corner: px[3], centre: px[at(Math.floor(c), Math.floor(c)) + 3], rimBright, centreColour: [px[m], px[m + 1], px[m + 2]] as [number, number, number] };
+      const k = at(Math.floor(c - 0.55 * inner), Math.floor(c - 0.55 * inner));
+      return { width: image.width, height: image.height, corner: px[3], centre: px[at(Math.floor(c), Math.floor(c)) + 3], rimBright, centreColour: [px[m], px[m + 1], px[m + 2]] as [number, number, number], backdropColour: [px[k], px[k + 1], px[k + 2]] as [number, number, number] };
     },
     { data: file.toString("base64"), rim: RIM },
   );
@@ -136,6 +139,20 @@ test.describe("the token", () => {
     const close = await saveToken(page, 512, "close");
     expect(close.picture.rimBright).toBeGreaterThan(0);
     await expect(page.locator("#token-framing option[value=close]")).toHaveText(/may crop horns/);
+  });
+
+  test("stands the bust on the backdrop chosen, from the pictures listed in public/backdrops", async ({ page }) => {
+    await open(page);
+    const listed = await page.locator("#token-backdrop option").allTextContents();
+    expect(listed[0]).toBe("Plain dark glow");
+    expect(listed).toContain("Dungeon stone");
+    const plain = await saveToken(page, 256, "whole", "");
+    const icy = await saveToken(page, 256, "whole", "icy-cavern.png");
+    // (the icy cavern is cold blue where the plain glow is a warm near-black)
+    const [r, g, b] = icy.picture.backdropColour;
+    expect(b).toBeGreaterThan(r + 10);
+    expect(Math.hypot(...icy.picture.backdropColour.map((v, i) => v - plain.picture.backdropColour[i]))).toBeGreaterThan(20);
+    expect(icy.picture.corner).toBe(0);
   });
 
   test("leaves the view as it was: its size, fog, background and turn", async ({ page }) => {
