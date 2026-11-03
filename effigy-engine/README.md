@@ -4,12 +4,13 @@ A procedural 3D character and monster designer. Shape a grim bust with sliders, 
 
 The sculpt is the form that prints; the paint is only for the picture. **Paint** (`src/paint.ts`, `src/paintPanel.ts`) colours the skin, eyes (optionally glowing), hair, beard and brows, horns, and teeth and tusks, with a Grime slider; each race starts with its own colours. The skin is a shader: pores, furrows and age creases as a per-pixel height field, and per-vertex weights worked out for each bust (shading in the hollows, flushed cheeks, the red of the lips, age, stubble, the scalp under the hair, grime). The hair is darker down its carved grooves. A change of colour only changes the materials' settings and never rebuilds the bust, and none of it reaches the STL or the print preview, which stay clay. **Clay** in the toolbar shows the bare form. **Save token PNG** (`src/token.ts`) saves the painted head and shoulders, turned a little toward three-quarter view, in a round frame with a dark iron rim, transparent outside it, at 256, 512 or 1024 px. Framing "Whole head and horns" fits everything above the chin (horns, hair, ears) inside the round as it is seen in that view; "Close portrait" frames the face larger and may crop wide horns. The picture and its file name are of the character as it was when the button was pressed. Archetype presets from the first version are in git history (up to commit `ca8ec31`); clothing and armour are still to come.
 
-Stack: TypeScript, Vite, Three.js, [manifold-3d](https://github.com/elalish/manifold) (merging parts into one solid), Vitest.
+Stack: TypeScript, Vite, Three.js, [manifold-3d](https://github.com/elalish/manifold) (merging parts into one solid), Vitest, and [Playwright](https://playwright.dev) for the browser tests in `e2e/` (the token picture: its sizes and transparency, horns inside the rim, and the view left as it was). They start their own dev server on port 5203 and render WebGL in software, so they take a couple of minutes. Backdrop images for the token go in `public/backdrops/` (see the note there; not used by the app yet).
 
 ```
 npm install
 npm run dev     # http://localhost:5201
 npm test
+npm run test:browser   # Playwright, in Chromium (first: npx playwright install chromium)
 npm run build
 ```
 
