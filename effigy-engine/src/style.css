@@ -135,6 +135,27 @@ input[type="range"] {
   grid-template-columns: 96px minmax(0, 1fr);
 }
 
+/* the token preview: the token as it would be saved, over the panel (its corners are transparent) */
+.token-preview {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 4px auto 10px;
+}
+
+/* a picker with a step back and a step on either side of it */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stepper select {
+  flex: 1;
+  min-width: 0;
+}
+
 .option.indented {
   margin: -2px 0 8px 106px;
 }

@@ -123,6 +123,8 @@ function swap(params: Params, detail: boolean) {
   painter ??= new Painter(assets.head, paint);
   painter.apply(figure, params, clayOn);
   current = { params, detail };
+  // (the token preview, once the carved build has landed: see below)
+  if (detail) tokenPreviewSoon();
   pivot.add(figure);
   if (base) {
     pivot.remove(base);
@@ -385,24 +387,17 @@ function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.Perspecti
   return lens;
 }
 
-async function saveToken(size: number, framing: TokenFraming, backdropFile: string, say: (text: string) => void) {
-  if (!assets || !figure || !current) throw new Error("the head model has not loaded");
-  // (the character as it was when asked for: the picture and its name are of this, whatever is edited meanwhile)
-  const asked = current.params;
-  say("Painting the token");
-  // (the backdrop's picture, if one is chosen, loaded while the message shows)
-  const [picture] = await Promise.all([backdropFile ? backdropPicture(backdropFile).catch(() => null) : null, new Promise((resolve) => window.setTimeout(resolve, 30))]);
-  if (backdropFile && !picture) throw new Error(`the backdrop ${backdropFile} could not be loaded`);
-  if (current.params !== asked) throw new Error("the character changed before the token was painted: save it again");
+// The token as a picture, square, `size` across: the bust (carved, painted, turned to the token's view) over its
+// backdrop, framed. The view is put back as it was afterwards, whatever happens. (Saving and the preview both use it.)
+function paintToken(size: number, framing: TokenFraming, picture: HTMLImageElement | null): HTMLCanvasElement {
   // (the carved hair and beard, if a slider has only just moved and the draft is on show)
-  if (!current.detail) {
+  if (!current!.detail) {
     window.clearTimeout(settle);
-    swap(current.params, true);
+    swap(current!.params, true);
   }
   const bust = figure!;
   const saved = { ratio: renderer.getPixelRatio(), background: scene.background, fog: scene.fog, yaw: pivot.rotation.y, print: printView?.group.visible, figure: bust.visible, base: base?.visible, clay: clayOn };
   const backdrop = tokenBackdrop(size, picture ?? undefined);
-  let framed: HTMLCanvasElement;
   try {
     if (printView) printView.group.visible = false;
     bust.visible = true;
@@ -417,7 +412,7 @@ async function saveToken(size: number, framing: TokenFraming, backdropFile: stri
     renderer.setSize(size, size, false);
     renderer.render(scene, lens);
     // (read back at once, in the same task as the render, before the canvas is cleared for the next frame)
-    framed = frameToken(canvas, size);
+    return frameToken(canvas, size);
   } finally {
     scene.background = saved.background;
     scene.fog = saved.fog;
@@ -430,6 +425,25 @@ async function saveToken(size: number, framing: TokenFraming, backdropFile: stri
     resize();
     backdrop.dispose();
   }
+}
+
+// A backdrop's picture, or null for the plain glow (and an error if a chosen one will not load)
+async function backdropFor(file: string): Promise<HTMLImageElement | null> {
+  if (!file) return null;
+  const picture = await backdropPicture(file).catch(() => null);
+  if (!picture) throw new Error(`the backdrop ${file} could not be loaded`);
+  return picture;
+}
+
+async function saveToken(size: number, framing: TokenFraming, backdropFile: string, say: (text: string) => void) {
+  if (!assets || !figure || !current) throw new Error("the head model has not loaded");
+  // (the character as it was when asked for: the picture and its name are of this, whatever is edited meanwhile)
+  const asked = current.params;
+  say("Painting the token");
+  // (the backdrop's picture, if one is chosen, loaded while the message shows)
+  const [picture] = await Promise.all([backdropFor(backdropFile), new Promise((resolve) => window.setTimeout(resolve, 30))]);
+  if (current.params !== asked) throw new Error("the character changed before the token was painted: save it again");
+  const framed = paintToken(size, framing, picture);
   const blob = await new Promise<Blob | null>((resolve) => framed.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("the browser could not make the picture");
   const link = document.createElement("a");
@@ -441,14 +455,32 @@ async function saveToken(size: number, framing: TokenFraming, backdropFile: stri
   say(`Saved a ${size} x ${size} px token of the ${asked.race}${edited} (${Math.round(blob.size / 1024)} KB).`);
 }
 
+// The token preview is drawn again a moment after the bust or its paint stops changing (drawing it takes a moment, so
+// not on every step of a slider)
+let tokenPreviewTimer: number | undefined;
+function tokenPreviewSoon() {
+  window.clearTimeout(tokenPreviewTimer);
+  tokenPreviewTimer = window.setTimeout(() => paintPanel.refreshToken(), 400);
+}
+
+// The token as it would be saved, small, for the panel's preview (null until the bust has been built)
+const TOKEN_PREVIEW = 256;
+async function previewToken(framing: TokenFraming, backdropFile: string): Promise<HTMLCanvasElement | null> {
+  const picture = await backdropFor(backdropFile);
+  if (!assets || !figure || !current) return null;
+  return paintToken(TOKEN_PREVIEW, framing, picture);
+}
+
 const paintPanel = mountPaint(
   paint,
   (next) => {
     paint = next;
     painter?.setPaint(paint);
+    tokenPreviewSoon();
   },
   saveToken,
   loadBackdrops(),
+  previewToken,
 );
 // (after the Character section, where the race and styles are chosen)
 panel.querySelector("section")!.after(paintPanel.section, ...(paintPanel.tokenSection ? [paintPanel.tokenSection] : []));

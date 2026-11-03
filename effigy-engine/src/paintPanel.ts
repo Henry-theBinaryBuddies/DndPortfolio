@@ -11,7 +11,7 @@ export const TOKEN_SIZES = [256, 512, 1024] as const;
 // "whole": the head with all its horns, hair and ears inside the round; "close": a larger face, horns may be cropped
 export type TokenFraming = "whole" | "close";
 
-export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([])): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void } {
+export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([]), onPreviewToken?: (framing: TokenFraming, backdrop: string) => Promise<HTMLCanvasElement | null>): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void; refreshToken: () => void } {
   let paint = { ...initial };
   const rows = new Map<ColorKey, { entries: { swatch: Swatch; button: HTMLButtonElement }[]; picker: HTMLInputElement }>();
   const glowBox = document.createElement("input");
@@ -92,6 +92,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
 
   // The token: the painted head and shoulders in a round frame with a rim, transparent outside it
   let tokenSection: HTMLElement | null = null;
+  let refreshToken = () => {};
   if (onToken) {
     tokenSection = document.createElement("section");
     tokenSection.innerHTML = "<h2>Token</h2>";
@@ -130,7 +131,26 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     plain.value = "";
     plain.textContent = "Plain dark glow";
     backdropSelect.append(plain);
-    backdropRow.append(backdropSelect);
+    // (‹ and › step through the backdrops, to try each behind the bust in turn)
+    const stepper = document.createElement("div");
+    stepper.className = "stepper";
+    const step = (by: number, label: string, id: string) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.id = id;
+      b.className = "inline";
+      b.textContent = by < 0 ? "‹" : "›";
+      b.title = label;
+      b.setAttribute("aria-label", label);
+      b.addEventListener("click", () => {
+        const n = backdropSelect.options.length;
+        backdropSelect.selectedIndex = (backdropSelect.selectedIndex + by + n) % n;
+        refreshToken();
+      });
+      return b;
+    };
+    stepper.append(step(-1, "The backdrop before", "token-backdrop-previous"), backdropSelect, step(1, "The next backdrop", "token-backdrop-next"));
+    backdropRow.append(stepper);
     void backdrops.then((list) => {
       for (const backdrop of list) {
         const option = document.createElement("option");
@@ -139,6 +159,42 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
         backdropSelect.append(option);
       }
     });
+    // The preview: the token as it would be saved, small, redrawn as the backdrop, the framing or the character
+    // changes (one at a time: a change while one is being drawn is drawn after it)
+    const preview = document.createElement("canvas");
+    preview.id = "token-preview";
+    preview.className = "token-preview";
+    preview.width = preview.height = 256;
+    preview.setAttribute("role", "img");
+    preview.setAttribute("aria-label", "The token as it would be saved");
+    let drawing = false;
+    let again = false;
+    refreshToken = () => {
+      if (!onPreviewToken) return;
+      if (drawing) {
+        again = true;
+        return;
+      }
+      drawing = true;
+      onPreviewToken(framingSelect.value as TokenFraming, backdropSelect.value)
+        .then((picture) => {
+          if (!picture) return;
+          const g = preview.getContext("2d")!;
+          g.clearRect(0, 0, preview.width, preview.height);
+          g.drawImage(picture, 0, 0, preview.width, preview.height);
+          preview.dataset.backdrop = backdropSelect.value;
+          preview.dataset.framing = framingSelect.value;
+        })
+        .catch((error: unknown) => (status.textContent = `Preview failed: ${error instanceof Error ? error.message : String(error)}`))
+        .finally(() => {
+          drawing = false;
+          if (again) {
+            again = false;
+            refreshToken();
+          }
+        });
+    };
+    for (const control of [backdropSelect, framingSelect]) control.addEventListener("change", () => refreshToken());
     const button = document.createElement("button");
     button.type = "button";
     button.id = "export-token";
@@ -161,7 +217,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
       }
       started.catch((error: unknown) => say(`Token failed: ${error instanceof Error ? error.message : String(error)}`)).finally(() => (button.disabled = false));
     });
-    tokenSection.append(sizeRow, framingRow, backdropRow, button, status);
+    tokenSection.append(preview, sizeRow, framingRow, backdropRow, button, status);
   }
 
   sync();
@@ -172,5 +228,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
       paint = { ...next };
       sync();
     },
+    // (the token preview drawn again: main.ts calls it once the bust has settled after a change)
+    refreshToken: () => refreshToken(),
   };
 }

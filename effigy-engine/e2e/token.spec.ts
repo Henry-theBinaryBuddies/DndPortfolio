@@ -155,6 +155,54 @@ test.describe("the token", () => {
     expect(icy.picture.corner).toBe(0);
   });
 
+  test("shows a preview of the token, redrawn as the backdrop, the framing and the character change", async ({ page }) => {
+    await open(page);
+    // The preview's pixels, as a short fingerprint (a sample of them), once it is drawn for what is chosen
+    const preview = async (backdrop: string, framing: string) => {
+      await page.waitForFunction(([b, f]) => {
+        const p = document.querySelector("#token-preview") as HTMLCanvasElement;
+        return p.dataset.backdrop === b && p.dataset.framing === f;
+      }, [backdrop, framing], { timeout: 60000 });
+      return page.evaluate(() => {
+        const p = document.querySelector("#token-preview") as HTMLCanvasElement;
+        const { data } = p.getContext("2d")!.getImageData(0, 0, p.width, p.height);
+        const sample: number[] = [];
+        for (let i = 0; i < data.length; i += 4 * 97) sample.push(data[i], data[i + 1], data[i + 2], data[i + 3]);
+        return sample;
+      });
+    };
+    // (how far apart two are, per channel on average: the same picture drawn again is near 0; a dark backdrop for the
+    // plain glow, with the bust and the rim unchanged, about 2)
+    const differ = (a: number[], b: number[]) => a.reduce((sum, v, i) => sum + Math.abs(v - b[i]), 0) / a.length;
+    const plain = await preview("", "whole");
+    // (drawn: a picture in the round, and its corners clear)
+    expect(Math.max(...plain)).toBeGreaterThan(40);
+    expect(plain[3]).toBe(0);
+    // stepping on to the next backdrop and back
+    await page.click("#token-backdrop-next");
+    const first = await page.inputValue("#token-backdrop");
+    expect(first).not.toBe("");
+    const stepped = await preview(first, "whole");
+    expect(differ(stepped, plain)).toBeGreaterThan(1.2);
+    await page.click("#token-backdrop-previous");
+    expect(differ(await preview("", "whole"), plain)).toBeLessThan(0.5);
+    // the framing (redrawn for it: for a head without horns both framings are the same picture, as the close one
+    // already holds the whole head; the horns test above shows them apart)
+    await page.selectOption("#token-framing", "close");
+    await preview("", "close");
+    await page.selectOption("#token-framing", "whole");
+    await preview("", "whole");
+    // the character: a tiefling, red with horns, once its build has settled
+    const before = await preview("", "whole");
+    await page.evaluate(() => {
+      const race = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === "half-orc"))!;
+      race.value = "tiefling";
+      race.dispatchEvent(new Event("change", { bubbles: true }));
+      (document.querySelector("#token-preview") as HTMLCanvasElement).dataset.backdrop = "stale";
+    });
+    expect(differ(await preview("", "whole"), before)).toBeGreaterThan(1.2);
+  });
+
   test("leaves the view as it was: its size, fog, background and turn", async ({ page }) => {
     await open(page);
     const before = await viewState(page);
