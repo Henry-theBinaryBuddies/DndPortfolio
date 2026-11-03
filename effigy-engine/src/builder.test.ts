@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { MeshBVH } from "three-mesh-bvh";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust, fitSphere, socketFit } from "./builder";
+import { pocketWalls } from "./mouthFill";
 import { BEARD_CARVING, carvingDepth } from "./beardCarve";
 import { BROW_CARVING, buildBrows } from "./brows";
 import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
@@ -1187,6 +1188,57 @@ describe("dreadlocks", () => {
       expect(buildLockShell(p, bust.positions, bust.normals, base), hairStyle).toBeNull();
     }
   }, 120000);
+});
+
+describe("the filling of the mouth", () => {
+  it("stays inside the face, whatever the race, age and expression: it never shows through the skin", () => {
+    // (the cases where it once came out under the nose, as two dark dots: a snarl, old age, thin lips)
+    // A point of the filling is outside the face when it is on the outer side of the skin nearest it (the walls of
+    // the hollow of the mouth aside: their outer side is the hollow it fills)
+    const pocket = pocketWalls(base);
+    const cases: Partial<Params>[] = [
+      { race: "human", body: "feminine", age: 1, snarl: 0.6 },
+      { race: "half-orc", body: "feminine", snarl: 0.6, age: 1 },
+      { race: "human", age: 1, lips: 0.2 },
+      { race: "elf", snarl: 1 },
+      { race: "half-orc", body: "feminine", age: 0, lips: 0.2 },
+      { race: "tiefling", body: "feminine", age: 1, snarl: 0.6 },
+    ];
+    for (const overrides of cases) {
+      const p = { ...applyRace({ ...defaultParams(), body: overrides.body ?? "masculine" }, overrides.race ?? "human"), ...overrides, hairStyle: "none" as const, beardStyle: "none" as const };
+      const bust = buildBust(p, assets, false);
+      const meshes = new Map<string, THREE.Mesh>();
+      bust.traverse((o) => o instanceof THREE.Mesh && meshes.set(o.name, o));
+      const head = meshes.get("head")!;
+      const fill = meshes.get("mouthFill")!;
+      const skin = head.geometry.attributes.position.array as Float32Array;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", head.geometry.attributes.position);
+      g.setIndex(new THREE.BufferAttribute(Uint32Array.from(head.geometry.index!.array), 1));
+      const bvh = new MeshBVH(g);
+      const order = g.index!;
+      const hit = { point: new THREE.Vector3(), distance: 0, faceIndex: 0 };
+      const outside = (v: THREE.Vector3) => {
+        bvh.closestPointToPoint(v, hit);
+        const [i, j, k] = [0, 1, 2].map((n) => order.getX(hit.faceIndex * 3 + n));
+        if (pocket[i] && pocket[j] && pocket[k]) return false;
+        const [a, b, c] = [i, j, k].map((n) => new THREE.Vector3().fromArray(skin, n * 3));
+        return new THREE.Vector3().crossVectors(b.sub(a), c.sub(a)).dot(v.clone().sub(hit.point)) > 0;
+      };
+      const position = fill.geometry.attributes.position;
+      const index = fill.geometry.index!;
+      let out = 0;
+      for (let t = 0; t < index.count; t += 3) {
+        const [a, b, c] = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(position, index.getX(t + k)));
+        for (const v of [a, a.clone().add(b).add(c).divideScalar(3), a.clone().lerp(b, 0.5), b.clone().lerp(c, 0.5), c.clone().lerp(a, 0.5)]) {
+          // (in the parting of the closed lips it shows as the dark of the mouth, as it should)
+          if (Math.abs(v.y - LANDMARK.stomion) < 0.025) continue;
+          if (outside(v)) out++;
+        }
+      }
+      expect(out, JSON.stringify(overrides)).toBe(0);
+    }
+  }, 300000);
 });
 
 describe("the open mouth, teeth and expressions", () => {

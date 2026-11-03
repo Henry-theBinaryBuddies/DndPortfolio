@@ -8,7 +8,7 @@ import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, b
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
 import { buildThroatGusset } from "./gusset";
-import { buildMouthFill } from "./mouthFill";
+import { buildMouthFill, pocketWalls } from "./mouthFill";
 import { buildTeeth, lowerCanine } from "./teeth";
 import { tuskGeometry } from "./tusk";
 import { derive, type Params } from "./params";
@@ -291,7 +291,7 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     const position = teeth.attributes.position;
     for (let i = 0; i < position.count; i++) if (Math.abs(position.getX(i)) < 0.05) teethFront = Math.max(teethFront ?? -Infinity, position.getZ(i));
   }
-  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen, teethFront, base, frontOutside(bust.positions, base.indices));
+  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen, teethFront, base, frontOutside(bust.positions, base.indices, pocketWalls(base)));
   if (fill) {
     const mesh = new THREE.Mesh(fill, clay);
     mesh.name = "mouthFill";
@@ -316,15 +316,14 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   return root;
 }
 
-// Whether a point around the mouth is outside the face, in front of its skin: some ray from it, forward or
-// slanting forward, meets no skin. (Inside the hollow of the mouth every one of them meets its walls; just outside
-// the upper lip, under the nose, one straight forward can still meet the pout of the lip, but the slanting ones do
-// not.) The whole head is searched, as a bounding volume hierarchy: searching only the face around the mouth, rays
-// from inside left through the edges of what was searched, and read as outside. It is built once for the head's
-// triangles and refitted to each bust's shape, which is far quicker than building it again.
-const OUT_RAYS = [[0, 0, 1], [0.7, 0, 0.7], [-0.7, 0, 0.7], [0, 0.7, 0.7], [0, -0.7, 0.7]].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
+// Whether a point around the mouth is outside the face: on the outer side of the skin nearest it. (Not of the walls of
+// the hollow of the mouth, whose outer side is the hollow the filling is to fill: `pocket` marks their vertices.)
+// Tested by rays before, a point in the crease between the wing of the nose and the lip read as inside, with the
+// pout of the lip in front of it, the nose above and the cheeks either side, and the filling showed there. The
+// whole head is searched, as a bounding volume hierarchy built once for its triangles and refitted to each bust's
+// shape, which is far quicker than building it again.
 const headSearch = new WeakMap<ArrayLike<number>, { geometry: THREE.BufferGeometry; bvh: MeshBVH }>();
-function frontOutside(positions: Float32Array, indices: ArrayLike<number>): (v: THREE.Vector3) => boolean {
+function frontOutside(positions: Float32Array, indices: ArrayLike<number>, pocket: Uint8Array): (v: THREE.Vector3) => boolean {
   let search = headSearch.get(indices);
   if (!search) {
     // (over a copy of the triangles: building one reorders them, and the head's own order must stay as it is)
@@ -337,13 +336,20 @@ function frontOutside(positions: Float32Array, indices: ArrayLike<number>): (v: 
     (search.geometry.attributes.position.array as Float32Array).set(positions);
     search.bvh.refit();
   }
-  const { bvh } = search;
-  const ray = new THREE.Ray();
-  return (v) =>
-    OUT_RAYS.some((direction) => {
-      ray.set(v, direction);
-      return !bvh.raycastFirst(ray, THREE.DoubleSide);
-    });
+  const { bvh, geometry } = search;
+  const index = geometry.index!;
+  const hit = { point: new THREE.Vector3(), distance: 0, faceIndex: 0 };
+  const [a, b, c, normal] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  return (v) => {
+    if (!bvh.closestPointToPoint(v, hit)) return false;
+    const [i, j, k] = [index.getX(hit.faceIndex * 3), index.getX(hit.faceIndex * 3 + 1), index.getX(hit.faceIndex * 3 + 2)];
+    if (pocket[i] && pocket[j] && pocket[k]) return false;
+    a.fromArray(positions, i * 3);
+    b.fromArray(positions, j * 3);
+    c.fromArray(positions, k * 3);
+    normal.crossVectors(b.sub(a), c.sub(a));
+    return normal.dot(v.clone().sub(hit.point)) > 0;
+  };
 }
 
 // Geometry and materials live on the GPU, and JavaScript's garbage collector
