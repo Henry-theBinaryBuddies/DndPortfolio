@@ -19,8 +19,26 @@ import {
   type Race,
 } from "./params";
 
-// Builds the control panel and calls onChange with a fresh Params copy on every edit.
-export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>, onPreview?: (p: Params, say: (text: string) => void, gusset: boolean, tabletop: boolean) => Promise<void>): void {
+// A section's heading, with a button that puts the section back as it was, if it has one
+export function heading(title: string, reset?: { title: string; onClick: () => void }): HTMLElement {
+  const h = document.createElement("h2");
+  h.textContent = title;
+  if (reset) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "reset";
+    button.textContent = "Reset";
+    button.title = reset.title;
+    button.setAttribute("aria-label", `Reset ${title.toLowerCase()}: ${reset.title.toLowerCase()}`);
+    button.addEventListener("click", reset.onClick);
+    h.append(button);
+  }
+  return h;
+}
+
+// Builds the control panel and calls onChange with a fresh Params copy on every edit: the sculpt's controls into
+// `shape`, the print's into `output`. `set` shows settings chosen elsewhere (undo, a character file) and rebuilds.
+export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>, onPreview?: (p: Params, say: (text: string) => void, gusset: boolean, tabletop: boolean) => Promise<void>): { set: (p: Params) => void } {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
   const raceSelect = document.createElement("select");
@@ -59,7 +77,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
 
   // Character section: build, race, and the hair, beard and horn styles
   const character = document.createElement("section");
-  character.innerHTML = "<h2>Character</h2>";
+  character.append(heading("Character"));
 
   // Build type: a three-way toggle that reshapes the whole bust (jaw, brow, neck, shoulders, chest)
   const bodyRow = document.createElement("div");
@@ -127,13 +145,25 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   const hornRow = styleRow("Horns", hornSelect, HORN_STYLES, (value) => (params.hornStyle = value as HornStyle));
 
   character.append(bodyRow, raceRow, raceDefaultsRow, hairRow, beardRow, hornRow);
-  panel.append(character);
+  shape.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];
   for (const group of groups) {
     const section = document.createElement("section");
-    section.innerHTML = `<h2>${group}</h2>`;
-    for (const def of NUMERIC_DEFS.filter((d) => d.group === group)) {
+    const defs = NUMERIC_DEFS.filter((d) => d.group === group);
+    // (back to where the race starts these sliders; the rest are left as they are)
+    section.append(
+      heading(group, {
+        title: "Back to this race's starting values",
+        onClick: () => {
+          const start = applyRace(params, params.race);
+          const next = { ...params };
+          for (const d of defs) next[d.key] = start[d.key];
+          update(next);
+        },
+      }),
+    );
+    for (const def of defs) {
       const row = document.createElement("label");
       row.className = "row";
       const name = document.createElement("span");
@@ -153,7 +183,7 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
       section.append(row);
       sliders.set(def.key, { input, out, row });
     }
-    panel.append(section);
+    shape.append(section);
   }
 
   const actions = document.createElement("div");
@@ -167,12 +197,12 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
   reset.textContent = "Reset";
   reset.addEventListener("click", () => update(defaultParams()));
   actions.append(randomize, reset);
-  panel.append(actions);
+  shape.append(actions);
 
   // Export: the bust as an STL, merged into one solid for printing (it takes a few seconds)
   if (onExport) {
     const exportSection = document.createElement("section");
-    exportSection.innerHTML = "<h2>Print</h2>";
+    exportSection.append(heading("Print"));
     const exportButton = document.createElement("button");
     exportButton.type = "button";
     exportButton.id = "export-stl";
@@ -283,8 +313,9 @@ export function mountPanel(panel: HTMLElement, initial: Params, onChange: (p: Pa
     exportButton.addEventListener("click", () => run(false));
     diagnosticButton.addEventListener("click", () => run(true));
     exportSection.append(previewButton, exportButton, diagnosticButton, gussetLabel, tabletopLabel, status);
-    panel.append(exportSection);
+    output.append(exportSection);
   }
 
   syncUI();
+  return { set: (p: Params) => update({ ...p }) };
 }

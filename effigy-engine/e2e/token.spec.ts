@@ -16,6 +16,8 @@ async function open(page: Page) {
   }, undefined, { timeout: 120000 });
   // (still, so the view is the same before and after: the turntable off, at three-quarter)
   await page.click('[data-yaw="0.785"]');
+  // (the token and the print are in the panel's Output tab)
+  await page.click("#show-output");
   // (and settled: the carved build replaces the quick draft a moment after the bust first shows, which on a busy
   // machine can land between a test's look at the view and the token)
   await page.waitForTimeout(2500);
@@ -256,5 +258,35 @@ test.describe("the token", () => {
     const { picture } = await saveToken(page, 256, "whole");
     expect(picture.centre).toBe(255);
     expect(await viewState(page)).toEqual(before);
+  });
+});
+
+test.describe("the panel", () => {
+  test("draws the token preview only while the Output tab is open, and undoes a change of race with its colours", async ({ page }) => {
+    await open(page);
+    const fits = () => page.evaluate(() => (window as unknown as { effigy: { tokenWork: { fits: number } } }).effigy.tokenWork.fits);
+    const raceValue = () => page.evaluate(() => [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === "half-orc"))!.value);
+    const skin = () => page.evaluate(() => document.querySelector('[aria-label^="Skin"][aria-pressed="true"]')?.getAttribute("title"));
+    await page.click("#show-shape");
+    const before = await fits();
+    await page.evaluate(() => {
+      const race = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === "half-orc"))!;
+      race.value = "tiefling";
+      race.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    // (built and settled, with the preview hidden: nothing fitted for it)
+    await page.waitForTimeout(4000);
+    expect(await fits()).toBe(before);
+    expect(await skin()).toBe("Infernal red");
+    // shown, it is drawn for the tiefling
+    await page.click("#show-output");
+    await expect.poll(fits, { timeout: 60000 }).toBeGreaterThan(before);
+    // undone, the human comes back with its own skin; and redone, the tiefling
+    await page.keyboard.press("Control+z");
+    expect(await raceValue()).toBe("human");
+    expect(await skin()).toBe("Tan");
+    await page.keyboard.press("Control+Shift+z");
+    expect(await raceValue()).toBe("tiefling");
+    expect(await skin()).toBe("Infernal red");
   });
 });

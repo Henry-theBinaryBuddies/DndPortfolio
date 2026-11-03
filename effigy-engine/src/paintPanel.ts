@@ -1,5 +1,6 @@
 import { EYE_COLORS, HAIR_COLORS, HORN_COLORS, SKIN_TONES, TEETH_COLORS, type Paint, type Swatch } from "./paint";
 import type { Backdrop } from "./token";
+import { heading } from "./ui";
 
 // The Paint section of the panel: a row of swatches for each colour, with a picker for any other colour, the
 // glow of the eyes and the grime; and the token, the painted bust saved as a picture for a virtual tabletop.
@@ -11,7 +12,7 @@ export const TOKEN_SIZES = [256, 512, 1024] as const;
 // "whole": the head with all its horns, hair and ears inside the round; "close": a larger face, horns may be cropped
 export type TokenFraming = "whole" | "close";
 
-export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([]), onPreviewToken?: (framing: TokenFraming, backdrop: string) => Promise<HTMLCanvasElement | null>): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void; refreshToken: () => void } {
+export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([]), onPreviewToken?: (framing: TokenFraming, backdrop: string) => Promise<HTMLCanvasElement | null>, onResetPaint?: () => void): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void; refreshToken: () => void } {
   let paint = { ...initial };
   const rows = new Map<ColorKey, { entries: { swatch: Swatch; button: HTMLButtonElement }[]; picker: HTMLInputElement }>();
   const glowBox = document.createElement("input");
@@ -34,7 +35,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
   };
 
   const section = document.createElement("section");
-  section.innerHTML = "<h2>Paint</h2>";
+  section.append(heading("Paint", onResetPaint && { title: "Back to this race's colours", onClick: onResetPaint }));
   const addRow = (label: string, key: ColorKey, list: Swatch[]) => {
     const row = document.createElement("div");
     row.className = "row swatches";
@@ -95,7 +96,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
   let refreshToken = () => {};
   if (onToken) {
     tokenSection = document.createElement("section");
-    tokenSection.innerHTML = "<h2>Token</h2>";
+    tokenSection.append(heading("Token"));
     const sizeRow = document.createElement("label");
     sizeRow.className = "row select";
     sizeRow.innerHTML = "<span>Size</span>";
@@ -160,7 +161,8 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
       }
     });
     // The preview: the token as it would be saved, small, redrawn as the backdrop, the framing or the character
-    // changes (one at a time: a change while one is being drawn is drawn after it)
+    // changes (one at a time: a change while one is being drawn is drawn after it). Only while it is on show: a
+    // change made while it is hidden (in another tab of the panel) is drawn when it is shown again.
     const preview = document.createElement("canvas");
     preview.id = "token-preview";
     preview.className = "token-preview";
@@ -170,7 +172,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     let drawing = false;
     let again = false;
     refreshToken = () => {
-      if (!onPreviewToken) return;
+      if (!onPreviewToken || tokenSection!.closest("[hidden]")) return;
       if (drawing) {
         again = true;
         return;
@@ -228,7 +230,8 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
       paint = { ...next };
       sync();
     },
-    // (the token preview drawn again: main.ts calls it once the bust has settled after a change)
+    // (the token preview drawn again: main.ts calls it once the bust has settled after a change, and when the token is
+    // shown again)
     refreshToken: () => refreshToken(),
   };
 }

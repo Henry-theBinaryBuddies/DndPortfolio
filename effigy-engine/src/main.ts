@@ -7,6 +7,7 @@ import { defaultParams, type Params } from "./params";
 import { exportStl, describe } from "./exportStl";
 import { describePrint, disposePreview, preparePrint, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
+import { characterFile, History, readCharacter, type Character } from "./character";
 import { defaultPaint, Painter, racePaint } from "./paint";
 import { mountPaint, type TokenFraming } from "./paintPanel";
 import { backdropPicture, frameToken, loadBackdrops, RIM, tokenBackdrop } from "./token";
@@ -162,8 +163,17 @@ function swap(params: Params, detail: boolean) {
 // being built moves on several steps, and the next draft is of where it got to, not of each step in between. (It
 // waits for the next frame, so the slider is seen to move before the build holds up the page.)
 let pending: Params | null = null;
+let wanted: Params | null = null; // the settings last asked for (the bust on show may be a step behind them)
 function show(params: Params) {
   leavePrint();
+  // (a new race brings its own colours: a half-orc's green skin, a tiefling's red; the grime stays)
+  if (wanted && params.race !== wanted.race) {
+    paint = racePaint(paint, params.race);
+    paintPanel.set(paint);
+    painter?.setPaint(paint);
+  }
+  wanted = params;
+  remember();
   if (!pending) {
     const asked = performance.now();
     const build = () => {
@@ -181,12 +191,6 @@ function show(params: Params) {
 }
 
 function draft(params: Params) {
-  // (a new race brings its own colours: a half-orc's green skin, a tiefling's red; the grime stays)
-  if (current && params.race !== current.params.race) {
-    paint = racePaint(paint, params.race);
-    paintPanel.set(paint);
-    painter?.setPaint(paint);
-  }
   swap(params, false);
   window.clearTimeout(settle);
   settle = window.setTimeout(() => swap(params, true), 160);
@@ -312,9 +316,52 @@ if (import.meta.env.DEV) {
   };
 }
 
+// The panel, in three tabs: the sculpt (Shape), its paint (Appearance), and what is made of it (Output: the token
+// and the print). Above them, undo and redo, and saving the character to a file and opening one.
+const fileBar = document.createElement("div");
+fileBar.className = "file-bar";
+const fileStatus = document.createElement("p");
+fileStatus.className = "status";
+fileStatus.id = "file-status";
+fileStatus.setAttribute("role", "status");
+fileStatus.setAttribute("aria-live", "polite");
+const tabBar = document.createElement("div");
+tabBar.className = "segmented tabs";
+tabBar.setAttribute("role", "tablist");
+const TABS = [
+  ["shape", "Shape"],
+  ["appearance", "Appearance"],
+  ["output", "Output"],
+] as const;
+const tabs = new Map<string, { button: HTMLButtonElement; page: HTMLElement }>();
+for (const [name, label] of TABS) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = `show-${name}`;
+  button.textContent = label;
+  button.setAttribute("role", "tab");
+  button.setAttribute("aria-controls", `tab-${name}`);
+  button.addEventListener("click", () => showTab(name));
+  const page = document.createElement("div");
+  page.id = `tab-${name}`;
+  page.setAttribute("role", "tabpanel");
+  tabBar.append(button);
+  tabs.set(name, { button, page });
+}
+panel.append(fileBar, fileStatus, tabBar, ...[...tabs.values()].map((t) => t.page));
+function showTab(name: string) {
+  for (const [key, { button, page }] of tabs) {
+    button.setAttribute("aria-selected", String(key === name));
+    page.hidden = key !== name;
+  }
+  // (the token preview is only drawn while it can be seen: see paintPanel.ts)
+  if (name === "output") paintPanel.refreshToken();
+}
+
 const initial = defaultParams();
-mountPanel(
-  panel,
+const shapePanel = mountPanel(
+  tabs.get("shape")!.page,
+  tabs.get("output")!.page,
   initial,
   show,
   async (params, say, partial, gusset, tabletop) => {
@@ -587,9 +634,119 @@ const paintPanel = mountPaint(
   saveToken,
   loadBackdrops(),
   previewToken,
+  () => {
+    paint = defaultPaint((wanted ?? initial).race);
+    paintPanel.set(paint);
+    painter?.setPaint(paint);
+    redraw();
+    tokenPreviewSoon();
+    remember();
+  },
 );
-// (after the Character section, where the race and styles are chosen)
-panel.querySelector("section")!.after(paintPanel.section, ...(paintPanel.tokenSection ? [paintPanel.tokenSection] : []));
+tabs.get("appearance")!.page.append(paintPanel.section);
+// (the token before the print: it is the quicker thing to make)
+if (paintPanel.tokenSection) tabs.get("output")!.page.prepend(paintPanel.tokenSection);
+showTab("shape");
+
+// Undo and redo, over the sculpt and its paint together. An edit is recorded once it has settled for a moment, so
+// a slider dragged across its range is one step back, not one for each value it passed.
+const history = new History({ params: initial, paint });
+let rememberTimer: number | undefined;
+let restoring = false;
+function remember() {
+  if (restoring) return;
+  window.clearTimeout(rememberTimer);
+  rememberTimer = window.setTimeout(recordNow, 500);
+  syncFileBar();
+}
+function recordNow() {
+  window.clearTimeout(rememberTimer);
+  rememberTimer = undefined;
+  history.record({ params: wanted ?? initial, paint });
+  syncFileBar();
+}
+// Puts a whole character on show: its paint, then its sculpt (rebuilt as any edit is)
+function restore(character: Character) {
+  restoring = true;
+  try {
+    wanted = character.params; // (so its race brings none of the race's colours over its own paint)
+    paint = { ...character.paint };
+    paintPanel.set(paint);
+    painter?.setPaint(paint);
+    redraw();
+    shapePanel.set(character.params);
+    tokenPreviewSoon();
+  } finally {
+    restoring = false;
+  }
+}
+function step(back: boolean) {
+  if (rememberTimer !== undefined) recordNow();
+  const character = back ? history.undo() : history.redo();
+  if (character) restore(character);
+  syncFileBar();
+}
+
+const fileButton = (id: string, text: string, title: string, onClick: () => void) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = id;
+  button.className = "inline";
+  button.textContent = text;
+  button.title = title;
+  button.addEventListener("click", onClick);
+  fileBar.append(button);
+  return button;
+};
+const undoButton = fileButton("undo", "Undo", "Undo the last change (Ctrl+Z)", () => step(true));
+const redoButton = fileButton("redo", "Redo", "Redo what was undone (Ctrl+Shift+Z or Ctrl+Y)", () => step(false));
+function syncFileBar() {
+  undoButton.disabled = !history.canUndo && rememberTimer === undefined;
+  redoButton.disabled = !history.canRedo || rememberTimer !== undefined;
+}
+// The character as a file: its sculpt and paint, to open again later and go on editing (see character.ts)
+fileButton("save-character", "Save", "Save this character to a file, to open again later", () => {
+  const character = { params: wanted ?? initial, paint };
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([characterFile(character)], { type: "application/json" }));
+  link.download = `effigy-${character.params.race}-${character.params.body}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  fileStatus.textContent = `Saved the ${character.params.race} as ${link.download}.`;
+});
+const opener = document.createElement("input");
+opener.type = "file";
+opener.accept = ".json,application/json";
+opener.hidden = true;
+opener.id = "open-character-file";
+opener.addEventListener("change", async () => {
+  const file = opener.files?.[0];
+  opener.value = "";
+  if (!file) return;
+  try {
+    const character = readCharacter(await file.text());
+    if (rememberTimer !== undefined) recordNow();
+    restore(character);
+    history.record(character);
+    syncFileBar();
+    fileStatus.textContent = `Opened ${file.name}.`;
+  } catch (error) {
+    fileStatus.textContent = `Could not open ${file.name}: ${error instanceof Error ? error.message : String(error)}`;
+  }
+});
+fileButton("open-character", "Open", "Open a character saved earlier", () => opener.click());
+fileBar.append(opener);
+syncFileBar();
+document.addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const key = e.key.toLowerCase();
+  if (key !== "z" && key !== "y") return;
+  // (typing in a text field keeps its own undo)
+  const target = e.target as HTMLElement;
+  if (target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && !["range", "checkbox", "button", "color"].includes(target.type))) return;
+  e.preventDefault();
+  step(key === "z" && !e.shiftKey);
+});
 resize();
 frame();
 

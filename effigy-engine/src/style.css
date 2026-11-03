@@ -99,6 +99,58 @@ h1 {
   color: var(--ember);
 }
 
+/* undo, redo, and the character's file, above the tabs */
+.file-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.file-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#file-status:empty {
+  display: none;
+}
+
+/* the panel's three tabs: Shape, Appearance, Output */
+.tabs {
+  margin: 12px 0 0;
+}
+
+.tabs button[aria-selected="true"] {
+  color: var(--ink);
+  background: var(--edge);
+  border-color: var(--ember);
+}
+
+/* a section's reset, at the right of its heading */
+h2 .reset {
+  float: right;
+  margin-top: -3px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  background: transparent;
+  border: 1px solid var(--edge);
+  cursor: pointer;
+}
+
+h2 .reset:hover {
+  color: var(--ink);
+  border-color: var(--ember);
+}
+
+/* where the keyboard is, plainly */
+:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
 h2 {
   margin: 20px 0 8px;
   padding-bottom: 4px;
@@ -171,8 +223,8 @@ input[type="range"] {
 }
 
 .swatch {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 1px solid var(--edge);
   border-radius: 50%;

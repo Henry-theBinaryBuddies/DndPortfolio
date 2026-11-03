@@ -14,6 +14,8 @@ npm run test:browser   # Playwright, in Chromium (first: npx playwright install 
 npm run build
 ```
 
+The panel has three tabs: **Shape** (race, build, styles and the sliders), **Appearance** (the paint) and **Output** (the token and the print); the token preview is drawn only while Output is open. Each slider section and the paint have a Reset back to the race's values. **Undo** and **Redo** (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y) step through the sculpt and its paint together, a slider drag counting as one step. **Save** writes the character (its sculpt and paint) to a small JSON file, versioned, which **Open** reads back to go on editing it (see src/character.ts).
+
 Each build and token is timed in the browser as a User Timing measure (`effigy:draft build`, `effigy:carved build`, `effigy:edit to draft`, `effigy:token fit`, `effigy:token`): see the Performance panel, or `performance.getEntriesByType("measure")` in the console. A slider dragged during a build is built once for where it got to, not for every step; the view is drawn only when something in it changes; and the token's camera is fitted once per bust and framing, so stepping through backdrops fits nothing again.
 
 ## How the bust is made
