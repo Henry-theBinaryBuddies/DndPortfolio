@@ -51,6 +51,9 @@ interface Picture {
   rimBright: number;
   centreColour: [number, number, number];
   backdropColour: [number, number, number]; // up and to the left, inside the rim, where the backdrop shows past the head
+  // how much of the sliver just inside the rim, round its lower half, has the bust in it (not the dark backdrop): all of
+  // it when the shoulders and chest run on under the rim
+  lowerFilled: number;
 }
 
 // Saves a token through the button and reads the file back in the page
@@ -83,9 +86,17 @@ async function saveToken(page: Page, size: number, framing: "whole" | "close", b
           // (the rim shades this sliver, and the backdrop under it is near black: a bone horn there is still far lighter)
           if ((0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / 255 > 0.12) rimBright++;
         }
+      let [lower, lowerLit] = [0, 0];
+      for (let a = 220; a <= 320; a += 2) {
+        const t = (a * Math.PI) / 180;
+        const [x, y] = [Math.floor(c + Math.cos(t) * inner * 0.95), Math.floor(c - Math.sin(t) * inner * 0.95)];
+        const i = at(x, y);
+        lower++;
+        if ((0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / 255 > 0.15) lowerLit++;
+      }
       const m = at(Math.floor(c), Math.floor(c * 1.05));
       const k = at(Math.floor(c - 0.55 * inner), Math.floor(c - 0.55 * inner));
-      return { width: image.width, height: image.height, corner: px[3], centre: px[at(Math.floor(c), Math.floor(c)) + 3], rimBright, centreColour: [px[m], px[m + 1], px[m + 2]] as [number, number, number], backdropColour: [px[k], px[k + 1], px[k + 2]] as [number, number, number] };
+      return { width: image.width, height: image.height, corner: px[3], centre: px[at(Math.floor(c), Math.floor(c)) + 3], rimBright, centreColour: [px[m], px[m + 1], px[m + 2]] as [number, number, number], backdropColour: [px[k], px[k + 1], px[k + 2]] as [number, number, number], lowerFilled: lowerLit / lower };
     },
     { data: file.toString("base64"), rim: RIM },
   );
@@ -139,6 +150,14 @@ test.describe("the token", () => {
     const close = await saveToken(page, 512, "close");
     expect(close.picture.rimBright).toBeGreaterThan(0);
     await expect(page.locator("#token-framing option[value=close]")).toHaveText(/may crop horns/);
+  });
+
+  test("runs the shoulders and chest on under the lower rim, so no cut edge of the bust shows", async ({ page }) => {
+    await open(page);
+    for (const framing of ["whole", "close"] as const) {
+      const { picture } = await saveToken(page, 512, framing);
+      expect(picture.lowerFilled, framing).toBeGreaterThan(0.97);
+    }
   });
 
   test("stands the bust on the backdrop chosen, from the pictures listed in public/backdrops", async ({ page }) => {

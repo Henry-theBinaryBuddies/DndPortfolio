@@ -315,6 +315,9 @@ const TOKEN_FOV = 22;
 // rim, as it is seen turned to the token's view: measured from its own points as they fall in the picture, since
 // horns that reach out sideways add width and depth, not height, and the frame is round, not square. "close" frames
 // the height alone, a larger face, and wide horns may run into the rim.
+// Then, either way, the bust is brought down (and, if that is not enough, nearer) until its shoulders and chest
+// run on under the lower half of the rim, so no cut edge of the bust shows inside the round (see shouldersUnderRim).
+// For "whole" the horns come first: it goes only as near as keeps them in.
 function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.PerspectiveCamera {
   const top = faceTop + 0.08;
   const bottom = chinY - 0.7;
@@ -325,49 +328,14 @@ function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.Perspecti
     lens.lookAt(0, y, 0);
     lens.updateMatrixWorld(true);
   };
+  const p = new THREE.Vector3();
+  const inside = (1 - 2 * RIM) * 0.96; // (the round within the rim, as a share of the half-width, with a little room)
   // (with room to spare at the top: the frame is round)
   const halfHeight = ((top - bottom) / 2 / (1 - 2 * RIM)) * 1.08;
   const close = halfHeight / tan;
-  if (framing === "close") {
-    place((top + bottom) / 2, close);
-    return lens;
-  }
-  // The points that must stay inside the round, in the token's own turn (a sample of each part: a few thousand do)
   pivot.rotation.y = TOKEN_YAW;
   pivot.updateMatrixWorld(true);
-  const points: THREE.Vector3[] = [new THREE.Vector3(0, bottom, 0)];
-  bust.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || !object.visible) return;
-    const position = object.geometry.attributes.position;
-    const step = Math.max(1, Math.floor(position.count / 3000));
-    for (let i = 0; i < position.count; i += step) {
-      const v = new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld);
-      if (v.y >= chinY - 0.1) points.push(v);
-    }
-  });
-  const highest = points.reduce((h, v) => Math.max(h, v.y), top);
-  const y = (highest + bottom) / 2;
-  const inside = (1 - 2 * RIM) * 0.96; // (the round within the rim, as a share of the half-width, with a little room)
-  const fits = (distance: number) => {
-    place(y, distance);
-    const p = new THREE.Vector3();
-    return points.every((v) => {
-      p.copy(v).project(lens);
-      return Math.hypot(p.x, p.y) <= inside;
-    });
-  };
-  // (no nearer than the close framing; then as near as lets everything in)
-  let [near, far] = [close, close * 4];
-  if (!fits(near)) {
-    while (!fits(far) && far < 60) far *= 1.5;
-    for (let k = 0; k < 18; k++) {
-      const middle = (near + far) / 2;
-      if (fits(middle)) far = middle;
-      else near = middle;
-    }
-  } else far = near;
-  // The sample chose the distance; every point above the chin is checked against it, so a horn's tip that fell
-  // between the sampled points is not cut by the rim (stepped back a little at a time until all are in)
+  // Every point above the chin (the head, ears, hair, horns), in the token's own turn
   const all: THREE.Vector3[] = [];
   bust.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || !object.visible) return;
@@ -377,14 +345,90 @@ function tokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.Perspecti
       if (v.y >= chinY - 0.1) all.push(v);
     }
   });
-  const allFit = (distance: number) => {
+  // (a sample of them, a few thousand, for the search; all of them to check what it finds)
+  const sample = all.filter((_, i) => i % Math.max(1, Math.floor(all.length / 6000)) === 0);
+  const within = (points: THREE.Vector3[]) => points.every((v) => Math.hypot(p.copy(v).project(lens).x, p.y) <= inside);
+  // What must stay in: for "whole" every point above the chin, for "close" only the top of the head
+  const crown = new THREE.Vector3(0, top, 0);
+  const headIn = (y: number, distance: number, points = sample) => {
     place(y, distance);
-    const p = new THREE.Vector3();
-    return all.every((v) => Math.hypot(p.copy(v).project(lens).x, p.y) <= inside);
+    return framing === "close" ? crown.clone().project(lens).y <= inside : within(points);
   };
-  for (let k = 0; k < 40 && !allFit(far); k++) far *= 1.02;
-  place(y, far);
+
+  let y = (top + bottom) / 2;
+  let distance = close;
+  if (framing === "whole") {
+    const highest = all.reduce((h, v) => Math.max(h, v.y), top);
+    y = (highest + bottom) / 2;
+    // (no nearer than the close framing; then as near as lets everything in)
+    let [near, far] = [close, close * 4];
+    if (!headIn(y, near)) {
+      while (!headIn(y, far) && far < 60) far *= 1.5;
+      for (let k = 0; k < 18; k++) {
+        const middle = (near + far) / 2;
+        if (headIn(y, middle)) far = middle;
+        else near = middle;
+      }
+    } else far = near;
+    // (the sample chose the distance; every point is checked against it, so a horn's tip that fell between the
+    // sampled points is not cut by the rim: stepped back a little at a time until all are in)
+    for (let k = 0; k < 40 && !headIn(y, far, all); k++) far *= 1.02;
+    distance = far;
+  }
+
+  // The shoulders under the rim: the bust brought down a step at a time (its head stays in), and if it is too small
+  // for its shoulders to reach the rim, nearer, as far as the head allows; the first that fills the lower rim is it,
+  // or failing that the one that fills most of it
+  let best = { y, distance, filled: shouldersUnderRim(lens, () => place(y, distance)) };
+  search: for (const nearer of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7]) {
+    const d = distance * nearer;
+    for (let k = 0; k <= 14; k++) {
+      const ty = y + k * 0.035 * (d / close);
+      if (!headIn(ty, d, nearer === 1 ? sample : all)) break;
+      const filled = shouldersUnderRim(lens, () => place(ty, d));
+      if (filled > best.filled) best = { y: ty, distance: d, filled };
+      if (filled >= 1) break search;
+    }
+  }
+  place(best.y, best.distance);
   return lens;
+}
+
+// How much of the lower half of the round's edge, just inside the rim, has the bust behind it (0..1): 1 when the
+// shoulders and chest run on under the rim all the way round its lower half, so no cut edge of the bust shows. Seen
+// as a small silhouette: the bust drawn white on black, off screen, for the camera as `aim` sets it.
+const SILHOUETTE = 64;
+const silhouetteTarget = new THREE.WebGLRenderTarget(SILHOUETTE, SILHOUETTE);
+const silhouetteMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const silhouettePixels = new Uint8Array(SILHOUETTE * SILHOUETTE * 4);
+const UNDER_RIM = Array.from({ length: 15 }, (_, i) => THREE.MathUtils.degToRad(200 + i * 10)); // the lower half of the round
+function shouldersUnderRim(lens: THREE.PerspectiveCamera, aim: () => void): number {
+  aim();
+  // (cut flat underneath as the bust is: see builder.ts)
+  silhouetteMaterial.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -((figure?.userData.flatCut as number) ?? 0) * MM)];
+  const saved = { background: scene.background, fog: scene.fog, override: scene.overrideMaterial, target: renderer.getRenderTarget() };
+  try {
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = null;
+    scene.overrideMaterial = silhouetteMaterial;
+    renderer.setRenderTarget(silhouetteTarget);
+    renderer.render(scene, lens);
+    renderer.readRenderTargetPixels(silhouetteTarget, 0, 0, SILHOUETTE, SILHOUETTE, silhouettePixels);
+  } finally {
+    scene.background = saved.background;
+    scene.fog = saved.fog;
+    scene.overrideMaterial = saved.override;
+    renderer.setRenderTarget(saved.target);
+  }
+  // (just inside where the picture meets the rim)
+  const edge = (1 - 2 * RIM) * 0.98;
+  let filled = 0;
+  for (const angle of UNDER_RIM) {
+    const x = Math.floor((Math.cos(angle) * edge * 0.5 + 0.5) * SILHOUETTE);
+    const yy = Math.floor((Math.sin(angle) * edge * 0.5 + 0.5) * SILHOUETTE);
+    if (silhouettePixels[(yy * SILHOUETTE + x) * 4] > 127) filled++;
+  }
+  return filled / UNDER_RIM.length;
 }
 
 // The token as a picture, square, `size` across: the bust (carved, painted, turned to the token's view) over its

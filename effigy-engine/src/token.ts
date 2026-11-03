@@ -42,15 +42,23 @@ export function backdropPicture(file: string): Promise<HTMLImageElement> {
   return picture;
 }
 
-// The backdrop behind the bust: a picture (cropped to its middle square, to fill the token), or a dim glow in the
-// middle falling off to near black at the rim
+// How much of the token's width shows the picture: the round inside the rim (and a little under it). A backdrop is
+// drawn just this wide, so the whole of it is seen across the round (drawn across the whole square, its edges were
+// lost under the rim and in the cut-away corners); a square as wide as a round still covers all of it.
+export const PICTURE = 1 - 0.008 - 2 * RIM + 0.6 * RIM;
+
+// The backdrop behind the bust: a picture (its middle square, as wide as the round it shows through), or a dim glow
+// in the middle falling off to near black at the rim
 export function tokenBackdrop(size: number, picture?: HTMLImageElement): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const g = canvas.getContext("2d")!;
   if (picture) {
     const side = Math.min(picture.naturalWidth, picture.naturalHeight);
-    g.drawImage(picture, (picture.naturalWidth - side) / 2, (picture.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+    const shown = size * PICTURE;
+    g.fillStyle = "#080605";
+    g.fillRect(0, 0, size, size);
+    g.drawImage(picture, (picture.naturalWidth - side) / 2, (picture.naturalHeight - side) / 2, side, side, (size - shown) / 2, (size - shown) / 2, shown, shown);
   } else {
     const glow = g.createRadialGradient(size * 0.5, size * 0.42, 0, size * 0.5, size * 0.5, size * 0.6);
     glow.addColorStop(0, "#3a302a");
