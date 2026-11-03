@@ -97,10 +97,12 @@ export function buildHairShell(
 // (see earClear in headMesh.ts), and straight across from it too, since a reshaped ear can lie back over scalp far
 // from where it grows (an elf's point is drawn up over the side of the head, onto scalp the hair would cover)
 const EAR_NEAR = { margin: 0.02, fade: 0.05 }; // (more than along the surface: an ear lying back over the scalp, as an elf's point does, needs the hair beneath it thinned well clear)
-export function earClearance(positions: Float32Array, base: HeadBase): Float32Array {
+// (`near`: how far off the reshaped ear, straight across, it starts to clear, and over how far; `alongSurface` false
+// for the straight distance alone)
+export function earClearance(positions: Float32Array, base: HeadBase, near = EAR_NEAR, alongSurface = true): Float32Array {
   const count = positions.length / 3;
-  const clear = Float32Array.from(base.masks.earClear);
-  const cell = EAR_NEAR.margin + EAR_NEAR.fade;
+  const clear = alongSurface ? Float32Array.from(base.masks.earClear) : new Float32Array(count).fill(1);
+  const cell = near.margin + near.fade;
   const grid = new Map<string, number[]>();
   const key = (x: number, y: number, z: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
   for (let i = 0; i < count; i++) {
@@ -112,12 +114,12 @@ export function earClearance(positions: Float32Array, base: HeadBase): Float32Ar
     if (clear[i] === 0) continue;
     const [x, y, z] = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
     const [cx, cy, cz] = [Math.floor(x / cell), Math.floor(y / cell), Math.floor(z / cell)];
-    let near = Infinity;
+    let d = Infinity;
     for (let dx = -1; dx <= 1; dx++)
       for (let dy = -1; dy <= 1; dy++)
         for (let dz = -1; dz <= 1; dz++)
-          for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) near = Math.min(near, Math.hypot(positions[j * 3] - x, positions[j * 3 + 1] - y, positions[j * 3 + 2] - z));
-    if (near < cell) clear[i] = Math.min(clear[i], smooth((near - EAR_NEAR.margin) / EAR_NEAR.fade));
+          for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) d = Math.min(d, Math.hypot(positions[j * 3] - x, positions[j * 3 + 1] - y, positions[j * 3 + 2] - z));
+    if (d < cell) clear[i] = Math.min(clear[i], smooth((d - near.margin) / near.fade));
   }
   return clear;
 }
@@ -412,7 +414,17 @@ function beardShaping(x: number, y: number, z: number): number {
   return underLip * moustache * throat * corners;
 }
 
-const BEARD_EAR = 0.35; // the beard is full where the ear clearance (see earClearance) reaches this
+const BEARD_UNDER_EAR = { margin: 0.004, fade: 0.16, thin: 0.05 }; // straight from the ear: where the beard thins, and to what share
+
+// How clear of the ears the shadow of a beard on the skin keeps (0 on them, 1 away, see paint.ts): further off than
+// the hair, so none of it reaches the lobe or the bowl of the ear just inside its rim
+const BEARD_EAR = { margin: 0.03, fade: 0.04 };
+export function beardEarClearance(positions: Float32Array, base: HeadBase): Float32Array {
+  const clear = earClearance(positions, base);
+  for (let i = 0; i < clear.length; i++) clear[i] = Math.min(clear[i], smooth((base.masks.earDistance[i] - BEARD_EAR.margin) / BEARD_EAR.fade));
+  return clear;
+}
+
 
 // The beard's own shape, before it is carved: a closed shell of the head's resolution
 export function buildBeardShell(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
@@ -434,12 +446,16 @@ export function buildBeardShell(p: Params, positions: Float32Array, normals: Flo
     // there (it only folded over itself in the crease, and nobody sees it)
     grow[i] *= 1 - band * smooth((base.normals[i * 3 + 1] - 0.35) / 0.25);
   }
-  // Off the ears, as the hair is (the beard's sideburns met the ear's lobe and painted over it): but only right at
-  // the ear, the beard as full as ever up to it. (A full beard's thick edge folds over itself at the slightest
-  // change beside the ear: faded out as far off as the hair's hairline, or held off by its spread-out margin, it
-  // did. A beard keeps only the triangles where it grows, so cut back at the ear, none lie on it.)
-  const clear = earClearance(positions, base);
-  for (let i = 0; i < count; i++) grow[i] *= Math.min(1, clear[i] / BEARD_EAR);
+  // The beard's own shape keeps it off most of the ear (see beardWeight), but it grew on the lobe itself, low on the
+  // ear: none grows on the ear's own vertices (and the beard keeps only the triangles where it grows, so none lie on
+  // it). Under the lobe, which hangs in front of the beard, the beard is thinner, so the lobe stays outside it
+  // instead of sunk in it. Its thickness is what changes, not where it grows: cut back where it grows over a fade,
+  // as the hair is, a full beard's thick edge folded over itself here.
+  const nearEar = earClearance(positions, base, BEARD_UNDER_EAR, false);
+  for (let i = 0; i < count; i++) {
+    if (base.masks.earDistance[i] === 0) grow[i] = 0;
+    scale[i] *= BEARD_UNDER_EAR.thin + (1 - BEARD_UNDER_EAR.thin) * nearEar[i];
+  }
   return raiseShell(positions, normals, base, grow, BEARDS[p.beardStyle], scale, floor);
 }
 

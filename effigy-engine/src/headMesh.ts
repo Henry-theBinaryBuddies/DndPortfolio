@@ -12,7 +12,7 @@ const SMOOTH_PASSES = 3;
 // The ears on the undeformed head: where the flap stands out past the skull (head units), and how far off it the
 // hair may start (see earClear below): close, so the hairline comes down to the ear and round it (further off, it
 // rode high up the side of the skull)
-const EAR = { out: 0.41, low: -0.3, high: 0.12, back: -0.7, front: -0.2, margin: 0.008, fade: 0.025, reach: 0.2 };
+const EAR = { out: 0.41, lobeOut: 0.38, lobeTop: -0.12, low: -0.34, high: 0.12, back: -0.7, front: -0.2, margin: 0.008, fade: 0.025, reach: 0.2 };
 
 // Where the eyes sit in the source file's own units (metres): the midpoint between the eyes, and the
 // eyeball radius that fits this head's eyelids. The bundle's own eyeball mesh is larger (12.4 mm), but the
@@ -53,7 +53,8 @@ export interface HeadBase {
   // the face is reshaped. lipsSoft is the red of the lips with a gentle edge, for lip fullness and for
   // keeping a beard off the lips; mouthLine and nostrils are where the paint darkens; earClear is how clear of
   // the ears a vertex is (0 on them, 1 away), so hair keeps off them.
-  masks: { lipsSoft: Float32Array; mouthLine: Float32Array; nostrils: Float32Array; earClear: Float32Array };
+  // (earDistance is the distance itself, along the surface, for a part that keeps further off than the hair: a beard)
+  masks: { lipsSoft: Float32Array; mouthLine: Float32Array; nostrils: Float32Array; earClear: Float32Array; earDistance: Float32Array };
   neck: { x: number; z: number }; // centre line of the neck
   // The same vertices with the shoulders and chest wrapped onto a sculpted female body instead of a male
   // one (see tools/export_head.py). The build blends between the two.
@@ -224,7 +225,10 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
   };
   for (let i = 0; i < vertexCount; i++) {
     const [x, y, z] = [Math.abs(positions[i * 3]), positions[i * 3 + 1], positions[i * 3 + 2]];
-    if (x > EAR.out && y > EAR.low && y < EAR.high && z > EAR.back && z < EAR.front) {
+    // (the lobe, low on the ear, stands out less than the rim above it, but past the side of the skull there, which is
+    // no wider than about 0.36)
+    const out = y < EAR.lobeTop ? EAR.lobeOut : EAR.out;
+    if (x > out && y > EAR.low && y < EAR.high && z > EAR.back && z < EAR.front) {
       earDistance[i] = 0;
       push(0, i);
     }
@@ -253,7 +257,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     eyes: { left: [half, 0, 0], right: [-half, 0, 0], radius: SOURCE.eyeRadius * SCALE },
     baseY,
     bottom: Uint32Array.from(underside),
-    masks: { lipsSoft, mouthLine, nostrils, earClear },
+    masks: { lipsSoft, mouthLine, nostrils, earClear, earDistance },
     neck: { x: neckX / neckCount, z: neckZ / neckCount },
     feminine: { positions: femininePositions, normals: normalsOf(femininePositions) },
   };
