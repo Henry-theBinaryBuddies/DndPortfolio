@@ -88,19 +88,48 @@ export function buildHairShell(
 
   // How much hair grows at each vertex
   const grow = new Float32Array(count);
-  for (let i = 0; i < count; i++) grow[i] = hairGrowth(p, positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-  return raiseShell(positions, normals, base, grow, style);
+  const clear = earClearance(positions, base);
+  for (let i = 0; i < count; i++) grow[i] = hairGrowth(p, positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2], clear[i]);
+  return raiseShell(positions, normals, base, grow, style, undefined, undefined, clear);
+}
+
+// How clear of the ears each vertex of the reshaped head is (0 on them, 1 away): along the surface from the ear
+// (see earClear in headMesh.ts), and straight across from it too, since a reshaped ear can lie back over scalp far
+// from where it grows (an elf's point is drawn up over the side of the head, onto scalp the hair would cover)
+const EAR_NEAR = { margin: 0.02, fade: 0.05 };
+export function earClearance(positions: Float32Array, base: HeadBase): Float32Array {
+  const count = positions.length / 3;
+  const clear = Float32Array.from(base.masks.earClear);
+  const cell = EAR_NEAR.margin + EAR_NEAR.fade;
+  const grid = new Map<string, number[]>();
+  const key = (x: number, y: number, z: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+  for (let i = 0; i < count; i++) {
+    if (base.masks.earClear[i] > 0) continue;
+    const k = key(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+    (grid.get(k) ?? grid.set(k, []).get(k)!).push(i);
+  }
+  for (let i = 0; i < count; i++) {
+    if (clear[i] === 0) continue;
+    const [x, y, z] = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
+    const [cx, cy, cz] = [Math.floor(x / cell), Math.floor(y / cell), Math.floor(z / cell)];
+    let near = Infinity;
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dz = -1; dz <= 1; dz++)
+          for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) near = Math.min(near, Math.hypot(positions[j * 3] - x, positions[j * 3 + 1] - y, positions[j * 3 + 2] - z));
+    if (near < cell) clear[i] = Math.min(clear[i], smooth((near - EAR_NEAR.margin) / EAR_NEAR.fade));
+  }
+  return clear;
 }
 
 // How much hair grows at a point of the head (0..1), for the style: the scalp, less the shaved sides of a
-// mohawk and the ears. (The paint shades the scalp under the hair with it too: see paint.ts.)
-export function hairGrowth(p: Params, x: number, y: number, z: number): number {
+// mohawk, fading out as it nears an ear (`earClear`, see headMesh.ts), so the hairline tucks round and behind
+// the ear instead of over it. (The paint shades the scalp under the hair with it too: see paint.ts.)
+export function hairGrowth(p: Params, x: number, y: number, z: number, earClear: number): number {
   if (p.hairStyle === "none") return 0;
   let w = scalp(x, y, z);
   if (p.hairStyle === "mohawk") w *= 1 - smooth((Math.abs(x) - STRIP_HALF_WIDTH) / 0.05);
-  // The ears are not scalp
-  if (Math.abs(x) > 0.4 && y > -0.3 && y < 0.2 && z > -0.7 && z < -0.2) w = 0;
-  return w;
+  return w * earClear;
 }
 
 // The hair as it prints: its shell, subdivided and carved into locks (see hairCarve.ts)
@@ -115,7 +144,8 @@ export function buildHair(p: Params, positions: Float32Array, normals: Float32Ar
 // an outer surface, an inner one just under the skin, and walls joining them round the edge, so it is a
 // solid that prints and that never shows an open underside. Shared by the hair and the beard.
 // (floor: where, per head vertex, 0..1, the shell is raised along the skin's own normal)
-function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBase, grow: Float32Array, style: Style, scale?: Float32Array, floor?: Float32Array): THREE.BufferGeometry | null {
+// (`keepOff`, 0..1 per vertex: where the spread-out margin of the shell may not reach, as the ears for the hair)
+function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBase, grow: Float32Array, style: Style, scale?: Float32Array, floor?: Float32Array, keepOff?: Float32Array): THREE.BufferGeometry | null {
   const indices = base.indices;
   const count = positions.length / 3;
 
@@ -133,6 +163,9 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     }
     soft = next;
   }
+  // (spread out, the margin crept back over the top of an ear, a thin film that took the hair's colour: it is held
+  // off again, as softly as it fades in, so there is no ledge)
+  if (keepOff) for (let i = 0; i < count; i++) soft[i] *= keepOff[i];
 
   // The direction to raise each vertex in: the skin's normals, smoothed across the surface
   let dirs = new Float32Array(normals);

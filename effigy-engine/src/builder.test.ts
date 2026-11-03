@@ -841,6 +841,61 @@ describe("carved beards", () => {
   }, 120000);
 });
 
+describe("hair round the ears", () => {
+  // The ears' flaps on the head as reshaped, and how much of their outer face (the side that is seen) hair lies on
+  // or over: hair within `near` of a vertex, and outside it. (An ear is thin, and one that lies back against the
+  // head, as an elf's does, has hair close behind it, as a lock tucked behind the ear does: that is what is wanted.)
+  const covered = (positions: Float32Array, normals: Float32Array, hair: THREE.BufferGeometry, near: number) => {
+    const ear: number[] = [];
+    for (let i = 0; i < positions.length / 3; i++) {
+      if (base.masks.earClear[i] === 0 && normals[i * 3] * Math.sign(positions[i * 3]) + 0.3 * normals[i * 3 + 2] > 0.3) ear.push(i);
+    }
+    const cell = 0.05;
+    const grid = new Map<string, number[]>();
+    const h = hair.attributes.position;
+    for (let j = 0; j < h.count; j++) {
+      const key = [h.getX(j), h.getY(j), h.getZ(j)].map((v) => Math.floor(v / cell)).join(",");
+      (grid.get(key) ?? grid.set(key, []).get(key)!).push(j);
+    }
+    let hit = 0;
+    for (const i of ear) {
+      const [x, y, z] = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
+      const [cx, cy, cz] = [x, y, z].map((v) => Math.floor(v / cell));
+      search: for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dz = -1; dz <= 1; dz++)
+            for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
+              const [ox, oy, oz] = [h.getX(j) - x, h.getY(j) - y, h.getZ(j) - z];
+              if (Math.hypot(ox, oy, oz) < near && ox * normals[i * 3] + oy * normals[i * 3 + 1] + oz * normals[i * 3 + 2] > 0) {
+                hit++;
+                break search;
+              }
+            }
+    }
+    return hit / ear.length;
+  };
+
+  it("keeps off the ears, whatever the race's ears are like: the hairline tucks round and behind them", () => {
+    for (const race of ["human", "elf", "gnome", "halfling", "tiefling"] as const) {
+      for (const body of ["masculine", "feminine"] as const) {
+        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks"] as const) {
+          const p = { ...applyRace(defaultParams(), race), body, hairStyle };
+          const { positions, normals } = sculptBust(p, base);
+          const shell = buildHairShell(p, positions, normals, base)!;
+          // (next to none of the ear under the cap of hair, within a millimetre outside it: at most a stray vertex of its rim)
+          expect(covered(positions, normals, shell, 1 * MM), `${race} ${body} ${hairStyle}: cap`).toBeLessThan(0.01);
+          if (hairStyle === "dreadlocks") {
+            // the locks pass over the top of the ear and down behind it: little of it has one lying on it (an elf's
+            // point reaches up among the locks, so a little of its tip has one close above: 6% of the ear; a human's 3%)
+            const share = covered(positions, normals, buildLockShell(p, positions, normals, base)!, 0.6 * MM);
+            expect(share, `${race} ${body}: locks`).toBeLessThan(0.08);
+          }
+        }
+      }
+    }
+  }, 300000);
+});
+
 describe("carved hair", () => {
   const styles = ["cropped", "swept", "mohawk", "long"] as const;
 

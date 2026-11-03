@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { beardWeight } from "./beard";
-import { hairGrowth } from "./hairShell";
+import { earClearance, hairGrowth } from "./hairShell";
 import { LANDMARK, type HeadBase } from "./headMesh";
 import { MM } from "./print";
 import { masculinity, type Params, type Race } from "./params";
@@ -187,6 +187,7 @@ export function headPaint(base: HeadBase, geometry: THREE.BufferGeometry, p: Par
   const b = new Float32Array(count * 4);
   const { eyeX } = LANDMARK;
   const aged = (from: number) => Math.max(0, p.age - from);
+  const earClear = earClearance(positions, base);
   for (let i = 0; i < count; i++) {
     const x = positions[i * 3];
     const y = positions[i * 3 + 1];
@@ -222,7 +223,7 @@ export function headPaint(base: HeadBase, geometry: THREE.BufferGeometry, p: Par
     const grime = noise3(x * 3 + 5, y * 3, z * 3) * 0.6 + noise3(x * 9, y * 9 + 3, z * 9) * 0.4;
 
     a.set([shade, lip, dark, Math.max(blush * 0.35, earFlush * 0.4)], i * 4);
-    b.set([age, Math.min(1, stubble), grime, hairGrowth(p, x, y, z) * head], i * 4);
+    b.set([age, Math.min(1, stubble), grime, hairGrowth(p, x, y, z, earClear[i]) * head], i * 4);
   }
   geometry.setAttribute("paintA", new THREE.BufferAttribute(a, 4));
   geometry.setAttribute("paintB", new THREE.BufferAttribute(b, 4));

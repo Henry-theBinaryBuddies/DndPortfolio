@@ -246,6 +246,22 @@ class Tubes {
 const LAND_STEPS = 40; // at most about 58 mm further (the shoulders are never as far as that)
 const down = new THREE.Vector3(0, -1, -0.15);
 const back = new THREE.Vector3(0, 0.25, -1);
+// Beside the head at the height of the ears, a lock falls back as well as down, until it is behind the ear: it
+// tucks behind it, instead of hanging over it. Where the ears are is measured on the head as reshaped (an elf's
+// reach up well past a human's), from the vertices on them (see earClear in headMesh.ts).
+// (from well above the ear, and nearly level, so a lock passes over the top of the ear and comes down behind it:
+// starting lower or steeper, the lock was already at the ear when it turned, and lay across it)
+const behind = new THREE.Vector3(0, -0.3, -1);
+function earZone(positions: Float32Array, base: HeadBase): (p: THREE.Vector3) => boolean {
+  let [low, top, back] = [Infinity, -Infinity, Infinity];
+  for (let i = 0; i < positions.length / 3; i++) {
+    if (base.masks.earClear[i] > 0.05) continue;
+    low = Math.min(low, positions[i * 3 + 1]);
+    top = Math.max(top, positions[i * 3 + 1]);
+    back = Math.min(back, positions[i * 3 + 2]);
+  }
+  return (p) => Math.abs(p.x) > 0.2 && p.z > back - 0.04 && p.y > low - 0.05 && p.y < top + 0.25;
+}
 
 // Where dreadlocks start: spread over the scalp at a fixed spacing (always the same ones, chosen on the
 // undeformed head)
@@ -259,7 +275,7 @@ export function dreadRoots(base: HeadBase): number[] {
     const y = bp[v * 3 + 1];
     const z = bp[v * 3 + 2];
     if (y < -0.05 || scalp(x, y, z) < 0.9) continue;
-    if (Math.abs(x) > 0.4 && y > -0.3 && y < 0.2 && z > -0.7 && z < -0.2) continue; // (the ears)
+    if (base.masks.earClear[v] < 0.95) continue; // (not on or beside the ears)
     order.push(v);
   }
   // A repeatable shuffle
@@ -289,6 +305,7 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
   const cloud = new Cloud(positions);
   const tubes = new Tubes();
   const bp = base.positions;
+  const besideEar = earZone(positions, base);
   for (const v of dreadRoots(base)) {
     const h = hash(v);
     const front = bp[v * 3 + 2] > -0.1 && bp[v * 3 + 1] > 0.1;
@@ -304,7 +321,7 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
       steps: Math.round(length / step),
       step,
       radius,
-      target: (p) => (front && p.z > -0.3 ? back : down),
+      target: (p) => (front && p.z > -0.3 ? back : besideEar(p) ? behind : down),
       rate: 0.35,
       land: LAND_STEPS,
     });
