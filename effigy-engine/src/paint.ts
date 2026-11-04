@@ -178,6 +178,7 @@ function cavity(base: HeadBase, positions: ArrayLike<number>, normals: ArrayLike
 //   paintB: age (bags, smile folds, the lid crease and forehead lines, as darkening), stubble under a beard,
 //           grime blotches (a noise the Grime setting thresholds), the scalp under the hair (shaded like the hair,
 //           so its edge does not stand out against bare skin)
+const HAIRLINE_FRINGE = { reach: 0.04, share: 0.4 }; // how far below the hairline the roots show (head units), and how strongly
 export function headPaint(base: HeadBase, geometry: THREE.BufferGeometry, p: Params): void {
   const positions = geometry.attributes.position.array as Float32Array;
   const normals = geometry.attributes.normal.array as Float32Array;
@@ -224,7 +225,11 @@ export function headPaint(base: HeadBase, geometry: THREE.BufferGeometry, p: Par
     const grime = noise3(x * 3 + 5, y * 3, z * 3) * 0.6 + noise3(x * 9, y * 9 + 3, z * 9) * 0.4;
 
     a.set([shade, lip, dark, Math.max(blush * 0.35, earFlush * 0.4)], i * 4);
-    b.set([age, Math.min(1, stubble), grime, hairGrowth(p, x, y, z, earClear[i]) * head], i * 4);
+    // (the roots reach a little below where the hair itself grows, fading out: fine hairs before the hairline, as on
+    // a real brow, so the edge of the hair's shell, which follows the rows of the head's mesh, sits in a soft fringe
+    // and not against bare skin, where it showed as a sawtooth)
+    const roots = Math.max(hairGrowth(p, x, y, z, earClear[i]), HAIRLINE_FRINGE.share * hairGrowth(p, x, y + HAIRLINE_FRINGE.reach, z, earClear[i]));
+    b.set([age, Math.min(1, stubble), grime, roots * head], i * 4);
   }
   geometry.setAttribute("paintA", new THREE.BufferAttribute(a, 4));
   geometry.setAttribute("paintB", new THREE.BufferAttribute(b, 4));
@@ -283,16 +288,17 @@ float crease(float d, float w) {
   return exp(-(d * d) / (w * w));
 }
 float skinHeight(vec3 p, vec3 n, float pixelSize, float lip) {
-  // Pores and fine texture, fading out once a pixel covers more than a pore
+  // Pores and fine texture, fading out once a pixel covers more than a pore. (Kept faint: at a bust's size, and on a
+  // token, deeper pores read as grit over the face rather than as skin.)
   float fine = 1.0 - smoothstep(0.0008, 0.0026, pixelSize);
   vec3 pore = worley(p * 260.0);
-  float h = -(1.0 - smoothstep(0.0, 0.25, pore.x)) * 0.00045 * fine;
+  float h = -(1.0 - smoothstep(0.0, 0.25, pore.x)) * 0.0003 * fine;
   // Between larger cells run the fine furrows that give skin its cross-hatched look
   vec3 furrow = worley(p * 120.0);
-  h -= (1.0 - smoothstep(0.0, 0.09, furrow.y - furrow.x)) * 0.00025 * fine;
-  h += (vnoise(p * 210.0) - 0.5) * 0.0003 * fine;
+  h -= (1.0 - smoothstep(0.0, 0.09, furrow.y - furrow.x)) * 0.00017 * fine;
+  h += (vnoise(p * 210.0) - 0.5) * 0.0002 * fine;
   // Broader unevenness, as smooth waves (lattice noise at this scale lined up into dashes on the cheek)
-  h += sin(p.x * 23.0 + sin(p.y * 17.0)) * sin(p.y * 19.0 + sin(p.z * 21.0)) * sin(p.z * 25.0 + p.x * 7.0) * 0.0005;
+  h += sin(p.x * 23.0 + sin(p.y * 17.0)) * sin(p.y * 19.0 + sin(p.z * 21.0)) * sin(p.z * 25.0 + p.x * 7.0) * 0.00035;
 
   float facing = smoothstep(0.1, 0.6, n.z);
   float ax = abs(p.x);
@@ -397,9 +403,10 @@ export class Painter {
     c *= mix(vec3(1.0), vec3(1.03, 1.0, 0.92), forehead * 0.6);
     c *= mix(vec3(1.0), vec3(0.9, 0.95, 1.0), jaw * uMasculine * 0.7);
     // In the hollows the skin goes deeper and a little redder (light that scatters under skin comes back red), on
-    // ridges a little lighter
-    vec3 deep = c * vec3(0.62, 0.5, 0.48);
-    c = mix(c, deep, 0.5 * max(shade, 0.0)) + c * 0.12 * max(-shade, 0.0);
+    // ridges a little lighter. (Gently: the light already darkens the hollows, and painted strongly as well they
+    // read as dirt in the creases.)
+    vec3 deep = c * vec3(0.7, 0.58, 0.55);
+    c = mix(c, deep, 0.38 * max(shade, 0.0)) + c * 0.1 * max(-shade, 0.0);
     // Flushed cheeks, nose and ears, less on a filthy face
     c = mix(c, c * vec3(1.1, 0.8, 0.76), vPaintA.w * (1.0 - 0.6 * uGrime));
     // The lips: a little darker and redder than the skin, never a separate colour (on green or red skin a strong

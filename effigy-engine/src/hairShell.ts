@@ -41,6 +41,11 @@ interface Style {
   // Only where it actually grows, not over the wider faded margin round it (a beard's margin reached into
   // the corners of the mouth, where the sculpt's lips meet through unconnected vertices)
   tight?: boolean;
+  // How many rings of the head's mesh the thickness takes to build up inside the hairline (the hair's growth map
+  // spread inward this many passes). With none, the shell stood almost full height one ring inside its edge and
+  // met the skin within a single row of triangles: the line where it went under followed their edges, a sawtooth
+  // along the hairline.
+  taper?: number;
 }
 
 const STYLES: Record<Exclude<HairStyle, "none">, Style> = {
@@ -90,8 +95,9 @@ export function buildHairShell(
   const grow = new Float32Array(count);
   const clear = earClearance(positions, base);
   for (let i = 0; i < count; i++) grow[i] = hairGrowth(p, positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2], clear[i]);
-  return raiseShell(positions, normals, base, grow, style, undefined, undefined, clear);
+  return raiseShell(positions, normals, base, grow, { ...style, taper: HAIRLINE_TAPER }, undefined, undefined, clear);
 }
+const HAIRLINE_TAPER = 3;
 
 // How clear of the ears each vertex of the reshaped head is (0 on them, 1 away): along the surface from the ear
 // (see earClear in headMesh.ts), and straight across from it too, since a reshaped ear can lie back over scalp far
@@ -170,7 +176,9 @@ export function hairGrowth(p: Params, x: number, y: number, z: number, earClear:
 export function buildHair(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   if (p.hairStyle === "none") return null;
   const shell = buildHairShell(p, positions, normals, base);
-  return shell ? carveShell(shell, base, `hair-${p.hairStyle}`, hairPattern(p.hairStyle)) : null;
+  // (a groove leaves the hair at least a gap's height above the skin: where the shell thins to its edge, grooves cut
+  // at their full depth dipped under the skin, and each dip showed as a tooth along the hairline)
+  return shell ? carveShell(shell, base, `hair-${p.hairStyle}`, hairPattern(p.hairStyle), 3 * SKIN_GAP) : null;
 }
 
 // Raises a solid shell from the head wherever the growth map says hair grows (0..1 per vertex), with the
@@ -200,6 +208,33 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
   // (spread out, the margin crept back over the top of an ear, a thin film that took the hair's colour: it is held
   // off again, as softly as it fades in, so there is no ledge)
   if (keepOff) for (let i = 0; i < count; i++) soft[i] *= keepOff[i];
+
+  // The growth map tapered inward from the hairline (see Style.taper): by how many rings of the mesh each vertex
+  // lies inside it, so it builds up over that many rings whatever the growth map does at its edge
+  let inward = grow;
+  if (style.taper) {
+    const rings = new Float32Array(count).fill(style.taper);
+    let front: number[] = [];
+    for (let i = 0; i < count; i++)
+      if (grow[i] < 0.5) {
+        rings[i] = 0;
+        front.push(i);
+      }
+    for (let ring = 1; ring < style.taper && front.length; ring++) {
+      const next: number[] = [];
+      for (const i of front)
+        for (let k = base.offsets[i]; k < base.offsets[i + 1]; k++) {
+          const j = base.neighbours[k];
+          if (rings[j] > ring) {
+            rings[j] = ring;
+            next.push(j);
+          }
+        }
+      front = next;
+    }
+    inward = new Float32Array(count);
+    for (let i = 0; i < count; i++) inward[i] = grow[i] * smooth(rings[i] / style.taper);
+  }
 
   // The direction to raise each vertex in: the skin's normals, smoothed across the surface
   let dirs = new Float32Array(normals);
@@ -257,7 +292,7 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     n.set(dirs[v * 3], dirs[v * 3 + 1], dirs[v * 3 + 2]).normalize();
     const w = grow[v];
     // Full thickness well inside the hairline, tapering to a hair's breadth at its edge
-    const depth = smooth((soft[v] - 0.25) / 0.65) * smooth(w / 0.3);
+    const depth = smooth((soft[v] - 0.25) / 0.65) * (style.taper ? smooth((inward[v] - 0.05) / 0.85) : smooth(w / 0.3));
     // Clumps and lean fade out toward the edge, so the shell never overhangs its own root (where it did, its
     // edge ended in knife-thin points with an open underside showing)
     const settle = smooth(depth / 0.35);
@@ -278,7 +313,9 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     out[(total + j) * 3 + 1] = y - n.y * 2 * SKIN_GAP;
     out[(total + j) * 3 + 2] = z - n.z * 2 * SKIN_GAP;
     // How much of it is hair, fading out at the hairline
-    const hairy = smooth((Math.min(w, soft[v] * 1.6) - 0.02) / 0.5);
+    // (over the same rings as the thickness, with a taper: the colour fading to the roots' tone only over its last
+    // ring, the hard hair colour met the skin right where the shell goes under it, along the mesh's rows)
+    const hairy = smooth((Math.min(style.taper ? inward[v] : w, soft[v] * 1.6) - 0.02) / 0.5);
     amount[j] = hairy;
     amount[total + j] = hairy;
   });

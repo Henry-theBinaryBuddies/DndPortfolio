@@ -22,6 +22,13 @@ export const HAIR_CARVING = {
 export function locks(across: number, along: number, period = 0): number {
   const c = HAIR_CARVING;
   const wrap = (k: number) => (period ? ((k % period) + period) % period : k);
+  // (on the head, not round a rope: locks of uneven widths, their partings wandering along their length, so they
+  // read as hair and not as a comb's even teeth. Only ever wider than the pitch, never narrower, so the ridges
+  // between grooves stay as thick as the printer needs.)
+  if (!period) {
+    const k = (2 * Math.PI) / (3.3 * c.lockPitch);
+    across = 0.82 * across + (0.13 / k) * Math.sin(k * across + 4 * along) + (0.02 / k) * Math.sin(2.3 * k * across - 7 * along + 1.3); // (its slope 0.64..1)
+  }
   const p1 = across / c.lockPitch;
   const lock = wrap(Math.floor(p1));
   const major = vee(p1, c.lockGroove / c.lockPitch / 2) * (0.7 + 0.6 * hash(lock)) * (0.6 + 0.4 * Math.sin(along * 13 + lock * 2.3));
