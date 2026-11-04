@@ -173,18 +173,18 @@ EYE_TURN = turn(y=0.5)  # each eye looks this far out to its side
 
 # The muzzle (upper jaw) and the lower jaw, as sections along Z: z, half width, top, bottom, corner
 MUZZLE = dict(
-    z=[-0.06, 0.0, 0.06, 0.12, 0.168],
-    half_width=[0.064, 0.056, 0.048, 0.04, 0.034],
-    top=[0.03, 0.016, 0.005, -0.001, -0.006],
-    bottom=[-0.07, -0.069, -0.067, -0.065, -0.064],
-    corner=[0.03, 0.026, 0.022, 0.022, 0.024],
+    z=[-0.06, 0.0, 0.05, 0.1, 0.148],
+    half_width=[0.068, 0.06, 0.051, 0.042, 0.036],
+    top=[0.03, 0.018, 0.009, 0.004, 0.0],
+    bottom=[-0.072, -0.072, -0.071, -0.069, -0.068],
+    corner=[0.03, 0.027, 0.024, 0.024, 0.026],
 )
 JAW = dict(
-    z=[-0.085, -0.03, 0.03, 0.09, 0.126],
-    half_width=[0.062, 0.052, 0.04, 0.03, 0.023],
-    top=[-0.058, -0.06, -0.059, -0.056, -0.055],  # inside the muzzle, so the two jaws are one solid
-    bottom=[-0.136, -0.123, -0.108, -0.096, -0.088],
-    corner=[0.034, 0.03, 0.024, 0.019, 0.015],
+    z=[-0.085, -0.03, 0.03, 0.075, 0.102],
+    half_width=[0.064, 0.054, 0.04, 0.028, 0.02],
+    top=[-0.06, -0.062, -0.061, -0.06, -0.06],  # inside the muzzle, so the two jaws are one solid
+    bottom=[-0.136, -0.12, -0.103, -0.09, -0.083],
+    corner=[0.034, 0.03, 0.022, 0.016, 0.012],
 )
 HORN = catmull_rom(
     [(0.042, 0.065, -0.065), (0.07, 0.105, -0.11), (0.1, 0.112, -0.17), (0.123, 0.076, -0.216), (0.133, 0.02, -0.216), (0.133, -0.02, -0.182), (0.127, -0.03, -0.142)],
@@ -196,6 +196,9 @@ SPINES = [
     ((0.07, -0.035, -0.07), (0.118, -0.026, -0.1), 0.012),
     ((0.072, -0.074, -0.084), (0.113, -0.084, -0.118), 0.011),
     ((0.058, 0.026, -0.035), (0.097, 0.04, -0.062), 0.009),
+    # (the frill: a smaller one behind the cheek and one under the jaw's corner)
+    ((0.074, -0.012, -0.085), (0.113, 0.0, -0.116), 0.009),
+    ((0.066, -0.1, -0.062), (0.098, -0.118, -0.088), 0.0085),
 ]
 # Brow plates: an angry slant down toward the nose, overhanging the eye
 BROW_TURN = turn(z=0.32, y=0.35)
@@ -213,22 +216,22 @@ def head(P):
     # The lower jaw, narrower than the muzzle so the upper lip overhangs it
     d = smin(d, loft(P, JAW["z"], JAW["half_width"], JAW["top"], JAW["bottom"], JAW["corner"], 0.03, 0.02), 0.004)
     # Cheek plates and the jaw muscles behind them
-    d = smin(d, ellipsoid(Q, (0.064, -0.05, -0.045), (0.024, 0.038, 0.052)), 0.022)
-    d = smin(d, segment(Q, (0.044, -0.024, 0.03), (0.064, -0.028, -0.05), 0.008, 0.011), 0.02)
+    d = smin(d, ellipsoid(Q, (0.068, -0.052, -0.045), (0.028, 0.04, 0.055)), 0.024)
+    d = smin(d, segment(Q, (0.046, -0.024, 0.03), (0.068, -0.03, -0.05), 0.009, 0.013), 0.02)
     # The heavy brow plate over each eye
     d = smin(d, ellipsoid(Q, (0.043, 0.026, 0.018), (0.03, 0.011, 0.032), BROW_TURN), 0.014)
     # The ridge down the top of the muzzle, and the nostrils with a raised rim
-    d = smin(d, segment(P, (0, 0.035, 0.03), (0, -0.014, 0.15), 0.01, 0.008), 0.015)
-    d = smin(d, ellipsoid(P, (0, -0.018, 0.152), (0.03, 0.019, 0.019)), 0.012)
-    d = smin(d, ellipsoid(Q, (0.019, -0.008, 0.152), (0.009, 0.006, 0.014), NOSTRIL_TURN), 0.008)
-    d = smax(d, -ellipsoid(Q, (0.021, -0.004, 0.156), (0.0075, 0.0045, 0.0105), NOSTRIL_TURN), 0.003)
+    d = smin(d, segment(P, (0, 0.035, 0.03), (0, 0.002, 0.13), 0.01, 0.008), 0.015)
+    d = smin(d, ellipsoid(P, (0, -0.012, 0.13), (0.027, 0.023, 0.021)), 0.012)
+    d = smin(d, ellipsoid(Q, (0.021, -0.002, 0.13), (0.01, 0.007, 0.015), NOSTRIL_TURN), 0.008)
+    d = smax(d, -ellipsoid(Q, (0.023, 0.0, 0.136), (0.0085, 0.005, 0.011), NOSTRIL_TURN), 0.003)
     # Sockets cut under the brow, then the eyeballs set deep in them
     d = smax(d, -ellipsoid(Q, EYE, (0.021, 0.0115, 0.018), EYE_TURN), 0.004)
     d = smin(d, np.linalg.norm(Q - (EYE - EYE_TURN[:, 2] * 0.0085), axis=1) - EYE_RADIUS, 0.002)
     # The mouth line: a shallow groove along the lip, cut only into the outer few millimetres
     lip = np.interp(P[:, 2], LIP_Z, LIP_Y)
     groove = np.maximum(np.abs(P[:, 1] - lip) - 0.0016, -d - 0.0035)
-    groove = np.maximum(groove, np.maximum(P[:, 2] - 0.18, LIP_Z[0] - P[:, 2]))
+    groove = np.maximum(groove, np.maximum(P[:, 2] - 0.165, LIP_Z[0] - P[:, 2]))
     return smax(d, -groove, 0.0015)
 
 
@@ -257,8 +260,8 @@ CREST = [
     ((0, -0.16, -0.165), (0, -0.172, -0.2), 0.011),
 ]
 # The mouth line, along the muzzle (z, y), rising a little at the back to the corner of the mouth
-LIP_Z = [-0.062, -0.03, 0.06, 0.15, 0.18]
-LIP_Y = [-0.06, -0.067, -0.068, -0.066, -0.066]
+LIP_Z = [-0.062, -0.03, 0.05, 0.13, 0.165]
+LIP_Y = [-0.06, -0.068, -0.07, -0.068, -0.068]
 
 
 def spine(P, root, tip, radius, flat):
@@ -506,7 +509,14 @@ def scale_size(P):
     s = lerp(0.02, 0.015, smoothstep(-0.27, -0.17, y))
     headness = smoothstep(-0.11, -0.05, y)
     s = lerp(s, 0.011, headness)
-    return lerp(s, 0.007, smoothstep(0.0, 0.08, head_frame(P)[:, 2]) * headness)
+    # Large plates over the crown, the brows and the cheeks; small scales down the muzzle
+    H = mirrored(head_frame(P))
+    near = lambda c, r: np.exp(-np.sum(((H - np.array(c)) / np.array(r)) ** 2, axis=1))
+    s = lerp(s, 0.016, smoothstep(0.03, 0.075, H[:, 1]) * headness)
+    s = lerp(s, 0.014, near((0.045, 0.028, 0.015), (0.03, 0.016, 0.035)))
+    s = lerp(s, 0.014, near((0.062, -0.045, -0.035), (0.03, 0.035, 0.045)))
+    muzzle = smoothstep(0.04, 0.09, H[:, 2]) * (1 - near((0.045, 0.028, 0.015), (0.03, 0.016, 0.035)))
+    return lerp(s, 0.0065, muzzle * headness)
 
 
 def tailward(P, N):
@@ -619,7 +629,8 @@ def scales(obj):
     groove = 1 - smoothstep(0.0, 0.08 * s, edge)
     # Each scale rises toward its free edge, so it seems to lie over the next one, and is slightly domed
     along = np.sum((P - sites[owner]) * tailward(P, N), axis=1) / s
-    plate = 0.13 * s * np.clip(along + 0.5, 0, 1.1) + 0.03 * s * np.clip(1 - (d1 / (0.7 * s)) ** 2, 0, 1)
+    # (bolder on the larger scales of the neck and chest, so they read as shingles, not cobbles)
+    plate = lerp(0.13, 0.18, smoothstep(0.011, 0.018, s)) * s * np.clip(along + 0.5, 0, 1.1) + 0.03 * s * np.clip(1 - (d1 / (0.7 * s)) ** 2, 0, 1)
     skin = lerp(plate, -0.05 * s, groove)
 
     # Scutes: chevron bands down the front of the throat, each overlapping the one below

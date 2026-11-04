@@ -25,9 +25,9 @@ This writes `dragonborn.blend` (open it in Blender to look around or sculpt by h
 
 ## Test STL
 
-The STL is the bust on a plain round plinth, at about 1:12 (36.5 x 42.4 x 51.1 mm), 2.25 million triangles. The latest build passed:
+The STL is the bust on a plain round plinth, at about 1:12 (36.6 x 40.5 x 51.1 mm), 2.27 million triangles. The latest build passed:
 
 - the script's own check: no edge used by other than two triangles, no triangles passing through each other (each pair the bounding test reports is tested exactly);
-- the independent Trimesh check (`tools/check-stl.py`): watertight, consistently wound, a true volume, one body (18.9 cm³).
+- the independent Trimesh check (`tools/check-stl.py`): watertight, consistently wound, a true volume, one body (19.1 cm³).
 
 Not checked: slicing and printing. Printing is on hold until a better printer. The horn tips and spine points are thin at this scale (about 0.4 mm and 0.2 mm across), so they would need thickening before a real print.
