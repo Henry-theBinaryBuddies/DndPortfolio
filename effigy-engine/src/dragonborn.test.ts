@@ -38,7 +38,7 @@ describe("the Dragonborn family", () => {
       if (o instanceof THREE.Mesh) names.set(o.name, (names.get(o.name) ?? 0) + 1);
     });
     expect([...names]).toEqual([
-      ["head", 1],
+      ["scales", 1],
       ["horn", 1],
       ["dragonEye", 2],
     ]);

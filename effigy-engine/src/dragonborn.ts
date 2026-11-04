@@ -14,10 +14,10 @@ import { findUnderside, type Underside } from "./underside";
 // The model is in the same head units, origin and axes as the human head (see headMesh.ts), so the camera, the
 // pedestal, the tabletop fit, the print and the token all treat it as they treat any bust. Its file says which
 // triangles are horn (and spine and crest) and which are eye, so the paint can colour them; which part each vertex
-// belongs to, so a control can move one part; and how far each vertex lies in a hollow (the grooves between the
-// scales), which the skin's paint darkens.
+// belongs to, so a control can move one part; and for the paint (see the scales' material in paint.ts), how far each
+// vertex lies in a hollow (the grooves between the scales), each scale's own tone, and how pale the underside is.
 
-export const DRAGONBORN_VERSION = 2;
+export const DRAGONBORN_VERSION = 3;
 
 export interface DragonbornManifest {
   name: string;
@@ -43,7 +43,7 @@ export interface DragonbornAsset {
   indices: Uint32Array;
   // The parts, each the triangles of one region: the scales as the head (with its paint per vertex), the horns, spines
   // and crest as horn, and each eye's
-  skin: { index: Uint32Array; paintA: Float32Array; paintB: Float32Array };
+  skin: { index: Uint32Array; shade: Float32Array; tone: Float32Array; belly: Float32Array };
   horn: { index: Uint32Array };
   eyes: { centre: THREE.Vector3; look: THREE.Vector3; vertices: Uint32Array; index: Uint32Array }[];
   shaped: Map<string, Shaped>; // the last few shapes built (each is a fraction of a second to work out)
@@ -67,13 +67,15 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
   if (manifest.version !== DRAGONBORN_VERSION) throw new Error(`the Dragonborn model is version ${manifest.version}, not the ${DRAGONBORN_VERSION} this app reads`);
   const [vertices, triangles] = new Uint32Array(buffer, 0, 2);
   if (vertices !== manifest.vertices || triangles !== manifest.triangles) throw new Error("the Dragonborn model does not match its description");
-  if (buffer.byteLength !== 8 + vertices * 21 + triangles * 13) throw new Error("the Dragonborn model file is the wrong length");
+  if (buffer.byteLength !== 8 + vertices * 23 + triangles * 13) throw new Error("the Dragonborn model file is the wrong length");
   let at = 8;
   const take = (bytes: number) => buffer.slice(at, (at += bytes));
   const positions = new Float32Array(take(vertices * 12));
   const shade = new Float32Array(take(vertices * 4));
   const along = new Float32Array(take(vertices * 4));
   const part = new Uint8Array(take(vertices));
+  const tone = Float32Array.from(new Uint8Array(take(vertices)), (v) => v / 255);
+  const belly = Float32Array.from(new Uint8Array(take(vertices)), (v) => v / 255);
   const indices = new Uint32Array(take(triangles * 12));
   const region = new Uint8Array(take(triangles));
 
@@ -90,11 +92,6 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
       eyeTriangles[nearest].push(...corners);
     } else skin.push(...corners);
   }
-  // The skin's paint per vertex (see paint.ts): only the shade of the hollows; the human face's other measures (lips,
-  // flush, stubble) are zero
-  const paintA = new Float32Array(vertices * 4);
-  for (let i = 0; i < vertices; i++) paintA[i * 4] = shade[i];
-  const paintB = new Float32Array(vertices * 4);
   const eyes = manifest.eyes.map((eye, e) => {
     // (each eye's own vertices, numbered afresh for its own mesh)
     const remap = new Map<number, number>();
@@ -121,7 +118,7 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
     });
     starts[outgrowth[i]] = Math.min(starts[outgrowth[i]], best);
   }
-  return { manifest, positions, along, part, outgrowth, neighbour, starts, indices, skin: { index: Uint32Array.from(skin), paintA, paintB }, horn: { index: Uint32Array.from(horn) }, eyes, shaped: new Map() };
+  return { manifest, positions, along, part, outgrowth, neighbour, starts, indices, skin: { index: Uint32Array.from(skin), shade, tone, belly }, horn: { index: Uint32Array.from(horn) }, eyes, shaped: new Map() };
 }
 
 export async function loadDragonborn(): Promise<DragonbornAsset> {
@@ -328,7 +325,8 @@ export function buildDragonborn(asset: DragonbornAsset, p: Params, gusset = fals
     mesh.userData.joined = true;
     head.add(mesh);
   };
-  part("head", asset.skin.index, { paintA: new THREE.BufferAttribute(asset.skin.paintA, 4), paintB: new THREE.BufferAttribute(asset.skin.paintB, 4) });
+  // (the scales take a paint of their own, not the human skin's: see paint.ts)
+  part("scales", asset.skin.index, { shade: new THREE.BufferAttribute(asset.skin.shade, 1), tone: new THREE.BufferAttribute(asset.skin.tone, 1), belly: new THREE.BufferAttribute(asset.skin.belly, 1) });
   part("horn", asset.horn.index, { along: new THREE.BufferAttribute(asset.along, 1) });
   asset.eyes.forEach((eye, e) => {
     const geometry = new THREE.BufferGeometry();

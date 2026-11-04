@@ -236,6 +236,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     // (a Dragonborn has no hair, and its mouth is shut: those colours are hidden while it is shown)
     showFor(kind: PaintKind) {
       for (const key of ["hair", "teeth"] as const) rows.get(key)!.row.hidden = kind === "dragonborn";
+      rows.get("skin")!.row.querySelector("span")!.textContent = kind === "dragonborn" ? "Scales" : "Skin";
     },
   };
 }

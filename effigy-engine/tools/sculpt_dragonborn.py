@@ -688,6 +688,16 @@ def scales(obj):
     co = np.stack([P[:, 0], -P[:, 2], P[:, 1]], 1)
     mesh.vertices.foreach_set("co", co.ravel())
     mesh.update()
+
+    # For the paint, from the same cells the scales were cut from (so the colour and the carving agree): a tone for
+    # each scale, its own slight shade, and how pale the underside is, the throat's scutes and under the jaw, as on a
+    # reptile's belly. Kept as a colour on the mesh, which the decimation for the app carries over (see export_app).
+    tone = rng.random(len(sites))[owner]
+    under_jaw = smoothstep(-0.3, -0.75, N[:, 1]) * smoothstep(0.07, 0.04, np.abs(Hf[:, 0])) * smoothstep(-0.05, -0.09, Hf[:, 1]) * smoothstep(-0.1, -0.04, Hf[:, 2])
+    throat = smoothstep(0.0, 0.4, N[:, 2]) * smoothstep(0.06, 0.035, x) * smoothstep(-0.32, -0.26, y) * smoothstep(-0.03, -0.09, y)
+    belly = np.maximum(np.maximum(front, throat), under_jaw) * (1 - on_horn) * eye
+    data = mesh.color_attributes.new("paint", "FLOAT_COLOR", "POINT")
+    data.data.foreach_set("color", np.stack([tone, belly, np.zeros(n), np.ones(n)], 1).ravel())
     log("scales cut:", n, "vertices")
 
 
@@ -794,13 +804,14 @@ def export_stl(obj, path):
 # dragonborn.bin (little-endian): uint32 vertexCount, uint32 triangleCount, then float32 x,y,z per vertex,
 # float32 shade per vertex (how far it lies in a hollow, -1..1: the grooves between scales), float32 along per
 # vertex (0 at the root of a horn or spine, 1 at its tip), uint8 part per vertex (0 scales, 1 horn, 2 cheek spine,
-# 3 crest, 4 eye: what the shape controls move), uint32 a,b,c per triangle, and a uint8 region per triangle
+# 3 crest, 4 eye: what the shape controls move), uint8 tone and uint8 belly per vertex (0..255: each scale's own
+# shade, and how pale the underside is, for the paint), uint32 a,b,c per triangle, and a uint8 region per triangle
 # (0 scales, 1 horn, spine or crest, 2 eye: what the paint colours).
 # dragonborn.json: what the app needs to know about it (see src/dragonborn.ts).
 
 APP_RATIO = 0.2
 APP_UNITS = 5  # the app's head units are metres x 5 with the same origin and axes (see src/headMesh.ts)
-MODEL_VERSION = 2
+MODEL_VERSION = 3
 
 
 def outgrowth_regions(P):
@@ -876,6 +887,10 @@ def export_app(obj, out_dir):
     P = np.stack([co[:, 0], co[:, 2], -co[:, 1]], 1)
     N = no.reshape(-1, 3)
     N = np.stack([N[:, 0], N[:, 2], -N[:, 1]], 1)
+    # (the paint's tone and belly, carried over the decimation: see scales)
+    paint = np.zeros(n * 4)
+    mesh.color_attributes["paint"].data.foreach_get("color", paint)
+    paint = paint.reshape(-1, 4)
 
     # How far each vertex lies in a hollow: the offset to the mean of its neighbours, along its normal, for the
     # length of its edges (positive in the grooves between scales)
@@ -905,6 +920,8 @@ def export_app(obj, out_dir):
         handle.write(shade.astype("<f4").tobytes())
         handle.write(along.astype("<f4").tobytes())
         handle.write(part.tobytes())
+        handle.write(np.round(np.clip(paint[:, 0], 0, 1) * 255).astype(np.uint8).tobytes())
+        handle.write(np.round(np.clip(paint[:, 1], 0, 1) * 255).astype(np.uint8).tobytes())
         handle.write(tris.astype("<u4").tobytes())
         handle.write(tri_region.tobytes())
     centre = EYE - EYE_TURN[:, 2] * 0.0085

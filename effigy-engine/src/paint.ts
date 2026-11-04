@@ -371,7 +371,7 @@ export class Painter {
     age: { value: 0.3 },
     masculine: { value: 1 },
   };
-  readonly materials: Record<"skin" | "eye" | "hair" | "horn" | "teeth" | "mouth" | "clay", THREE.MeshStandardMaterial>;
+  readonly materials: Record<"skin" | "eye" | "hair" | "horn" | "teeth" | "mouth" | "scales" | "dragonEye" | "clay", THREE.MeshStandardMaterial>;
 
   constructor(base: HeadBase, paint: Paint) {
     this.base = base;
@@ -553,6 +553,58 @@ export class Painter {
           )
           .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.35, vTissue);");
       }),
+      // A Dragonborn's scales (see dragonborn.ts), from the same cells the sculpt cut them from: each scale its own
+      // slight shade of the colour, darker down the grooves between them and a little lighter on their raised edges, and
+      // the underside (the throat's scutes, under the jaw) paler and warmer, as a reptile's belly is. No pores, lips or
+      // stubble: those belong to the human skin.
+      scales: shared(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }), "effigy-scales-1", (shader) => {
+        uniforms(shader, { uSkin: u.skin, uGrime: u.grime });
+        shader.vertexShader = shader.vertexShader
+          .replace("#include <common>", "#include <common>\nattribute float shade;\nattribute float tone;\nattribute float belly;\nvarying float vShade;\nvarying float vTone;\nvarying float vBelly;\nvarying vec3 vObjPos;")
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\nvShade = shade;\nvTone = tone;\nvBelly = belly;\nvObjPos = position;");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", `#include <common>\nuniform vec3 uSkin;\nuniform float uGrime;\nvarying float vShade;\nvarying float vTone;\nvarying float vBelly;\nvarying vec3 vObjPos;\n${NOISE}`)
+          .replace(
+            "#include <color_fragment>",
+            /* glsl */ `#include <color_fragment>
+  {
+    vec3 c = uSkin * (0.84 + 0.32 * vTone) * (0.94 + 0.12 * vnoise(vObjPos * 4.0));
+    vec3 pale = mix(uSkin, vec3(0.78, 0.64, 0.42), 0.5);
+    c = mix(c, pale * (0.95 + 0.1 * vTone), vBelly);
+    c = mix(c, c * vec3(0.32, 0.27, 0.24), smoothstep(0.05, 0.7, vShade) * 0.85) + c * 0.12 * smoothstep(0.1, 0.8, -vShade);
+    float grime = max(vShade, 0.0) * uGrime * 0.5 + smoothstep(0.45, 0.7, vnoise(vObjPos * 3.0)) * uGrime * 0.4;
+    diffuseColor.rgb = mix(c, vec3(0.008, 0.006, 0.004), min(0.8, grime));
+  }`,
+          )
+          .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.42, 0.85, smoothstep(0.05, 0.6, vShade));");
+      }),
+      // A Dragonborn's eye, coloured by direction from its centre (it faces +z in its own frame): all iris, no white,
+      // with a vertical slit pupil and a dark rim at its edge; glossy, and glowing if asked
+      dragonEye: shared(new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.04 }), "effigy-dragon-eye-1", (shader) => {
+        uniforms(shader, { uIris: u.iris, uGlow: u.glow });
+        shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vDir;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvDir = normalize(position);");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", "#include <common>\nuniform vec3 uIris;\nuniform float uGlow;\nvarying vec3 vDir;\nfloat irisMask;")
+          .replace(
+            "#include <color_fragment>",
+            /* glsl */ `#include <color_fragment>
+  {
+    float theta = acos(clamp(vDir.z, -1.0, 1.0));
+    float phi = atan(vDir.y, vDir.x);
+    vec3 dark = vec3(0.004, 0.003, 0.002);
+    float fibre = 0.85 + 0.15 * sin(phi * 31.0 + sin(phi * 7.0) * 2.0) + 0.06 * sin(theta * 40.0);
+    vec3 c = uIris * (1.3 - 0.55 * smoothstep(0.0, 0.9, theta)) * fibre;
+    // the slit: narrow, widest at the middle, closing to points top and bottom
+    float half_ = 0.075 * sqrt(max(0.0, 1.0 - pow(vDir.y / 0.6, 2.0)));
+    float slit = 1.0 - smoothstep(half_, half_ + 0.03, abs(vDir.x));
+    c = mix(c, dark, slit * step(0.0, vDir.z));
+    c = mix(c, dark, smoothstep(0.75, 1.0, theta));
+    irisMask = (1.0 - slit) * (1.0 - smoothstep(0.7, 0.95, theta));
+    diffuseColor.rgb = c;
+  }`,
+          )
+          .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  totalEmissiveRadiance += uIris * irisMask * uGlow * 2.5;");
+      }),
       // The solid behind the lips, seen in an open mouth: the dark of the inside of a mouth
       mouth: shared(new THREE.MeshStandardMaterial({ color: 0x1a0707, roughness: 0.55 }), "effigy-mouth-1"),
       // The bare form, for checking the sculpt
@@ -607,7 +659,8 @@ export class Painter {
 const KINDS: Record<string, keyof Painter["materials"]> = {
   head: "skin",
   eye: "eye",
-  dragonEye: "eye",
+  dragonEye: "dragonEye",
+  scales: "scales",
   horn: "horn",
   tusk: "teeth",
   teeth: "teeth",
