@@ -1,3 +1,9 @@
 # Playwright's output from the browser tests (npm run test:browser)
 test-results/
 playwright-report/
+
+# The Dragonborn sculpt's regenerated outputs (tools/sculpt_dragonborn.py)
+assets/dragonborn/*.blend
+assets/dragonborn/*.blend1
+assets/dragonborn/*.stl
+assets/dragonborn/chest_field.npy*
