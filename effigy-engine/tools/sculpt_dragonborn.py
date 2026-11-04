@@ -528,8 +528,20 @@ def tailward(P, N):
     return flow / np.maximum(np.linalg.norm(flow, axis=1), 1e-9)[:, None]
 
 
-def scatter(points, spacing, rng):
-    """Sites spread over the surface roughly `spacing` apart (greedy, in shuffled batches)."""
+# Scales lie in rows: each is longer along the way it points (its flow, see tailward) than across it, by this
+# much. Distances between scales are measured that way, so the cells come out as staggered, overlapping rows
+# rather than round cobbles.
+ROW_STRETCH = 1.45
+
+
+def row_distance(delta, flow):
+    """Distance measured in rows: lengths along the flow count for less (delta, flow: N x 3)."""
+    along = np.sum(delta * flow, axis=-1)
+    return np.sqrt(np.maximum(np.sum(delta * delta, axis=-1) - along * along, 0) + (along / ROW_STRETCH) ** 2)
+
+
+def scatter(points, spacing, flow, rng):
+    """Sites spread over the surface roughly `spacing` apart across their rows (greedy, in shuffled batches)."""
     order = rng.permutation(len(points))
     sites = np.zeros((0, 3))
     site_spacing = np.zeros(0)
@@ -540,15 +552,17 @@ def scatter(points, spacing, rng):
             for i, p in enumerate(sites):
                 tree.insert(p, i)
             tree.balance()
-            keep = [b for b in batch if tree.find(points[b])[2] > 0.9 * spacing[b]]
+            keep = []
+            for b in batch:
+                near = tree.find_range(points[b], 0.9 * spacing[b] * ROW_STRETCH)
+                if not near or np.all(row_distance(np.array([c for c, _, _ in near]) - points[b], flow[b]) > 0.9 * spacing[b]):
+                    keep.append(b)
         else:
             keep = list(batch)
         chosen = []
         for b in keep:
-            if chosen:
-                gaps = np.linalg.norm(points[chosen] - points[b], axis=1)
-                if np.any(gaps < 0.9 * spacing[b]):
-                    continue
+            if chosen and np.any(row_distance(points[chosen] - points[b], flow[b]) < 0.9 * spacing[b]):
+                continue
             chosen.append(b)
         sites = np.concatenate([sites, points[chosen]])
         site_spacing = np.concatenate([site_spacing, spacing[chosen]])
@@ -577,12 +591,14 @@ def horn_ridges(P):
         ring = 0.1 * (1 - f) - 0.16 * (1 - smoothstep(0.0, 0.12, f))
         ridge[part] = ring * radii[nearest] * HEAD_SCALE * weight
         on_horn[part] = smoothstep(0.006, 0.001, clearance)
-    for root, tip, radius in SPINES:
-        root, tip = np.array(root), np.array(tip)
-        axis = tip - root
-        h = np.clip((H - root) @ axis / (axis @ axis), 0, 1)
-        clearance = np.linalg.norm(H - root - h[:, None] * axis, axis=1) - lerp(radius, 0.0012, h)
-        on_horn = np.maximum(on_horn, smoothstep(0.005, 0.001, clearance) * smoothstep(0.15, 0.4, h))
+    # (the spines and the crest's thin blades too: scales cut into a blade crossed through it)
+    for points, list_, flat in ((H, SPINES, SPINE_FLAT), (head_frame(P), CREST, CREST_FLAT)):
+        for root, tip, radius in list_:
+            root, tip = np.array(root, float), np.array(tip, float)
+            axis = tip - root
+            h = np.clip((points - root) @ axis / (axis @ axis), 0, 1)
+            clearance = spine(points, root, tip, radius, flat)
+            on_horn = np.maximum(on_horn, smoothstep(0.005, 0.001, clearance) * smoothstep(0.15, 0.4, h))
     return ridge, on_horn
 
 
@@ -612,26 +628,34 @@ def scales(obj):
     rng = np.random.default_rng(7)
     size = scale_size(P)
     candidates = rng.choice(n, min(n, 150000), replace=False)
-    sites, site_size = scatter(P[candidates], size[candidates], rng)
+    flow = tailward(P, N)
+    sites, site_size = scatter(P[candidates], size[candidates], flow[candidates], rng)
     log("scales:", len(sites))
     tree = KDTree(len(sites))
     for i, p in enumerate(sites):
         tree.insert(p, i)
     tree.balance()
-    d1 = np.zeros(n)
-    d2 = np.zeros(n)
-    owner = np.zeros(n, int)
+    # The nearest two scales in rows, from the eight nearest as the crow flies
+    near = np.zeros((n, 8), int)
     for i, p in enumerate(P):
-        (_, a, da), (_, _, db) = tree.find_n(p, 2)
-        d1[i], d2[i], owner[i] = da, db, a
+        found = tree.find_n(p, 8)
+        near[i, : len(found)] = [j for _, j, _ in found]
+    gaps = row_distance(sites[near] - P[:, None, :], flow[:, None, :])
+    order = np.argsort(gaps, axis=1)
+    pick = np.arange(n)
+    owner = near[pick, order[:, 0]]
+    d1, d2 = gaps[pick, order[:, 0]], gaps[pick, order[:, 1]]
     s = site_size[owner]
     edge = (d2 - d1) / 2
-    groove = 1 - smoothstep(0.0, 0.08 * s, edge)
+    # A hierarchy, as a sculptor would carve them: the large plates of the crown, brows, cheeks, neck and chest are
+    # cut boldly and stand proud of each other; the small scales of the muzzle and face are cut finer and lie
+    # flatter, so they read as texture under the big forms instead of all competing at once
+    bold = smoothstep(0.007, 0.015, s)
+    groove = 1 - smoothstep(0.0, lerp(0.06, 0.085, bold) * s, edge)
     # Each scale rises toward its free edge, so it seems to lie over the next one, and is slightly domed
-    along = np.sum((P - sites[owner]) * tailward(P, N), axis=1) / s
-    # (bolder on the larger scales of the neck and chest, so they read as shingles, not cobbles)
-    plate = lerp(0.13, 0.18, smoothstep(0.011, 0.018, s)) * s * np.clip(along + 0.5, 0, 1.1) + 0.03 * s * np.clip(1 - (d1 / (0.7 * s)) ** 2, 0, 1)
-    skin = lerp(plate, -0.05 * s, groove)
+    along = np.sum((P - sites[owner]) * flow, axis=1) / (s * ROW_STRETCH)
+    plate = lerp(0.06, 0.18, bold) * s * np.clip(along + 0.5, 0, 1.1) + lerp(0.015, 0.03, bold) * s * np.clip(1 - (d1 / (0.7 * s)) ** 2, 0, 1)
+    skin = lerp(plate, -lerp(0.025, 0.055, bold) * s, groove)
 
     # Scutes: chevron bands down the front of the throat, each overlapping the one below
     x, y = np.abs(P[:, 0]), P[:, 1]
