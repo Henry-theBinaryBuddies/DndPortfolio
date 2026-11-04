@@ -1,6 +1,6 @@
 import { LANDMARK, type HeadBase, type Vec3 } from "./headMesh";
 import { JAW, jawWeights, turnWithJaw } from "./jaw";
-import { derive, masculinity, type Params } from "./params";
+import { derive, masculinity, RACE_INFO, type Params } from "./params";
 
 // Every slider, race and build becomes a small, smooth displacement of the base head's vertices in the
 // right place: push the brow outward, hollow the cheek, lengthen the nose tip, scale the lips about the
@@ -104,6 +104,23 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     push(blob(0.3, -0.12, 0.12, 0.13, 0.09, 0.12), -0.015 + 0.09 * k.cheek);
     push(blob(0.27, -0.3, 0.1, 0.15, 0.15, 0.12), -0.08 * k.gaunt + 0.07 * k.fullness);
     push(blob(0.36, 0.18, -0.02, 0.1, 0.14, 0.14), -0.035 * k.gaunt);
+
+    // Sculpted human forms: broad facial planes rather than extra wrinkles. Keep eyelid contact and
+    // the mouth margin unchanged; all of these offsets still follow the jaw pose below.
+    const planes = RACE_INFO[p.race].skeleton.planes;
+    if (planes > 0) {
+      const strength = planes * (0.65 + 0.35 * m);
+      const face = smooth((nz + 0.05) / 0.6) * strength;
+      push(blob(0.29, -0.115, 0.1, 0.13, 0.075, 0.15), 0.04 * face);
+      push(blob(0.285, -0.285, 0.07, 0.13, 0.12, 0.16), -0.033 * face);
+      push(blob(0.365, 0.22, -0.045, 0.095, 0.15, 0.16), -0.012 * strength);
+      dx += side * 0.025 * blob(0.34, -0.425, -0.15, 0.09, 0.1, 0.18) * strength;
+      push(blob(0, -0.51, 0.14, 0.15, 0.075, 0.16), 0.03 * face);
+      dx += side * 0.009 * blob(0.085, -0.52, 0.14, 0.09, 0.07, 0.13) * face;
+      dz += 0.016 * blob(0, -0.075, 0.18, 0.045, 0.13, 0.12) * face;
+      // Transition from the malar plane into the lower lid, not a carved orbital ring.
+      push(blob(0.235, -0.095, 0.12, 0.12, 0.045, 0.12), 0.007 * face);
+    }
 
     // Nose: the tip moves forward or back, the bridge rises, the wings of the nostrils widen
     dz += (k.noseLength - 0.4) * 0.3 * blob(0, -0.15, 0.2, 0.1, 0.12, 0.12);

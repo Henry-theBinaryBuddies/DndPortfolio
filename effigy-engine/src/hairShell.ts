@@ -6,6 +6,8 @@ import { carveShell } from "./carve";
 import { hairPattern, hangingPattern } from "./hairCarve";
 import type { HeadBase } from "./headMesh";
 import type { HairStyle, Params } from "./params";
+import { beardMasses, beardVolume, groomingFrame, scalpContour, sweptClumps, sweptVolume } from "./sculptForms";
+import { trimPinchedBoundary } from "./shellRegion";
 
 // Hair as a sculpted shell, the way hair is modelled on a bust: the hair-bearing part of the scalp raised
 // into a solid mass whose thickness follows the style (a close crop, a swept-back mane, a mohawk's crest).
@@ -52,12 +54,7 @@ const STYLES: Record<Exclude<HairStyle, "none">, Style> = {
   // A close crop: a short, even cap, about a millimetre (any thinner and there is no carving it, or printing it)
   cropped: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, 0.1, -1], lean: 0 },
   // Swept back: volume lifted at the front and over the crown, carried back along the comb
-  swept: {
-    thickness: (_x, y, z) =>
-      0.018 + 0.05 * smooth((y - 0.05) / 0.35) * (1 - 0.4 * smooth((-z - 0.5) / 0.3)) + 0.03 * smooth((y - 0.25) / 0.15) * smooth((z + 0.15) / 0.2) + 0.02 * smooth((-z - 0.2) / 0.3),
-    flow: [0, 0.3, -1],
-    lean: 0.6,
-  },
+  swept: { thickness: sweptVolume, clumps: sweptClumps, flow: [-0.65, 0.3, -1], lean: 0.65 },
   // A crest along the middle of the head, swept back and built from a row of distinct clumps, each rising
   // to its own peak, narrower toward the top (a crest that rose straight up to a narrow edge read as a
   // single fin or horn, and a smooth one as a single hump)
@@ -167,7 +164,8 @@ export function earClearance(positions: Float32Array, base: HeadBase, near = EAR
 // the ear instead of over it. (The paint shades the scalp under the hair with it too: see paint.ts.)
 export function hairGrowth(p: Params, x: number, y: number, z: number, earClear: number): number {
   if (p.hairStyle === "none") return 0;
-  let w = scalp(x, y, z);
+  const frame = groomingFrame(p);
+  let w = p.hairStyle !== "dreadlocks" ? scalpContour(x / frame.headWidth, (y + 0.59) / frame.headHeight - 0.59, z) : scalp(x, y, z);
   if (p.hairStyle === "mohawk") w *= 1 - smooth((Math.abs(x) - STRIP_HALF_WIDTH) / 0.05);
   return w * earClear;
 }
@@ -278,6 +276,7 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     triangles.push(used[a], used[b], used[c]);
   }
   if (triangles.length === 0) return null;
+  trimPinchedBoundary(triangles, order.length);
 
   const total = order.length;
   const out = new Float32Array(total * 6);
@@ -358,7 +357,7 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     // skin showing through the beard. The shortfall is spread to the neighbours (pushing single points
     // folded the shell), but only inside the floor's own area and only on skin that faces forward: in the
     // crease behind the lip, or by the ear, the skin turns too sharply to push along.
-    const facing = (v: number) => smooth((normals[v * 3 + 2] - 0.3) / 0.3);
+    const facing = (v: number) => smooth((normals[v * 3 + 2] - 0.3) / 0.2);
     let push = new Float32Array(total);
     if (floor) {
       order.forEach((v, j) => {
@@ -435,34 +434,6 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
 // jaw; a goatee covers just the chin and the upper lip.
 // Broad clumps, as a sculptor would carve them: a few rounded locks running down the beard, with narrow
 // partings between them (many narrow ones read as flutes or flames)
-const beardClumps = (x: number, y: number, z: number) => 0.68 + 0.32 * Math.pow(0.5 + 0.5 * Math.cos(Math.atan2(x, z + 0.3) * 11 + 2 * Math.sin(y * 6)), 0.6);
-const BEARDS: Record<"goatee" | "short" | "full", Style> = {
-  goatee: { thickness: (_x, y) => 0.012 + 0.035 * smooth((-0.45 - y) / 0.12), flow: [0, -1, 0.25], lean: 0.5, directionSmoothing: 40, clumps: beardClumps, tight: true, displacementSmoothing: 30, hang: true },
-  short: {
-    thickness: (_x, y) => 0.01 + 0.006 * smooth((-0.45 - y) / 0.12),
-    flow: [0, -1, 0.2],
-    lean: 0.2,
-    directionSmoothing: 40,
-    clumps: (x, y, z) => 0.92 + 0.08 * (beardClumps(x, y, z) - 0.68) / 0.32,
-    tight: true,
-    displacementSmoothing: 30, hang: true,
-  },
-  full: {
-    thickness: (x, y) => {
-      // Thickest at the chin and along the jaw
-      // (less forward bulk and more hang, so it falls toward a rounded point instead of swelling into a ball)
-      const chin = smooth((-0.45 - y) / 0.15) * (1 - 0.5 * smooth((Math.abs(x) - 0.18) / 0.15));
-      return 0.024 + 0.1 * chin;
-    },
-    flow: [0, -1, 0.15],
-    lean: 1.4,
-    directionSmoothing: 40,
-    clumps: beardClumps,
-    tight: true,
-    displacementSmoothing: 30, hang: true,
-  },
-};
-
 // Shaping that belongs to the face, measured on the undeformed head so it stays with the lips whatever the
 // Lips and Jaw sliders do (measured on the reshaped face, a full lower lip moved away from it and left a
 // notch): under the lower lip the beard thins to its root before building toward the chin, so it never
@@ -526,7 +497,21 @@ export function buildBeardShell(p: Params, positions: Float32Array, normals: Flo
     if (base.masks.earDistance[i] === 0) grow[i] = 0;
     scale[i] *= BEARD_UNDER_EAR.thin + (1 - BEARD_UNDER_EAR.thin) * nearEar[i];
   }
-  return raiseShell(positions, normals, base, grow, BEARDS[p.beardStyle], scale, floor);
+  const kind = p.beardStyle;
+  const style: Style = {
+    directionSmoothing: 40,
+    displacementSmoothing: 40,
+    tight: true,
+    hang: true,
+    thickness: (x, y, z) => {
+      const frame = groomingFrame(p);
+      return beardVolume(x / frame.headWidth, (y + 0.59) / frame.headHeight - 0.59, z, kind);
+    },
+    clumps: beardMasses,
+    lean: kind === "full" ? 0.95 : kind === "goatee" ? 0.75 : 0.2,
+    flow: [0, -1, kind === "full" ? 0.03 : kind === "goatee" ? 0.25 : 0.2],
+  };
+  return raiseShell(positions, normals, base, grow, style, scale, floor);
 }
 
 // The beard as it prints: its shape, subdivided and carved into locks (see beardCarve.ts)
@@ -545,7 +530,7 @@ export function buildBeard(p: Params, positions: Float32Array, normals: Float32A
 // like a stole.)
 // How far round from the back it reaches, either side (radians; the ears are at about 1.45). Kept on the back
 // behind the neck: reaching further, its sides lay over the slope of the shoulders, seen edge-on as a sliver.
-const CURTAIN_ANGLE = 0.85;
+const CURTAIN_ANGLE = 1.08;
 const CURTAIN_TOP = 0.32; // where it starts under the cap at the back of the head (lower at the sides)
 const ACROSS = 80;
 const DOWN = 44;
@@ -640,10 +625,10 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     // A curved, layered hem: longest down the middle of the back, and ending at the sides on the neck, above
     // the rise of the shoulders (sides that reached the shoulders followed them outward and lay across them
     // as a thin flap)
-    ends.push(-0.7 - 0.55 * Math.max(0, Math.cos(a0 * 1.2)) ** 1.3 - 0.08 * rand());
+    ends.push(-0.7 - 0.55 * Math.max(0, Math.cos(a0 * 1.2)) ** 1.3 - 0.06 * (0.5 + 0.5 * Math.cos(a0 * 7 + 0.35)) - 0.04 * rand());
   }
   for (let pass = 0; pass < 2; pass++) for (let u = 1; u < ACROSS; u++) ends[u] = (ends[u - 1] + 2 * ends[u] + ends[u + 1]) / 4;
-  const angleOf = (u: number, _t: number) => start[u];
+  const angleOf = (u: number, t: number) => start[u] + 0.035 * Math.sin(Math.PI * t) * Math.sin(start[u] * 2 + 0.5);
   const heightOf = (u: number, t: number) => top[u] + (ends[u] - top[u]) * t;
 
   // How far out the drape hangs at each point: just off the body, drifting inward only slowly as it falls
@@ -656,7 +641,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       floor[u * rows + v] = body + 0.012;
       // (starting just under the cap's surface, so no edge stands proud of it, then swelling to full depth)
       // (standing off the back with some volume, rather than shrink-wrapped onto it)
-      const wanted = body + 0.03 + 0.09 * smooth(t / 0.25) - 0.03 * t;
+      const wave = 0.018 * Math.sin(start[u] * 6 + 1.2 * Math.sin(t * Math.PI)) * Math.sin(Math.PI * t);
+      const wanted = body + 0.02 + 0.11 * smooth(t / 0.25) - 0.025 * t + wave;
       reach[u * rows + v] = v === 0 ? wanted : Math.max(wanted, reach[u * rows + v - 1] * 0.985);
     }
   }
@@ -687,7 +673,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   for (let u = 0; u <= ACROSS; u++) {
     // Rounded at the side edges: the outer and inner surfaces close together over the last few columns
     // (rounded over a wide span, so the sides end full and round instead of in a thin line)
-    const edge = Math.sqrt(Math.max(0, 1 - (1 - Math.min(1, Math.min(u, ACROSS - u) / 10)) ** 2));
+    const edge = 0.15 + 0.85 * Math.sqrt(Math.max(0, 1 - (1 - Math.min(1, Math.min(u, ACROSS - u) / 10)) ** 2));
     for (let v = 0; v <= DOWN; v++) {
       const t = v / DOWN;
       const a = angleOf(u, t);
@@ -696,7 +682,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       // Grows out from nothing under the cap, full through the length, thinning to the tips
       // (full until near the tips, which close in a rounded end: tapered over the last third, the sides
       // thinned to a sliver)
-      const thick = (0.09 + 0.03 * (1 - t)) * smooth(t / 0.15) * Math.sqrt(Math.max(0, 1 - smooth((t - 0.82) / 0.18)));
+      const thick = (0.12 + 0.02 * (1 - t)) * smooth(t / 0.15) * Math.sqrt(Math.max(0, 1 - smooth((t - 0.82) / 0.18)));
       const middle = Math.max(r - thick / 2, floor[u * rows + v] - 0.006 + (thick / 2) * edge);
       const ro = middle + (thick / 2) * edge;
       const ri = middle - (thick / 2) * edge;
@@ -727,6 +713,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       index.push(...(u === 0 ? quad : [quad[0], quad[2], quad[1], quad[3], quad[5], quad[4]]));
     }
   }
+  // Broad, asymmetrical tresses frame the face; their volume is part of the printable mesh.
   // A lock on each side frames the face. It starts inside the curtain's side, so it emerges from the mass
   // (laid over it, the two surfaces met in a seam), runs down behind the ear as if tucked there, then sweeps
   // forward past the jaw and neck onto the front of the shoulder and chest, lying close to the body all the
@@ -736,7 +723,8 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   const lockThick: number[] = [];
   const LOCK_ROWS = 36;
   const LOCK_SIDES = 12;
-  const lockGrow = (t: number) => smooth(t / 0.15) * (1 - 0.85 * smooth((t - 0.6) / 0.4));
+  const lockGrow = (t: number) => smooth(t / 0.14) * (1 - 0.88 * smooth((t - 0.7) / 0.3));
+  const lockClearance = (t: number) => 0.018 + 0.055 * smooth(t / 0.14);
   // The body's outline across the whole width of the band at that height (its edges reach round to where
   // the jaw or an ear may stand further out than at its middle)
   const bodyAcross = (a: number, y: number, halfWidth: number) => {
@@ -754,9 +742,10 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     for (let k = 0; k <= LOCK_ROWS; k++) {
       const t = k / LOCK_ROWS;
       // Behind the ear until below it, then sweeping forward (passing over the ear pushed it out like a fin)
-      const a = side * (0.95 + 1.6 * smooth((t - 0.3) / 0.6));
-      const y = 0.12 + (-1.3 - 0.12) * t;
-      const wanted = bodyAcross(a, y, 0.055 * lockGrow(t)) + 0.05;
+      const a = side * (1.04 + 1.45 * smooth((t - 0.25) / 0.6));
+      const end = side < 0 ? -1.18 : -1.36;
+      const y = 0.1 + (end - 0.1) * t;
+      const wanted = bodyAcross(a, y, 0.085 * lockGrow(t)) + lockClearance(t);
       drift = k === 0 ? wanted : Math.max(wanted, drift * 0.95);
       reachAlong.push(drift);
       path.push({ a, y });
@@ -764,7 +753,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
     // Smoothed along its length so it falls in one sweep, never closer to the body than it may be
     for (let pass = 0; pass < 6; pass++) {
       for (let k = 1; k < LOCK_ROWS; k++) {
-        const minimum = bodyAcross(path[k].a, path[k].y, 0.055 * lockGrow(k / LOCK_ROWS)) + 0.05;
+        const minimum = bodyAcross(path[k].a, path[k].y, 0.085 * lockGrow(k / LOCK_ROWS)) + lockClearance(k / LOCK_ROWS);
         reachAlong[k] = Math.max(minimum, (reachAlong[k - 1] + 2 * reachAlong[k] + reachAlong[k + 1]) / 4);
       }
     }
@@ -776,9 +765,9 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       const cz = az - Math.cos(a) * r;
       // Across the band runs around the neck; through it runs out from the neck
       const grow = lockGrow(t);
-      // A rounded tress (a flat band read as a strap)
-      const halfWidth = 0.055 * grow;
-      const halfThick = 0.042 * grow;
+      // A rounded tress (a flat band read as a strap: a little wider than thick, not twice as wide)
+      const halfWidth = 0.085 * grow;
+      const halfThick = 0.062 * grow;
       for (let j = 0; j < LOCK_SIDES; j++) {
         const angle = (2 * Math.PI * j) / LOCK_SIDES;
         const across = Math.cos(angle) * halfWidth;

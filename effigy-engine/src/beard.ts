@@ -39,7 +39,9 @@ export function beardWeight(x: number, y: number, z: number, style: BeardStyle, 
   if (style === "none") return 0;
   const ax = Math.abs(x);
   // Below the cheek line, above the top of the neck (lower at the front, under the chin)
-  let w = smooth((topLine(ax) - y) / 0.03) * smooth((y + 0.7 - 0.1 * smooth((ax - 0.15) / 0.2)) / 0.1);
+  const cheek = -0.32 + 0.215 * smooth((ax - 0.18) / 0.24) + 0.006 * Math.sin(ax * 17 + 0.5);
+  const top = ax > 0.19 ? topLine(ax) * (1 - smooth((ax - 0.19) / 0.07)) + cheek * smooth((ax - 0.19) / 0.07) : topLine(ax);
+  let w = smooth((top - y) / 0.045) * smooth((y + 0.7 - 0.1 * smooth((ax - 0.15) / 0.2)) / 0.1);
   // In front of the ears, and not round the back of the neck
   w *= smooth((z + 0.5) / 0.1);
   // ...and at the height of the ear, only in front of it: the sideburn stops at the ear's front edge (it wrapped round

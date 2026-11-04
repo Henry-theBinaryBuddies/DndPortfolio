@@ -134,6 +134,9 @@ export interface Skeleton {
   socketDepth: number;
   gaunt: number;
   shoulders: number; // shoulder breadth
+  planes: number; // 0..1: broad sculpted facial planes over the base sculpt (cheekbone, the hollow under it, jaw angle, chin)
+  browHeight: number; // the sculpted eyebrows' height, and how deep their hair is carved (1 as sculpted)
+  browCarve: number;
 }
 
 export interface RaceInfo {
@@ -165,10 +168,14 @@ const HUMAN: Skeleton = {
   socketDepth: 0.45,
   gaunt: 0.15,
   shoulders: 1,
+  planes: 0,
+  browHeight: 1,
+  browCarve: 1,
 };
 
 export const RACE_INFO: Record<Race, RaceInfo> = {
-  human: { label: "Human", skeleton: HUMAN, hornStyle: "none", hairStyle: "swept", defaults: {} },
+  // (the human's face is defined by its planes, and its brows are lower and finer, so they do not read as a costume)
+  human: { label: "Human", skeleton: { ...HUMAN, planes: 1, browHeight: 0.75, browCarve: 0.45 }, hornStyle: "none", hairStyle: "swept", defaults: {} },
   // Narrow, long face with high cheekbones, a fine straight nose, delicate lips and a light brow
   elf: {
     label: "Elf",

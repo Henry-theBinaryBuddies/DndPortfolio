@@ -1,6 +1,7 @@
 import { hash, smooth, vee, type Pattern } from "./carve";
 import type { HairStyle } from "./params";
 import { MM } from "./print";
+import { sweptCoordinate } from "./sculptForms";
 
 // How hair is carved, the way a sculptor does it on a miniature: broad locks separated by V-grooves, with a
 // finer groove down the middle of each lock, running the way the hair is combed. Bolder than the beard (hair
@@ -74,6 +75,7 @@ const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
 };
 
 export function hairPattern(style: Exclude<HairStyle, "none">): Pattern {
+  if (style === "swept") return (x, y, z) => 0.65 * locks(0.62 * sweptCoordinate(x, y, z), z) * smooth((Math.hypot(x, y - 0.05) - 0.22) / 0.1);
   return PATTERNS[style];
 }
 

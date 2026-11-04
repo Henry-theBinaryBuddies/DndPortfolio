@@ -425,7 +425,7 @@ export class Painter {
     c *= 1.0 - vPaintB.x;
     // The shadow of stubble under a beard, and of the roots on the scalp under the hair
     c = mix(c, mix(uHair, c, 0.3) * 0.85, vPaintB.y * 0.75);
-    c = mix(c, mix(uHair, c, 0.35) * 0.8, vPaintB.w * 0.85);
+    c = mix(c, mix(uHair, c, 0.25) * 0.8, vPaintB.w * 0.85);
     // Dark openings: the nostrils and the parting of the lips (a deep shade of the skin, not black, which read as a
     // mole beside the nose at three-quarter view)
     c = mix(c, c * vec3(0.35, 0.25, 0.23), vPaintA.z * 0.6);
@@ -508,9 +508,10 @@ export class Painter {
   {
     vec3 c = uHair * (0.82 + 0.36 * vnoise(vObjPos * 55.0)) * (0.9 + 0.2 * vnoise(vObjPos * 9.0 + 4.0));
     c *= 1.0 - 0.6 * smoothstep(0.0, ${(0.45 * MM).toFixed(5)}, vGroove);
-    // At its thin edge the hair is as sparse as the roots on the scalp, and takes their tone (as the scalp
-    // does under it: see the skin), so the edge of the shell does not show as a line
-    c = mix(mix(uHair, uSkin, 0.35) * 0.8, c, smoothstep(0.15, 0.75, vAmount));
+    // At its thin edge the hair takes the tone of the roots on the scalp just past it (the same mix as the skin's:
+    // see above), so the edge of the shell does not show as a hard line. (Nearer the hair's own colour than the
+    // skin's: further toward the skin it read as a pale band.)
+    c = mix(mix(uHair, uSkin, 0.25) * 0.8, c, smoothstep(0.1, 0.75, vAmount));
     c = mix(c, vec3(0.012, 0.009, 0.006), uGrime * 0.35 * vnoise(vObjPos * 6.0));
     diffuseColor.rgb = c;
   }`,

@@ -204,8 +204,10 @@ describe("deformation", () => {
   it("gives a half-orc a heavy jaw without ballooning the cheeks", () => {
     const human = shape(applyRace(defaultParams(), "human"));
     const orc = shape(applyRace(defaultParams(), "half-orc"));
-    // At the cheeks the orc is broader only by about its skull's breadth (1.08)
-    expect(extent(orc, -0.3, -0.2, 0).x / extent(human, -0.3, -0.2, 0).x).toBeLessThan(1.12);
+    // At the cheeks the orc is broader than the unshaped base head only by about its skull's breadth (1.08). (Measured
+    // against the base, not the human, whose sculpted planes hollow its own cheeks.)
+    const ratio = extent(orc, -0.3, -0.2, 0).x / extent(base.positions, -0.3, -0.2, 0).x;
+    expect(ratio).toBeLessThan(1.12);
     // ...and broader still at the jaw
     expect(extent(orc, -0.55, -0.45, -0.2).x).toBeGreaterThan(extent(human, -0.55, -0.45, -0.2).x * 1.05);
   });
