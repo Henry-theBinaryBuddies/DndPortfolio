@@ -58,7 +58,7 @@ export function collectTabletop(p: Params, assets: Assets, gusset = true): Table
   // (measured on the quick draft, without the carving, which only cuts inward, and without the gusset, which is
   // tucked under the chin: a fraction of the time. The parts that print are checked at the end.)
   const sized = (q: Params) => {
-    const { parts, flatCut } = collectBust(q, assets, false, undefined, false);
+    const { parts, flatCut } = collectBust(q, assets, false, undefined, false, true);
     return measure(parts, flatCut);
   };
   const asked = params.torso;

@@ -211,6 +211,33 @@ export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: num
   });
 }
 
+// The reach (see pedestalRings) of the same outline seen from a point `dx`, `dz` away from where it was measured
+// (the outline itself does not move): in each direction, the nearest place the ray from there leaves it, so the
+// pedestal's top stays inside the section however the outline curves. The point must be well inside the outline.
+export function shiftReach(reach: ArrayLike<number>, dx: number, dz: number): Float32Array {
+  const n = reach.length;
+  const outline: Point[] = Array.from({ length: n }, (_, k) => {
+    const a = (k / n) * 2 * Math.PI;
+    return [Math.cos(a) * reach[k] - dx, Math.sin(a) * reach[k] - dz];
+  });
+  return Float32Array.from({ length: n }, (_, j) => {
+    const a = (j / n) * 2 * Math.PI;
+    const [ux, uy] = [Math.cos(a), Math.sin(a)];
+    let nearest = Infinity;
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = outline[i];
+      const [bx, by] = outline[(i + 1) % n];
+      const [ex, ey] = [bx - ax, by - ay];
+      const denominator = ux * ey - uy * ex;
+      if (Math.abs(denominator) < 1e-12) continue;
+      const t = (ax * ey - ay * ex) / denominator;
+      const u = (ax * uy - ay * ux) / denominator;
+      if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) nearest = Math.min(nearest, t);
+    }
+    return nearest;
+  });
+}
+
 // The reach (see pedestalRings) of a convex outline around the origin
 export function reachOfHull(points: Point[]): number[] {
   const hull = convexHull(points);

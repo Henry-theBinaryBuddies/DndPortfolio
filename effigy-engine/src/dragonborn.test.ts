@@ -10,7 +10,7 @@ import { collectTabletop } from "./fit";
 import { defaultPaint, paintKind } from "./paint";
 import { applyRace, characterName, defaultParams, NUMERIC_DEFS, type Params } from "./params";
 import { mergeParts } from "./printable";
-import { PEDESTAL_SIDES, TABLETOP } from "./print";
+import { PEDESTAL_SIDES, shiftReach, TABLETOP } from "./print";
 
 let assets: Assets;
 let manifest: DragonbornManifest;
@@ -91,7 +91,7 @@ describe("the Dragonborn family", () => {
     expect(report.badEdges).toBe(0);
   }, 300000);
 
-  it("fits the one inch square at tabletop size, horns included, slimming its torso as a humanoid's is", () => {
+  it("fits the one inch square at tabletop size, horns included, centred over its base by its whole outline", () => {
     const t = collectTabletop(dragonborn(), assets, false);
     let reach = 0;
     for (const part of t.parts) {
@@ -99,10 +99,17 @@ describe("the Dragonborn family", () => {
       for (let i = 0; i < part.positions.length; i += 3) reach = Math.max(reach, Math.abs(part.positions[i]), Math.abs(part.positions[i + 1]));
     }
     expect(reach).toBeLessThanOrEqual(25.4 / 2);
-    expect(t.params.torso).toBeLessThan(dragonborn().torso);
-    expect(t.notes.join(" ")).toMatch(/slimmed/);
+    // (its torso slims, as a humanoid's does, only as far as that lets it grow: here its head's depth sets its size)
+    expect(t.params.torso).toBeLessThanOrEqual(dragonborn().torso);
     console.log(`dragonborn at tabletop size: scale ${t.scale.toFixed(3)}, bust ${t.height.toFixed(1)} mm, ${t.width.toFixed(1)} x ${t.depth.toFixed(1)} mm; ${t.notes.join(" ")}`);
     expect(t.height).toBeLessThanOrEqual(TABLETOP.aim + 1e-6);
+    // ...centred over its base by its whole outline: its muzzle reaches as far forward as its horns reach back
+    let [front, back] = [Infinity, -Infinity];
+    for (const part of t.parts) {
+      if (part.name === "base") continue;
+      for (let i = 1; i < part.positions.length; i += 3) [front, back] = [Math.min(front, part.positions[i]), Math.max(back, part.positions[i])];
+    }
+    expect(Math.abs(front + back)).toBeLessThan(0.5);
   }, 300000);
 
   it("is the sculpt as made with its own sliders at their middles, and the controls move what they name", () => {
@@ -172,4 +179,14 @@ describe("the Dragonborn family", () => {
       expect(report.badEdges).toBe(0);
     }
   }, 300000);
+
+  it("measures the pedestal's reach again from where the base's middle has moved to", () => {
+    // a round outline of radius 10, seen from 3 to one side: 7 that way, 13 the other, the same either side across
+    const circle = Array.from({ length: PEDESTAL_SIDES }, () => 10);
+    const seen = shiftReach(circle, 3, 0);
+    expect(seen[0]).toBeCloseTo(7, 1);
+    expect(seen[PEDESTAL_SIDES / 2]).toBeCloseTo(13, 1);
+    expect(seen[PEDESTAL_SIDES / 4]).toBeCloseTo(seen[(3 * PEDESTAL_SIDES) / 4], 3);
+    expect(Math.hypot(3, seen[PEDESTAL_SIDES / 4])).toBeCloseTo(10, 1);
+  });
 });
