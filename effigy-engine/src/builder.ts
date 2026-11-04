@@ -146,7 +146,7 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   // (a Dragonborn is a sculpt of its own, with nothing to deform: see dragonborn.ts)
   if (p.family === "dragonborn") {
     if (!assets.dragonborn) throw new Error("the Dragonborn model has not loaded");
-    return buildDragonborn(assets.dragonborn, gusset);
+    return buildDragonborn(assets.dragonborn, p, gusset);
   }
   const root = new THREE.Group();
   const k = derive(p);

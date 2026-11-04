@@ -6,7 +6,7 @@ A fixed, neutral, closed-mouth Dragonborn bust, made to see whether the Dragonbo
 blender -b --factory-startup --python tools/sculpt_dragonborn.py -- assets/dragonborn --app public/models
 ```
 
-That copy has no plinth (the app stands it on its own pedestal), a fifth of the triangles, and marks which triangles are horn, spine and crest and which are eye, so the paint can colour them.
+That copy has no plinth (the app stands it on its own pedestal), a fifth of the triangles, and marks which triangles are horn, spine and crest and which are eye, so the paint can colour them, and which vertices are on which horn, spine or crest, so the shape controls can move them (model version 2; the file format is described in the script).
 
 **Source:** `tools/sculpt_dragonborn.py`. Every form is written down there as numbers (a signed distance field for the head and neck, the scales cut as relief), so this folder holds only its renders. The chest and shoulders come from the human bust the app already ships (`public/models/head.bin`, from Blender Studio's CC0 Human Base Meshes; see `public/models/README.md`). Everything else is original to this project.
 

@@ -4,13 +4,13 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import { buildBust } from "./builder";
 import { readCharacter, characterFile } from "./character";
-import { parseDragonborn, type DragonbornManifest } from "./dragonborn";
+import { parseDragonborn, shapeDragonborn, type DragonbornManifest } from "./dragonborn";
 import { collectBust } from "./export";
 import { collectTabletop } from "./fit";
 import { defaultPaint, paintKind } from "./paint";
-import { applyRace, characterName, defaultParams, type Params } from "./params";
+import { applyRace, characterName, defaultParams, NUMERIC_DEFS, type Params } from "./params";
 import { mergeParts } from "./printable";
-import { TABLETOP } from "./print";
+import { PEDESTAL_SIDES, TABLETOP } from "./print";
 
 let assets: Assets;
 let manifest: DragonbornManifest;
@@ -46,7 +46,7 @@ describe("the Dragonborn family", () => {
     bust.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(bust);
     expect(box.min.y).toBeCloseTo(0, 6);
-    expect(bust.userData.reach).toHaveLength(assets.dragonborn!.underside.reach.length);
+    expect(bust.userData.reach).toHaveLength(PEDESTAL_SIDES);
     expect(bust.userData.faceBottom).toBeGreaterThan(0.5);
     expect(bust.userData.faceBottom).toBeLessThan(box.max.y);
     // every triangle of the model is in exactly one part
@@ -58,7 +58,7 @@ describe("the Dragonborn family", () => {
   });
 
   it("refuses a model that does not match its description, or that is from a newer version", () => {
-    expect(() => parseDragonborn(model, { ...manifest, version: 2 })).toThrow(/version/);
+    expect(() => parseDragonborn(model, { ...manifest, version: manifest.version + 1 })).toThrow(/version/);
     expect(() => parseDragonborn(model, { ...manifest, triangles: manifest.triangles - 1 })).toThrow(/does not match/);
     expect(() => parseDragonborn(model.slice(0, model.byteLength - 1), manifest)).toThrow(/wrong length/);
   });
@@ -91,7 +91,7 @@ describe("the Dragonborn family", () => {
     expect(report.badEdges).toBe(0);
   }, 300000);
 
-  it("fits the one inch square at tabletop size, horns included, without slimming a torso it does not have", () => {
+  it("fits the one inch square at tabletop size, horns included, slimming its torso as a humanoid's is", () => {
     const t = collectTabletop(dragonborn(), assets, false);
     let reach = 0;
     for (const part of t.parts) {
@@ -99,9 +99,77 @@ describe("the Dragonborn family", () => {
       for (let i = 0; i < part.positions.length; i += 3) reach = Math.max(reach, Math.abs(part.positions[i]), Math.abs(part.positions[i + 1]));
     }
     expect(reach).toBeLessThanOrEqual(25.4 / 2);
-    expect(t.params.torso).toBe(dragonborn().torso);
-    expect(t.notes.join(" ")).not.toMatch(/slimmed/);
+    expect(t.params.torso).toBeLessThan(dragonborn().torso);
+    expect(t.notes.join(" ")).toMatch(/slimmed/);
     console.log(`dragonborn at tabletop size: scale ${t.scale.toFixed(3)}, bust ${t.height.toFixed(1)} mm, ${t.width.toFixed(1)} x ${t.depth.toFixed(1)} mm; ${t.notes.join(" ")}`);
     expect(t.height).toBeLessThanOrEqual(TABLETOP.aim + 1e-6);
+  }, 300000);
+
+  it("is the sculpt as made with its own sliders at their middles, and the controls move what they name", () => {
+    const asset = assets.dragonborn!;
+    expect(shapeDragonborn(asset, dragonborn()).positions).toEqual(asset.positions);
+    const reach = (p: Params, axis: number, pick: (y: number) => boolean) => {
+      const v = shapeDragonborn(asset, p).positions;
+      let most = -Infinity;
+      // (of the scales only, unless the horns are what is measured: a cheek spine reaches past the jaw)
+      for (let i = 0; i < v.length; i += 3) if (pick(v[i + 1]) && (asset.part[i / 3] === 0 || measuringHorns)) most = Math.max(most, Math.abs(v[i + axis]));
+      return most;
+    };
+    let measuringHorns = false;
+    const head = (y: number) => y > -0.7;
+    // a longer muzzle reaches farther forward; a broader jaw is wider low on the head; bigger horns reach farther out
+    expect(reach({ ...dragonborn(), dragonMuzzle: 1 }, 2, head)).toBeGreaterThan(reach(dragonborn(), 2, head) + 0.1);
+    expect(reach({ ...dragonborn(), dragonMuzzle: 0 }, 2, head)).toBeLessThan(reach(dragonborn(), 2, head) - 0.1);
+    const low = (y: number) => y < -0.35 && y > -0.65;
+    expect(reach({ ...dragonborn(), dragonJaw: 1 }, 0, low)).toBeGreaterThan(reach(dragonborn(), 0, low) * 1.05);
+    measuringHorns = true;
+    expect(reach({ ...dragonborn(), dragonHorns: 1 }, 0, head)).toBeGreaterThan(reach(dragonborn(), 0, head) * 1.1);
+    // and the eyes stay in their sockets: no face control moves them
+    const eyes = (p: Params) => shapeDragonborn(asset, p).eyes.map((e) => e.centre.toArray());
+    for (const key of ["dragonMuzzle", "dragonSnout", "dragonJaw", "dragonBrow", "dragonHorns", "dragonSweep", "dragonSpines"] as const) {
+      for (const value of [0, 1]) eyes({ ...dragonborn(), [key]: value }).forEach((c, i) => c.forEach((x, k) => expect(x, `${key} ${value}`).toBeCloseTo(eyes(dragonborn())[i][k], 6)));
+    }
+  });
+
+  it("never folds its surface over itself, at either end of every control", () => {
+    const asset = assets.dragonborn!;
+    const index = asset.indices;
+    const base = asset.positions;
+    let lowest = Infinity;
+    for (let i = 1; i < base.length; i += 3) lowest = Math.min(lowest, base[i]);
+    const folded = (v: Float32Array) => {
+      let count = 0;
+      for (let t = 0; t < index.length; t += 3) {
+        const [i, j, k] = [index[t] * 3, index[t + 1] * 3, index[t + 2] * 3];
+        // (not on the flat underside, which the print cuts away and joins to the pedestal, nor the few slivers of next to
+        // no area that the decimation left, which turn over at the least change and cannot be seen)
+        if (Math.min(base[i + 1], base[j + 1], base[k + 1]) < lowest + 0.05) continue;
+        const n = (w: Float32Array) => {
+          const [ux, uy, uz] = [w[j] - w[i], w[j + 1] - w[i + 1], w[j + 2] - w[i + 2]];
+          const [wx, wy, wz] = [w[k] - w[i], w[k + 1] - w[i + 1], w[k + 2] - w[i + 2]];
+          return [uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx];
+        };
+        const [a, b] = [n(v), n(base)];
+        // (a sliver: next to no area, or a needle, its area tiny for its length)
+        const longest = Math.max(...[[i, j], [j, k], [k, i]].map(([p, q]) => Math.hypot(base[p] - base[q], base[p + 1] - base[q + 1], base[p + 2] - base[q + 2])));
+        if (Math.hypot(b[0], b[1], b[2]) < Math.max(1e-5, 0.05 * longest * longest)) continue;
+        if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] < 0) count++;
+      }
+      return count;
+    };
+    const controls = NUMERIC_DEFS.filter((d) => d.families.includes("dragonborn"));
+    for (const d of controls) for (const value of [d.min, d.max]) expect(folded(shapeDragonborn(asset, { ...dragonborn(), [d.key]: value }).positions), `${d.key} ${value}`).toBe(0);
+    const all = (value: number) => Object.fromEntries(controls.filter((d) => d.key !== "torso").map((d) => [d.key, value]));
+    for (const value of [0, 1]) expect(folded(shapeDragonborn(asset, { ...dragonborn(), ...all(value), torso: 0.6 }).positions), `all ${value}`).toBe(0);
+  }, 300000);
+
+  it("prints as one closed solid at the ends of its controls too", async () => {
+    for (const value of [0, 1]) {
+      const p = { ...dragonborn(), dragonMuzzle: value, dragonSnout: value, dragonJaw: value, dragonBrow: value, dragonNeck: value, dragonHorns: value, dragonSweep: value, dragonSpines: value };
+      const { parts, flatCut } = collectBust(p, assets);
+      const { report } = await mergeParts(parts, undefined, undefined, flatCut);
+      expect(report.components, `all at ${value}`).toHaveLength(1);
+      expect(report.badEdges).toBe(0);
+    }
   }, 300000);
 });

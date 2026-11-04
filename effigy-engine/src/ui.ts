@@ -14,6 +14,7 @@ import {
   type BeardStyle,
   type HairStyle,
   type HornStyle,
+  type NumericDef,
   type NumericKey,
   type Params,
   type Race,
@@ -40,13 +41,13 @@ export function heading(title: string, reset?: { title: string; onClick: () => v
 // `shape`, the print's into `output`. `set` shows settings chosen elsewhere (undo, a character file) and rebuilds.
 export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>, onPreview?: (p: Params, say: (text: string) => void, gusset: boolean, tabletop: boolean) => Promise<void>): { set: (p: Params) => void } {
   let params = { ...initial };
-  const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement }>();
+  const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement; def: NumericDef }>();
   const raceSelect = document.createElement("select");
   const hornSelect = document.createElement("select");
   const hairSelect = document.createElement("select");
   const beardSelect = document.createElement("select");
   const bodyButtons = new Map<Body, HTMLButtonElement>();
-  // What only a humanoid has (a Dragonborn is a fixed sculpt of its own: see dragonborn.ts), hidden while it is shown
+  // What only a humanoid has (a Dragonborn is a sculpt of its own: see dragonborn.ts), hidden while it is shown
   const humanoidOnly: HTMLElement[] = [];
   const familyNote = document.createElement("p");
 
@@ -61,14 +62,16 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   const syncUI = () => {
     raceSelect.value = params.family === "dragonborn" ? "dragonborn" : params.race;
     for (const element of humanoidOnly) element.hidden = params.family !== "humanoid";
+    for (const { section, defs } of sections) section.hidden = !defs.some((d) => d.families.includes(params.family));
     familyNote.hidden = params.family === "humanoid";
     for (const [body, button] of bodyButtons) button.setAttribute("aria-pressed", String(body === params.body));
     hornSelect.value = params.hornStyle;
     hairSelect.value = params.hairStyle;
     beardSelect.value = params.beardStyle;
-    for (const [key, { input, out, row }] of sliders) {
+    for (const [key, { input, out, row, def }] of sliders) {
       input.value = String(params[key]);
       out.textContent = params[key].toFixed(2);
+      row.hidden = !def.families.includes(params.family);
       // Tusks belong to half-orcs; the other races have no tusk control
       if (key === "tusks") row.style.display = params.race === "half-orc" ? "" : "none";
     }
@@ -160,11 +163,13 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
 
   familyNote.className = "status";
   familyNote.id = "family-note";
-  familyNote.textContent = "The Dragonborn is one fixed sculpt for now: its own shape controls come later. The humanoid's settings are kept for when you choose a race again.";
+  familyNote.textContent = "The Dragonborn is a sculpt of its own, with its own shape controls below. The humanoid's settings are kept for when you choose a race again.";
   character.append(bodyRow, raceRow, familyNote, raceDefaultsRow, hairRow, beardRow, hornRow);
   humanoidOnly.push(bodyRow, raceDefaultsRow, hairRow, beardRow, hornRow);
   shape.append(character);
 
+  // (a section shows when any of its sliders shapes the family on show)
+  const sections: { section: HTMLElement; defs: NumericDef[] }[] = [];
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];
   for (const group of groups) {
     const section = document.createElement("section");
@@ -199,10 +204,10 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
       });
       row.append(name, input, out);
       section.append(row);
-      sliders.set(def.key, { input, out, row });
+      sliders.set(def.key, { input, out, row, def });
     }
     shape.append(section);
-    humanoidOnly.push(section);
+    sections.push({ section, defs });
   }
 
   const actions = document.createElement("div");

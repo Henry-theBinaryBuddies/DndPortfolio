@@ -793,21 +793,23 @@ def export_stl(obj, path):
 #
 # dragonborn.bin (little-endian): uint32 vertexCount, uint32 triangleCount, then float32 x,y,z per vertex,
 # float32 shade per vertex (how far it lies in a hollow, -1..1: the grooves between scales), float32 along per
-# vertex (0 at the root of a horn or spine, 1 at its tip), uint32 a,b,c per triangle, and a uint8 region per
-# triangle (0 scales, 1 horn, spine or crest, 2 eye).
+# vertex (0 at the root of a horn or spine, 1 at its tip), uint8 part per vertex (0 scales, 1 horn, 2 cheek spine,
+# 3 crest, 4 eye: what the shape controls move), uint32 a,b,c per triangle, and a uint8 region per triangle
+# (0 scales, 1 horn, spine or crest, 2 eye: what the paint colours).
 # dragonborn.json: what the app needs to know about it (see src/dragonborn.ts).
 
 APP_RATIO = 0.2
 APP_UNITS = 5  # the app's head units are metres x 5 with the same origin and axes (see src/headMesh.ts)
-MODEL_VERSION = 1
+MODEL_VERSION = 2
 
 
 def outgrowth_regions(P):
     """Which region each point (chest frame) is in: 1 on the horns, cheek spines and crest, 2 on the eyeballs, 0
-    elsewhere; and how far along its horn or spine it is."""
+    elsewhere; which part (see the file format above); and how far along its horn or spine it is."""
     H = head_frame(P)
     Q = mirrored(H)
     region = np.zeros(len(P), np.uint8)
+    part = np.zeros(len(P), np.uint8)
     along = np.zeros(len(P))
     horn = np.array(HORN)
     radii = np.array(HORN_RADII)
@@ -818,17 +820,37 @@ def outgrowth_regions(P):
         nearest = np.argmin(gaps, axis=1)
         on = gaps[np.arange(len(part)), nearest] - radii[nearest] < 0.003
         region[part[on]] = 1
-        along[part[on]] = nearest[on] / (len(horn) - 1)
-    for points, list_, flat in ((Q, SPINES, SPINE_FLAT), (H, CREST, CREST_FLAT)):
+        # (how far along, continuously: projected onto the horn's path either side of its nearest point, not that
+        # point's number, whose steps made the shape controls change in jumps from one ring to the next)
+        best = nearest.astype(float)
+        best_gap = np.full(len(part), np.inf)
+        for step in (-1, 0):
+            a0 = np.clip(nearest + step, 0, len(horn) - 2)
+            seg = horn[a0 + 1] - horn[a0]
+            t = np.clip(np.sum((Q[part] - horn[a0]) * seg, axis=1) / np.sum(seg * seg, axis=1), 0, 1)
+            gap = np.linalg.norm(Q[part] - (horn[a0] + t[:, None] * seg), axis=1)
+            closer = gap < best_gap
+            best[closer], best_gap[closer] = (a0 + t)[closer], gap[closer]
+        along[part[on]] = best[on] / (len(horn) - 1)
+    part = np.where(region == 1, 1, 0).astype(np.uint8)
+    for points, list_, flat, kind in ((Q, SPINES, SPINE_FLAT, 2), (H, CREST, CREST_FLAT, 3)):
         for root, tip, radius in list_:
             root, tip = np.array(root, float), np.array(tip, float)
             on = spine(points, root, tip, radius, flat) < 0.002
             axis = tip - root
             region[on] = 1
+            part[on] = kind
             along[on] = np.clip((points[on] - root) @ axis / (axis @ axis), 0, 1)
     centre = EYE - EYE_TURN[:, 2] * 0.0085
-    region[np.linalg.norm(Q - centre, axis=1) < EYE_RADIUS + 0.0007] = 2
-    return region, along
+    eye = np.linalg.norm(Q - centre, axis=1) < EYE_RADIUS + 0.0007
+    region[eye] = 2
+    part[eye] = 4
+    return region, part, along
+
+
+def to_units(point, side=1):
+    """A point in the head frame (right side), mirrored to `side`, in the app's head units."""
+    return (HEAD_AT + HEAD_SCALE * np.array(point, float) * np.array([side, 1, 1])) * APP_UNITS
 
 
 def export_app(obj, out_dir):
@@ -869,7 +891,7 @@ def export_app(obj, out_dir):
     hollow = np.sum((total / count[:, None] - P) * N, axis=1) / np.maximum(length / count, 1e-9)
     shade = np.clip(hollow / np.percentile(np.abs(hollow), 98), -1, 1)
 
-    region, along = outgrowth_regions(P)
+    region, part, along = outgrowth_regions(P)
     # A triangle is in a region when at least two of its corners are
     votes = region[tris]
     tri_region = np.zeros(len(tris), np.uint8)
@@ -882,6 +904,7 @@ def export_app(obj, out_dir):
         handle.write(positions.tobytes())
         handle.write(shade.astype("<f4").tobytes())
         handle.write(along.astype("<f4").tobytes())
+        handle.write(part.tobytes())
         handle.write(tris.astype("<u4").tobytes())
         handle.write(tri_region.tobytes())
     centre = EYE - EYE_TURN[:, 2] * 0.0085
@@ -900,6 +923,16 @@ def export_app(obj, out_dir):
         "eyes": eyes,
         # the lowest point of the lower jaw, for framing the face
         "chin": round(float(HEAD_AT[1] + HEAD_SCALE * min(JAW["bottom"])) * APP_UNITS, 5),
+        # The head's own frame, which the shape controls work in: head = (point / units - headAt) / headScale
+        "frame": {"headAt": (HEAD_AT * APP_UNITS).round(5).tolist(), "headScale": HEAD_SCALE, "units": APP_UNITS},
+        # Where each horn, cheek spine and crest spine starts and which way it grows (in head units), for scaling and
+        # turning them about their roots
+        "outgrowths": [
+            {"part": kind, "root": (to_units(root, side)).round(5).tolist(), "tip": (to_units(tip, side)).round(5).tolist()}
+            for kind, list_ in ((1, [(HORN[0], HORN[-1], 0)]), (2, SPINES), (3, CREST))
+            for root, tip, _ in list_
+            for side in ((1, -1) if kind != 3 else (1,))
+        ],
     }
     with open(os.path.join(out_dir, "dragonborn.json"), "w") as handle:
         json.dump(manifest, handle, indent=2)

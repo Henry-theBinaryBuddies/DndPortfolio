@@ -25,7 +25,16 @@ export type NumericKey =
   | "jawOpen"
   | "snarl"
   | "scowl"
-  | "smile";
+  | "smile"
+  // The Dragonborn's own shape (see dragonborn.ts): 0.5 is the sculpt as made
+  | "dragonMuzzle"
+  | "dragonSnout"
+  | "dragonJaw"
+  | "dragonBrow"
+  | "dragonNeck"
+  | "dragonHorns"
+  | "dragonSweep"
+  | "dragonSpines";
 
 // The model family: every humanoid race is sculpted from the one human head (see deform.ts); a Dragonborn is a
 // sculpt of its own (see dragonborn.ts), with none of the humanoid's controls. A bust keeps its humanoid settings
@@ -61,7 +70,7 @@ export interface Params extends Record<NumericKey, number> {
   beardStyle: BeardStyle;
 }
 
-export type Group = "Body" | "Face" | "Expression" | "Fantasy";
+export type Group = "Body" | "Face" | "Expression" | "Fantasy" | "Dragonborn" | "Horns and spines";
 
 export interface NumericDef {
   key: NumericKey;
@@ -71,11 +80,12 @@ export interface NumericDef {
   max: number;
   step: number;
   default: number;
+  families: readonly Family[]; // which families the slider shapes (it is hidden for the others)
 }
 
 // Each slider's ends are where a face still looks like a plausible person of its race; past them the
 // regional displacements start to fight the base sculpt and the face turns bizarre.
-const def = (key: NumericKey, label: string, group: Group, defaultValue: number, min = 0, max = 1): NumericDef => ({
+const def = (key: NumericKey, label: string, group: Group, defaultValue: number, min = 0, max = 1, families: readonly Family[] = ["humanoid"]): NumericDef => ({
   key,
   label,
   group,
@@ -83,14 +93,16 @@ const def = (key: NumericKey, label: string, group: Group, defaultValue: number,
   max,
   step: 0.01,
   default: defaultValue,
+  families,
 });
+const dragon = (key: NumericKey, label: string, group: Group) => def(key, label, group, 0.5, 0, 1, ["dragonborn"]);
 
 export const NUMERIC_DEFS: NumericDef[] = [
   def("age", "Age", "Body", 0.3),
   def("weight", "Weight", "Body", 0.5, 0.15, 0.85),
   def("muscle", "Muscle", "Body", 0.45, 0.1, 0.9),
   // (1 is the race's own frame; slimmer is for prints that must fit a small base: see fit.ts)
-  def("torso", "Torso size", "Body", 1, 0.6, 1.1),
+  def("torso", "Torso size", "Body", 1, 0.6, 1.1, ["humanoid", "dragonborn"]),
   def("brow", "Brow ridge", "Face", 0.5, 0.2, 0.8),
   def("cheekbones", "Cheekbones", "Face", 0.5, 0.2, 0.8),
   def("noseSize", "Nose size", "Face", 0.5, 0.25, 0.75),
@@ -107,6 +119,14 @@ export const NUMERIC_DEFS: NumericDef[] = [
   def("smile", "Smile", "Expression", 0),
   def("horns", "Horn size", "Fantasy", 0.5),
   def("tusks", "Tusk size", "Fantasy", 0.5),
+  dragon("dragonMuzzle", "Muzzle length", "Dragonborn"),
+  dragon("dragonSnout", "Muzzle width", "Dragonborn"),
+  dragon("dragonJaw", "Jaw breadth", "Dragonborn"),
+  dragon("dragonBrow", "Brow plates", "Dragonborn"),
+  dragon("dragonNeck", "Neck girth", "Dragonborn"),
+  dragon("dragonHorns", "Horn size", "Horns and spines"),
+  dragon("dragonSweep", "Horn sweep", "Horns and spines"),
+  dragon("dragonSpines", "Spine size", "Horns and spines"),
 ];
 
 type Values = Partial<Record<NumericKey, number>>;
@@ -356,7 +376,7 @@ export function randomParams(rng: () => number = Math.random): Params {
   // Fantasy features belong to the race, so only the anatomical sliders are randomized.
   const keep: NumericKey[] = ["horns", "tusks", "jawOpen", "snarl", "scowl", "smile"];
   for (const d of NUMERIC_DEFS) {
-    if (keep.includes(d.key)) continue;
+    if (keep.includes(d.key) || !d.families.includes("humanoid")) continue;
     const raw = d.min + rng() * (d.max - d.min);
     params[d.key] = Math.round(raw / d.step) * d.step;
   }

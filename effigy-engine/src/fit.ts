@@ -65,8 +65,7 @@ export function collectTabletop(p: Params, assets: Assets, gusset = true): Table
   // The scale that gives the aimed height, or that fits the base if that is less
   const scaleFor = (size: Size) => Math.min(TABLETOP.aim / size.height, half / size.reach);
   let m = sized(params);
-  // (a Dragonborn's torso does not slim: it is a fixed sculpt)
-  if (TABLETOP.aim / m.height > scaleFor(m) * 1.002 && asked > TABLETOP.torso && params.family === "humanoid") {
+  if (TABLETOP.aim / m.height > scaleFor(m) * 1.002 && asked > TABLETOP.torso) {
     // The reach, not the height, sets the size: see how much the slimmest torso would allow (the head and its hair
     // do not slim, so it may be little or nothing), then slim only as far as that needs, by halving the interval
     // between a torso that fits at that scale and one that does not
