@@ -1,4 +1,4 @@
-import { EYE_COLORS, HAIR_COLORS, HORN_COLORS, SKIN_TONES, TEETH_COLORS, type Paint, type Swatch } from "./paint";
+import { EYE_COLORS, HAIR_COLORS, HORN_COLORS, SKIN_TONES, TEETH_COLORS, type Paint, type PaintKind, type Swatch } from "./paint";
 import type { Backdrop } from "./token";
 import { heading } from "./ui";
 
@@ -12,9 +12,9 @@ export const TOKEN_SIZES = [256, 512, 1024] as const;
 // "whole": the head with all its horns, hair and ears inside the round; "close": a larger face, horns may be cropped
 export type TokenFraming = "whole" | "close";
 
-export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([]), onPreviewToken?: (framing: TokenFraming, backdrop: string) => Promise<HTMLCanvasElement | null>, onResetPaint?: () => void): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void; refreshToken: () => void } {
+export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([]), onPreviewToken?: (framing: TokenFraming, backdrop: string) => Promise<HTMLCanvasElement | null>, onResetPaint?: () => void): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void; refreshToken: () => void; showFor: (kind: PaintKind) => void } {
   let paint = { ...initial };
-  const rows = new Map<ColorKey, { entries: { swatch: Swatch; button: HTMLButtonElement }[]; picker: HTMLInputElement }>();
+  const rows = new Map<ColorKey, { entries: { swatch: Swatch; button: HTMLButtonElement }[]; picker: HTMLInputElement; row: HTMLElement }>();
   const glowBox = document.createElement("input");
   const grimeInput = document.createElement("input");
   const grimeOut = document.createElement("output");
@@ -62,7 +62,7 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     picker.setAttribute("aria-label", `${label}: another colour`);
     picker.addEventListener("input", () => change({ [key]: picker.value }));
     holder.append(picker);
-    rows.set(key, { entries, picker });
+    rows.set(key, { entries, picker, row });
     row.append(name, holder);
     section.append(row);
   };
@@ -233,5 +233,9 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     // (the token preview drawn again: main.ts calls it once the bust has settled after a change, and when the token is
     // shown again)
     refreshToken: () => refreshToken(),
+    // (a Dragonborn has no hair, and its mouth is shut: those colours are hidden while it is shown)
+    showFor(kind: PaintKind) {
+      for (const key of ["hair", "teeth"] as const) rows.get(key)!.row.hidden = kind === "dragonborn";
+    },
   };
 }

@@ -12,6 +12,11 @@
   box-sizing: border-box;
 }
 
+/* (hidden means hidden, whatever display a row or section otherwise has) */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;

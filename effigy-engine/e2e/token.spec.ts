@@ -290,3 +290,53 @@ test.describe("the panel", () => {
     expect(await skin()).toBe("Infernal red");
   });
 });
+
+test.describe("the Dragonborn", () => {
+  const chooseRace = (page: Page, value: string) =>
+    page.evaluate((race) => {
+      const select = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === "dragonborn"))!;
+      select.value = race;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }, value);
+  const raceValue = (page: Page) => page.evaluate(() => [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === "dragonborn"))!.value);
+  const shown = (page: Page, name: string) => page.evaluate((n) => !!(window as unknown as { effigy: { scene: { getObjectByName: (n: string) => unknown } } }).effigy.scene.getObjectByName(n), name);
+  const skin = (page: Page) => page.evaluate(() => document.querySelector('[aria-label^="Skin"][aria-pressed="true"]')?.getAttribute("title"));
+
+  test("is chosen from the race list, shows only what applies to it, and gives the humanoid's settings back", async ({ page }) => {
+    await open(page);
+    await page.click("#show-shape");
+    const brow = page.locator("label.row", { hasText: "Brow ridge" }).locator("input");
+    await brow.fill("0.73");
+    await chooseRace(page, "dragonborn");
+    await expect.poll(() => shown(page, "dragonEye"), { timeout: 60000 }).toBe(true);
+    await expect(page.locator("#family-note")).toBeVisible();
+    await expect(brow).toBeHidden();
+    await expect(page.locator("label.row", { hasText: "Hair" }).first()).toBeHidden();
+    expect(await skin(page)).toBe("Bronze scales");
+    await page.click("#show-appearance");
+    await expect(page.locator('[aria-label="Hair: Coal"]')).toBeHidden();
+    await expect(page.locator('[aria-label="Horns: Bone"]')).toBeVisible();
+    // its token, the whole head with its horns and muzzle inside the rim, named for it
+    await page.click("#show-output");
+    await page.waitForTimeout(2500);
+    const { name, picture } = await saveToken(page, 512, "whole");
+    expect(name).toBe("effigy-dragonborn-token-512.png");
+    expect(picture.rimBright).toBe(0);
+    // and back: the human, with the brow as it was set and its own skin
+    await chooseRace(page, "human");
+    await expect.poll(() => shown(page, "dragonEye")).toBe(false);
+    await page.click("#show-shape");
+    await expect(brow).toHaveValue("0.73");
+    expect(await skin(page)).toBe("Tan");
+  });
+
+  test("goes back to the humanoid, and says why, when its model will not load", async ({ page }) => {
+    await page.route("**/models/dragonborn.bin", (route) => route.abort());
+    await open(page);
+    await chooseRace(page, "dragonborn");
+    await expect(page.locator("#file-status")).toContainText("Could not load the Dragonborn model", { timeout: 60000 });
+    expect(await raceValue(page)).toBe("human");
+    expect(await shown(page, "head")).toBe(true);
+    expect(await shown(page, "dragonEye")).toBe(false);
+  });
+});

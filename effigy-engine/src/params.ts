@@ -27,6 +27,12 @@ export type NumericKey =
   | "scowl"
   | "smile";
 
+// The model family: every humanoid race is sculpted from the one human head (see deform.ts); a Dragonborn is a
+// sculpt of its own (see dragonborn.ts), with none of the humanoid's controls. A bust keeps its humanoid settings
+// while it is a Dragonborn, so switching back finds them as they were.
+export const FAMILIES = ["humanoid", "dragonborn"] as const;
+export type Family = (typeof FAMILIES)[number];
+
 export const RACES = ["human", "elf", "half-elf", "dwarf", "halfling", "gnome", "half-orc", "tiefling"] as const;
 export type Race = (typeof RACES)[number];
 
@@ -47,6 +53,7 @@ export const BEARD_STYLES = ["none", "goatee", "short", "full"] as const;
 export type BeardStyle = (typeof BEARD_STYLES)[number];
 
 export interface Params extends Record<NumericKey, number> {
+  family: Family;
   race: Race;
   body: Body;
   hornStyle: HornStyle;
@@ -222,6 +229,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
 
 export function defaultParams(): Params {
   const params = {
+    family: "humanoid" as Family,
     race: "human" as Race,
     body: "masculine" as Body,
     hornStyle: "none" as HornStyle,
@@ -238,6 +246,11 @@ export function clampParams(params: Params): Params {
     out[d.key] = Math.min(d.max, Math.max(d.min, params[d.key]));
   }
   return out;
+}
+
+// What the character is called (in file names and messages): its race, or Dragonborn
+export function characterName(p: Params): string {
+  return p.family === "dragonborn" ? "dragonborn" : p.race;
 }
 
 // 1 for masculine, 0 for feminine, halfway for neutral. Used to blend proportions.

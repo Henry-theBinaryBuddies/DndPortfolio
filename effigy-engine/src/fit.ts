@@ -31,7 +31,7 @@ interface Size {
 }
 
 // What each named part is called in the notes (see builder.ts for the names)
-const PART_NAMES: Record<string, string> = { head: "the head and shoulders", horn: "the horns", hair: "the hair", curtain: "the hair", locks: "the dreadlocks", beard: "the beard", tusk: "the tusks", brows: "the brows" };
+const PART_NAMES: Record<string, string> = { head: "the head and shoulders", horn: "the horns", dragonEye: "the eyes", hair: "the hair", curtain: "the hair", locks: "the dreadlocks", beard: "the beard", tusk: "the tusks", brows: "the brows" };
 
 const measure = (parts: Part[], flatCut: number): Size & { halfX: number; halfY: number; limit: string } => {
   // (below the flat cut is trimmed away in the merge: a lock that slid down the back past it does not print, but
@@ -65,7 +65,8 @@ export function collectTabletop(p: Params, assets: Assets, gusset = true): Table
   // The scale that gives the aimed height, or that fits the base if that is less
   const scaleFor = (size: Size) => Math.min(TABLETOP.aim / size.height, half / size.reach);
   let m = sized(params);
-  if (TABLETOP.aim / m.height > scaleFor(m) * 1.002 && asked > TABLETOP.torso) {
+  // (a Dragonborn's torso does not slim: it is a fixed sculpt)
+  if (TABLETOP.aim / m.height > scaleFor(m) * 1.002 && asked > TABLETOP.torso && params.family === "humanoid") {
     // The reach, not the height, sets the size: see how much the slimmest torso would allow (the head and its hair
     // do not slim, so it may be little or nothing), then slim only as far as that needs, by halving the interval
     // between a torso that fits at that scale and one that does not

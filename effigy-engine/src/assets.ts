@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { DragonbornAsset } from "./dragonborn";
 import { loadHead, parseHead, type HeadBase } from "./headMesh";
 
 // Everything the app loads from public/models: the base head, and a shape for each horn style and the
@@ -16,6 +17,7 @@ export interface ShapeAsset {
 export interface Assets {
   head: HeadBase;
   shapes: Record<ShapeName, ShapeAsset>;
+  dragonborn?: DragonbornAsset; // (loaded only once a Dragonborn is chosen: see dragonborn.ts)
 }
 
 export function parseShape(buffer: ArrayBuffer): ShapeAsset {

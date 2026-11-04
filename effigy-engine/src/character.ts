@@ -1,5 +1,5 @@
-import { defaultPaint, type Paint } from "./paint";
-import { BEARD_STYLES, BODIES, HAIR_STYLES, HORN_STYLES, NUMERIC_DEFS, RACES, clampParams, defaultParams, type Params } from "./params";
+import { defaultPaint, paintKind, type Paint } from "./paint";
+import { BEARD_STYLES, BODIES, FAMILIES, HAIR_STYLES, HORN_STYLES, NUMERIC_DEFS, RACES, clampParams, defaultParams, type Params } from "./params";
 
 // The character as an editable file: its sculpt (Params) and its paint, so a design can be kept and opened again
 // later (an STL or a token picture cannot be edited). A plain JSON document with a format name and a version, so a
@@ -38,6 +38,8 @@ export function readCharacter(text: string): Character {
     if (typeof value !== "string" || !names.includes(value as T)) throw new Error(`the character file has an unknown ${key}: ${String(value)}`);
     return value as T;
   };
+  // (a file from before there were families is a humanoid)
+  params.family = pick("family", FAMILIES) ?? params.family;
   params.race = pick("race", RACES) ?? params.race;
   params.body = pick("body", BODIES) ?? params.body;
   params.hornStyle = pick("hornStyle", HORN_STYLES) ?? params.hornStyle;
@@ -48,7 +50,7 @@ export function readCharacter(text: string): Character {
     if (typeof value === "number" && Number.isFinite(value)) params[d.key] = value;
   }
 
-  const paint = defaultPaint(params.race);
+  const paint = defaultPaint(paintKind(params));
   const colours = file.paint ?? {};
   for (const key of ["skin", "eyes", "hair", "horns", "teeth"] as const) {
     const value = colours[key];

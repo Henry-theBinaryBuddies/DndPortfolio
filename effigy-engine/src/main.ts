@@ -3,12 +3,13 @@ import "./style.css";
 import { buildBust, disposeObject, pedestalGeometry } from "./builder";
 import { MM, PRINT } from "./print";
 import { loadAssets, type Assets } from "./assets";
-import { defaultParams, type Params } from "./params";
+import { characterName, defaultParams, type Params } from "./params";
+import { loadDragonborn } from "./dragonborn";
 import { exportStl, describe } from "./exportStl";
 import { describePrint, disposePreview, preparePrint, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
 import { characterFile, History, readCharacter, type Character } from "./character";
-import { defaultPaint, Painter, racePaint } from "./paint";
+import { defaultPaint, Painter, paintKind, racePaint } from "./paint";
 import { mountPaint, type TokenFraming } from "./paintPanel";
 import { backdropPicture, frameToken, loadBackdrops, RIM, tokenBackdrop } from "./token";
 
@@ -127,6 +128,8 @@ let current: { params: Params; detail: boolean } | null = null; // the settings 
 // with performance.getEntriesByType("measure"))
 function swap(params: Params, detail: boolean) {
   if (!assets) return;
+  // (a Dragonborn still loading: the bust on show stays until it is here, and is then built: see needDragonborn)
+  if (params.family === "dragonborn" && !assets.dragonborn) return;
   const started = performance.now();
   if (figure) {
     pivot.remove(figure);
@@ -166,13 +169,16 @@ let pending: Params | null = null;
 let wanted: Params | null = null; // the settings last asked for (the bust on show may be a step behind them)
 function show(params: Params) {
   leavePrint();
-  // (a new race brings its own colours: a half-orc's green skin, a tiefling's red; the grime stays)
-  if (wanted && params.race !== wanted.race) {
-    paint = racePaint(paint, params.race);
+  // (a new race brings its own colours: a half-orc's green skin, a tiefling's red, a Dragonborn's bronze scales; the
+  // grime stays)
+  if (wanted && paintKind(params) !== paintKind(wanted)) {
+    paint = racePaint(paint, paintKind(params));
     paintPanel.set(paint);
     painter?.setPaint(paint);
   }
+  paintPanel.showFor(paintKind(params));
   wanted = params;
+  if (params.family === "dragonborn") needDragonborn();
   remember();
   if (!pending) {
     const asked = performance.now();
@@ -188,6 +194,27 @@ function show(params: Params) {
     window.setTimeout(build, 50);
   }
   pending = params;
+}
+
+// The Dragonborn's model is loaded the first time one is asked for (it is large, and most busts never need it). If it
+// will not load, the bust goes back to the humanoid it was, and the panel says why.
+let dragonbornLoading: Promise<void> | null = null;
+function needDragonborn() {
+  if (!assets || assets.dragonborn || dragonbornLoading) return;
+  const loaded = assets;
+  fileStatus.textContent = "Loading the Dragonborn model";
+  dragonbornLoading = loadDragonborn()
+    .then((model) => {
+      loaded.dragonborn = model;
+      fileStatus.textContent = "";
+      if (wanted?.family === "dragonborn") draft(wanted);
+    })
+    .catch((error: unknown) => {
+      console.error(error);
+      fileStatus.textContent = `Could not load the Dragonborn model (${error instanceof Error ? error.message : String(error)}), so the bust is back to the humanoid it was.`;
+      if (wanted?.family === "dragonborn") shapePanel.set({ ...wanted, family: "humanoid" });
+    })
+    .finally(() => (dragonbornLoading = null));
 }
 
 function draft(params: Params) {
@@ -493,6 +520,9 @@ function fitTokenLens(bust: THREE.Object3D, framing: TokenFraming): THREE.Perspe
       if (filled >= 1) break search;
     }
   }
+  // (the search above mostly checks a sample of the points: every one is checked against what it chose, so the tip of
+  // a muzzle that fell between the sampled points is not cut by the rim either, stepping back a little until all are in)
+  for (let k = 0; k < 40 && !headIn(best.y, best.distance, all); k++) best.distance *= 1.02;
   place(best.y, best.distance);
   performance.measure("effigy:token fit", { start: started });
   return lens;
@@ -600,11 +630,11 @@ async function saveToken(size: number, framing: TokenFraming, backdropFile: stri
   if (!blob) throw new Error("the browser could not make the picture");
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `effigy-${asked.race}-${asked.body}-token-${size}.png`;
+  link.download = `effigy-${asked.family === "dragonborn" ? "dragonborn" : `${asked.race}-${asked.body}`}-token-${size}.png`;
   link.click();
   URL.revokeObjectURL(link.href);
   const edited = current?.params !== asked ? " (of the character as it was when you asked: it has changed since)" : "";
-  say(`Saved a ${size} x ${size} px token of the ${asked.race}${edited} (${Math.round(blob.size / 1024)} KB).`);
+  say(`Saved a ${size} x ${size} px token of the ${characterName(asked)}${edited} (${Math.round(blob.size / 1024)} KB).`);
 }
 
 // The token preview is drawn again a moment after the bust or its paint stops changing (drawing it takes a moment, so
@@ -635,7 +665,7 @@ const paintPanel = mountPaint(
   loadBackdrops(),
   previewToken,
   () => {
-    paint = defaultPaint((wanted ?? initial).race);
+    paint = defaultPaint(paintKind(wanted ?? initial));
     paintPanel.set(paint);
     painter?.setPaint(paint);
     redraw();
@@ -709,10 +739,10 @@ fileButton("save-character", "Save", "Save this character to a file, to open aga
   const character = { params: wanted ?? initial, paint };
   const link = document.createElement("a");
   link.href = URL.createObjectURL(new Blob([characterFile(character)], { type: "application/json" }));
-  link.download = `effigy-${character.params.race}-${character.params.body}.json`;
+  link.download = `effigy-${character.params.family === "dragonborn" ? "dragonborn" : `${character.params.race}-${character.params.body}`}.json`;
   link.click();
   URL.revokeObjectURL(link.href);
-  fileStatus.textContent = `Saved the ${character.params.race} as ${link.download}.`;
+  fileStatus.textContent = `Saved the ${characterName(character.params)} as ${link.download}.`;
 });
 const opener = document.createElement("input");
 opener.type = "file";

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { MeshBVH } from "three-mesh-bvh";
 import { shapeGeometry, type Assets } from "./assets";
 import { buildBrows } from "./brows";
+import { buildDragonborn } from "./dragonborn";
 import { JAW, turnWithJaw } from "./jaw";
 import { frontPoint, sculptBust, topPoint } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
@@ -142,6 +143,11 @@ const UP = new THREE.Vector3(0, 1, 0);
 // With detail off the beard is its plain shell, without the carving (about 750,000 triangles, which takes
 // a moment to build): that is the quick draft shown while a slider moves.
 export function buildBust(p: Params, assets: Assets, detail = true, gusset = false): THREE.Group {
+  // (a Dragonborn is a sculpt of its own, with nothing to deform: see dragonborn.ts)
+  if (p.family === "dragonborn") {
+    if (!assets.dragonborn) throw new Error("the Dragonborn model has not loaded");
+    return buildDragonborn(assets.dragonborn, gusset);
+  }
   const root = new THREE.Group();
   const k = derive(p);
   const base = assets.head;

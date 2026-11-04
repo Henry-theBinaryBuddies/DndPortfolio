@@ -23,6 +23,7 @@ How it is built:
      (front, three-quarter, profile, rear) and dragonborn_face.png (close up).
 """
 
+import json
 import math
 import os
 import struct
@@ -40,6 +41,9 @@ ARGS = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 OUT_DIR = ARGS[0] if ARGS else "."
 RENDERS = "--renders" in ARGS
 PLAIN = "--plain" in ARGS  # skip the scales (a quicker look at the forms)
+# --app <dir>: write the model the app loads (dragonborn.bin and dragonborn.json) into <dir>, usually public/models,
+# instead of the test print: no plinth (the app stands the bust on its own pedestal), and lighter
+APP_DIR = ARGS[ARGS.index("--app") + 1] if "--app" in ARGS else None
 HERE = os.path.dirname(os.path.abspath(__file__))
 HEAD_BIN = os.path.join(HERE, "..", "public", "models", "head.bin")
 # The human bust's eye midpoint, in head.bin's coordinates
@@ -748,12 +752,133 @@ def export_stl(obj, path):
     bm.free()
 
 
+# ---------------------------------------------------------------------------------------------------
+# The model the app loads (with --app): the bust decimated to a fifth of its triangles, which still holds the
+# scales at the size the app shows it, in the app's head units, with what its paint needs to tell the parts apart.
+#
+# dragonborn.bin (little-endian): uint32 vertexCount, uint32 triangleCount, then float32 x,y,z per vertex,
+# float32 shade per vertex (how far it lies in a hollow, -1..1: the grooves between scales), float32 along per
+# vertex (0 at the root of a horn or spine, 1 at its tip), uint32 a,b,c per triangle, and a uint8 region per
+# triangle (0 scales, 1 horn, spine or crest, 2 eye).
+# dragonborn.json: what the app needs to know about it (see src/dragonborn.ts).
+
+APP_RATIO = 0.2
+APP_UNITS = 5  # the app's head units are metres x 5 with the same origin and axes (see src/headMesh.ts)
+MODEL_VERSION = 1
+
+
+def outgrowth_regions(P):
+    """Which region each point (chest frame) is in: 1 on the horns, cheek spines and crest, 2 on the eyeballs, 0
+    elsewhere; and how far along its horn or spine it is."""
+    H = head_frame(P)
+    Q = mirrored(H)
+    region = np.zeros(len(P), np.uint8)
+    along = np.zeros(len(P))
+    horn = np.array(HORN)
+    radii = np.array(HORN_RADII)
+    idx = np.nonzero(np.all((Q > horn.min(0) - 0.04) & (Q < horn.max(0) + 0.04), axis=1))[0]
+    for start in range(0, len(idx), 100000):
+        part = idx[start : start + 100000]
+        gaps = np.linalg.norm(Q[part, None, :] - horn[None, :, :], axis=2)
+        nearest = np.argmin(gaps, axis=1)
+        on = gaps[np.arange(len(part)), nearest] - radii[nearest] < 0.003
+        region[part[on]] = 1
+        along[part[on]] = nearest[on] / (len(horn) - 1)
+    for points, list_, flat in ((Q, SPINES, SPINE_FLAT), (H, CREST, CREST_FLAT)):
+        for root, tip, radius in list_:
+            root, tip = np.array(root, float), np.array(tip, float)
+            on = spine(points, root, tip, radius, flat) < 0.002
+            axis = tip - root
+            region[on] = 1
+            along[on] = np.clip((points[on] - root) @ axis / (axis @ axis), 0, 1)
+    centre = EYE - EYE_TURN[:, 2] * 0.0085
+    region[np.linalg.norm(Q - centre, axis=1) < EYE_RADIUS + 0.0007] = 2
+    return region, along
+
+
+def export_app(obj, out_dir):
+    decimate = obj.modifiers.new("decimate", "DECIMATE")
+    decimate.ratio = APP_RATIO
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier=decimate.name)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.triangulate(bm, faces=list(bm.faces))
+    bm.to_mesh(obj.data)
+    bm.free()
+    mesh = obj.data
+    n = len(mesh.vertices)
+    co = np.zeros(n * 3)
+    mesh.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    tris = np.zeros(len(mesh.polygons) * 3, np.int64)
+    mesh.polygons.foreach_get("vertices", tris)
+    tris = tris.reshape(-1, 3)
+    no = np.zeros(n * 3)
+    mesh.vertex_normals.foreach_get("vector", no)
+    P = np.stack([co[:, 0], co[:, 2], -co[:, 1]], 1)
+    N = no.reshape(-1, 3)
+    N = np.stack([N[:, 0], N[:, 2], -N[:, 1]], 1)
+
+    # How far each vertex lies in a hollow: the offset to the mean of its neighbours, along its normal, for the
+    # length of its edges (positive in the grooves between scales)
+    edges = np.concatenate([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [2, 0]]])
+    total = np.zeros((n, 3))
+    count = np.zeros(n)
+    length = np.zeros(n)
+    for a, b in ((edges[:, 0], edges[:, 1]), (edges[:, 1], edges[:, 0])):
+        np.add.at(total, a, P[b])
+        np.add.at(count, a, 1)
+        np.add.at(length, a, np.linalg.norm(P[b] - P[a], axis=1))
+    count = np.maximum(count, 1)
+    hollow = np.sum((total / count[:, None] - P) * N, axis=1) / np.maximum(length / count, 1e-9)
+    shade = np.clip(hollow / np.percentile(np.abs(hollow), 98), -1, 1)
+
+    region, along = outgrowth_regions(P)
+    # A triangle is in a region when at least two of its corners are
+    votes = region[tris]
+    tri_region = np.zeros(len(tris), np.uint8)
+    for r in (1, 2):
+        tri_region[(votes == r).sum(1) >= 2] = r
+
+    positions = (P * APP_UNITS).astype("<f4")
+    with open(os.path.join(out_dir, "dragonborn.bin"), "wb") as handle:
+        handle.write(struct.pack("<II", n, len(tris)))
+        handle.write(positions.tobytes())
+        handle.write(shade.astype("<f4").tobytes())
+        handle.write(along.astype("<f4").tobytes())
+        handle.write(tris.astype("<u4").tobytes())
+        handle.write(tri_region.tobytes())
+    centre = EYE - EYE_TURN[:, 2] * 0.0085
+    eyes = []
+    for side in (1, -1):
+        c = HEAD_AT + HEAD_SCALE * centre * np.array([side, 1, 1])
+        look = EYE_TURN[:, 2] * np.array([side, 1, 1])
+        eyes.append({"centre": (c * APP_UNITS).round(5).tolist(), "look": look.round(5).tolist(), "radius": round(EYE_RADIUS * HEAD_SCALE * APP_UNITS, 5)})
+    manifest = {
+        "name": "dragonborn",
+        "version": MODEL_VERSION,
+        "source": "tools/sculpt_dragonborn.py",
+        "units": "head units (metres x 5): origin between the human bust's eyes, y up, the face toward +z",
+        "vertices": n,
+        "triangles": len(tris),
+        "eyes": eyes,
+        # the lowest point of the lower jaw, for framing the face
+        "chin": round(float(HEAD_AT[1] + HEAD_SCALE * min(JAW["bottom"])) * APP_UNITS, 5),
+    }
+    with open(os.path.join(out_dir, "dragonborn.json"), "w") as handle:
+        json.dump(manifest, handle, indent=2)
+        handle.write("\n")
+    log("app model: %d vertices, %d triangles (%d horn, %d eye)" % (n, len(tris), (tri_region == 1).sum(), (tri_region == 2).sum()))
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     os.makedirs(OUT_DIR, exist_ok=True)
     F, origin = sample(dragon)
     F = smin(F, sample_chest(), 0.03)
-    F = np.minimum(F, plinth(origin, F.shape))
+    if not APP_DIR:
+        F = np.minimum(F, plinth(origin, F.shape))
     verts, quads = surface_nets(F, origin, STEP)
     log("surface nets:", len(verts), "vertices,", len(quads), "quads")
     obj = build_mesh(verts, quads)
@@ -763,6 +888,10 @@ def main():
     if RENDERS:
         turnaround(obj, os.path.join(OUT_DIR, "dragonborn_turnaround.png"))
         turnaround(obj, os.path.join(OUT_DIR, "dragonborn_face.png"), (("front", 0), ("three-quarter", 35), ("profile", 90)), (0.0, -0.08, 0.02), 1.15)
+    if APP_DIR:
+        export_app(obj, APP_DIR)
+        log("done")
+        return
     export_stl(obj, os.path.join(OUT_DIR, "dragonborn_test.stl"))
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT_DIR, "dragonborn.blend"))
     log("done")

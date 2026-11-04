@@ -5,6 +5,10 @@ import { LANDMARK, type HeadBase } from "./headMesh";
 import { MM } from "./print";
 import { masculinity, type Params, type Race } from "./params";
 
+// Whose colours a character starts with: its race's, or the Dragonborn's
+export type PaintKind = Race | "dragonborn";
+export const paintKind = (p: Params): PaintKind => (p.family === "dragonborn" ? "dragonborn" : p.race);
+
 // The bust's colours, for the picture (the token): the sculpt is the same either way, and what prints is the
 // form alone, so none of this reaches the print. The paint is kept apart from the sculpt's settings: changing a
 // colour only changes the materials' settings, never rebuilds the bust.
@@ -43,6 +47,10 @@ export const SKIN_TONES: Swatch[] = [
   { name: "Infernal red", value: "#8a3a34" },
   { name: "Infernal violet", value: "#5a3a63" },
   { name: "Blue-grey", value: "#5c6f80" },
+  // (the metallic dragons' scales)
+  { name: "Bronze scales", value: "#7a5a2e" },
+  { name: "Brass scales", value: "#a07a3a" },
+  { name: "Copper scales", value: "#8a4a2a" },
 ];
 
 export const EYE_COLORS: Swatch[] = [
@@ -88,7 +96,7 @@ const swatch = (list: Swatch[], name: string) => list.find((s) => s.name === nam
 const PLAIN: Paint = { skin: swatch(SKIN_TONES, "Tan"), eyes: swatch(EYE_COLORS, "Brown"), eyeGlow: false, hair: swatch(HAIR_COLORS, "Chestnut"), horns: swatch(HORN_COLORS, "Horn"), teeth: swatch(TEETH_COLORS, "Ivory"), grime: 0.2 };
 
 // What a race starts with, over the plain paint: applied when the race is chosen
-export const RACE_PAINT: Record<Race, Partial<Paint>> = {
+export const RACE_PAINT: Record<PaintKind, Partial<Paint>> = {
   human: {},
   elf: { skin: swatch(SKIN_TONES, "Elven pale"), eyes: swatch(EYE_COLORS, "Green"), hair: swatch(HAIR_COLORS, "Straw") },
   "half-elf": { skin: swatch(SKIN_TONES, "Pale"), eyes: swatch(EYE_COLORS, "Hazel") },
@@ -97,12 +105,13 @@ export const RACE_PAINT: Record<Race, Partial<Paint>> = {
   gnome: { skin: swatch(SKIN_TONES, "Ruddy"), eyes: swatch(EYE_COLORS, "Blue"), hair: swatch(HAIR_COLORS, "Ash") },
   "half-orc": { skin: swatch(SKIN_TONES, "Orc grey-green"), eyes: swatch(EYE_COLORS, "Amber"), hair: swatch(HAIR_COLORS, "Coal"), teeth: swatch(TEETH_COLORS, "Yellowed"), grime: 0.35 },
   tiefling: { skin: swatch(SKIN_TONES, "Infernal red"), eyes: swatch(EYE_COLORS, "Amber"), eyeGlow: true, hair: swatch(HAIR_COLORS, "Coal"), horns: swatch(HORN_COLORS, "Black") },
+  dragonborn: { skin: swatch(SKIN_TONES, "Bronze scales"), eyes: swatch(EYE_COLORS, "Amber"), horns: swatch(HORN_COLORS, "Bone") },
 };
 
-export const defaultPaint = (race: Race): Paint => ({ ...PLAIN, ...RACE_PAINT[race] });
+export const defaultPaint = (race: PaintKind): Paint => ({ ...PLAIN, ...RACE_PAINT[race] });
 
 // The race's own colours over the paint as it is (the grime stays as it was set)
-export const racePaint = (paint: Paint, race: Race): Paint => ({ ...paint, ...PLAIN, ...RACE_PAINT[race], grime: paint.grime });
+export const racePaint = (paint: Paint, race: PaintKind): Paint => ({ ...paint, ...PLAIN, ...RACE_PAINT[race], grime: paint.grime });
 
 const smooth = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
@@ -597,6 +606,7 @@ export class Painter {
 const KINDS: Record<string, keyof Painter["materials"]> = {
   head: "skin",
   eye: "eye",
+  dragonEye: "eye",
   horn: "horn",
   tusk: "teeth",
   teeth: "teeth",

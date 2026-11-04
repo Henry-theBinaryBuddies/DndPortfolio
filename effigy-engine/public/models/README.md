@@ -8,4 +8,6 @@
 
 **Format** (little-endian): `uint32 vertexCount`, `uint32 triangleCount`, then `float32 x,y,z` per vertex, then `uint32 a,b,c` per triangle. `feminine.bin`: `uint32 vertexCount`, then `float32 x,y,z` per vertex. Units are metres. The app moves the origin to the midpoint between the eyes and scales it by 5 (see `src/headMesh.ts`).
 
+**Dragonborn:** `dragonborn.bin` and `dragonborn.json` are the Dragonborn's own model, made by `tools/sculpt_dragonborn.py --app public/models` (Blender 5.2.3; see `assets/dragonborn/README.md`). Its head and neck are original to this project; its chest and shoulders are this `head.bin`'s, broadened. The file format is described in the script and in `src/dragonborn.ts`.
+
 The mesh was exported with Blender 5.2.3 using `tools/export_head.py`; the app only reads the `.bin`.

@@ -46,6 +46,9 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   const hairSelect = document.createElement("select");
   const beardSelect = document.createElement("select");
   const bodyButtons = new Map<Body, HTMLButtonElement>();
+  // What only a humanoid has (a Dragonborn is a fixed sculpt of its own: see dragonborn.ts), hidden while it is shown
+  const humanoidOnly: HTMLElement[] = [];
+  const familyNote = document.createElement("p");
 
   // (any edit goes back from the print preview to the sculpt: see main.ts)
   // (`edited`: false only for going back from the preview to the same sculpt, which leaves what was measured true)
@@ -56,7 +59,9 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   };
 
   const syncUI = () => {
-    raceSelect.value = params.race;
+    raceSelect.value = params.family === "dragonborn" ? "dragonborn" : params.race;
+    for (const element of humanoidOnly) element.hidden = params.family !== "humanoid";
+    familyNote.hidden = params.family === "humanoid";
     for (const [body, button] of bodyButtons) button.setAttribute("aria-pressed", String(body === params.body));
     hornSelect.value = params.hornStyle;
     hairSelect.value = params.hairStyle;
@@ -108,7 +113,16 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
     option.textContent = RACE_INFO[race].label;
     raceSelect.append(option);
   }
-  raceSelect.addEventListener("change", () => update(switchRace(params, raceSelect.value as Race)));
+  // (the Dragonborn is in the same list, though it is a family of its own: choosing it keeps the humanoid's race and
+  // settings, for when a race is chosen again)
+  const dragonOption = document.createElement("option");
+  dragonOption.value = "dragonborn";
+  dragonOption.textContent = "Dragonborn";
+  raceSelect.append(dragonOption);
+  raceSelect.addEventListener("change", () => {
+    if (raceSelect.value === "dragonborn") update({ ...params, family: "dragonborn" });
+    else update({ ...switchRace(params, raceSelect.value as Race), family: "humanoid" });
+  });
   // Switching race keeps every edit; this applies the race's suggested sliders, hair, beard and horns
   const raceDefaults = document.createElement("button");
   raceDefaults.type = "button";
@@ -144,7 +158,11 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   const beardRow = styleRow("Beard", beardSelect, BEARD_STYLES, (value) => (params.beardStyle = value as BeardStyle));
   const hornRow = styleRow("Horns", hornSelect, HORN_STYLES, (value) => (params.hornStyle = value as HornStyle));
 
-  character.append(bodyRow, raceRow, raceDefaultsRow, hairRow, beardRow, hornRow);
+  familyNote.className = "status";
+  familyNote.id = "family-note";
+  familyNote.textContent = "The Dragonborn is one fixed sculpt for now: its own shape controls come later. The humanoid's settings are kept for when you choose a race again.";
+  character.append(bodyRow, raceRow, familyNote, raceDefaultsRow, hairRow, beardRow, hornRow);
+  humanoidOnly.push(bodyRow, raceDefaultsRow, hairRow, beardRow, hornRow);
   shape.append(character);
 
   const groups = [...new Set(NUMERIC_DEFS.map((d) => d.group))];
@@ -184,6 +202,7 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
       sliders.set(def.key, { input, out, row });
     }
     shape.append(section);
+    humanoidOnly.push(section);
   }
 
   const actions = document.createElement("div");

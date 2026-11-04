@@ -1,6 +1,12 @@
 # Dragonborn sculpt (milestone 1)
 
-A fixed, neutral, closed-mouth Dragonborn bust, made to see whether the Dragonborn reads convincingly in plain clay before the app is built around it. The app does not load it yet: that is milestone 2 of the Dragonborn plan.
+A fixed, neutral, closed-mouth Dragonborn bust, made to see whether the Dragonborn reads convincingly in plain clay before the app was built around it. Since milestone 2 the app loads it too, as the Dragonborn family (`src/dragonborn.ts`), from a lighter copy in `public/models`:
+
+```
+blender -b --factory-startup --python tools/sculpt_dragonborn.py -- assets/dragonborn --app public/models
+```
+
+That copy has no plinth (the app stands it on its own pedestal), a fifth of the triangles, and marks which triangles are horn, spine and crest and which are eye, so the paint can colour them.
 
 **Source:** `tools/sculpt_dragonborn.py`. Every form is written down there as numbers (a signed distance field for the head and neck, the scales cut as relief), so this folder holds only its renders. The chest and shoulders come from the human bust the app already ships (`public/models/head.bin`, from Blender Studio's CC0 Human Base Meshes; see `public/models/README.md`). Everything else is original to this project.
 

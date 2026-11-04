@@ -106,6 +106,8 @@ export function describePrint(prepared: Prepared): string {
     lines.push(`Print preview, full size: a ${bust.toFixed(0)} mm bust on a ${base.toFixed(0)} mm base, ${overall.toFixed(0)} mm tall overall, ${width.toFixed(0)} x ${depth.toFixed(0)} mm across.`);
     if (prepared.warnings.length) lines.push(prepared.warnings.join(" "));
   }
-  lines.push("These are the parts as the export merges them, with the throat gusset if it is ticked and the eyes 7% larger so they join the head. Export STL saves exactly this; any change to the sculpt goes back to it.");
+  // (a Dragonborn's eyes are part of its surface already, not balls grown to join it: see dragonborn.ts)
+  const grown = prepared.parts.some((part) => part.name === "eye") ? " and the eyes 7% larger so they join the head" : "";
+  lines.push(`These are the parts as the export merges them, with the throat gusset if it is ticked${grown}. Export STL saves exactly this; any change to the sculpt goes back to it.`);
   return lines.join(" ");
 }

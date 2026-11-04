@@ -36,7 +36,7 @@ export function describe(report: ExportResult): string {
   if (fine.share > 0.03) lines.push(`That is a lot: the thinnest places are near ${report.walls.worst.slice(0, 2).map((w) => `(${w.at.map((v) => v.toFixed(0)).join(", ")})`).join(" and ")} mm.`);
   if (report.voids) lines.push(`${report.voids} small enclosed pockets inside it.`);
   if (report.status !== "NoError") lines.push(`The merge reported: ${report.status}.`);
-  lines.push("The eyes are printed 7% larger than in the sculpt, so they join the head.");
+  if (report.parts.some((part) => part.name === "eye")) lines.push("The eyes are printed 7% larger than in the sculpt, so they join the head.");
   return lines.join(" ");
 }
 
@@ -100,11 +100,13 @@ export function exportStl(params: Params, assets: Assets, say: (text: string) =>
             }
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([event.data.stl], { type: "model/stl" }));
-            link.download = `effigy-${params.race}-${params.body}-${params.hairStyle}${tabletop ? "-tabletop" : ""}${gusset ? "" : "-nogusset"}${partial ? "-partial" : ""}.stl`;
+            // (a Dragonborn has no build or hair to name)
+            const named = params.family === "dragonborn" ? "dragonborn" : `${params.race}-${params.body}-${params.hairStyle}`;
+            link.download = `effigy-${named}${tabletop ? "-tabletop" : ""}${gusset ? "" : "-nogusset"}${partial ? "-partial" : ""}.stl`;
             link.click();
             URL.revokeObjectURL(link.href);
             finish(false);
-            resolve({ ...report, made: `${params.race}, ${params.body}, ${params.hairStyle} hair, ${tabletop ? "tabletop size" : "full size"}`, baseHeight, tabletop: fitted ? { scale: fitted.scale, height: fitted.height, notes: fitted.notes } : undefined, warnings: ready.warnings });
+            resolve({ ...report, made: `${params.family === "dragonborn" ? "Dragonborn" : `${params.race}, ${params.body}, ${params.hairStyle} hair`}, ${tabletop ? "tabletop size" : "full size"}`, baseHeight, tabletop: fitted ? { scale: fitted.scale, height: fitted.height, notes: fitted.notes } : undefined, warnings: ready.warnings });
           } catch (error) {
             fail(error);
           }

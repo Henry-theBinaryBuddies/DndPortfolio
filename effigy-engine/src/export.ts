@@ -40,9 +40,18 @@ export function collectBust(p: Params, assets: Assets, gusset = false, scale?: n
     if (matrix.determinant() < 0) for (let t = 0; t < indices.length; t += 3) [indices[t + 1], indices[t + 2]] = [indices[t + 2], indices[t + 1]];
     parts.push({ name, positions, indices });
   };
+  // (open pieces of one closed solid, painted apart: a Dragonborn's scales, horns and eyes; printed, they are one part
+  // again, whose welded seams close it: see dragonborn.ts)
+  const joined: Part[] = [];
   bust.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
     const matrix = object.matrixWorld;
+    if (object.userData.joined) {
+      const before = parts.length;
+      add("head", object.geometry, matrix);
+      joined.push(...parts.splice(before));
+      return;
+    }
     if (object.name === "eye") {
       // An eyeball sits in its socket with a hair's gap all round (so the lids never cut into it), which on a
       // print would leave it floating free inside the head. Printed a little larger it overlaps the socket and
@@ -54,6 +63,18 @@ export function collectBust(p: Params, assets: Assets, gusset = false, scale?: n
     }
     add(object.name || "part", object.geometry, matrix);
   });
+  if (joined.length) {
+    const positions = new Float32Array(joined.reduce((n, p) => n + p.positions.length, 0));
+    const indices = new Uint32Array(joined.reduce((n, p) => n + p.indices.length, 0));
+    let [at, offset] = [0, 0];
+    for (const piece of joined) {
+      positions.set(piece.positions, at * 3);
+      for (let i = 0; i < piece.indices.length; i++) indices[offset + i] = piece.indices[i] + at;
+      at += piece.positions.length / 3;
+      offset += piece.indices.length;
+    }
+    parts.unshift({ name: "head", positions, indices });
+  }
   // The base reaches a little way up inside the bust, so the two are joined and not merely touching
   // (at tabletop size it is a fixed width and low, in the sculpt's own millimetres: the scale brings it to print
   // size, and its moldings are sized in printed millimetres, so they do not shrink with it)
