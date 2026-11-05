@@ -199,14 +199,14 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   // Narrow, long face with high cheekbones, a fine straight nose, delicate lips and a light brow
   elf: {
     label: "Elf",
-    skeleton: { ...HUMAN, angularity: 0.45, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.86, noseBridge: 0.35, mouthWidth: 0.95, jaw: 0.86, chin: 0.3, browBase: -0.2, cheekBase: 0.25, lipBase: -0.1, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
+    skeleton: { ...HUMAN, planes: 0.45, browHeight: 0.88, browCarve: 0.7, angularity: 0.45, headWidth: 0.93, headHeight: 1.04, earSize: 1, noseLength: 0.35, noseWidth: 0.86, noseBridge: 0.35, mouthWidth: 0.95, jaw: 0.86, chin: 0.3, browBase: -0.2, cheekBase: 0.25, lipBase: -0.1, gaunt: 0.25, socketDepth: 0.4, shoulders: 0.86 },
     hornStyle: "none",
     hairStyle: "swept",
     defaults: { eyebrows: 0.4 },
   },
   "half-elf": {
     label: "Half-elf",
-    skeleton: { ...HUMAN, angularity: 0.4, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, noseWidth: 0.95, noseBridge: 0.15, jaw: 0.94, browBase: -0.08, cheekBase: 0.12, gaunt: 0.2, shoulders: 0.94 },
+    skeleton: { ...HUMAN, planes: 0.65, browHeight: 0.85, browCarve: 0.65, angularity: 0.4, headWidth: 0.97, headHeight: 1.02, earSize: 0.6, noseWidth: 0.95, noseBridge: 0.15, jaw: 0.94, browBase: -0.08, cheekBase: 0.12, gaunt: 0.2, shoulders: 0.94 },
     hornStyle: "none",
     hairStyle: "swept",
     defaults: {},
@@ -214,7 +214,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   // Broad head, heavy brow, wide strong nose, full cheeks, a thick jaw and chin, a thick neck
   dwarf: {
     label: "Dwarf",
-    skeleton: { ...HUMAN, angularity: 0.7, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.25, noseBridge: 0.3, jaw: 1.15, chin: 0.55, browBase: 0.3, cheekBase: 0.1, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
+    skeleton: { ...HUMAN, planes: 0.25, angularity: 0.7, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.25, noseBridge: 0.3, jaw: 1.15, chin: 0.55, browBase: 0.3, cheekBase: 0.1, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
     hornStyle: "none",
     hairStyle: "cropped",
     beardStyle: "full",
@@ -223,7 +223,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   // Round, soft face: full cheeks, a small button nose, a gentle brow
   halfling: {
     label: "Halfling",
-    skeleton: { ...HUMAN, angularity: 0.08, headWidth: 1.07, headHeight: 0.96, earSize: 0.55, noseLength: 0.15, noseWidth: 0.85, noseBridge: -0.3, jaw: 0.85, chin: 0.18, browBase: -0.2, cheekBase: 0.4, lipBase: 0.15, gaunt: 0, shoulders: 0.8 },
+    skeleton: { ...HUMAN, planes: 0.1, angularity: 0.08, headWidth: 1.07, headHeight: 0.96, earSize: 0.55, noseLength: 0.15, noseWidth: 0.85, noseBridge: -0.3, jaw: 0.85, chin: 0.18, browBase: -0.2, cheekBase: 0.4, lipBase: 0.15, gaunt: 0, shoulders: 0.8 },
     hornStyle: "none",
     hairStyle: "cropped",
     defaults: { muscle: 0.3, weight: 0.58 },
@@ -231,7 +231,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   // Big expressive nose, pointed ears, full cheeks and a small chin
   gnome: {
     label: "Gnome",
-    skeleton: { ...HUMAN, angularity: 0.3, headWidth: 1.03, headHeight: 0.98, earSize: 0.75, noseLength: 0.98, noseWidth: 1.3, noseBridge: 0.3, chin: 0.15, browBase: 0.05, cheekBase: 0.15, gaunt: 0.1, shoulders: 0.78 },
+    skeleton: { ...HUMAN, planes: 0.2, angularity: 0.3, headWidth: 1.03, headHeight: 0.98, earSize: 0.75, noseLength: 0.98, noseWidth: 1.3, noseBridge: 0.3, chin: 0.15, browBase: 0.05, cheekBase: 0.15, gaunt: 0.1, shoulders: 0.78 },
     hornStyle: "none",
     hairStyle: "cropped",
     defaults: { muscle: 0.3 },
@@ -239,7 +239,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   // Sloped forehead, a very heavy brow, a broad flat nose, high cheekbones, and a heavy jutting jaw
   "half-orc": {
     label: "Half-orc",
-    skeleton: { ...HUMAN, angularity: 0.95, headWidth: 1.08, headHeight: 1, earSize: 0.4, noseLength: 0.3, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.12, jaw: 1.12, chin: 0.6, prognathism: 0.35, slope: 0.6, browBase: 0.4, cheekBase: 0.15, lipBase: -0.15, socketDepth: 0.55, shoulders: 1.3 },
+    skeleton: { ...HUMAN, planes: 0.3, angularity: 0.95, headWidth: 1.08, headHeight: 1, earSize: 0.4, noseLength: 0.3, noseWidth: 1.2, noseBridge: -0.3, mouthWidth: 1.12, jaw: 1.12, chin: 0.6, prognathism: 0.35, slope: 0.6, browBase: 0.4, cheekBase: 0.15, lipBase: -0.15, socketDepth: 0.55, shoulders: 1.3 },
     hornStyle: "none",
     hairStyle: "mohawk",
     defaults: { tusks: 0.6, muscle: 0.75, lids: 0.65, eyebrows: 0.8 },
@@ -247,7 +247,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
   // Angular: sharp cheekbones, a defined jaw, an arched brow and slightly pointed ears
   tiefling: {
     label: "Tiefling",
-    skeleton: { ...HUMAN, angularity: 0.78, earSize: 0.55, noseWidth: 0.92, noseBridge: 0.2, jaw: 0.95, chin: 0.5, browBase: 0.15, cheekBase: 0.3, gaunt: 0.3, shoulders: 0.98 },
+    skeleton: { ...HUMAN, planes: 0.65, browHeight: 0.9, browCarve: 0.75, angularity: 0.78, earSize: 0.55, noseWidth: 0.92, noseBridge: 0.2, jaw: 0.95, chin: 0.5, browBase: 0.15, cheekBase: 0.3, gaunt: 0.3, shoulders: 0.98 },
     hornStyle: "demon",
     hairStyle: "swept",
     defaults: { horns: 0.85 },

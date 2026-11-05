@@ -50,6 +50,7 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
   const count = base.positions.length / 3;
   const out = new Float32Array(base.positions.length);
   const eyeX = LANDMARK.eyeX;
+  const planes = RACE_INFO[p.race].skeleton.planes;
   const lipScale = k.lipFull * (1 + 0.15 * (1 - m));
   const { menton, stomion } = LANDMARK;
   const axis = base.neck;
@@ -105,9 +106,8 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     push(blob(0.27, -0.3, 0.1, 0.15, 0.15, 0.12), -0.08 * k.gaunt + 0.07 * k.fullness);
     push(blob(0.36, 0.18, -0.02, 0.1, 0.14, 0.14), -0.035 * k.gaunt);
 
-    // Sculpted human forms: broad facial planes rather than extra wrinkles. Keep eyelid contact and
+    // Race-weighted sculpted forms: broad facial planes rather than extra wrinkles. Keep eyelid contact and
     // the mouth margin unchanged; all of these offsets still follow the jaw pose below.
-    const planes = RACE_INFO[p.race].skeleton.planes;
     if (planes > 0) {
       const strength = planes * (0.65 + 0.35 * m);
       const face = smooth((nz + 0.05) / 0.6) * strength;

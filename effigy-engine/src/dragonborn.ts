@@ -62,6 +62,7 @@ interface Shaped {
 const REGION = { scales: 0, horn: 1, eye: 2 } as const;
 export const PART = { scales: 0, horn: 1, spine: 2, crest: 3, eye: 4 } as const;
 const FORWARD = new THREE.Vector3(0, 0, 1);
+const HORN_AXIS = new THREE.Vector3(1, 0, 0);
 
 export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifest): DragonbornAsset {
   if (manifest.version !== DRAGONBORN_VERSION) throw new Error(`the Dragonborn model is version ${manifest.version}, not the ${DRAGONBORN_VERSION} this app reads`);
@@ -244,7 +245,7 @@ export function shapeDragonborn(asset: DragonbornAsset, p: Params): Shaped {
       const size = 1 + ((part === PART.horn ? hornSize : spineSize) - 1) * grow;
       v.copy(out).sub(root).multiplyScalar(size);
       // (the horns turn about a line across the head through their roots: back, or forward)
-      if (part === PART.horn && sweep !== 0) v.applyQuaternion(turn.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -sweep * grow));
+      if (part === PART.horn && sweep !== 0) v.applyQuaternion(turn.setFromAxisAngle(HORN_AXIS, -sweep * grow));
       out.copy(root).add(v);
     } else out.add(faceShift(x, y, z, shift));
     // The neck, thicker or thinner about its axis, between the jaw and the shoulders

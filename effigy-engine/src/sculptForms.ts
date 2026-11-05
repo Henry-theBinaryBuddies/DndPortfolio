@@ -40,7 +40,8 @@ export function scalpContour(x: number, y: number, z: number): number {
   let threshold = (front + (0.12 - front) * toSide) * (1 - toBack) - 0.42 * toBack;
   const sideburn = Math.exp(-(((z + 0.205) / 0.075) ** 2)) * smooth((ax - 0.31) / 0.08);
   threshold -= 0.23 * sideburn * (1 - toBack);
-  threshold += (0.008 * Math.sin(x * 47 + z * 9) + 0.003 * Math.sin(x * 89 - z * 13)) * (1 - toBack);
+  // Broad clump endings rather than sub-triangle ripples, which alias into saw teeth at the temples.
+  threshold += (0.005 * Math.sin(x * 19 + z * 6) + 0.002 * Math.sin(x * 31 - z * 8)) * (1 - toBack);
   // (over a band about four mesh rows wide: narrower, the hair's edge followed the rows as a stepped line)
   return smooth((y - threshold + 0.03) / 0.12);
 }

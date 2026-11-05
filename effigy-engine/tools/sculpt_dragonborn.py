@@ -612,6 +612,29 @@ def remesh(obj):
     obj.data.shade_smooth()
 
 
+def finish_muzzle(obj):
+    """A finishing pass over the remeshed bust, before the scales are cut (by Codex, audit 19): the broad tip of the
+    muzzle tapers toward the nostrils, and the nasal bridge rises a little between softer side planes. Nothing right
+    round the eyes moves."""
+    mesh = obj.data
+    n = len(mesh.vertices)
+    co = np.zeros(n * 3)
+    mesh.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    P = np.stack([co[:, 0], co[:, 2], -co[:, 1]], 1)
+    H = head_frame(P)
+    x, y, z = H[:, 0], H[:, 1], H[:, 2]
+    tip = smoothstep(0.065, 0.14, z) * smoothstep(-0.085, -0.06, y) * smoothstep(0.035, 0.01, y)
+    bridge = np.exp(-((x / 0.019) ** 2) - ((y - 0.008) / 0.025) ** 2 - ((z - 0.078) / 0.055) ** 2)
+    centre = EYE - EYE_TURN[:, 2] * 0.0085
+    eyes = smoothstep(0.022, 0.037, np.linalg.norm(mirrored(H) - centre, axis=1))
+    H[:, 0] += -0.075 * x * tip * eyes
+    H[:, 1] += 0.0025 * bridge * eyes
+    P = HEAD_AT + H * HEAD_SCALE
+    mesh.vertices.foreach_set("co", np.stack([P[:, 0], -P[:, 2], P[:, 1]], 1).ravel())
+    mesh.update()
+
+
 def scales(obj):
     """Cuts the scales into the remeshed bust."""
     mesh = obj.data
@@ -968,6 +991,7 @@ def main():
     log("surface nets:", len(verts), "vertices,", len(quads), "quads")
     obj = build_mesh(verts, quads)
     remesh(obj)
+    finish_muzzle(obj)
     if not PLAIN:
         scales(obj)
     if RENDERS:

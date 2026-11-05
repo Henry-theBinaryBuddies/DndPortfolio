@@ -717,7 +717,7 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
   // A lock on each side frames the face. It starts inside the curtain's side, so it emerges from the mass
   // (laid over it, the two surfaces met in a seam), runs down behind the ear as if tucked there, then sweeps
   // forward past the jaw and neck onto the front of the shoulder and chest, lying close to the body all the
-  // way. It is a flattened band, thick near the head and tapering to a point.
+  // way. Its rounded section turns gently as it falls, thick near the head and tapering to a point.
   const lockVertices: number[] = [];
   const lockAt: number[] = [];
   const lockThick: number[] = [];
@@ -767,11 +767,17 @@ export function buildHangingHair(p: Params, positions: Float32Array, base: HeadB
       const grow = lockGrow(t);
       // A rounded tress (a flat band read as a strap: a little wider than thick, not twice as wide)
       const halfWidth = 0.085 * grow;
-      const halfThick = 0.062 * grow;
+      const halfThick = 0.062 * grow * (0.94 + 0.06 * Math.cos(t * Math.PI * 3 + side));
       for (let j = 0; j < LOCK_SIDES; j++) {
         const angle = (2 * Math.PI * j) / LOCK_SIDES;
-        const across = Math.cos(angle) * halfWidth;
-        const out = Math.sin(angle) * halfThick;
+        // A slow turn and broad lobes break the uniform strap silhouette. The section stays
+        // within halfWidth in every direction, the clearance measured by bodyAcross above.
+        const twist = side * 0.38 * Math.sin(Math.PI * t) + 0.12 * Math.sin(2 * Math.PI * t);
+        const lobe = 0.95 + 0.05 * Math.cos(3 * angle + side * 0.7 + t * 2);
+        const u = Math.cos(angle) * halfWidth * lobe;
+        const v = Math.sin(angle) * halfThick * lobe;
+        const across = u * Math.cos(twist) - v * Math.sin(twist);
+        const out = u * Math.sin(twist) + v * Math.cos(twist);
         lockVertices.push(cx + Math.cos(a) * across + Math.sin(a) * out, y, cz + Math.sin(a) * across - Math.cos(a) * out);
         // (the arc round the tress's own section, offset per side so the two are not mirror images)
         lockAt.push((angle / (2 * Math.PI)) * 2 * Math.PI * 0.05 + side * 0.31, y, 0);
