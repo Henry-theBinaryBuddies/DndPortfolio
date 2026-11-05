@@ -6,7 +6,8 @@ import { loadAssets, type Assets } from "./assets";
 import { characterName, defaultParams, type Params } from "./params";
 import { loadDragonborn } from "./dragonborn";
 import { exportStl, describe } from "./exportStl";
-import { describePrint, disposePreview, preparePrint, previewGroup, printKey, type Prepared } from "./printPreview";
+import { prepareInBackground } from "./prepareClient";
+import { describePrint, disposePreview, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
 import { characterFile, History, readCharacter, type Character } from "./character";
 import { defaultPaint, Painter, paintKind, racePaint } from "./paint";
@@ -399,16 +400,19 @@ const shapePanel = mountPanel(
   show,
   async (params, say, partial, gusset, tabletop) => {
     if (!assets) throw new Error("the head model has not loaded");
-    // (the print as previewed, if it was, with these same settings)
-    const prepared = printView?.prepared.key === printKey(params, gusset, tabletop) ? printView.prepared : undefined;
+    // (the print as previewed, if it was, with these same settings; else prepared off the page, as a preview is)
+    let prepared = printView?.prepared.key === printKey(params, gusset, tabletop) ? printView.prepared : undefined;
+    if (!prepared) {
+      say(tabletop ? "Fitting the bust to the square" : "Collecting the parts");
+      prepared = await prepareInBackground(params, gusset, tabletop);
+    }
     say(describe(await exportStl(params, assets, say, partial, gusset, tabletop, prepared)));
   },
   async (params, say, gusset, tabletop) => {
     if (!assets) throw new Error("the head model has not loaded");
     say(tabletop ? "Fitting the bust to the square" : "Collecting the parts");
-    // (a moment for the message to show: this runs a few seconds on the page's own thread)
-    await new Promise((resolve) => window.setTimeout(resolve, 30));
-    const prepared = preparePrint(params, assets, gusset, tabletop);
+    // (in a worker, off the page: the fit's builds take seconds, and the view turns on meanwhile)
+    const prepared = await prepareInBackground(params, gusset, tabletop);
     leavePrint();
     const group = previewGroup(prepared);
     // (measured before it joins the turning pivot, so in its own frame: the board's square included)

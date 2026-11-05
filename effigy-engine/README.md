@@ -59,6 +59,9 @@ Tabletop size (the "Tabletop size" checkbox on the export, on by default; the fi
 - `src/print.ts` - the print scale (mm per head unit), the smallest groove and feature that print, and the tabletop size
 - `src/fit.ts` - tabletop size: scales the bust and slims its torso to fit a one inch square (see above)
 - `src/printPreview.ts` - the print preview: the parts as the export will merge them, shown in place of the sculpt
+- `src/prepareWorker.ts`, `src/prepareClient.ts` - the print prepared off the page: Preview print and Export STL (when nothing matching was previewed) have a worker collect the parts and run the tabletop fit, whose builds take seconds, while the view stays live
+- `src/parts.ts` - what each named part of a bust is, in one table: the material it is painted with, what the fit's notes call it, its role (body, feature, outgrowth, hair, support, base) and how the print treats it (eyes grown 7%); paint, fit and export read it
+- `src/bodySurface.ts` - the bare body that clothing and armour will be fitted to, for either family: one frame, a cached nearest-point search, the flat cut, and anchors found from the surface (the neck's base, sternum, nape, the tops of the shoulders, a ring round the neck)
 - `src/ui.ts` - the control panel
 - `src/main.ts` - scene, camera, lights, drag to rotate, scroll to zoom, double-click to face front
 
