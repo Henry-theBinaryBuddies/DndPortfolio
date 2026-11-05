@@ -230,7 +230,10 @@ def head(P):
     d = smin(d, np.linalg.norm(Q - (EYE - EYE_TURN[:, 2] * 0.0085), axis=1) - EYE_RADIUS, 0.002)
     # The mouth line: a shallow groove along the lip, cut only into the outer few millimetres
     lip = np.interp(P[:, 2], LIP_Z, LIP_Y)
-    groove = np.maximum(np.abs(P[:, 1] - lip) - 0.0016, -d - 0.0035)
+    # (narrowing and shallowing to nothing toward the corner of the mouth, so it fades out there: cut at full width to
+    # its end, it ran on across the jowl as a slit)
+    corner = smoothstep(LIP_Z[0], LIP_Z[0] + 0.04, P[:, 2])
+    groove = np.maximum(np.abs(P[:, 1] - lip) - 0.0016 * corner, -d - 0.0035 * corner)
     groove = np.maximum(groove, np.maximum(P[:, 2] - 0.15, LIP_Z[0] - P[:, 2]))
     return smax(d, -groove, 0.0015)
 
