@@ -10,6 +10,7 @@ import {
   switchRace,
   defaultParams,
   randomParams,
+  randomDragonborn,
   type Body,
   type BeardStyle,
   type HairStyle,
@@ -215,7 +216,8 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   const randomize = document.createElement("button");
   randomize.type = "button";
   randomize.textContent = "Randomize";
-  randomize.addEventListener("click", () => update(randomParams()));
+  // (within the family on show: a Dragonborn stays a Dragonborn)
+  randomize.addEventListener("click", () => update(params.family === "dragonborn" ? randomDragonborn(params) : randomParams()));
   const reset = document.createElement("button");
   reset.type = "button";
   reset.textContent = "Reset";

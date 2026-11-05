@@ -218,6 +218,12 @@ function needDragonborn() {
 }
 
 function draft(params: Params) {
+  // (a Dragonborn's scales are in its model: it has no finer build to follow the draft, so it is built once)
+  if (params.family === "dragonborn") {
+    window.clearTimeout(settle);
+    swap(params, true);
+    return;
+  }
   swap(params, false);
   window.clearTimeout(settle);
   settle = window.setTimeout(() => swap(params, true), 160);

@@ -55,15 +55,13 @@ export function collectBust(p: Params, assets: Assets, gusset = false, scale?: n
     parts.push({ name, positions, indices });
   };
   // (open pieces of one closed solid, painted apart: a Dragonborn's scales, horns and eyes; printed, they are one part
-  // again, whose welded seams close it: see dragonborn.ts)
-  const joined: Part[] = [];
+  // again, whose welded seams close it: see dragonborn.ts. They are gathered and made into that one part below.)
+  const joined: THREE.Mesh[] = [];
   bust.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
     const matrix = object.matrixWorld;
     if (object.userData.joined) {
-      const before = parts.length;
-      add("head", object.geometry, matrix);
-      joined.push(...parts.splice(before));
+      joined.push(object);
       return;
     }
     if (object.name === "eye") {
@@ -77,17 +75,37 @@ export function collectBust(p: Params, assets: Assets, gusset = false, scale?: n
     }
     add(object.name || "part", object.geometry, matrix);
   });
+  // The joined pieces as one part, holding only the vertices their triangles use, each once: the scales and horns share
+  // one array of every vertex of the bust (some 200,000), which copied whole for each piece was most of the work.
+  // Pieces that share an array and are placed alike share their vertices, so their seams are the very same points.
   if (joined.length) {
-    const positions = new Float32Array(joined.reduce((n, p) => n + p.positions.length, 0));
-    const indices = new Uint32Array(joined.reduce((n, p) => n + p.indices.length, 0));
-    let [at, offset] = [0, 0];
-    for (const piece of joined) {
-      positions.set(piece.positions, at * 3);
-      for (let i = 0; i < piece.indices.length; i++) indices[offset + i] = piece.indices[i] + at;
-      at += piece.positions.length / 3;
-      offset += piece.indices.length;
+    const numbering = new Map<string, Map<number, number>>();
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const arrays = new Map<THREE.BufferAttribute | THREE.InterleavedBufferAttribute, number>();
+    for (const mesh of joined) {
+      const position = mesh.geometry.attributes.position;
+      if (!arrays.has(position)) arrays.set(position, arrays.size);
+      const group = `${arrays.get(position)} ${mesh.matrixWorld.elements.join(",")}`;
+      if (!numbering.has(group)) numbering.set(group, new Map());
+      const own = numbering.get(group)!;
+      const index = mesh.geometry.index!.array;
+      const flip = mesh.matrixWorld.determinant() < 0;
+      for (let t = 0; t < index.length; t += 3) {
+        const corners = flip ? [index[t], index[t + 2], index[t + 1]] : [index[t], index[t + 1], index[t + 2]];
+        for (const c of corners) {
+          let n = own.get(c);
+          if (n === undefined) {
+            n = positions.length / 3;
+            own.set(c, n);
+            v.fromBufferAttribute(position, c).applyMatrix4(mesh.matrixWorld);
+            positions.push(v.x * MILLIMETRES * k, -v.z * MILLIMETRES * k, v.y * MILLIMETRES * k);
+          }
+          indices.push(n);
+        }
+      }
     }
-    parts.unshift({ name: "head", positions, indices });
+    parts.unshift({ name: "head", positions: Float32Array.from(positions), indices: Uint32Array.from(indices) });
   }
   // The base reaches a little way up inside the bust, so the two are joined and not merely touching
   // (at tabletop size it is a fixed width and low, in the sculpt's own millimetres: the scale brings it to print

@@ -365,6 +365,17 @@ export function applyRace(current: Params, race: Race): Params {
   return clampParams(next);
 }
 
+// A random Dragonborn: its own sliders anywhere in their ranges, everything else (its humanoid settings, kept for
+// when a race is chosen, and the torso) as it was
+export function randomDragonborn(current: Params, rng: () => number = Math.random): Params {
+  const params = { ...current, family: "dragonborn" as Family };
+  for (const d of NUMERIC_DEFS) {
+    if (!d.families.includes("dragonborn") || d.families.includes("humanoid")) continue;
+    params[d.key] = Math.round((d.min + rng() * (d.max - d.min)) / d.step) * d.step;
+  }
+  return clampParams(params);
+}
+
 // rng is injectable so tests can pass a seeded generator and get repeatable results.
 export function randomParams(rng: () => number = Math.random): Params {
   const pick = <T>(list: readonly T[]) => list[Math.floor(rng() * list.length)];

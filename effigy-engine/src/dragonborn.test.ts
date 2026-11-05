@@ -8,7 +8,7 @@ import { parseDragonborn, shapeDragonborn, type DragonbornManifest } from "./dra
 import { collectBust } from "./export";
 import { collectTabletop } from "./fit";
 import { defaultPaint, paintKind } from "./paint";
-import { applyRace, characterName, defaultParams, NUMERIC_DEFS, type Params } from "./params";
+import { applyRace, characterName, defaultParams, NUMERIC_DEFS, randomDragonborn, type Params } from "./params";
 import { mergeParts } from "./printable";
 import { PEDESTAL_SIDES, shiftReach, TABLETOP } from "./print";
 
@@ -81,6 +81,29 @@ describe("the Dragonborn family", () => {
     expect(() => readCharacter(JSON.stringify({ ...old, params: { ...old.params, family: "kobold" } }))).toThrow(/unknown family/);
     expect(characterName(dragonborn())).toBe("dragonborn");
     expect(paintKind(dragonborn())).toBe("dragonborn");
+  });
+
+  it("randomizes as a Dragonborn, keeping its humanoid settings for when a race is chosen again", () => {
+    let seed = 3;
+    const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const before = { ...dragonborn(), brow: 0.71, hairStyle: "long" as const };
+    const after = randomDragonborn(before, rng);
+    expect(after.family).toBe("dragonborn");
+    expect([after.brow, after.hairStyle, after.race, after.torso]).toEqual([0.71, "long", before.race, before.torso]);
+    const own = NUMERIC_DEFS.filter((d) => d.families.length === 1 && d.families[0] === "dragonborn");
+    expect(own.some((d) => after[d.key] !== before[d.key])).toBe(true);
+    for (const d of own) expect(after[d.key]).toBeGreaterThanOrEqual(d.min), expect(after[d.key]).toBeLessThanOrEqual(d.max);
+  });
+
+  it("prints its scales, horns and eyes as one part holding each vertex once", () => {
+    const head = collectBust(dragonborn(), assets).parts.find((part) => part.name === "head")!;
+    // (the vertices the scales' and horns' triangles use, once, and the eyes' own: no copies, and none unused)
+    const asset = assets.dragonborn!;
+    const used = new Set([...asset.skin.index, ...asset.horn.index]).size;
+    const eyes = asset.eyes.reduce((n, e) => n + e.vertices.length, 0);
+    expect(head.positions.length / 3).toBe(used + eyes);
+    expect(used).toBeLessThanOrEqual(manifest.vertices);
+    expect(head.indices.length / 3).toBe(manifest.triangles);
   });
 
   it("prints as one closed solid with its base", async () => {
