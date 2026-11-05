@@ -3,6 +3,7 @@ import { buildBust, disposeObject, pedestalGeometry } from "./builder";
 import type { Assets } from "./assets";
 import type { Params } from "./params";
 import type { Part } from "./printable";
+import { partInfo } from "./parts";
 import { MM, PRINT, shiftReach, TABLETOP } from "./print";
 
 // The parts of a bust as the printer will have them, ready to be merged (see printable.ts): each mesh with
@@ -11,7 +12,6 @@ import { MM, PRINT, shiftReach, TABLETOP } from "./print";
 // (the bust's y is up and its face looks along +z; printed, the face looks toward -y). The base comes with it.
 
 const MILLIMETRES = 1 / MM;
-const EYE_GROWTH = 1.07; // printed eyeballs are this much larger than the sculpt's, so they join the head
 
 export function collectParts(p: Params, assets: Assets): Part[] {
   return collectBust(p, assets).parts;
@@ -64,13 +64,14 @@ export function collectBust(p: Params, assets: Assets, gusset = false, scale?: n
       joined.push(object);
       return;
     }
-    if (object.name === "eye") {
+    const growth = partInfo(object.name).printGrowth;
+    if (growth) {
       // An eyeball sits in its socket with a hair's gap all round (so the lids never cut into it), which on a
-      // print would leave it floating free inside the head. Printed a little larger it overlaps the socket and
-      // is joined to the head.
+      // print would leave it floating free inside the head. Printed a little larger (see parts.ts) it overlaps the
+      // socket and is joined to the head.
       const centre = new THREE.Vector3().setFromMatrixPosition(matrix);
-      const grown = new THREE.Matrix4().makeTranslation(centre.x, centre.y, centre.z).multiply(new THREE.Matrix4().makeScale(EYE_GROWTH, EYE_GROWTH, EYE_GROWTH)).multiply(new THREE.Matrix4().makeTranslation(-centre.x, -centre.y, -centre.z));
-      add("eye", object.geometry, grown.multiply(matrix));
+      const grown = new THREE.Matrix4().makeTranslation(centre.x, centre.y, centre.z).multiply(new THREE.Matrix4().makeScale(growth, growth, growth)).multiply(new THREE.Matrix4().makeTranslation(-centre.x, -centre.y, -centre.z));
+      add(object.name, object.geometry, grown.multiply(matrix));
       return;
     }
     add(object.name || "part", object.geometry, matrix);

@@ -1,4 +1,5 @@
 import type { Assets } from "./assets";
+import { partInfo } from "./parts";
 import type { Tabletop } from "./fit";
 import { copyParts, preparePrint, printSize, type Prepared } from "./printPreview";
 import type { Params } from "./params";
@@ -36,7 +37,7 @@ export function describe(report: ExportResult): string {
   if (fine.share > 0.03) lines.push(`That is a lot: the thinnest places are near ${report.walls.worst.slice(0, 2).map((w) => `(${w.at.map((v) => v.toFixed(0)).join(", ")})`).join(" and ")} mm.`);
   if (report.voids) lines.push(`${report.voids} small enclosed pockets inside it.`);
   if (report.status !== "NoError") lines.push(`The merge reported: ${report.status}.`);
-  if (report.parts.some((part) => part.name === "eye")) lines.push("The eyes are printed 7% larger than in the sculpt, so they join the head.");
+  if (report.parts.some((part) => partInfo(part.name).printGrowth)) lines.push("The eyes are printed 7% larger than in the sculpt, so they join the head.");
   return lines.join(" ");
 }
 

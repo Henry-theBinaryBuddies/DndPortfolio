@@ -4,6 +4,7 @@ import { printBounds } from "./bounds";
 import { collectBust } from "./export";
 import { collectTabletop, type Tabletop } from "./fit";
 import type { Params } from "./params";
+import { partInfo } from "./parts";
 import { MM, SQUARE, TABLETOP } from "./print";
 import type { Part } from "./printable";
 
@@ -107,7 +108,7 @@ export function describePrint(prepared: Prepared): string {
     if (prepared.warnings.length) lines.push(prepared.warnings.join(" "));
   }
   // (a Dragonborn's eyes are part of its surface already, not balls grown to join it: see dragonborn.ts)
-  const grown = prepared.parts.some((part) => part.name === "eye") ? " and the eyes 7% larger so they join the head" : "";
+  const grown = prepared.parts.some((part) => partInfo(part.name).printGrowth) ? " and the eyes 7% larger so they join the head" : "";
   lines.push(`These are the parts as the export merges them, with the throat gusset if it is ticked${grown}. Export STL saves exactly this; any change to the sculpt goes back to it.`);
   return lines.join(" ");
 }

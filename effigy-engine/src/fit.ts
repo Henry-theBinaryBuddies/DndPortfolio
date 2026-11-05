@@ -1,6 +1,7 @@
 import type { Assets } from "./assets";
 import { printBounds } from "./bounds";
 import { collectBust } from "./export";
+import { partInfo } from "./parts";
 import type { Params } from "./params";
 import { TABLETOP } from "./print";
 import type { Part } from "./printable";
@@ -30,8 +31,6 @@ interface Size {
   height: number; // mm, above the flat cut
 }
 
-// What each named part is called in the notes (see builder.ts for the names)
-const PART_NAMES: Record<string, string> = { head: "the head and shoulders", horn: "the horns", dragonEye: "the eyes", hair: "the hair", curtain: "the hair", locks: "the dreadlocks", beard: "the beard", tusk: "the tusks", brows: "the brows" };
 
 const measure = (parts: Part[], flatCut: number): Size & { halfX: number; halfY: number; limit: string } => {
   // (below the flat cut is trimmed away in the merge: a lock that slid down the back past it does not print, but
@@ -46,7 +45,7 @@ const measure = (parts: Part[], flatCut: number): Size & { halfX: number; halfY:
     if (part.name === "base") continue;
     const b = printBounds([part], flatCut, false);
     const reach = Math.max(-b.min[0], b.max[0], -b.min[1], b.max[1]);
-    if (reach > farthest) [farthest, limit] = [reach, PART_NAMES[part.name] ?? "the bust"];
+    if (reach > farthest) [farthest, limit] = [reach, partInfo(part.name).label];
   }
   return { reach: Math.max(halfX, halfY), height: max[2] - flatCut, halfX, halfY, limit };
 };

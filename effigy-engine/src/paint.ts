@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { beardWeight } from "./beard";
 import { beardEarClearance, earClearance, hairGrowth } from "./hairShell";
 import { LANDMARK, type HeadBase } from "./headMesh";
+import { partInfo, type MaterialKind } from "./parts";
 import { MM } from "./print";
 import { masculinity, type Params, type Race } from "./params";
 
@@ -371,7 +372,7 @@ export class Painter {
     age: { value: 0.3 },
     masculine: { value: 1 },
   };
-  readonly materials: Record<"skin" | "eye" | "hair" | "horn" | "teeth" | "mouth" | "scales" | "dragonEye" | "clay", THREE.MeshStandardMaterial>;
+  readonly materials: Record<MaterialKind, THREE.MeshStandardMaterial>;
 
   constructor(base: HeadBase, paint: Paint) {
     this.base = base;
@@ -638,7 +639,8 @@ export class Painter {
     root.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || object.userData.unpainted) return;
       const geometry = object.geometry as THREE.BufferGeometry;
-      const kind = KINDS[object.name] ?? "clay";
+      // (which material each named part takes: see parts.ts)
+      const kind = partInfo(object.name).material;
       if (clay) {
         object.material = this.materials.clay;
         return;
@@ -655,19 +657,3 @@ export class Painter {
   }
 }
 
-// Which material each named part of a bust takes (see builder.ts for the names)
-const KINDS: Record<string, keyof Painter["materials"]> = {
-  head: "skin",
-  eye: "eye",
-  dragonEye: "dragonEye",
-  scales: "scales",
-  horn: "horn",
-  tusk: "teeth",
-  teeth: "teeth",
-  hair: "hair",
-  curtain: "hair",
-  beard: "hair",
-  locks: "hair",
-  brows: "hair",
-  mouthFill: "mouth",
-};
