@@ -173,14 +173,14 @@ EYE_TURN = turn(y=0.5)  # each eye looks this far out to its side
 
 # The muzzle (upper jaw) and the lower jaw, as sections along Z: z, half width, top, bottom, corner
 MUZZLE = dict(
-    z=[-0.06, 0.0, 0.05, 0.1, 0.148],
+    z=[-0.06, 0.0, 0.045, 0.09, 0.133],  # (1.5 cm shorter than first sculpted: it reads better, and fits a tabletop base)
     half_width=[0.068, 0.06, 0.051, 0.042, 0.036],
     top=[0.03, 0.018, 0.009, 0.004, 0.0],
     bottom=[-0.072, -0.072, -0.071, -0.069, -0.068],
     corner=[0.03, 0.027, 0.024, 0.024, 0.026],
 )
 JAW = dict(
-    z=[-0.085, -0.03, 0.03, 0.075, 0.102],
+    z=[-0.085, -0.03, 0.027, 0.068, 0.092],
     half_width=[0.064, 0.054, 0.04, 0.028, 0.02],
     top=[-0.06, -0.062, -0.061, -0.06, -0.06],  # inside the muzzle, so the two jaws are one solid
     bottom=[-0.136, -0.12, -0.103, -0.09, -0.083],
@@ -221,17 +221,17 @@ def head(P):
     # The heavy brow plate over each eye
     d = smin(d, ellipsoid(Q, (0.043, 0.026, 0.018), (0.03, 0.011, 0.032), BROW_TURN), 0.014)
     # The ridge down the top of the muzzle, and the nostrils with a raised rim
-    d = smin(d, segment(P, (0, 0.035, 0.03), (0, 0.002, 0.13), 0.01, 0.008), 0.015)
-    d = smin(d, ellipsoid(P, (0, -0.012, 0.13), (0.027, 0.023, 0.021)), 0.012)
-    d = smin(d, ellipsoid(Q, (0.021, -0.002, 0.13), (0.01, 0.007, 0.015), NOSTRIL_TURN), 0.008)
-    d = smax(d, -ellipsoid(Q, (0.023, 0.0, 0.136), (0.0085, 0.005, 0.011), NOSTRIL_TURN), 0.003)
+    d = smin(d, segment(P, (0, 0.035, 0.03), (0, 0.002, 0.117), 0.01, 0.008), 0.015)
+    d = smin(d, ellipsoid(P, (0, -0.012, 0.117), (0.027, 0.023, 0.021)), 0.012)
+    d = smin(d, ellipsoid(Q, (0.021, -0.002, 0.117), (0.01, 0.007, 0.015), NOSTRIL_TURN), 0.008)
+    d = smax(d, -ellipsoid(Q, (0.023, 0.0, 0.123), (0.0085, 0.005, 0.011), NOSTRIL_TURN), 0.003)
     # Sockets cut under the brow, then the eyeballs set deep in them
     d = smax(d, -ellipsoid(Q, EYE, (0.021, 0.0115, 0.018), EYE_TURN), 0.004)
     d = smin(d, np.linalg.norm(Q - (EYE - EYE_TURN[:, 2] * 0.0085), axis=1) - EYE_RADIUS, 0.002)
     # The mouth line: a shallow groove along the lip, cut only into the outer few millimetres
     lip = np.interp(P[:, 2], LIP_Z, LIP_Y)
     groove = np.maximum(np.abs(P[:, 1] - lip) - 0.0016, -d - 0.0035)
-    groove = np.maximum(groove, np.maximum(P[:, 2] - 0.165, LIP_Z[0] - P[:, 2]))
+    groove = np.maximum(groove, np.maximum(P[:, 2] - 0.15, LIP_Z[0] - P[:, 2]))
     return smax(d, -groove, 0.0015)
 
 
@@ -260,7 +260,7 @@ CREST = [
     ((0, -0.16, -0.165), (0, -0.172, -0.2), 0.011),
 ]
 # The mouth line, along the muzzle (z, y), rising a little at the back to the corner of the mouth
-LIP_Z = [-0.062, -0.03, 0.05, 0.13, 0.165]
+LIP_Z = [-0.062, -0.03, 0.045, 0.117, 0.15]
 LIP_Y = [-0.06, -0.068, -0.07, -0.068, -0.068]
 
 

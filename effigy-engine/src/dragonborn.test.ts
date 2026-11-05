@@ -119,7 +119,8 @@ describe("the Dragonborn family", () => {
       const v = shapeDragonborn(asset, p).positions;
       let most = -Infinity;
       // (of the scales only, unless the horns are what is measured: a cheek spine reaches past the jaw)
-      for (let i = 0; i < v.length; i += 3) if (pick(v[i + 1]) && (asset.part[i / 3] === 0 || measuringHorns)) most = Math.max(most, Math.abs(v[i + axis]));
+      // (forward for depth, the muzzle's way; out to either side for width)
+      for (let i = 0; i < v.length; i += 3) if (pick(v[i + 1]) && (asset.part[i / 3] === 0 || measuringHorns)) most = Math.max(most, axis === 2 ? v[i + 2] : Math.abs(v[i + axis]));
       return most;
     };
     let measuringHorns = false;
