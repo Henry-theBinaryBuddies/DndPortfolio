@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { MeshBVH } from "three-mesh-bvh";
 import type { Assets } from "./assets";
 import { shapeDragonborn } from "./dragonborn";
-import { sculptBust } from "./face";
+import { sculptBust, type Bust } from "./face";
 import { LANDMARK } from "./headMesh";
 import { NUMERIC_DEFS, type Family, type Params } from "./params";
 
@@ -27,6 +27,11 @@ export interface BodySurface {
   positions: Float32Array;
   normals: Float32Array;
   indices: Uint32Array;
+  skin: Uint32Array; // the triangles of the body itself, which clothing covers (a Dragonborn's horns, spines, eyes and mouth left out)
+  // The skin as clothing is fitted to it (see garments.ts): for a humanoid the skin itself; for a Dragonborn a coarser
+  // copy (the skin itself is some 330,000 triangles), each of whose vertices is one of the body's (`vertex`), so it
+  // has the body's shape
+  fitting: { positions: Float32Array; indices: Uint32Array; vertex: Uint32Array | null };
   stand: THREE.Vector3; // this frame to the bust's: the bust's head group sits at this offset
   baseY: number; // the lowest point
   cut: number; // mm above the lowest point where the bust is cut flat (see underside.ts)
@@ -54,7 +59,8 @@ export function bodyKey(p: Params): string {
   return JSON.stringify(p.family === "dragonborn" ? ["dragonborn", ...shaping] : ["humanoid", p.race, p.body, ...shaping]);
 }
 
-export function bodySurface(p: Params, assets: Assets): BodySurface {
+// (`sculpted`: a humanoid's bust already sculpted from these settings, as the builder has it, not sculpted again)
+export function bodySurface(p: Params, assets: Assets, sculpted?: Bust): BodySurface {
   const key = bodyKey(p);
   let cache = known.get(assets);
   if (!cache) known.set(assets, (cache = new Map()));
@@ -65,11 +71,13 @@ export function bodySurface(p: Params, assets: Assets): BodySurface {
     if (!assets.dragonborn) throw new Error("the Dragonborn model has not loaded");
     const shape = shapeDragonborn(assets.dragonborn, p);
     const u = shape.underside;
-    made = surface("dragonborn", key, shape.positions, shape.normals, assets.dragonborn.indices, new THREE.Vector3(-u.footprint.x, -shape.baseY, -u.footprint.z), shape.baseY, u.cut, assets.dragonborn.manifest.chin);
+    const { vertex, index } = assets.dragonborn.cover;
+    const fitting = { positions: Float32Array.from({ length: vertex.length * 3 }, (_, i) => shape.positions[vertex[Math.floor(i / 3)] * 3 + (i % 3)]), indices: index, vertex };
+    made = surface("dragonborn", key, shape.positions, shape.normals, assets.dragonborn.indices, assets.dragonborn.skin.index, fitting, new THREE.Vector3(-u.footprint.x, -shape.baseY, -u.footprint.z), shape.baseY, u.cut, assets.dragonborn.manifest.chin);
   } else {
-    const bust = sculptBust(p, assets.head);
+    const bust = sculpted ?? sculptBust(p, assets.head);
     const u = bust.underside;
-    made = surface("humanoid", key, bust.positions, bust.normals, assets.head.indices, new THREE.Vector3(-u.footprint.x, -bust.baseY, -u.footprint.z), bust.baseY, u.cut, LANDMARK.menton);
+    made = surface("humanoid", key, bust.positions, bust.normals, assets.head.indices, assets.head.indices, { positions: bust.positions, indices: assets.head.indices, vertex: null }, new THREE.Vector3(-u.footprint.x, -bust.baseY, -u.footprint.z), bust.baseY, u.cut, LANDMARK.menton);
   }
   // (a few kept: the shapes most recently fitted to)
   if (cache.size >= 4) cache.delete(cache.keys().next().value!);
@@ -77,7 +85,7 @@ export function bodySurface(p: Params, assets: Assets): BodySurface {
   return made;
 }
 
-function surface(family: Family, key: string, positions: Float32Array, normals: Float32Array, indices: Uint32Array, stand: THREE.Vector3, baseY: number, cut: number, chin: number): BodySurface {
+function surface(family: Family, key: string, positions: Float32Array, normals: Float32Array, indices: Uint32Array, skin: Uint32Array, fitting: BodySurface["fitting"], stand: THREE.Vector3, baseY: number, cut: number, chin: number): BodySurface {
   // (the search is over its own copy of the triangles: building one reorders them, and the mesh's order must stay)
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -86,14 +94,23 @@ function surface(family: Family, key: string, positions: Float32Array, normals: 
   const index = geometry.index!;
   const hit = { point: new THREE.Vector3(), distance: 0, faceIndex: 0 };
   const [a, b, c] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  // (the normal is the surface's own there, from its corners' normals, not the flat triangle's: down in a groove between
+  // a Dragonborn's scales, a triangle on the groove's wall faces sideways, and a point well outside read as inside)
+  const triangle = new THREE.Triangle();
+  const weights = new THREE.Vector3();
   const closest = (point: THREE.Vector3) => {
     bvh.closestPointToPoint(point, hit);
     const t = hit.faceIndex * 3;
-    a.fromArray(positions, index.getX(t) * 3);
-    b.fromArray(positions, index.getX(t + 1) * 3);
-    c.fromArray(positions, index.getX(t + 2) * 3);
-    const normal = new THREE.Vector3().crossVectors(b.sub(a), c.sub(a)).normalize();
-    return { point: hit.point.clone(), normal, distance: hit.distance };
+    const corners = [index.getX(t), index.getX(t + 1), index.getX(t + 2)];
+    a.fromArray(positions, corners[0] * 3);
+    b.fromArray(positions, corners[1] * 3);
+    c.fromArray(positions, corners[2] * 3);
+    triangle.set(a, b, c).getBarycoord(hit.point, weights);
+    const normal = new THREE.Vector3();
+    corners.forEach((v, k) => normal.addScaledVector(new THREE.Vector3().fromArray(normals, v * 3), weights.getComponent(k)));
+    // (a triangle of no size has no inside to weigh its corners by: its own facing is used)
+    if (!(normal.lengthSq() > 1e-12)) normal.crossVectors(b.clone().sub(a), c.clone().sub(a));
+    return { point: hit.point.clone(), normal: normal.normalize(), distance: hit.distance };
   };
 
   // How wide the body is at each height below the chin (the farthest any of it reaches to either side)
@@ -160,5 +177,5 @@ function surface(family: Family, key: string, positions: Float32Array, normals: 
   const shoulder = (side: number) =>
     near(`the top of its ${side > 0 ? "right" : "left"} shoulder`, (x, y, z, up) => (side * x > inner && side * x < outer && y < neckBase + 0.1 && Math.abs(z - middle) < 0.6 * depth && up > 0.5 ? y : -Infinity));
 
-  return { family, key, positions, normals, indices, stand, baseY, cut, anchors: { neckBase, sternum, nape, shoulders: { right: shoulder(1), left: shoulder(-1) }, collar }, closest };
+  return { family, key, positions, normals, indices, skin, fitting, stand, baseY, cut, anchors: { neckBase, sternum, nape, shoulders: { right: shoulder(1), left: shoulder(-1) }, collar }, closest };
 }

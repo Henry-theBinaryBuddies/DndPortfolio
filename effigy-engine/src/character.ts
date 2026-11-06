@@ -1,5 +1,5 @@
 import { defaultPaint, paintKind, type Paint } from "./paint";
-import { BEARD_STYLES, BODIES, FAMILIES, HAIR_STYLES, HORN_STYLES, NUMERIC_DEFS, RACES, clampParams, defaultParams, type Params } from "./params";
+import { BEARD_STYLES, BODIES, FAMILIES, HAIR_STYLES, HORN_STYLES, NUMERIC_DEFS, OUTFITS, RACES, clampParams, defaultParams, type Params } from "./params";
 
 // The character as an editable file: its sculpt (Params) and its paint, so a design can be kept and opened again
 // later (an STL or a token picture cannot be edited). A plain JSON document with a format name and a version, so a
@@ -45,6 +45,8 @@ export function readCharacter(text: string): Character {
   params.hornStyle = pick("hornStyle", HORN_STYLES) ?? params.hornStyle;
   params.hairStyle = pick("hairStyle", HAIR_STYLES) ?? params.hairStyle;
   params.beardStyle = pick("beardStyle", BEARD_STYLES) ?? params.beardStyle;
+  // (a file from before there was clothing wears none)
+  params.outfit = pick("outfit", OUTFITS) ?? params.outfit;
   for (const d of NUMERIC_DEFS) {
     const value = given[d.key];
     if (typeof value === "number" && Number.isFinite(value)) params[d.key] = value;
@@ -52,7 +54,7 @@ export function readCharacter(text: string): Character {
 
   const paint = defaultPaint(paintKind(params));
   const colours = file.paint ?? {};
-  for (const key of ["skin", "eyes", "hair", "horns", "teeth"] as const) {
+  for (const key of ["skin", "eyes", "hair", "horns", "teeth", "cloth", "metal"] as const) {
     const value = colours[key];
     if (typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)) paint[key] = value.toLowerCase();
   }

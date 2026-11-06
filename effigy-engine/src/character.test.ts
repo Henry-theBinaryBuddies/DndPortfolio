@@ -26,6 +26,13 @@ describe("the character file", () => {
     expect(read.paint.grime).toBe(0);
   });
 
+  it("dresses a file from before there was clothing in none, and keeps the outfit and its colours of one after", () => {
+    expect(readCharacter(JSON.stringify({ format: "effigy-character", version: 1, params: { race: "elf" } })).params.outfit).toBe("none");
+    const character: Character = { params: { ...applyRace(defaultParams(), "dwarf"), outfit: "armour" }, paint: { ...defaultPaint("dwarf"), cloth: "#334455", metal: "#aabbcc" } };
+    expect(readCharacter(characterFile(character))).toEqual(character);
+    expect(() => readCharacter(JSON.stringify({ format: "effigy-character", version: 1, params: { outfit: "toga" } }))).toThrow(/unknown outfit/);
+  });
+
   it("says plainly when a file is not a character, or is from a newer version", () => {
     expect(() => readCharacter("{")).toThrow(/not JSON/);
     expect(() => readCharacter(JSON.stringify({ params: {} }))).toThrow(/not an Effigy Engine character file/);

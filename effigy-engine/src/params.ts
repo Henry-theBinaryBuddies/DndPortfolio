@@ -61,6 +61,10 @@ export type HairStyle = (typeof HAIR_STYLES)[number];
 export const BEARD_STYLES = ["none", "goatee", "short", "full"] as const;
 export type BeardStyle = (typeof BEARD_STYLES)[number];
 
+// Clothing, built over the body of either family (see garments.ts): a thick tunic, or a breastplate and pauldrons over it
+export const OUTFITS = ["none", "tunic", "armour"] as const;
+export type Outfit = (typeof OUTFITS)[number];
+
 export interface Params extends Record<NumericKey, number> {
   family: Family;
   race: Race;
@@ -68,6 +72,7 @@ export interface Params extends Record<NumericKey, number> {
   hornStyle: HornStyle;
   hairStyle: HairStyle;
   beardStyle: BeardStyle;
+  outfit: Outfit;
 }
 
 export type Group = "Body" | "Face" | "Expression" | "Fantasy" | "Dragonborn" | "Horns and spines";
@@ -263,6 +268,7 @@ export function defaultParams(): Params {
     hornStyle: "none" as HornStyle,
     hairStyle: "swept" as HairStyle,
     beardStyle: "none" as BeardStyle,
+    outfit: "none" as Outfit,
   } as Params;
   for (const d of NUMERIC_DEFS) params[d.key] = d.default;
   return params;
@@ -353,12 +359,13 @@ export function switchRace(current: Params, race: Race): Params {
 }
 
 // Applying a race's defaults resets every slider to its starting point and applies the race's own
-// defaults, hair style, beard and horns. The build carries over.
+// defaults, hair style, beard and horns. The build and the outfit carry over.
 export function applyRace(current: Params, race: Race): Params {
   const info = RACE_INFO[race];
   const next = defaultParams();
   next.race = race;
   next.body = current.body;
+  next.outfit = current.outfit;
   next.hornStyle = info.hornStyle;
   next.hairStyle = info.hairStyle;
   next.beardStyle = info.beardStyle ?? "none";

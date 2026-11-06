@@ -340,3 +340,34 @@ test.describe("the Dragonborn", () => {
     expect(await shown(page, "dragonEye")).toBe(false);
   });
 });
+
+test.describe("clothing", () => {
+  // (the outfit list is the one with armour in it, the race list the one with the Dragonborn)
+  const choose = (page: Page, option: string) =>
+    page.evaluate((value) => {
+      const list = value === "dragonborn" ? "dragonborn" : "armour";
+      const select = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === list))!;
+      select.value = value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }, option);
+  const shown = (page: Page, name: string) => page.evaluate((n) => !!(window as unknown as { effigy: { scene: { getObjectByName: (n: string) => unknown } } }).effigy.scene.getObjectByName(n), name);
+
+  test("is put on from the Outfit list, on either family, with its colours shown only while it is worn", async ({ page }) => {
+    await open(page);
+    await page.click("#show-appearance");
+    await expect(page.locator('[aria-label="Cloth: Woad blue"]')).toBeHidden();
+    await choose(page, "tunic");
+    await expect.poll(() => shown(page, "tunic"), { timeout: 60000 }).toBe(true);
+    await expect(page.locator('[aria-label="Cloth: Woad blue"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Armour: Steel"]')).toBeHidden();
+    await choose(page, "armour");
+    await expect.poll(() => shown(page, "pauldron"), { timeout: 60000 }).toBe(true);
+    await expect(page.locator('[aria-label="Armour: Steel"]')).toBeVisible();
+    // the Dragonborn wears it too, and the outfit stays on through a change of race
+    await choose(page, "dragonborn");
+    await expect.poll(() => shown(page, "dragonEye"), { timeout: 60000 }).toBe(true);
+    await expect.poll(() => shown(page, "cuirass"), { timeout: 60000 }).toBe(true);
+    await choose(page, "none");
+    await expect.poll(() => shown(page, "tunic")).toBe(false);
+  });
+});

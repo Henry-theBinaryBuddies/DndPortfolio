@@ -1,10 +1,12 @@
 import * as THREE from "three";
 import { MeshBVH } from "three-mesh-bvh";
 import { shapeGeometry, type Assets } from "./assets";
+import { bodySurface } from "./bodySurface";
 import { buildBrows } from "./brows";
 import { buildDragonborn } from "./dragonborn";
 import { JAW, turnWithJaw } from "./jaw";
 import { frontPoint, sculptBust, topPoint } from "./face";
+import { buildOutfit, type Dressed } from "./garments";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
@@ -146,7 +148,10 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   // (a Dragonborn is a sculpt of its own, with nothing to deform: see dragonborn.ts)
   if (p.family === "dragonborn") {
     if (!assets.dragonborn) throw new Error("the Dragonborn model has not loaded");
-    return buildDragonborn(assets.dragonborn, p, gusset);
+    const root = buildDragonborn(assets.dragonborn, p, gusset);
+    const outfit = p.outfit === "none" ? null : buildOutfit(p, bodySurface(p, assets));
+    if (outfit) addGarments(root.children[0] as THREE.Group, outfit, root.userData.flatCut as number);
+    return root;
   }
   const root = new THREE.Group();
   const k = derive(p);
@@ -156,6 +161,9 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   root.add(head);
 
   const bust = sculptBust(p, base);
+  // Clothing, fitted to the body (see garments.ts); the hair and the beard are then built over it
+  const outfit = p.outfit === "none" ? null : buildOutfit(p, bodySurface(p, assets, bust));
+  const worn = outfit?.dressed ?? bust.positions;
   // The bust is cut flat a little above its lowest point (see underside.ts): everything below this plane is
   // trimmed off, which leaves a clean flat underside for the pedestal. (The viewer clips it away; the export
   // cuts the solid.)
@@ -258,12 +266,13 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
 
   // Hair: a sculpted shell over the scalp, and, for long hair, a draped curtain for the lengths that hang
   // free; and a beard, sculpted like the hair
-  const beard = (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base);
+  // (over the clothes, if any: `worn` is the body with each garment's outside over what it covers)
+  const beard = (detail ? buildBeard : buildBeardShell)(p, worn, bust.normals, base);
   const forms: [string, THREE.BufferGeometry | null][] = [
-    ["hair", (detail ? buildHair : buildHairShell)(p, bust.positions, bust.normals, base)],
-    ["curtain", detail ? buildHanging(p, bust.positions, base) : buildHangingHair(p, bust.positions, base)],
+    ["hair", (detail ? buildHair : buildHairShell)(p, worn, bust.normals, base)],
+    ["curtain", detail ? buildHanging(p, worn, base) : buildHangingHair(p, worn, base)],
     ["beard", beard],
-    ["locks", (detail ? buildLocks : buildLockShell)(p, bust.positions, bust.normals, base)],
+    ["locks", (detail ? buildLocks : buildLockShell)(p, worn, bust.normals, base)],
   ];
   for (const [name, form] of forms) {
     if (!form) continue;
@@ -313,6 +322,8 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     head.add(mesh);
   }
 
+  if (outfit) addGarments(head, outfit, cut);
+
   // Eyebrows, sculpted with carved hair (see brows.ts)
   const brows = buildBrows(p, bust.positions, bust.normals, base);
   if (brows) {
@@ -322,6 +333,22 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   }
 
   return root;
+}
+
+// The garments as meshes of the head's group, which is the body's frame (see bodySurface.ts), each named for what it
+// is, so the paint and the print know it (see parts.ts). (Each its own geometry over the outfit's kept arrays: a
+// bust's geometry is let go when the bust is replaced, the outfit is kept for the next.)
+function addGarments(head: THREE.Group, outfit: Dressed, cut: number): void {
+  const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75, clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, 1, 0), -cut * MM)] });
+  for (const garment of outfit.garments) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(garment.positions, 3));
+    geometry.setIndex(new THREE.BufferAttribute(garment.indices, 1));
+    geometry.computeVertexNormals();
+    const mesh = new THREE.Mesh(geometry, clay);
+    mesh.name = garment.name;
+    head.add(mesh);
+  }
 }
 
 // Whether a point around the mouth is outside the face: on the outer side of the skin nearest it. (Not of the walls of

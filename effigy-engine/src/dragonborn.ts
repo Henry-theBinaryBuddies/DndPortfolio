@@ -17,7 +17,7 @@ import { findUnderside, type Underside } from "./underside";
 // belongs to, so a control can move one part; and for the paint (see the scales' material in paint.ts), how far each
 // vertex lies in a hollow (the grooves between the scales), each scale's own tone, and how pale the underside is.
 
-export const DRAGONBORN_VERSION = 4;
+export const DRAGONBORN_VERSION = 5;
 
 export interface DragonbornManifest {
   name: string;
@@ -50,6 +50,9 @@ export interface DragonbornAsset {
   teeth: { index: Uint32Array };
   mouth: { index: Uint32Array }; // the inside of the mouth: palate, floor, gums and tongue
   eyes: { centre: THREE.Vector3; look: THREE.Vector3; vertices: Uint32Array; index: Uint32Array }[];
+  // A coarser copy of the skin for clothing to be fitted to (see garments.ts): which of the vertices each of its own is,
+  // and its triangles over those
+  cover: { vertex: Uint32Array; index: Uint32Array };
   shaped: Map<string, Shaped>; // the last few shapes built (each is a fraction of a second to work out)
 }
 
@@ -72,7 +75,9 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
   if (manifest.version !== DRAGONBORN_VERSION) throw new Error(`the Dragonborn model is version ${manifest.version}, not the ${DRAGONBORN_VERSION} this app reads`);
   const [vertices, triangles] = new Uint32Array(buffer, 0, 2);
   if (vertices !== manifest.vertices || triangles !== manifest.triangles) throw new Error("the Dragonborn model does not match its description");
-  if (buffer.byteLength !== 8 + vertices * 24 + triangles * 13) throw new Error("the Dragonborn model file is the wrong length");
+  const coverAt = 8 + vertices * 24 + triangles * 13;
+  const [coverVertices, coverTriangles] = buffer.byteLength >= coverAt + 8 ? new Uint32Array(buffer.slice(coverAt, coverAt + 8)) : [0, 0];
+  if (buffer.byteLength !== coverAt + 8 + coverVertices * 4 + coverTriangles * 12) throw new Error("the Dragonborn model file is the wrong length");
   let at = 8;
   const take = (bytes: number) => buffer.slice(at, (at += bytes));
   const positions = new Float32Array(take(vertices * 12));
@@ -84,6 +89,8 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
   const jaw = Float32Array.from(new Uint8Array(take(vertices)), (v) => v / 255);
   const indices = new Uint32Array(take(triangles * 12));
   const region = new Uint8Array(take(triangles));
+  take(8);
+  const cover = { vertex: new Uint32Array(take(coverVertices * 4)), index: new Uint32Array(take(coverTriangles * 12)) };
 
   const skin: number[] = [];
   const horn: number[] = [];
@@ -128,7 +135,7 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
     });
     starts[outgrowth[i]] = Math.min(starts[outgrowth[i]], best);
   }
-  return { manifest, positions, along, part, jaw, outgrowth, neighbour, starts, indices, teeth: { index: Uint32Array.from(teeth) }, mouth: { index: Uint32Array.from(mouth) }, skin: { index: Uint32Array.from(skin), shade, tone, belly }, horn: { index: Uint32Array.from(horn) }, eyes, shaped: new Map() };
+  return { manifest, positions, along, part, jaw, outgrowth, neighbour, starts, indices, teeth: { index: Uint32Array.from(teeth) }, mouth: { index: Uint32Array.from(mouth) }, skin: { index: Uint32Array.from(skin), shade, tone, belly }, horn: { index: Uint32Array.from(horn) }, eyes, cover, shaped: new Map() };
 }
 
 export async function loadDragonborn(): Promise<DragonbornAsset> {

@@ -925,12 +925,15 @@ def export_stl(obj, path):
 # 3 crest, 4 eye: what the shape controls move), uint8 tone and uint8 belly per vertex (0..255: each scale's own
 # shade, and how pale the underside is, for the paint), uint8 jaw per vertex (0..255: how far it turns with the
 # lower jaw, see jaw_weights), uint32 a,b,c per triangle, and a uint8 region per triangle (0 scales, 1 horn, spine or
-# crest, 2 eye, 3 teeth, 4 the inside of the mouth: what the paint colours).
+# crest, 2 eye, 3 teeth, 4 the inside of the mouth: what the paint colours); then the cover clothing is fitted to (see
+# cover_mesh): uint32 coverVertexCount, uint32 coverTriangleCount, uint32 per cover vertex (which of the model's
+# vertices it is), uint32 a,b,c per cover triangle.
 # dragonborn.json: what the app needs to know about it (see src/dragonborn.ts).
 
 APP_RATIO = 0.2
 APP_UNITS = 5  # the app's head units are metres x 5 with the same origin and axes (see src/headMesh.ts)
-MODEL_VERSION = 4
+MODEL_VERSION = 5
+COVER_RATIO = 0.2  # the cover's share of the skin's triangles (see cover_mesh)
 # Where the lower jaw turns (head frame: under the ear, at the back of the jaw, at the height of the lips), and how far
 JAW_HINGE = np.array([0.0, -0.066, -0.06])
 JAW_MAX = 0.28  # radians (opened farther, with a smile, the skin at the very corners of the mouth folded)
@@ -1081,6 +1084,53 @@ def jaw_weights(P, mouth, edges):
     return lerp(w, space_average(H, w, cell=0.002), at_corner)
 
 
+def cover_mesh(P, tris, tri_region):
+    """A coarser copy of the skin (its horns, spines, eyes and mouth left out), for clothing to be fitted to (see
+    src/garments.ts): fitted to the skin itself, a tunic had over 300,000 triangles. Each of its vertices is one of the
+    model's own, so it follows every shape control with it. Returns which of the model's vertices each of its vertices
+    is, and its triangles."""
+    skin = tris[tri_region == 0]
+    used = np.unique(skin)
+    number = np.full(len(P), -1, np.int64)
+    number[used] = np.arange(len(used))
+    mesh = bpy.data.meshes.new("cover")
+    mesh.from_pydata(P[used].tolist(), [], number[skin].tolist())
+    obj = bpy.data.objects.new("cover", mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    decimate = obj.modifiers.new("decimate", "DECIMATE")
+    decimate.ratio = COVER_RATIO
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier=decimate.name)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.triangulate(bm, faces=list(bm.faces))
+    bm.to_mesh(obj.data)
+    bm.free()
+    co = np.zeros(len(obj.data.vertices) * 3)
+    obj.data.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    faces = np.zeros(len(obj.data.polygons) * 3, np.int64)
+    obj.data.polygons.foreach_get("vertices", faces)
+    faces = faces.reshape(-1, 3)
+    bpy.data.objects.remove(obj)
+    # (each cover vertex the nearest of the skin's vertices that no other has taken, so no two are one)
+    tree = KDTree(len(used))
+    for i, point in enumerate(P[used]):
+        tree.insert(point, i)
+    tree.balance()
+    taken = np.zeros(len(used), bool)
+    vertex = np.zeros(len(co), np.int64)
+    for i, point in enumerate(co):
+        for _, j, _ in tree.find_n(point, 16):
+            if not taken[j]:
+                taken[j] = True
+                vertex[i] = used[j]
+                break
+        else:
+            raise RuntimeError("cover vertex %d found no skin vertex of its own" % i)
+    return vertex, faces
+
+
 def to_units(point, side=1):
     """A point in the head frame (right side), mirrored to `side`, in the app's head units."""
     return (HEAD_AT + HEAD_SCALE * np.array(point, float) * np.array([side, 1, 1])) * APP_UNITS
@@ -1151,6 +1201,10 @@ def export_app(obj, out_dir):
         handle.write(np.round(np.clip(jaw, 0, 1) * 255).astype(np.uint8).tobytes())
         handle.write(tris.astype("<u4").tobytes())
         handle.write(tri_region.tobytes())
+        cover_vertex, cover_tris = cover_mesh(P, tris, tri_region)
+        handle.write(struct.pack("<II", len(cover_vertex), len(cover_tris)))
+        handle.write(cover_vertex.astype("<u4").tobytes())
+        handle.write(cover_tris.astype("<u4").tobytes())
     centre = EYE - EYE_TURN[:, 2] * 0.0085
     eyes = []
     for side in (1, -1):
@@ -1183,7 +1237,7 @@ def export_app(obj, out_dir):
     with open(os.path.join(out_dir, "dragonborn.json"), "w") as handle:
         json.dump(manifest, handle, indent=2)
         handle.write("\n")
-    log("app model: %d vertices, %d triangles (%d horn, %d eye, %d teeth, %d mouth), %d turning with the jaw" % (n, len(tris), (tri_region == 1).sum(), (tri_region == 2).sum(), (tri_region == 3).sum(), (tri_region == 4).sum(), (jaw > 0.5).sum()))
+    log("app model: %d vertices, %d triangles (%d horn, %d eye, %d teeth, %d mouth), %d turning with the jaw; cover %d vertices, %d triangles" % (n, len(tris), (tri_region == 1).sum(), (tri_region == 2).sum(), (tri_region == 3).sum(), (tri_region == 4).sum(), (jaw > 0.5).sum(), len(cover_vertex), len(cover_tris)))
 
 
 def main():

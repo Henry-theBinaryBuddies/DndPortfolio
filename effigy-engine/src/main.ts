@@ -177,7 +177,7 @@ function show(params: Params) {
     paintPanel.set(paint);
     painter?.setPaint(paint);
   }
-  paintPanel.showFor(paintKind(params));
+  paintPanel.showFor(paintKind(params), params.outfit);
   wanted = params;
   if (params.family === "dragonborn") needDragonborn();
   remember();

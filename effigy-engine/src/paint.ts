@@ -26,6 +26,8 @@ export interface Paint {
   hair: string; // the hair, beard and eyebrows
   horns: string;
   teeth: string; // the teeth and tusks
+  cloth: string; // the tunic
+  metal: string; // the breastplate and pauldrons
   grime: number; // 0..1: dirt in the hollows, soot and wear
 }
 
@@ -92,9 +94,26 @@ export const TEETH_COLORS: Swatch[] = [
   { name: "Rotten", value: "#8a7f62" },
 ];
 
+export const CLOTH_COLORS: Swatch[] = [
+  { name: "Undyed wool", value: "#8a7c62" },
+  { name: "Madder red", value: "#7a2a22" },
+  { name: "Woad blue", value: "#34486a" },
+  { name: "Forest green", value: "#3a5233" },
+  { name: "Ochre", value: "#a07a32" },
+  { name: "Black", value: "#232020" },
+];
+
+export const METAL_COLORS: Swatch[] = [
+  { name: "Steel", value: "#9aa0a6" },
+  { name: "Blackened", value: "#3c3c40" },
+  { name: "Bronze", value: "#9a6e3a" },
+  { name: "Brass", value: "#b8994a" },
+  { name: "Gilt", value: "#c9a646" },
+];
+
 const swatch = (list: Swatch[], name: string) => list.find((s) => s.name === name)!.value;
 
-const PLAIN: Paint = { skin: swatch(SKIN_TONES, "Tan"), eyes: swatch(EYE_COLORS, "Brown"), eyeGlow: false, hair: swatch(HAIR_COLORS, "Chestnut"), horns: swatch(HORN_COLORS, "Horn"), teeth: swatch(TEETH_COLORS, "Ivory"), grime: 0.2 };
+const PLAIN: Paint = { skin: swatch(SKIN_TONES, "Tan"), eyes: swatch(EYE_COLORS, "Brown"), eyeGlow: false, hair: swatch(HAIR_COLORS, "Chestnut"), horns: swatch(HORN_COLORS, "Horn"), teeth: swatch(TEETH_COLORS, "Ivory"), cloth: swatch(CLOTH_COLORS, "Woad blue"), metal: swatch(METAL_COLORS, "Steel"), grime: 0.2 };
 
 // What a race starts with, over the plain paint: applied when the race is chosen
 export const RACE_PAINT: Record<PaintKind, Partial<Paint>> = {
@@ -111,8 +130,8 @@ export const RACE_PAINT: Record<PaintKind, Partial<Paint>> = {
 
 export const defaultPaint = (race: PaintKind): Paint => ({ ...PLAIN, ...RACE_PAINT[race] });
 
-// The race's own colours over the paint as it is (the grime stays as it was set)
-export const racePaint = (paint: Paint, race: PaintKind): Paint => ({ ...paint, ...PLAIN, ...RACE_PAINT[race], grime: paint.grime });
+// The race's own colours over the paint as it is (the grime and the clothes' colours stay as they were set)
+export const racePaint = (paint: Paint, race: PaintKind): Paint => ({ ...paint, ...PLAIN, ...RACE_PAINT[race], grime: paint.grime, cloth: paint.cloth, metal: paint.metal });
 
 const smooth = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
@@ -368,6 +387,8 @@ export class Painter {
     glow: { value: 0 },
     horns: { value: new THREE.Color() },
     teeth: { value: new THREE.Color() },
+    cloth: { value: new THREE.Color() },
+    metal: { value: new THREE.Color() },
     grime: { value: 0 },
     age: { value: 0.3 },
     masculine: { value: 1 },
@@ -608,6 +629,38 @@ export class Painter {
       }),
       // The solid behind the lips, seen in an open mouth: the dark of the inside of a mouth
       mouth: shared(new THREE.MeshStandardMaterial({ color: 0x1a0707, roughness: 0.55 }), "effigy-mouth-1"),
+      // Clothing (see garments.ts): a matte cloth, faintly uneven as wool is, dirtied with the grime; and armour, a
+      // worn metal, darker and rougher where the grime is
+      cloth: shared(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92 }), "effigy-cloth-1", (shader) => {
+        uniforms(shader, { uCloth: u.cloth, uGrime: u.grime });
+        shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vObjPos;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvObjPos = position;");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", `#include <common>\nuniform vec3 uCloth;\nuniform float uGrime;\nvarying vec3 vObjPos;\n${NOISE}`)
+          .replace(
+            "#include <color_fragment>",
+            /* glsl */ `#include <color_fragment>
+  {
+    vec3 c = uCloth * (0.9 + 0.1 * vnoise(vObjPos * 40.0)) * (0.95 + 0.1 * vnoise(vObjPos * 6.0));
+    float grime = smoothstep(0.45, 0.7, vnoise(vObjPos * 3.0 + 11.0)) * uGrime * 0.5;
+    diffuseColor.rgb = mix(c, vec3(0.02, 0.016, 0.012), grime);
+  }`,
+          );
+      }),
+      metal: shared(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.38, metalness: 0.55 }), "effigy-metal-1", (shader) => {
+        uniforms(shader, { uMetal: u.metal, uGrime: u.grime });
+        shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vObjPos;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvObjPos = position;");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", `#include <common>\nuniform vec3 uMetal;\nuniform float uGrime;\nvarying vec3 vObjPos;\nfloat metalWear;\n${NOISE}`)
+          .replace(
+            "#include <color_fragment>",
+            /* glsl */ `#include <color_fragment>
+  {
+    metalWear = smoothstep(0.6, 0.85, vnoise(vObjPos * 5.0 + 3.0)) * uGrime;
+    diffuseColor.rgb = mix(uMetal * (0.97 + 0.03 * vnoise(vObjPos * 12.0)), uMetal * 0.45, metalWear * 0.6);
+  }`,
+          )
+          .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.8, metalWear);");
+      }),
       // The bare form, for checking the sculpt
       clay: shared(new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75 }), "effigy-clay-1"),
     };
@@ -621,6 +674,8 @@ export class Painter {
     this.u.glow.value = paint.eyeGlow ? 1 : 0;
     this.u.horns.value.set(paint.horns);
     this.u.teeth.value.set(paint.teeth);
+    this.u.cloth.value.set(paint.cloth);
+    this.u.metal.value.set(paint.metal);
     this.u.grime.value = paint.grime;
   }
 

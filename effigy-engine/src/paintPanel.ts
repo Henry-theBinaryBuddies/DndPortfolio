@@ -1,4 +1,5 @@
-import { EYE_COLORS, HAIR_COLORS, HORN_COLORS, SKIN_TONES, TEETH_COLORS, type Paint, type PaintKind, type Swatch } from "./paint";
+import { CLOTH_COLORS, EYE_COLORS, HAIR_COLORS, HORN_COLORS, METAL_COLORS, SKIN_TONES, TEETH_COLORS, type Paint, type PaintKind, type Swatch } from "./paint";
+import type { Outfit } from "./params";
 import type { Backdrop } from "./token";
 import { heading } from "./ui";
 
@@ -6,13 +7,13 @@ import { heading } from "./ui";
 // glow of the eyes and the grime; and the token, the painted bust saved as a picture for a virtual tabletop.
 // It calls onPaint with a fresh Paint on every change, and `set` shows a paint chosen elsewhere (a race's).
 
-type ColorKey = "skin" | "eyes" | "hair" | "horns" | "teeth";
+type ColorKey = "skin" | "eyes" | "hair" | "horns" | "teeth" | "cloth" | "metal";
 
 export const TOKEN_SIZES = [256, 512, 1024] as const;
 // "whole": the head with all its horns, hair and ears inside the round; "close": a larger face, horns may be cropped
 export type TokenFraming = "whole" | "close";
 
-export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([]), onPreviewToken?: (framing: TokenFraming, backdrop: string) => Promise<HTMLCanvasElement | null>, onResetPaint?: () => void): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void; refreshToken: () => void; showFor: (kind: PaintKind) => void } {
+export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onToken?: (size: number, framing: TokenFraming, backdrop: string, say: (text: string) => void) => Promise<void>, backdrops: Promise<Backdrop[]> = Promise.resolve([]), onPreviewToken?: (framing: TokenFraming, backdrop: string) => Promise<HTMLCanvasElement | null>, onResetPaint?: () => void): { section: HTMLElement; tokenSection: HTMLElement | null; set: (paint: Paint) => void; refreshToken: () => void; showFor: (kind: PaintKind, outfit: Outfit) => void } {
   let paint = { ...initial };
   const rows = new Map<ColorKey, { entries: { swatch: Swatch; button: HTMLButtonElement }[]; picker: HTMLInputElement; row: HTMLElement }>();
   const glowBox = document.createElement("input");
@@ -78,6 +79,8 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
   addRow("Hair", "hair", HAIR_COLORS);
   addRow("Horns", "horns", HORN_COLORS);
   addRow("Teeth", "teeth", TEETH_COLORS);
+  addRow("Cloth", "cloth", CLOTH_COLORS);
+  addRow("Armour", "metal", METAL_COLORS);
 
   const grimeRow = document.createElement("label");
   grimeRow.className = "row";
@@ -233,9 +236,11 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     // (the token preview drawn again: main.ts calls it once the bust has settled after a change, and when the token is
     // shown again)
     refreshToken: () => refreshToken(),
-    // (a Dragonborn has no hair, and its mouth is shut: those colours are hidden while it is shown)
-    showFor(kind: PaintKind) {
-      for (const key of ["hair", "teeth"] as const) rows.get(key)!.row.hidden = kind === "dragonborn";
+    // (a Dragonborn has no hair: that colour is hidden while it is shown; and the clothes' colours only while they are worn)
+    showFor(kind: PaintKind, outfit: Outfit) {
+      rows.get("hair")!.row.hidden = kind === "dragonborn";
+      rows.get("cloth")!.row.hidden = outfit === "none";
+      rows.get("metal")!.row.hidden = outfit !== "armour";
       rows.get("skin")!.row.querySelector("span")!.textContent = kind === "dragonborn" ? "Scales" : "Skin";
     },
   };
