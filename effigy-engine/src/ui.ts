@@ -4,6 +4,7 @@ import {
   HAIR_STYLES,
   HORN_STYLES,
   NUMERIC_DEFS,
+  CLOAKS,
   OUTFITS,
   RACES,
   RACE_INFO,
@@ -18,6 +19,7 @@ import {
   type HornStyle,
   type NumericDef,
   type NumericKey,
+  type Cloak,
   type Outfit,
   type Params,
   type Race,
@@ -50,6 +52,7 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   const hairSelect = document.createElement("select");
   const beardSelect = document.createElement("select");
   const outfitSelect = document.createElement("select");
+  const cloakSelect = document.createElement("select");
   const bodyButtons = new Map<Body, HTMLButtonElement>();
   // What only a humanoid has (a Dragonborn is a sculpt of its own: see dragonborn.ts), hidden while it is shown
   const humanoidOnly: HTMLElement[] = [];
@@ -73,6 +76,7 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
     hairSelect.value = params.hairStyle;
     beardSelect.value = params.beardStyle;
     outfitSelect.value = params.outfit;
+    cloakSelect.value = params.cloak;
     for (const [key, { input, out, row, def }] of sliders) {
       input.value = String(params[key]);
       out.textContent = params[key].toFixed(2);
@@ -167,11 +171,12 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   const hornRow = styleRow("Horns", hornSelect, HORN_STYLES, (value) => (params.hornStyle = value as HornStyle));
   // (either family wears clothes: see garments.ts)
   const outfitRow = styleRow("Outfit", outfitSelect, OUTFITS, (value) => (params.outfit = value as Outfit));
+  const cloakRow = styleRow("Cloak", cloakSelect, CLOAKS, (value) => (params.cloak = value as Cloak));
 
   familyNote.className = "status";
   familyNote.id = "family-note";
   familyNote.textContent = "The Dragonborn is a sculpt of its own, with its own shape controls below. The humanoid's settings are kept for when you choose a race again.";
-  character.append(bodyRow, raceRow, familyNote, raceDefaultsRow, hairRow, beardRow, hornRow, outfitRow);
+  character.append(bodyRow, raceRow, familyNote, raceDefaultsRow, hairRow, beardRow, hornRow, outfitRow, cloakRow);
   humanoidOnly.push(bodyRow, raceDefaultsRow, hairRow, beardRow, hornRow);
   shape.append(character);
 
@@ -223,8 +228,8 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
   randomize.type = "button";
   randomize.textContent = "Randomize";
   // (within the family on show: a Dragonborn stays a Dragonborn)
-  // (the outfit is kept: it is what the character wears, not who it is)
-  randomize.addEventListener("click", () => update({ ...(params.family === "dragonborn" ? randomDragonborn(params) : randomParams()), outfit: params.outfit }));
+  // (the outfit and the cloak are kept: they are what the character wears, not who it is)
+  randomize.addEventListener("click", () => update({ ...(params.family === "dragonborn" ? randomDragonborn(params) : randomParams()), outfit: params.outfit, cloak: params.cloak }));
   const reset = document.createElement("button");
   reset.type = "button";
   reset.textContent = "Reset";

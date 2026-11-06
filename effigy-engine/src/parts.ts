@@ -6,7 +6,7 @@
 // (Whether pieces print as one solid is not here: a name can be both, as a humanoid's horn is a solid of its own and a
 // Dragonborn's horn is a painted piece of its one surface. That belongs to the mesh: userData.joined, see export.ts.)
 
-export type MaterialKind = "skin" | "eye" | "hair" | "horn" | "teeth" | "mouth" | "scales" | "dragonEye" | "cloth" | "metal" | "clay";
+export type MaterialKind = "skin" | "eye" | "hair" | "horn" | "teeth" | "mouth" | "scales" | "dragonEye" | "cloth" | "leather" | "cloak" | "metal" | "clay";
 
 // body: the sculpt's own surface, which clothing is fitted to (see bodySurface.ts); feature: built into or onto the
 // face (eyes, teeth, brows); outgrowth: horns, tusks and spines, which reach out and count in the fit; hair: hair and
@@ -40,6 +40,10 @@ const PARTS: Record<string, PartInfo> = {
   tunic: { material: "cloth", label: "the tunic", role: "garment" },
   cuirass: { material: "metal", label: "the breastplate", role: "garment" },
   pauldron: { material: "metal", label: "the pauldrons", role: "garment" },
+  jerkin: { material: "leather", label: "the jerkin", role: "garment" },
+  gorget: { material: "metal", label: "the gorget", role: "garment" },
+  cloak: { material: "cloak", label: "the cloak", role: "garment" },
+  clasp: { material: "metal", label: "the cloak's clasps", role: "garment" },
   gusset: { material: "clay", label: "the throat gusset", role: "support" },
   base: { material: "clay", label: "the base", role: "base" },
 };

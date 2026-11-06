@@ -6,7 +6,7 @@ import { buildBrows } from "./brows";
 import { buildDragonborn } from "./dragonborn";
 import { JAW, turnWithJaw } from "./jaw";
 import { frontPoint, sculptBust, topPoint } from "./face";
-import { buildOutfit, type Dressed } from "./garments";
+import { buildOutfit, dressedAtAll, type Dressed } from "./garments";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
@@ -149,7 +149,7 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   if (p.family === "dragonborn") {
     if (!assets.dragonborn) throw new Error("the Dragonborn model has not loaded");
     const root = buildDragonborn(assets.dragonborn, p, gusset);
-    const outfit = p.outfit === "none" ? null : buildOutfit(p, bodySurface(p, assets));
+    const outfit = !dressedAtAll(p) ? null : buildOutfit(p, bodySurface(p, assets));
     if (outfit) addGarments(root.children[0] as THREE.Group, outfit, root.userData.flatCut as number);
     return root;
   }
@@ -162,7 +162,7 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
 
   const bust = sculptBust(p, base);
   // Clothing, fitted to the body (see garments.ts); the hair and the beard are then built over it
-  const outfit = p.outfit === "none" ? null : buildOutfit(p, bodySurface(p, assets, bust));
+  const outfit = !dressedAtAll(p) ? null : buildOutfit(p, bodySurface(p, assets, bust));
   const worn = outfit?.dressed ?? bust.positions;
   // The bust is cut flat a little above its lowest point (see underside.ts): everything below this plane is
   // trimmed off, which leaves a clean flat underside for the pedestal. (The viewer clips it away; the export

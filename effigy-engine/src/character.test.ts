@@ -28,9 +28,11 @@ describe("the character file", () => {
 
   it("dresses a file from before there was clothing in none, and keeps the outfit and its colours of one after", () => {
     expect(readCharacter(JSON.stringify({ format: "effigy-character", version: 1, params: { race: "elf" } })).params.outfit).toBe("none");
-    const character: Character = { params: { ...applyRace(defaultParams(), "dwarf"), outfit: "armour" }, paint: { ...defaultPaint("dwarf"), cloth: "#334455", metal: "#aabbcc" } };
+    expect(readCharacter(JSON.stringify({ format: "effigy-character", version: 1, params: { race: "elf" } })).params.cloak).toBe("none");
+    const character: Character = { params: { ...applyRace(defaultParams(), "dwarf"), outfit: "armour", cloak: "cowl" }, paint: { ...defaultPaint("dwarf"), cloth: "#334455", leather: "#553311", cloak: "#224422", metal: "#aabbcc" } };
     expect(readCharacter(characterFile(character))).toEqual(character);
     expect(() => readCharacter(JSON.stringify({ format: "effigy-character", version: 1, params: { outfit: "toga" } }))).toThrow(/unknown outfit/);
+    expect(() => readCharacter(JSON.stringify({ format: "effigy-character", version: 1, params: { cloak: "cape" } }))).toThrow(/unknown cloak/);
   });
 
   it("says plainly when a file is not a character, or is from a newer version", () => {

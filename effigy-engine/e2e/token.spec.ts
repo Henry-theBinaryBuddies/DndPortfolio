@@ -342,14 +342,14 @@ test.describe("the Dragonborn", () => {
 });
 
 test.describe("clothing", () => {
-  // (the outfit list is the one with armour in it, the race list the one with the Dragonborn)
-  const choose = (page: Page, option: string) =>
-    page.evaluate((value) => {
-      const list = value === "dragonborn" ? "dragonborn" : "armour";
+  // (the outfit list is the one with armour in it, the cloak list the one with the cowl, the race list the one with the
+  // Dragonborn)
+  const choose = (page: Page, option: string, list = option === "dragonborn" ? "dragonborn" : "armour") =>
+    page.evaluate(([value, list]) => {
       const select = [...document.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.value === list))!;
       select.value = value;
       select.dispatchEvent(new Event("change", { bubbles: true }));
-    }, option);
+    }, [option, list]);
   const shown = (page: Page, name: string) => page.evaluate((n) => !!(window as unknown as { effigy: { scene: { getObjectByName: (n: string) => unknown } } }).effigy.scene.getObjectByName(n), name);
 
   test("is put on from the Outfit list, on either family, with its colours shown only while it is worn", async ({ page }) => {
@@ -369,5 +369,27 @@ test.describe("clothing", () => {
     await expect.poll(() => shown(page, "cuirass"), { timeout: 60000 }).toBe(true);
     await choose(page, "none");
     await expect.poll(() => shown(page, "tunic")).toBe(false);
+  });
+
+  test("puts on a leather jerkin, and a cloak over any outfit, with their colours shown only while they are worn", async ({ page }) => {
+    await open(page);
+    await page.click("#show-appearance");
+    await expect(page.locator('[aria-label="Leather: Brown"]')).toBeHidden();
+    await expect(page.locator('[aria-label="Cloak: Forest green"]')).toBeHidden();
+    await choose(page, "leather");
+    await expect.poll(() => shown(page, "jerkin"), { timeout: 60000 }).toBe(true);
+    await expect(page.locator('[aria-label="Leather: Brown"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Armour: Steel"]')).toBeHidden();
+    // (the cloak's clasps are metal: its colour is shown with the cloak's)
+    await choose(page, "cowl", "cowl");
+    await expect.poll(() => shown(page, "cloak"), { timeout: 60000 }).toBe(true);
+    await expect(page.locator('[aria-label="Cloak: Forest green"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Armour: Steel"]')).toBeVisible();
+    await expect.poll(() => shown(page, "clasp")).toBe(true);
+    // a cloak is worn over nothing else too
+    await choose(page, "none");
+    await expect.poll(() => shown(page, "jerkin")).toBe(false);
+    expect(await shown(page, "cloak")).toBe(true);
+    await expect(page.locator('[aria-label="Leather: Brown"]')).toBeHidden();
   });
 });

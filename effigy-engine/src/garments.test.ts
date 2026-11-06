@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import * as THREE from "three";
+import { MeshBVH } from "three-mesh-bvh";
 import { beforeAll, describe, expect, it } from "vitest";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
 import { bodySurface } from "./bodySurface";
@@ -26,8 +27,8 @@ beforeAll(() => {
   assets.dragonborn = parseDragonborn(read("../public/models/dragonborn.bin"), JSON.parse(new TextDecoder().decode(read("../public/models/dragonborn.json"))) as DragonbornManifest);
 });
 
-const human = (outfit: Params["outfit"]): Params => ({ ...applyRace(defaultParams(), "human"), outfit });
-const dragonborn = (outfit: Params["outfit"]): Params => ({ ...defaultParams(), family: "dragonborn", outfit });
+const human = (outfit: Params["outfit"], cloak: Params["cloak"] = "none"): Params => ({ ...applyRace(defaultParams(), "human"), outfit, cloak });
+const dragonborn = (outfit: Params["outfit"], cloak: Params["cloak"] = "none"): Params => ({ ...defaultParams(), family: "dragonborn", outfit, cloak });
 
 describe("clothing", () => {
   it("is worn by either family, each piece a named part of the bust", () => {
@@ -41,12 +42,15 @@ describe("clothing", () => {
     for (const p of [human, dragonborn]) {
       expect(names(p("none"))).toEqual([]);
       expect(names(p("tunic"))).toEqual(["tunic"]);
-      expect(names(p("armour"))).toEqual(["tunic", "cuirass", "pauldron", "pauldron"]);
+      expect(names(p("leather"))).toEqual(["tunic", "jerkin"]);
+      expect(names(p("armour"))).toEqual(["tunic", "cuirass", "gorget", "pauldron", "pauldron"]);
+      expect(names(p("none", "cloak"))).toEqual(["cloak", "clasp", "clasp"]);
+      expect(names(p("armour", "cowl"))).toEqual(["tunic", "cuirass", "gorget", "pauldron", "pauldron", "cloak", "clasp", "clasp"]);
     }
   });
 
   it("stands clear of the body everywhere above the flat cut, nearly all of it by a millimetre or more", () => {
-    for (const p of [human("armour"), dragonborn("armour")]) {
+    for (const p of [human("armour", "cowl"), dragonborn("armour", "cowl"), human("leather"), dragonborn("leather")]) {
       const body = bodySurface(p, assets);
       const outfit = buildOutfit(p, body)!;
       const cutY = body.baseY + body.cut * MM + 0.1;
@@ -69,13 +73,66 @@ describe("clothing", () => {
   }, 120000);
 
   it("prints as one closed solid with the bust, at both ends of the torso, for either family", async () => {
-    for (const p of [human("tunic"), dragonborn("tunic")].concat([0.6, 1.1].flatMap((torso) => [{ ...human("armour"), torso }, { ...dragonborn("armour"), torso }]))) {
+    const worn = [human("tunic"), dragonborn("tunic"), human("leather", "cowl"), dragonborn("leather", "cloak"), human("none", "cloak"), dragonborn("none", "cowl")];
+    for (const p of worn.concat([0.6, 1.1].flatMap((torso) => [{ ...human("armour", "cowl"), torso }, { ...dragonborn("armour", "cowl"), torso }]))) {
       const { parts, flatCut } = collectBust(p, assets);
       const { report } = await mergeParts(parts, undefined, undefined, flatCut);
-      expect(report.components, `${p.family} ${p.outfit} torso ${p.torso}`).toHaveLength(1);
+      expect(report.components, `${p.family} ${p.outfit} ${p.cloak} torso ${p.torso}`).toHaveLength(1);
       expect(report.badEdges).toBe(0);
     }
   }, 600000);
+
+  it("puts the cloak over everything else worn, which shows through it nowhere but at its very edge", () => {
+    // (a point of a garment within the cloak's reach that is outside it: traced straight inward, it meets the cloak's
+    // outside; one inside the cloak's own solid meets its inside instead, and is hidden)
+    for (const p of [human("leather", "cowl"), human("armour", "cowl"), dragonborn("leather", "cowl"), dragonborn("armour", "cowl")]) {
+      const body = bodySurface(p, assets);
+      const outfit = buildOutfit(p, body)!;
+      const cloak = outfit.garments.find((g) => g.name === "cloak")!;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(cloak.positions, 3));
+      geometry.setIndex(new THREE.BufferAttribute(cloak.indices, 1));
+      const bvh = new MeshBVH(geometry);
+      // (the cloak's edge: the sides of its outside's triangles that no other of them shares)
+      const half = cloak.positions.length / 6;
+      const sides = new Map<string, number>();
+      for (let t = 0; t < cloak.indices.length; t += 3) {
+        const v = [cloak.indices[t], cloak.indices[t + 1], cloak.indices[t + 2]];
+        if (v.some((i) => i >= half)) continue;
+        for (let k = 0; k < 3; k++) {
+          const [a, b] = [v[k], v[(k + 1) % 3]];
+          const key = `${Math.min(a, b)} ${Math.max(a, b)}`;
+          sides.set(key, (sides.get(key) ?? 0) + 1);
+        }
+      }
+      const rim = [...sides].filter(([, n]) => n === 1).map(([key]) => new THREE.Vector3().fromArray(cloak.positions, Number(key.split(" ")[0]) * 3));
+      const cutY = body.baseY + body.cut * MM + 0.12;
+      const point = new THREE.Vector3();
+      let [through, deep, under] = [0, 0, 0];
+      for (const garment of outfit.garments) {
+        if (garment.name === "cloak" || garment.name === "clasp") continue;
+        for (let i = 0; i < garment.positions.length / 6; i += 3) {
+          point.fromArray(garment.positions, i * 3);
+          if (point.y < cutY) continue;
+          const normal = body.closest(point).normal.clone().normalize();
+          const outward = bvh.raycastFirst(new THREE.Ray(point.clone(), normal), THREE.DoubleSide);
+          if (outward && outward.distance < 0.4) {
+            under++;
+            continue;
+          }
+          const inward = bvh.raycastFirst(new THREE.Ray(point.clone(), normal.clone().negate()), THREE.DoubleSide);
+          if (!inward || inward.distance > 0.4 || inward.face!.normal.dot(normal) < 0.3) continue;
+          through++;
+          // (deeper than a millimetre only within about 5 mm of its edge, under its rolled hem, or far down
+          // under the arm, where the cloak hangs clear of the body and its own inside runs in under the tunic)
+          if (inward.distance > MM && point.y > body.anchors.neckBase - 0.3 && !rim.some((r) => r.distanceTo(point) < 0.15)) deep++;
+        }
+      }
+      expect(under, `${p.family} ${p.outfit}: under the cloak`).toBeGreaterThan(1000);
+      expect(through / under, `${p.family} ${p.outfit}: through it`).toBeLessThan(0.005);
+      expect(deep, `${p.family} ${p.outfit}: through it by more than a millimetre`).toBeLessThanOrEqual(2);
+    }
+  }, 300000);
 
   it("lies under the hair and the beard, which are built over it", () => {
     // Long hair hangs down the back over the tunic, not into it; a full beard lowers the collar at the front
@@ -105,11 +162,13 @@ describe("clothing", () => {
     const body = bodySurface(p, assets);
     expect(buildOutfit({ ...p, hairStyle: "mohawk" }, body)).toBe(buildOutfit(p, body));
     expect(printKey(p, true, true)).not.toBe(printKey({ ...p, outfit: "tunic" }, true, true));
+    expect(buildOutfit({ ...p, cloak: "cloak" }, body)).not.toBe(buildOutfit(p, body));
   });
 
   it("is fitted to the one inch square with the bust at tabletop size", () => {
-    const t = collectTabletop(human("armour"), assets, true);
+    const t = collectTabletop(human("armour", "cowl"), assets, true);
     expect(t.parts.some((part) => part.name === "pauldron")).toBe(true);
+    expect(t.parts.some((part) => part.name === "cloak")).toBe(true);
     expect(Math.max(t.width, t.depth)).toBeLessThanOrEqual(25 * 1.002);
     console.log(`armoured human at tabletop size: ${t.height.toFixed(1)} mm tall, torso ${Math.round(t.params.torso * 100)}%; ${t.notes.join(" ")}`);
   }, 300000);

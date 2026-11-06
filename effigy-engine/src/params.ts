@@ -61,9 +61,13 @@ export type HairStyle = (typeof HAIR_STYLES)[number];
 export const BEARD_STYLES = ["none", "goatee", "short", "full"] as const;
 export type BeardStyle = (typeof BEARD_STYLES)[number];
 
-// Clothing, built over the body of either family (see garments.ts): a thick tunic, or a breastplate and pauldrons over it
-export const OUTFITS = ["none", "tunic", "armour"] as const;
+// Clothing, built over the body of either family (see garments.ts): a thick tunic; a leather jerkin over it; or a
+// breastplate, gorget and pauldrons over it. And over any of them (or none), a cloak, plain or with its hood down,
+// gathered round the back of the neck (a cowl)
+export const OUTFITS = ["none", "tunic", "leather", "armour"] as const;
 export type Outfit = (typeof OUTFITS)[number];
+export const CLOAKS = ["none", "cloak", "cowl"] as const;
+export type Cloak = (typeof CLOAKS)[number];
 
 export interface Params extends Record<NumericKey, number> {
   family: Family;
@@ -73,6 +77,7 @@ export interface Params extends Record<NumericKey, number> {
   hairStyle: HairStyle;
   beardStyle: BeardStyle;
   outfit: Outfit;
+  cloak: Cloak;
 }
 
 export type Group = "Body" | "Face" | "Expression" | "Fantasy" | "Dragonborn" | "Horns and spines";
@@ -269,6 +274,7 @@ export function defaultParams(): Params {
     hairStyle: "swept" as HairStyle,
     beardStyle: "none" as BeardStyle,
     outfit: "none" as Outfit,
+    cloak: "none" as Cloak,
   } as Params;
   for (const d of NUMERIC_DEFS) params[d.key] = d.default;
   return params;
@@ -366,6 +372,7 @@ export function applyRace(current: Params, race: Race): Params {
   next.race = race;
   next.body = current.body;
   next.outfit = current.outfit;
+  next.cloak = current.cloak;
   next.hornStyle = info.hornStyle;
   next.hairStyle = info.hairStyle;
   next.beardStyle = info.beardStyle ?? "none";
