@@ -17,7 +17,7 @@ import { findUnderside, type Underside } from "./underside";
 // belongs to, so a control can move one part; and for the paint (see the scales' material in paint.ts), how far each
 // vertex lies in a hollow (the grooves between the scales), each scale's own tone, and how pale the underside is.
 
-export const DRAGONBORN_VERSION = 3;
+export const DRAGONBORN_VERSION = 4;
 
 export interface DragonbornManifest {
   name: string;
@@ -27,6 +27,7 @@ export interface DragonbornManifest {
   eyes: { centre: Vec3; look: Vec3; radius: number }[];
   chin: number; // the lowest point of the lower jaw, for framing the face
   frame: { headAt: Vec3; headScale: number; units: number }; // head frame = (point - headAt) / (units * headScale)
+  jaw: { hinge: Vec3; max: number }; // where the lower jaw turns (head units), and how far it may (radians)
   outgrowths: { part: number; root: Vec3; tip: Vec3 }[]; // each horn, cheek spine and crest spine (see PART)
 }
 
@@ -35,6 +36,7 @@ export interface DragonbornAsset {
   positions: Float32Array;
   along: Float32Array; // 0 at the root of a horn or spine, 1 at its tip
   part: Uint8Array; // per vertex: see PART
+  jaw: Float32Array; // per vertex: how far it turns with the lower jaw (0..1: the lower jaw, its teeth and the tongue are 1)
   // Which horn or spine (of manifest.outgrowths) each of their vertices belongs to (-1 for the rest), and how far from
   // its root its nearest vertex is (its root is buried in the skin, so its vertices begin some way out)
   outgrowth: Int16Array;
@@ -45,6 +47,8 @@ export interface DragonbornAsset {
   // and crest as horn, and each eye's
   skin: { index: Uint32Array; shade: Float32Array; tone: Float32Array; belly: Float32Array };
   horn: { index: Uint32Array };
+  teeth: { index: Uint32Array };
+  mouth: { index: Uint32Array }; // the inside of the mouth: palate, floor, gums and tongue
   eyes: { centre: THREE.Vector3; look: THREE.Vector3; vertices: Uint32Array; index: Uint32Array }[];
   shaped: Map<string, Shaped>; // the last few shapes built (each is a fraction of a second to work out)
 }
@@ -59,7 +63,7 @@ interface Shaped {
   eyes: { centre: THREE.Vector3; positions: Float32Array }[];
 }
 
-const REGION = { scales: 0, horn: 1, eye: 2 } as const;
+const REGION = { scales: 0, horn: 1, eye: 2, teeth: 3, mouth: 4 } as const;
 export const PART = { scales: 0, horn: 1, spine: 2, crest: 3, eye: 4 } as const;
 const FORWARD = new THREE.Vector3(0, 0, 1);
 const HORN_AXIS = new THREE.Vector3(1, 0, 0);
@@ -68,7 +72,7 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
   if (manifest.version !== DRAGONBORN_VERSION) throw new Error(`the Dragonborn model is version ${manifest.version}, not the ${DRAGONBORN_VERSION} this app reads`);
   const [vertices, triangles] = new Uint32Array(buffer, 0, 2);
   if (vertices !== manifest.vertices || triangles !== manifest.triangles) throw new Error("the Dragonborn model does not match its description");
-  if (buffer.byteLength !== 8 + vertices * 23 + triangles * 13) throw new Error("the Dragonborn model file is the wrong length");
+  if (buffer.byteLength !== 8 + vertices * 24 + triangles * 13) throw new Error("the Dragonborn model file is the wrong length");
   let at = 8;
   const take = (bytes: number) => buffer.slice(at, (at += bytes));
   const positions = new Float32Array(take(vertices * 12));
@@ -77,15 +81,20 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
   const part = new Uint8Array(take(vertices));
   const tone = Float32Array.from(new Uint8Array(take(vertices)), (v) => v / 255);
   const belly = Float32Array.from(new Uint8Array(take(vertices)), (v) => v / 255);
+  const jaw = Float32Array.from(new Uint8Array(take(vertices)), (v) => v / 255);
   const indices = new Uint32Array(take(triangles * 12));
   const region = new Uint8Array(take(triangles));
 
   const skin: number[] = [];
   const horn: number[] = [];
+  const teeth: number[] = [];
+  const mouth: number[] = [];
   const eyeTriangles: number[][] = manifest.eyes.map(() => []);
   for (let t = 0; t < triangles; t++) {
     const corners = [indices[t * 3], indices[t * 3 + 1], indices[t * 3 + 2]];
     if (region[t] === REGION.horn) horn.push(...corners);
+    else if (region[t] === REGION.teeth) teeth.push(...corners);
+    else if (region[t] === REGION.mouth) mouth.push(...corners);
     else if (region[t] === REGION.eye) {
       // (the eye whose centre is nearer)
       const x = positions[corners[0] * 3];
@@ -119,7 +128,7 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
     });
     starts[outgrowth[i]] = Math.min(starts[outgrowth[i]], best);
   }
-  return { manifest, positions, along, part, outgrowth, neighbour, starts, indices, skin: { index: Uint32Array.from(skin), shade, tone, belly }, horn: { index: Uint32Array.from(horn) }, eyes, shaped: new Map() };
+  return { manifest, positions, along, part, jaw, outgrowth, neighbour, starts, indices, teeth: { index: Uint32Array.from(teeth) }, mouth: { index: Uint32Array.from(mouth) }, skin: { index: Uint32Array.from(skin), shade, tone, belly }, horn: { index: Uint32Array.from(horn) }, eyes, shaped: new Map() };
 }
 
 export async function loadDragonborn(): Promise<DragonbornAsset> {
@@ -153,6 +162,12 @@ const SHAPE = {
   spines: [0.75, 1.25], // the cheek spines' and crest's size (short and thick at the root, they fold when halved, and grown much larger two of them run into each other)
   neck: 0.12, // the neck thicker or thinner
 };
+// The expressions at full strength (head frame, metres): how far a scowl brings the brow plates down, a snarl lifts the
+// upper lip, and a smile lifts the corners of the mouth; how far forward the jaw glides as it opens, per radian; and the
+// height of the line of the lips
+const EXPRESSION = { scowl: 0.008, snarl: 0.009, smile: 0.006 };
+const JAW_GLIDE = 0.03; // (more, and the lower lip slid forward under the upper one at the corners of the mouth, and folded)
+const LIP = -0.067;
 // Where a horn's or spine's resizing begins past the skin, and over what distance it grows to full (head frame, metres)
 const OUTGROWTH = { horn: [0.012, 0.06], spine: [0.006, 0.05], seam: 0.03 };
 // The neck's axis, and where it runs (head units, the bust's own frame)
@@ -162,7 +177,7 @@ const NECK = { z: -0.4, top: -0.75, bottom: -1.4, reach: 0.65, fade: 0.3 };
 const TORSO = { top: -1.05, rise: 0.6, core: 0.25, fade: 0.6, depth: 0.7 }; // slimmed below the neck, outside a core round its axis
 
 // The key for a shape: every setting that reshapes the Dragonborn
-const shapeKey = (p: Params) => [p.dragonMuzzle, p.dragonSnout, p.dragonJaw, p.dragonBrow, p.dragonHorns, p.dragonSweep, p.dragonSpines, p.dragonNeck, p.torso].join(" ");
+const shapeKey = (p: Params) => [p.dragonMuzzle, p.dragonSnout, p.dragonJaw, p.dragonBrow, p.dragonHorns, p.dragonSweep, p.dragonSpines, p.dragonNeck, p.torso, p.jawOpen, p.snarl, p.scowl, p.smile].join(" ");
 
 export function shapeDragonborn(asset: DragonbornAsset, p: Params): Shaped {
   const key = shapeKey(p);
@@ -180,11 +195,14 @@ export function shapeDragonborn(asset: DragonbornAsset, p: Params): Shaped {
   const sweep = (p.dragonSweep - 0.5) * 2 * SHAPE.sweep;
   const spineSize = SHAPE.spines[0] + (SHAPE.spines[1] - SHAPE.spines[0]) * p.dragonSpines;
   const neck = 1 + (p.dragonNeck - 0.5) * 2 * SHAPE.neck;
+  const opening = p.jawOpen * asset.manifest.jaw.max;
+  const hinge = new THREE.Vector3(...asset.manifest.jaw.hinge);
   const turn = new THREE.Quaternion();
   const v = new THREE.Vector3();
 
   // How the face's controls move a point (in head units), whatever part it is on
-  const faceShift = (x: number, y: number, z: number, out: THREE.Vector3) => {
+  // (`lowerJaw`: how far the point turns with the lower jaw, which the lip's own expressions leave alone)
+  const faceShift = (x: number, y: number, z: number, out: THREE.Vector3, lowerJaw = 0) => {
     // (in the head frame of the sculpt)
     const hx = (x - headAt[0]) / k;
     const hy = (y - headAt[1]) / k;
@@ -208,6 +226,20 @@ export function shapeDragonborn(asset: DragonbornAsset, p: Params): Shaped {
     const plate = Math.exp(-(((ax - 0.043) / 0.035) ** 2) - ((hy - 0.026) / 0.022) ** 2 - ((hz - 0.018) / 0.04) ** 2) * eyeClear;
     dy += 0.45 * brow * plate;
     dz += 0.9 * brow * plate;
+    // Expressions (see EXPRESSION). A scowl draws the brow plates down, forward and in toward the nose.
+    dy -= EXPRESSION.scowl * p.scowl * plate;
+    dz += 0.4 * EXPRESSION.scowl * p.scowl * plate;
+    dx -= Math.sign(hx) * 0.5 * EXPRESSION.scowl * p.scowl * plate;
+    // A snarl lifts the upper lip along the front of the muzzle and draws it back, baring the teeth, and wrinkles the
+    // bridge of the nose
+    const upperLip = (1 - lowerJaw) * smooth((hz - 0.02) / 0.05) * Math.exp(-(((hy - LIP) / 0.018) ** 2)) * eyeClear;
+    dy += EXPRESSION.snarl * p.snarl * upperLip;
+    dz -= 0.35 * EXPRESSION.snarl * p.snarl * upperLip;
+    dy += 0.3 * EXPRESSION.snarl * p.snarl * Math.exp(-((hx / 0.03) ** 2) - ((hy - 0.005) / 0.02) ** 2 - ((hz - 0.07) / 0.03) ** 2) * eyeClear;
+    // A smile draws the corners of the mouth up and back
+    const corners = Math.exp(-(((ax - 0.042) / 0.025) ** 2) - ((hy - LIP) / 0.015) ** 2 - ((hz - 0.015) / 0.03) ** 2) * eyeClear;
+    dy += EXPRESSION.smile * p.smile * corners;
+    dz -= 0.7 * EXPRESSION.smile * p.smile * corners;
     return out.set(dx * k, dy * k, dz * k);
   };
   // (each horn and spine is reshaped with the face around it, as one smooth warp of everything, so it never parts from
@@ -247,7 +279,16 @@ export function shapeDragonborn(asset: DragonbornAsset, p: Params): Shaped {
       // (the horns turn about a line across the head through their roots: back, or forward)
       if (part === PART.horn && sweep !== 0) v.applyQuaternion(turn.setFromAxisAngle(HORN_AXIS, -sweep * grow));
       out.copy(root).add(v);
-    } else out.add(faceShift(x, y, z, shift));
+    } else out.add(faceShift(x, y, z, shift, i >= 0 ? asset.jaw[i] : 0));
+    // The lower jaw, its teeth and the tongue turn open about the hinge, gliding a little forward as they do (as the
+    // human jaw does: see jaw.ts), each vertex as far as its weight (the corners of the mouth and under the jaw part way)
+    const w = i >= 0 ? asset.jaw[i] : 0;
+    if (w > 0 && opening > 0) {
+      const angle = opening * w;
+      const [ry, rz] = [out.y - hinge.y, out.z - hinge.z];
+      out.y = hinge.y + ry * Math.cos(angle) - rz * Math.sin(angle);
+      out.z = hinge.z + ry * Math.sin(angle) + rz * Math.cos(angle) + JAW_GLIDE * k * angle;
+    }
     // The neck, thicker or thinner about its axis, between the jaw and the shoulders
     const r = Math.hypot(out.x, out.z - NECK.z);
     const neckness = smooth((out.y - NECK.bottom) / 0.25) * smooth((NECK.top - out.y) / 0.15) * smooth((NECK.reach - r) / NECK.fade);
@@ -329,6 +370,9 @@ export function buildDragonborn(asset: DragonbornAsset, p: Params, gusset = fals
   // (the scales take a paint of their own, not the human skin's: see paint.ts)
   part("scales", asset.skin.index, { shade: new THREE.BufferAttribute(asset.skin.shade, 1), tone: new THREE.BufferAttribute(asset.skin.tone, 1), belly: new THREE.BufferAttribute(asset.skin.belly, 1) });
   part("horn", asset.horn.index, { along: new THREE.BufferAttribute(asset.along, 1) });
+  // (the teeth take the teeth's paint, the inside of the mouth the mouth's: see parts.ts)
+  part("dragonTeeth", asset.teeth.index, {});
+  part("dragonMouth", asset.mouth.index, {});
   asset.eyes.forEach((eye, e) => {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(shape.eyes[e].positions, 3));

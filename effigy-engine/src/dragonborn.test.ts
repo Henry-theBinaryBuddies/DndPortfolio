@@ -40,6 +40,8 @@ describe("the Dragonborn family", () => {
     expect([...names]).toEqual([
       ["scales", 1],
       ["horn", 1],
+      ["dragonTeeth", 1],
+      ["dragonMouth", 1],
       ["dragonEye", 2],
     ]);
     // the lowest point is the top of the base, and the base and framing measurements are there
@@ -97,9 +99,9 @@ describe("the Dragonborn family", () => {
 
   it("prints its scales, horns and eyes as one part holding each vertex once", () => {
     const head = collectBust(dragonborn(), assets).parts.find((part) => part.name === "head")!;
-    // (the vertices the scales' and horns' triangles use, once, and the eyes' own: no copies, and none unused)
+    // (the vertices the scales', horns', teeth's and mouth's triangles use, once, and the eyes' own: no copies, and none unused)
     const asset = assets.dragonborn!;
-    const used = new Set([...asset.skin.index, ...asset.horn.index]).size;
+    const used = new Set([...asset.skin.index, ...asset.horn.index, ...asset.teeth.index, ...asset.mouth.index]).size;
     const eyes = asset.eyes.reduce((n, e) => n + e.vertices.length, 0);
     expect(head.positions.length / 3).toBe(used + eyes);
     expect(used).toBeLessThanOrEqual(manifest.vertices);
@@ -192,11 +194,16 @@ describe("the Dragonborn family", () => {
     for (const d of controls) for (const value of [d.min, d.max]) expect(folded(shapeDragonborn(asset, { ...dragonborn(), [d.key]: value }).positions), `${d.key} ${value}`).toBe(0);
     const all = (value: number) => Object.fromEntries(controls.filter((d) => d.key !== "torso").map((d) => [d.key, value]));
     for (const value of [0, 1]) expect(folded(shapeDragonborn(asset, { ...dragonborn(), ...all(value), torso: 0.6 }).positions), `all ${value}`).toBe(0);
+    // The jaw turns its vertices by different amounts, so it is held to that all the way open, not only at its ends: at
+    // every tenth, alone and with the neck and torso at their extremes, and with the snarl or the smile working the lips
+    for (let open = 0.1; open < 1.05; open += 0.1)
+      for (const [neck, torso, snarl, smile] of [[0.5, 1, 0, 0], [0, 0.6, 0, 0], [1, 1.1, 0, 0], [0.5, 1, 1, 0], [0.5, 1, 0, 1]])
+        expect(folded(shapeDragonborn(asset, { ...dragonborn(), jawOpen: open, dragonNeck: neck, torso, snarl, smile }).positions), `jaw open ${open.toFixed(1)}, neck ${neck}, torso ${torso}, snarl ${snarl}, smile ${smile}`).toBe(0);
   }, 300000);
 
   it("prints as one closed solid at the ends of its controls too", async () => {
     for (const value of [0, 1]) {
-      const p = { ...dragonborn(), dragonMuzzle: value, dragonSnout: value, dragonJaw: value, dragonBrow: value, dragonNeck: value, dragonHorns: value, dragonSweep: value, dragonSpines: value };
+      const p = { ...dragonborn(), dragonMuzzle: value, dragonSnout: value, dragonJaw: value, dragonBrow: value, dragonNeck: value, dragonHorns: value, dragonSweep: value, dragonSpines: value, jawOpen: value, snarl: value, scowl: value, smile: value };
       const { parts, flatCut } = collectBust(p, assets);
       const { report } = await mergeParts(parts, undefined, undefined, flatCut);
       expect(report.components, `all at ${value}`).toHaveLength(1);

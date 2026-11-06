@@ -69,9 +69,10 @@ def log(*words):
 
 
 def smin(a, b, k):
-    """A smooth union: the two surfaces blend over about k."""
-    if k <= 0:
+    """A smooth union: the two surfaces blend over about k (a number, or one for each point)."""
+    if np.ndim(k) == 0 and k <= 0:
         return np.minimum(a, b)
+    k = np.maximum(k, 1e-9)
     h = np.maximum(k - np.abs(a - b), 0) / k
     return np.minimum(a, b) - h * h * k * 0.25
 
@@ -213,8 +214,10 @@ def head(P):
     d = smin(d, ellipsoid(P, (0, -0.02, -0.1), (0.058, 0.07, 0.05), turn(x=-0.5)), 0.03)
     d = smin(d, ellipsoid(P, (0, 0.04, -0.012), (0.062, 0.036, 0.056)), 0.03)
     d = smin(d, loft(P, MUZZLE["z"], MUZZLE["half_width"], MUZZLE["top"], MUZZLE["bottom"], MUZZLE["corner"], 0.03, 0.02), 0.03)
-    # The lower jaw, narrower than the muzzle so the upper lip overhangs it
-    d = smin(d, loft(P, JAW["z"], JAW["half_width"], JAW["top"], JAW["bottom"], JAW["corner"], 0.03, 0.02), 0.004)
+    # The lower jaw, narrower than the muzzle so the upper lip overhangs it: a crisp seam along the lips, blending away
+    # behind the corner of the mouth (kept crisp there, the seam ran on back along the jowl as a line)
+    seam = 0.004 + (0.03 - 0.004) * (1 - smoothstep(MOUTH_CORNER - 0.04, MOUTH_CORNER, P[:, 2]))
+    d = smin(d, loft(P, JAW["z"], JAW["half_width"], JAW["top"], JAW["bottom"], JAW["corner"], 0.03, 0.02), seam)
     # Cheek plates and the jaw muscles behind them
     d = smin(d, ellipsoid(Q, (0.068, -0.052, -0.045), (0.028, 0.04, 0.055)), 0.024)
     d = smin(d, segment(Q, (0.046, -0.024, 0.03), (0.068, -0.03, -0.05), 0.009, 0.013), 0.02)
@@ -228,14 +231,7 @@ def head(P):
     # Sockets cut under the brow, then the eyeballs set deep in them
     d = smax(d, -ellipsoid(Q, EYE, (0.021, 0.0115, 0.018), EYE_TURN), 0.004)
     d = smin(d, np.linalg.norm(Q - (EYE - EYE_TURN[:, 2] * 0.0085), axis=1) - EYE_RADIUS, 0.002)
-    # The mouth line: a shallow groove along the lip, cut only into the outer few millimetres
-    lip = np.interp(P[:, 2], LIP_Z, LIP_Y)
-    # (narrowing and shallowing to nothing toward the corner of the mouth, so it fades out there: cut at full width to
-    # its end, it ran on across the jowl as a slit)
-    corner = smoothstep(LIP_Z[0], LIP_Z[0] + 0.04, P[:, 2])
-    groove = np.maximum(np.abs(P[:, 1] - lip) - 0.0016 * corner, -d - 0.0035 * corner)
-    groove = np.maximum(groove, np.maximum(P[:, 2] - 0.15, LIP_Z[0] - P[:, 2]))
-    return smax(d, -groove, 0.0015)
+    return d
 
 
 def outgrowths(P):
@@ -264,7 +260,96 @@ CREST = [
 ]
 # The mouth line, along the muzzle (z, y), rising a little at the back to the corner of the mouth
 LIP_Z = [-0.062, -0.03, 0.045, 0.117, 0.15]
+# Where the mouth ends, under the eye (the line along the lip fades out over 2 cm either side of it; run on to the
+# back of the jaw, it read as a slit across the jowl)
+MOUTH_CORNER = 0.0
 LIP_Y = [-0.06, -0.068, -0.07, -0.068, -0.068]
+
+
+# The hollow of the mouth, behind the lips: sections along z (half width, and how far above and below the line of the
+# lips it reaches), from the corner of the mouth to just behind the tip of the muzzle
+# (narrower and shallower toward the front, where the lower jaw is slight: there a wider hollow left its wall too thin)
+MOUTH = dict(z=[MOUTH_CORNER, 0.03, 0.07, 0.112], half_width=[0.036, 0.029, 0.018, 0.012], above=[0.006, 0.014, 0.013, 0.008], below=[0.003, 0.0042, 0.0032, 0.0025])
+SLIT = 0.0018  # half the gap between the lips, shut (wide enough for the 2 mm grid to keep the lips apart)
+# The teeth: along each side of the mouth, upper ones hanging from the palate's edge and lower ones (set between them)
+# standing from the floor's; and a fang either side, hanging from the upper lip outside the narrower lower jaw, so it
+# shows over the lower lip with the mouth shut. (root, tip, root radius)
+# (each: z, its root's and tip's height above the lips, how far out from the hollow's side, root radius)
+TEETH_UPPER = [(z, 0.0085, 0.0005, 0.003, 0.0032) for z in np.linspace(0.012, 0.1, 7)]
+TEETH_LOWER = [(z, -0.0055, -0.001, -0.0015, 0.0026) for z in np.linspace(0.019, 0.093, 6)]
+FANG = ((0.033, 0.004, 0.08), (0.034, -0.016, 0.084), 0.0052)
+TONGUE = ((0, -0.0035, 0.045), (0.016, 0.0025, 0.042))
+
+
+def lip_at(z):
+    return np.interp(z, LIP_Z, LIP_Y)
+
+
+def mouth_opening(P):
+    """The slit between the lips and the hollow behind them, as one shape to cut away (head frame)."""
+    x, y, z = np.abs(P[:, 0]), P[:, 1], P[:, 2]
+    lip = lip_at(z)
+    corner = smoothstep(MOUTH_CORNER - 0.02, MOUTH_CORNER + 0.02, z)
+    # (the slit narrows to nothing toward the corner of the mouth, so it fades out there)
+    slit = np.maximum(np.abs(y - lip) - SLIT * corner, np.maximum(z - 0.16, MOUTH_CORNER - 0.02 - z))
+    hw = np.interp(z, MOUTH["z"], MOUTH["half_width"])
+    top = lip + np.interp(z, MOUTH["z"], MOUTH["above"])
+    bottom = lip - np.interp(z, MOUTH["z"], MOUTH["below"])
+    qx = x - hw
+    qy = np.maximum(bottom - y, y - top)
+    hollow = np.hypot(np.maximum(qx, 0), np.maximum(qy, 0)) + np.minimum(np.maximum(qx, qy), 0) - 0.002
+    hollow = smax(hollow, np.maximum(MOUTH["z"][0] - z, z - MOUTH["z"][-1]), 0.006)
+    return np.minimum(slit, hollow)
+
+
+def tooth_points(z, rise, sink, inset):
+    """Where a tooth stands: at the side of the hollow (inset from it), at this height relative to the lips."""
+    hw = np.interp(z, MOUTH["z"], MOUTH["half_width"]) + inset
+    lip = lip_at(z)
+    return hw, lip + rise, lip + sink
+
+
+def mouth_contents(P):
+    """The teeth, the fangs and the tongue (head frame, both sides)."""
+    Q = mirrored(P)
+    d = np.full(len(P), 1.0)
+    for z, rise, sink, inset, radius in TEETH_UPPER:
+        x, root, tip = tooth_points(z, rise, sink, inset)
+        d = np.minimum(d, bounded(Q, (x - 0.01, tip - 0.01, z - 0.01), (x + 0.01, root + 0.01, z + 0.01), lambda R: segment(R, (x, root, z), (x, tip, z), radius, 0.0007)))
+    for z, rise, sink, inset, radius in TEETH_LOWER:
+        x, root, tip = tooth_points(z, rise, sink, inset)
+        d = np.minimum(d, bounded(Q, (x - 0.01, root - 0.01, z - 0.01), (x + 0.01, tip + 0.01, z + 0.01), lambda R: segment(R, (x, root, z), (x, tip, z), radius, 0.0006)))
+    (rx, ry, rz), (tx, ty, tz), radius = FANG
+    lip = lip_at(rz)
+    d = np.minimum(d, bounded(Q, (rx - 0.012, lip + ty - 0.01, rz - 0.012), (rx + 0.012, lip + ry + 0.01, tz + 0.012), lambda R: segment(R, (rx, lip + ry, rz), (tx, lip + ty, tz), radius, 0.0012)))
+    (cx, cy, cz), r = TONGUE
+    return np.minimum(d, ellipsoid(P, (cx, lip_at(cz) + cy, cz), r))
+
+
+def mouth_part(P):
+    """Which of the mouth's parts each point (head frame) is on: 1 an upper tooth or fang, 2 a lower tooth, 3 the
+    tongue, 4 the inside of the mouth (palate, floor, gums), 0 none; for the paint and for the jaw's weights."""
+    Q = mirrored(P)
+    part = np.zeros(len(P), np.uint8)
+    near = lambda dist: dist < 0.0012
+    part[near(mouth_opening(P) + 0.0) & (np.abs(P[:, 0]) < 0.05)] = 4
+    up = np.full(len(P), 1.0)
+    for z, rise, sink, inset, radius in TEETH_UPPER:
+        x, root, tip = tooth_points(z, rise, sink, inset)
+        up = np.minimum(up, segment(Q, (x, root, z), (x, tip, z), radius, 0.0007))
+    (rx, ry, rz), (tx, ty, tz), radius = FANG
+    lip = lip_at(rz)
+    up = np.minimum(up, segment(Q, (rx, lip + ry, rz), (tx, lip + ty, tz), radius, 0.0012))
+    down = np.full(len(P), 1.0)
+    for z, rise, sink, inset, radius in TEETH_LOWER:
+        x, root, tip = tooth_points(z, rise, sink, inset)
+        down = np.minimum(down, segment(Q, (x, root, z), (x, tip, z), radius, 0.0006))
+    (cx, cy, cz), r = TONGUE
+    tongue = ellipsoid(P, (cx, lip_at(cz) + cy, cz), r)
+    part[near(tongue)] = 3
+    part[near(down)] = 2
+    part[near(up)] = 1
+    return part
 
 
 def spine(P, root, tip, radius, flat):
@@ -283,6 +368,11 @@ def neck(P):
 def dragon(P):
     H = (P - HEAD_AT) / HEAD_SCALE
     d = smin(head(H) * HEAD_SCALE, neck(P), 0.035)
+    # The mouth: a slit between the lips, through to a hollow behind them, so the lower jaw can open (see
+    # jaw_weights), with the teeth, the fangs and the tongue in it. (Cut after the neck is joined: the throat reaches
+    # up into the back of the mouth, and joined after it would fill it.)
+    d = smax(d, -mouth_opening(H) * HEAD_SCALE, 0.0012 * HEAD_SCALE)
+    d = smin(d, mouth_contents(H) * HEAD_SCALE, 0.0015 * HEAD_SCALE)
     return smin(d, outgrowths(H) * HEAD_SCALE, 0.01)
 
 
@@ -708,7 +798,9 @@ def scales(obj):
     # Nor inside the mouth line, where the two lips' scales would press into each other
     Hf = head_frame(P)
     lip = np.interp(Hf[:, 2], LIP_Z, LIP_Y)
-    cut *= 1 - smoothstep(0.009, 0.004, np.abs(Hf[:, 1] - lip)) * (Hf[:, 2] > LIP_Z[0] - 0.01)
+    cut *= 1 - smoothstep(0.009, 0.004, np.abs(Hf[:, 1] - lip)) * smoothstep(MOUTH_CORNER - 0.03, MOUTH_CORNER - 0.01, Hf[:, 2])
+    # Nor inside the mouth, nor on the teeth and tongue
+    cut *= smoothstep(0.002, 0.004, mouth_opening(Hf)) * (mouth_part(Hf) == 0)
     lift = (skin * (1 - on_horn) * eye + ridge + pressed) * cut
     P = P + N * lift[:, None]
     co = np.stack([P[:, 0], -P[:, 2], P[:, 1]], 1)
@@ -831,13 +923,19 @@ def export_stl(obj, path):
 # float32 shade per vertex (how far it lies in a hollow, -1..1: the grooves between scales), float32 along per
 # vertex (0 at the root of a horn or spine, 1 at its tip), uint8 part per vertex (0 scales, 1 horn, 2 cheek spine,
 # 3 crest, 4 eye: what the shape controls move), uint8 tone and uint8 belly per vertex (0..255: each scale's own
-# shade, and how pale the underside is, for the paint), uint32 a,b,c per triangle, and a uint8 region per triangle
-# (0 scales, 1 horn, spine or crest, 2 eye: what the paint colours).
+# shade, and how pale the underside is, for the paint), uint8 jaw per vertex (0..255: how far it turns with the
+# lower jaw, see jaw_weights), uint32 a,b,c per triangle, and a uint8 region per triangle (0 scales, 1 horn, spine or
+# crest, 2 eye, 3 teeth, 4 the inside of the mouth: what the paint colours).
 # dragonborn.json: what the app needs to know about it (see src/dragonborn.ts).
 
 APP_RATIO = 0.2
 APP_UNITS = 5  # the app's head units are metres x 5 with the same origin and axes (see src/headMesh.ts)
-MODEL_VERSION = 3
+MODEL_VERSION = 4
+# Where the lower jaw turns (head frame: under the ear, at the back of the jaw, at the height of the lips), and how far
+JAW_HINGE = np.array([0.0, -0.066, -0.06])
+JAW_MAX = 0.28  # radians (opened farther, with a smile, the skin at the very corners of the mouth folded)
+JAW_CORNER = (0.018, 0.009, 0.007)  # how far round each corner of the mouth nothing is held on the skin, nothing on the
+# lining, and the weights are averaged over space (see jaw_weights)
 
 
 def outgrowth_regions(P):
@@ -883,6 +981,104 @@ def outgrowth_regions(P):
     region[eye] = 2
     part[eye] = 4
     return region, part, along
+
+
+def harmonic(fixed, value, edges, passes=3000):
+    """Each free vertex the mean of its neighbours, the fixed ones held at their values: solved outright (by conjugate
+    gradients), as passes of averaging never quite were across a region as wide as the throat."""
+    a, b = edges[:, 0], edges[:, 1]
+    n = len(fixed)
+    degree = np.bincount(a, minlength=n) + np.bincount(b, minlength=n)
+
+    def laplacian(v):
+        return degree * v - np.bincount(a, weights=v[b], minlength=n) - np.bincount(b, weights=v[a], minlength=n)
+
+    held = np.where(fixed, value, 0.0)
+    r = -laplacian(held)
+    r[fixed] = 0
+    x = np.zeros(n)
+    p = r.copy()
+    rr = r @ r
+    for _ in range(passes):
+        q = laplacian(p)
+        q[fixed] = 0
+        step = rr / (p @ q)
+        x += step * p
+        r -= step * q
+        rr, last = r @ r, rr
+        if rr < 1e-10 * n:
+            break
+        p = r + rr / last * p
+    return np.where(fixed, value, x)
+
+
+def space_average(H, w, cell=0.003, reach=2, passes=3):
+    """w averaged over the space round each point (head frame), not over the surface: splatted into a grid, blurred (three
+    box blurs, near enough a Gaussian of 7 mm) and read back. Over the surface, the weights changed faster down into
+    each groove between the scales and up out of it than over the space it crosses, and the grooves' walls folded."""
+    low = H.min(0) - (reach * passes + 2) * cell
+    f = (H - low) / cell
+    shape = tuple(int(s) + reach * passes + 4 for s in f.max(0))
+    i0 = np.floor(f).astype(int)
+    t = f - i0
+    corners = []
+    for dx in (0, 1):
+        for dy in (0, 1):
+            for dz in (0, 1):
+                k = (t[:, 0] if dx else 1 - t[:, 0]) * (t[:, 1] if dy else 1 - t[:, 1]) * (t[:, 2] if dz else 1 - t[:, 2])
+                corners.append(((i0[:, 0] + dx, i0[:, 1] + dy, i0[:, 2] + dz), k))
+    total, weight = np.zeros(shape), np.zeros(shape)
+    for at, k in corners:
+        np.add.at(total, at, k * w)
+        np.add.at(weight, at, k)
+
+    def blur(G, axis):
+        c = np.cumsum(np.pad(G, [(reach + 1, reach) if i == axis else (0, 0) for i in range(3)]), axis=axis)
+        size = c.shape[axis]
+        return np.take(c, np.arange(2 * reach + 1, size), axis=axis) - np.take(c, np.arange(0, size - 2 * reach - 1), axis=axis)
+
+    for _ in range(passes):
+        for axis in range(3):
+            total, weight = blur(total, axis), blur(weight, axis)
+    out, norm = np.zeros(len(H)), np.zeros(len(H))
+    for at, k in corners:
+        out += k * total[at]
+        norm += k * weight[at]
+    return out / np.maximum(norm, 1e-12)
+
+
+def jaw_weights(P, mouth, edges):
+    """How far each vertex (chest frame) turns with the lower jaw, 0..1: all of the way on the lower jaw, its teeth and
+    the tongue; none on the upper jaw, its teeth and fangs, the cheeks above the mouth, the back of the head and the
+    neck; and in between (round the corner of the mouth, under the jaw, round the hinge), smooth: over the surface
+    near the lips (the gap between them must keep the two apart), over space everywhere else."""
+    H = head_frame(P)
+    x, y, z = H[:, 0], H[:, 1], H[:, 2]
+    lip = lip_at(z)
+    jaw_bottom = np.interp(z, JAW["z"], JAW["bottom"])
+    # (the jaw's own underside is left to the smoothing, and the neck is held only well below it: held close under the
+    # jaw, the throat between was squeezed as the jaw swung open, and folded)
+    # (but the chin, at the front, is all jaw)
+    under = 0.008 + (-0.012 - 0.008) * smoothstep(-0.03, 0.03, z)
+    lower = (y < lip - 0.5 * SLIT) & (z > MOUTH_CORNER + 0.005) & (y > jaw_bottom + under)
+    lower |= (mouth == 2) | (mouth == 3)
+    # (the fangs hang below the line of the lips, but belong to the upper jaw: held still, they would otherwise tear)
+    lower &= mouth != 1
+    upper = ((y > lip + 0.5 * SLIT) & (z > MOUTH_CORNER - 0.03)) | (y > lip + 0.012) | (mouth == 1) | (z < JAW_HINGE[2] - 0.02) | (y < -0.26)
+    # (nothing held right round the corner of the mouth, on the skin outside: there the held lips met, still and
+    # turning, a millimetre apart, and the skin between folded as the jaw glided forward)
+    # (and right at the corner, where the lips close, not on the lining inside either)
+    from_corner = np.hypot(z - MOUTH_CORNER, y - lip)
+    corner = ((from_corner < JAW_CORNER[0]) & (mouth == 0)) | ((from_corner < JAW_CORNER[1]) & (mouth == 4))
+    lower &= ~corner
+    upper &= ~corner
+    w = harmonic(lower | upper, lower * 1.0, edges)
+    near_lips = 1 - smoothstep(0.008, 0.02, mouth_opening(H))
+    w = np.where(mouth == 0, lerp(space_average(H, w), w, near_lips), w)
+    # (where the lips close at the corner, the weights still rose from none to a third within a millimetre, over the
+    # surface; averaged over space there, finely, as there is no gap between the lips to keep)
+    at_corner = (1 - smoothstep(0.003, JAW_CORNER[2], from_corner)) * ((mouth == 0) | (mouth == 4))
+    return lerp(w, space_average(H, w, cell=0.002), at_corner)
 
 
 def to_units(point, side=1):
@@ -933,10 +1129,14 @@ def export_app(obj, out_dir):
     shade = np.clip(hollow / np.percentile(np.abs(hollow), 98), -1, 1)
 
     region, part, along = outgrowth_regions(P)
+    mouth = mouth_part(head_frame(P))
+    region[(mouth == 1) | (mouth == 2)] = 3
+    region[(mouth == 3) | (mouth == 4)] = 4
+    jaw = jaw_weights(P, mouth, edges)
     # A triangle is in a region when at least two of its corners are
     votes = region[tris]
     tri_region = np.zeros(len(tris), np.uint8)
-    for r in (1, 2):
+    for r in (1, 2, 3, 4):
         tri_region[(votes == r).sum(1) >= 2] = r
 
     positions = (P * APP_UNITS).astype("<f4")
@@ -948,6 +1148,7 @@ def export_app(obj, out_dir):
         handle.write(part.tobytes())
         handle.write(np.round(np.clip(paint[:, 0], 0, 1) * 255).astype(np.uint8).tobytes())
         handle.write(np.round(np.clip(paint[:, 1], 0, 1) * 255).astype(np.uint8).tobytes())
+        handle.write(np.round(np.clip(jaw, 0, 1) * 255).astype(np.uint8).tobytes())
         handle.write(tris.astype("<u4").tobytes())
         handle.write(tri_region.tobytes())
     centre = EYE - EYE_TURN[:, 2] * 0.0085
@@ -966,6 +1167,8 @@ def export_app(obj, out_dir):
         "eyes": eyes,
         # the lowest point of the lower jaw, for framing the face
         "chin": round(float(HEAD_AT[1] + HEAD_SCALE * min(JAW["bottom"])) * APP_UNITS, 5),
+        # Where the lower jaw turns, in head units, and how far it may (radians)
+        "jaw": {"hinge": to_units(JAW_HINGE).round(5).tolist(), "max": JAW_MAX},
         # The head's own frame, which the shape controls work in: head = (point / units - headAt) / headScale
         "frame": {"headAt": (HEAD_AT * APP_UNITS).round(5).tolist(), "headScale": HEAD_SCALE, "units": APP_UNITS},
         # Where each horn, cheek spine and crest spine starts and which way it grows (in head units), for scaling and
@@ -980,7 +1183,7 @@ def export_app(obj, out_dir):
     with open(os.path.join(out_dir, "dragonborn.json"), "w") as handle:
         json.dump(manifest, handle, indent=2)
         handle.write("\n")
-    log("app model: %d vertices, %d triangles (%d horn, %d eye)" % (n, len(tris), (tri_region == 1).sum(), (tri_region == 2).sum()))
+    log("app model: %d vertices, %d triangles (%d horn, %d eye, %d teeth, %d mouth), %d turning with the jaw" % (n, len(tris), (tri_region == 1).sum(), (tri_region == 2).sum(), (tri_region == 3).sum(), (tri_region == 4).sum(), (jaw > 0.5).sum()))
 
 
 def main():

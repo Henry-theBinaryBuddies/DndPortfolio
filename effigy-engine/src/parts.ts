@@ -28,6 +28,8 @@ const PARTS: Record<string, PartInfo> = {
   horn: { material: "horn", label: "the horns", role: "outgrowth" },
   tusk: { material: "teeth", label: "the tusks", role: "outgrowth" },
   teeth: { material: "teeth", label: "the teeth", role: "feature" },
+  dragonTeeth: { material: "teeth", label: "the teeth", role: "feature" },
+  dragonMouth: { material: "mouth", label: "the mouth", role: "feature" },
   mouthFill: { material: "mouth", label: "the mouth", role: "feature" },
   brows: { material: "hair", label: "the brows", role: "feature" },
   hair: { material: "hair", label: "the hair", role: "hair" },

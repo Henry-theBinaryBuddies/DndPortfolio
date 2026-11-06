@@ -113,10 +113,11 @@ export const NUMERIC_DEFS: NumericDef[] = [
   // Expressions (0 is the face at rest): the jaw turns about its hinge and parts the lips; a snarl lifts the
   // upper lip and wrinkles the nose; a scowl draws the brows down and together; a smile draws the corners of
   // the mouth up and back
-  def("jawOpen", "Jaw open", "Expression", 0),
-  def("snarl", "Snarl", "Expression", 0),
-  def("scowl", "Scowl", "Expression", 0),
-  def("smile", "Smile", "Expression", 0),
+  // (the expressions are a Dragonborn's too: see dragonborn.ts)
+  def("jawOpen", "Jaw open", "Expression", 0, 0, 1, ["humanoid", "dragonborn"]),
+  def("snarl", "Snarl", "Expression", 0, 0, 1, ["humanoid", "dragonborn"]),
+  def("scowl", "Scowl", "Expression", 0, 0, 1, ["humanoid", "dragonborn"]),
+  def("smile", "Smile", "Expression", 0, 0, 1, ["humanoid", "dragonborn"]),
   def("horns", "Horn size", "Fantasy", 0.5),
   def("tusks", "Tusk size", "Fantasy", 0.5),
   dragon("dragonMuzzle", "Muzzle length", "Dragonborn"),
