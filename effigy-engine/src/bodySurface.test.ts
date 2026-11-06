@@ -4,7 +4,7 @@ import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets"
 import { bodyKey, bodySurface, COLLAR_POINTS, type BodySurface } from "./bodySurface";
 import { buildBust } from "./builder";
 import { parseDragonborn, type DragonbornManifest } from "./dragonborn";
-import { applyRace, defaultParams, type Params } from "./params";
+import { applyRace, BODIES, defaultParams, RACES, type Params } from "./params";
 
 let assets: Assets;
 beforeAll(() => {
@@ -53,6 +53,23 @@ describe("the body surface clothing is fitted to", () => {
       console.log(`${label}: neck base ${neckBase.toFixed(3)}, sternum z ${sternum.position.z.toFixed(3)}, nape z ${nape.position.z.toFixed(3)}, shoulders x ${shoulders.right.position.x.toFixed(3)} y ${shoulders.right.position.y.toFixed(3)}`);
     }, 120000);
   }
+
+  it("keeps each shoulder outside the collar, on every race, build and torso, and on the Dragonborn's neck too", () => {
+    // (audit 20: slim at 60% torso, an elf's, a halfling's and a gnome's shoulder anchors were inside their collars)
+    const all: Params[] = [];
+    for (const race of RACES) for (const body of BODIES) for (const torso of [0.6, 1.1]) all.push({ ...applyRace(defaultParams(), race), body, torso });
+    for (const torso of [0.6, 1.1]) for (const dragonNeck of [0, 1]) all.push({ ...defaultParams(), family: "dragonborn", torso, dragonNeck });
+    for (const p of all) {
+      const label = `${p.family === "dragonborn" ? `Dragonborn neck ${p.dragonNeck}` : `${p.race} ${p.body}`} torso ${p.torso}`;
+      const { neckBase, shoulders, collar } = bodySurface(p, assets).anchors;
+      const collarHalf = Math.max(...collar.map((point) => Math.abs(point.x)));
+      for (const [side, sign] of [["right", 1], ["left", -1]] as const) {
+        expect(sign * shoulders[side].position.x, `${label}: ${side} shoulder outside the collar`).toBeGreaterThan(collarHalf);
+        expect(shoulders[side].normal.y, `${label}: ${side} shoulder faces up`).toBeGreaterThan(0.2);
+        expect(shoulders[side].position.y, `${label}: ${side} shoulder below the neck's base`).toBeLessThan(neckBase + 0.1);
+      }
+    }
+  }, 300000);
 
   it("finds the nearest point of the surface and its outward normal, in its own frame", () => {
     const s = bodySurface(applyRace(defaultParams(), "human"), assets);

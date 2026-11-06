@@ -118,23 +118,19 @@ function surface(family: Family, key: string, positions: Float32Array, normals: 
   const neckBase = top - (base + 0.5) * STEP;
 
   // The front and back of the body at the neck's base, near the middle
-  const near = (pick: (x: number, y: number, z: number) => number) => {
+  const near = (what: string, pick: (x: number, y: number, z: number, up: number) => number) => {
     let best = -Infinity;
     let at = 0;
     for (let i = 0; i < positions.length; i += 3) {
-      const score = pick(positions[i], positions[i + 1], positions[i + 2]);
+      const score = pick(positions[i], positions[i + 1], positions[i + 2], normals[i + 1]);
       if (score > best) [best, at] = [score, i];
     }
+    if (best === -Infinity) throw new Error(`no point of the ${family}'s body is ${what}`);
     return { position: new THREE.Vector3().fromArray(positions, at), normal: new THREE.Vector3().fromArray(normals, at).normalize() };
   };
   const band = (x: number, y: number) => Math.abs(x) < 0.06 && Math.abs(y - neckBase) < 0.04;
-  const sternum = near((x, y, z) => (band(x, y) ? z : -Infinity));
-  const nape = near((x, y, z) => (band(x, y) ? -z : -Infinity));
-  // The top of each shoulder: the highest point three quarters of the way out, below the neck's base
-  let widest = 0;
-  for (let r = base; r < rows && top - r * STEP > cutY; r++) widest = Math.max(widest, half[r]);
-  const shoulder = (side: number) => near((x, y) => (side * x > 0.7 * widest && side * x < 0.8 * widest && y < neckBase + 0.1 ? y : -Infinity));
-
+  const sternum = near("at the front of the neck's base", (x, y, z) => (band(x, y) ? z : -Infinity));
+  const nape = near("at the back of the neck's base", (x, y, z) => (band(x, y) ? -z : -Infinity));
   // A ring round the neck at its base: outward from its axis in each direction, to where the ray leaves the body
   const axis = new THREE.Vector3(0, neckBase, (sternum.position.z + nape.position.z) / 2);
   const ray = new THREE.Ray();
@@ -145,7 +141,24 @@ function surface(family: Family, key: string, positions: Float32Array, normals: 
     const hits = bvh.raycast(ray, THREE.DoubleSide);
     // (the nearest crossing outward from the axis: the neck's own surface, not a shoulder or horn beyond it)
     const first = hits.reduce<THREE.Intersection | null>((m, h) => (!m || h.distance < m.distance ? h : m), null);
-    collar.push(first ? first.point.clone() : axis.clone());
+    if (!first) throw new Error(`the ${family}'s neck has no surface round its base at ${Math.round((angle * 180) / Math.PI)} degrees`);
+    collar.push(first.point.clone());
   }
+
+  // The top of each shoulder: the highest point that faces up, between the collar and the widest of the body (half to
+  // three quarters of the way out from the one to the other), below the neck's base, over the middle of the body's depth
+  // (the top of a shoulder is nearly level, and taken as the highest point of all, a slope behind it, or a little relief,
+  // could win). Measured from the collar, not from the middle, so a garment's shoulder is always outside its collar: on a
+  // slim body, three quarters of its width was inside the ring round the neck (audit 20)
+  let widest = 0;
+  for (let r = base; r < rows && top - r * STEP > cutY; r++) widest = Math.max(widest, half[r]);
+  const collarHalf = Math.max(...collar.map((point) => Math.abs(point.x)));
+  if (widest <= collarHalf) throw new Error(`the ${family}'s body is no wider than its neck`);
+  const [inner, outer] = [collarHalf + 0.5 * (widest - collarHalf), collarHalf + 0.75 * (widest - collarHalf)];
+  const middle = (sternum.position.z + nape.position.z) / 2;
+  const depth = (sternum.position.z - nape.position.z) / 2;
+  const shoulder = (side: number) =>
+    near(`the top of its ${side > 0 ? "right" : "left"} shoulder`, (x, y, z, up) => (side * x > inner && side * x < outer && y < neckBase + 0.1 && Math.abs(z - middle) < 0.6 * depth && up > 0.5 ? y : -Infinity));
+
   return { family, key, positions, normals, indices, stand, baseY, cut, anchors: { neckBase, sternum, nape, shoulders: { right: shoulder(1), left: shoulder(-1) }, collar }, closest };
 }

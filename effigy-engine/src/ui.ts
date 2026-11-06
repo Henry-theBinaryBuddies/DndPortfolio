@@ -40,7 +40,7 @@ export function heading(title: string, reset?: { title: string; onClick: () => v
 
 // Builds the control panel and calls onChange with a fresh Params copy on every edit: the sculpt's controls into
 // `shape`, the print's into `output`. `set` shows settings chosen elsewhere (undo, a character file) and rebuilds.
-export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>, onPreview?: (p: Params, say: (text: string) => void, gusset: boolean, tabletop: boolean) => Promise<void>): { set: (p: Params) => void } {
+export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Params, onChange: (p: Params) => void, onExport?: (p: Params, say: (text: string) => void, partial: boolean, gusset: boolean, tabletop: boolean) => Promise<void>, onPreview?: (p: Params, say: (text: string) => void, gusset: boolean, tabletop: boolean, current: () => boolean) => Promise<void>): { set: (p: Params) => void } {
   let params = { ...initial };
   const sliders = new Map<NumericKey, { input: HTMLInputElement; out: HTMLElement; row: HTMLElement; def: NumericDef }>();
   const raceSelect = document.createElement("select");
@@ -295,7 +295,8 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
       const say = sayFor(at);
       let started: Promise<void>;
       try {
-        started = onPreview({ ...params }, say, gussetBox.checked, tabletopBox.checked);
+        // (`current`: whether the settings are still the ones it was asked for, so an outdated print is never shown)
+        started = onPreview({ ...params }, say, gussetBox.checked, tabletopBox.checked, () => at === generation);
       } catch (error) {
         started = Promise.reject(error);
       }

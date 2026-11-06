@@ -6,7 +6,7 @@ import { loadAssets, type Assets } from "./assets";
 import { characterName, defaultParams, type Params } from "./params";
 import { loadDragonborn } from "./dragonborn";
 import { exportStl, describe } from "./exportStl";
-import { prepareInBackground } from "./prepareClient";
+import { prepareInBackground, Superseded } from "./prepareClient";
 import { describePrint, disposePreview, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
 import { characterFile, History, readCharacter, type Character } from "./character";
@@ -408,11 +408,19 @@ const shapePanel = mountPanel(
     }
     say(describe(await exportStl(params, assets, say, partial, gusset, tabletop, prepared)));
   },
-  async (params, say, gusset, tabletop) => {
+  async (params, say, gusset, tabletop, current) => {
     if (!assets) throw new Error("the head model has not loaded");
     say(tabletop ? "Fitting the bust to the square" : "Collecting the parts");
-    // (in a worker, off the page: the fit's builds take seconds, and the view turns on meanwhile)
-    const prepared = await prepareInBackground(params, gusset, tabletop);
+    // (in a worker, off the page: the fit's builds take seconds, and the view turns on meanwhile; a newer preview
+    // stops an older one still being prepared, and one finished after the settings changed is not shown)
+    let prepared: Prepared;
+    try {
+      prepared = await prepareInBackground(params, gusset, tabletop, true);
+    } catch (error) {
+      if (error instanceof Superseded) return;
+      throw error;
+    }
+    if (!current()) return;
     leavePrint();
     const group = previewGroup(prepared);
     // (measured before it joins the turning pivot, so in its own frame: the board's square included)
