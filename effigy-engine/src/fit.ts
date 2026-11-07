@@ -3,7 +3,8 @@ import { printBounds } from "./bounds";
 import { collectBust } from "./export";
 import { partInfo } from "./parts";
 import type { Params } from "./params";
-import { TABLETOP } from "./print";
+import { finestRelief } from "./garments";
+import { MIN_FEATURE, MM, TABLETOP } from "./print";
 import type { Part } from "./printable";
 
 // Tabletop size: the whole bust, its hair and shoulders included, within the one inch square of a gaming board
@@ -98,5 +99,10 @@ export function collectTabletop(p: Params, assets: Assets, gusset = true): Table
   // (never hand back a file that does not fit the square it was asked to)
   if (fitted.reach > half * 1.002) throw new Error(`The bust still reaches ${fitted.reach.toFixed(1)} mm from the middle of its base, past the ${half} mm that fits a ${TABLETOP.base} mm base`);
   if (fitted.height < TABLETOP.bustHeight[0]) notes.push(`The bust is ${fitted.height.toFixed(0)} mm tall, under the ${TABLETOP.bustHeight[0]} mm wanted: ${fitted.limit} reach ${fitted.reach.toFixed(1)} mm from the middle of the base, which sets the size.`);
+  // (the clothes' relief is sized for the full-size print, and scaled down with the bust: said honestly where it comes out
+  // finer than prints, rather than made larger than the sculpt has it)
+  const finest = finestRelief(params);
+  if (finest && finest.height * printScale < MIN_FEATURE / MM)
+    notes.push(`At this size the finest relief of the clothes (${finest.what}) stands ${(finest.height * printScale).toFixed(2)} mm proud, under the ${(MIN_FEATURE / MM).toFixed(1)} mm that reliably prints: their shapes print, but that detail may be lost. The full-size print keeps it.`);
   return { parts: built.parts, flatCut: built.flatCut, scale: printScale, params, height: fitted.height, width: fitted.halfX * 2, depth: fitted.halfY * 2, base: TABLETOP.plinth, notes: [...notes, ...built.warnings] };
 }

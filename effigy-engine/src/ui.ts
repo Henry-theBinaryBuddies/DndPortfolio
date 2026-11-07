@@ -260,18 +260,18 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
     gussetLabel.append(gussetBox, " Throat gusset (no chin supports)");
     const tabletopLabel = document.createElement("label");
     tabletopLabel.className = "option";
-    tabletopLabel.title = "Fit the whole bust, hair and shoulders included, inside a one inch (25.4 mm) square on a 25 mm base, the bust as near 50 mm tall as that allows (the head and hair usually set it at 40-45 mm), on an 18 mm stand: about 60 mm tall in all. The torso is slimmed as far as it takes. Untick it for the full-size print, a 75-90 mm bust and about 120 mm tall in all. Preview print shows the result";
+    tabletopLabel.title = "Fit the whole bust, hair, shoulders, clothes and cloak included, inside a one inch (25.4 mm) square on a 25 mm base, the bust as near 50 mm tall as that allows, on an 18 mm stand. The torso is slimmed as far as it takes. Whatever is widest sets the size: a bare bust usually comes out 40-45 mm tall, armour or a cloak make it smaller (about 30 mm in armour and a cowl). Preview print shows the size it will be. Untick it for the full-size print, a 75-90 mm bust and about 120 mm tall in all";
     const tabletopBox = document.createElement("input");
     tabletopBox.type = "checkbox";
     tabletopBox.id = "export-tabletop";
     tabletopBox.checked = true;
-    tabletopLabel.append(tabletopBox, " Tabletop size (1 inch base, about 60 mm tall with its stand)");
+    tabletopLabel.append(tabletopBox, " Tabletop size (fits a 1 inch base; Preview print shows how tall)");
     const status = document.createElement("p");
     status.className = "status";
     status.id = "export-status";
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base: a bust about 40-45 mm tall (the torso is slimmed to fit) on an 18 mm stand, about 60 mm in all. Unticked it is the full size: a 75-90 mm bust, about 120 mm in all. Preview print shows it as it will print first. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
+    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base, on an 18 mm stand: the torso is slimmed to fit, and whatever is widest sets the size (a bare bust usually 40-45 mm tall, smaller in armour or a cloak; Preview print says how tall). Unticked it is the full size: a 75-90 mm bust, about 120 mm in all. Preview print shows it as it will print first. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
     // The print preview: the bust as the export will make it, in place of the sculpt, until the sculpt is edited
     const previewButton = document.createElement("button");
     previewButton.type = "button";

@@ -133,6 +133,20 @@ const fits = new Map<string, Fitted>();
 // Whether anything is worn
 export const dressedAtAll = (p: Params) => p.outfit !== "none" || p.cloak !== "none";
 
+// The finest relief of what is worn, in mm of the full-size print, and what it is: printed smaller (at tabletop size, see
+// fit.ts), it is scaled down with the bust, and may come out finer than a printer can raise (audit 21)
+export function finestRelief(p: Params): { what: string; height: number } | null {
+  const raised: [string, number][] = [];
+  if (p.outfit !== "none") raised.push(["the tunic's rolled collar", TUNIC.roll]);
+  if (p.outfit === "tunic" || p.outfit === "leather") raised.push(["the tunic's folds", TUNIC.fold]);
+  if (p.outfit === "leather") raised.push(["the seam round the jerkin", JERKIN.welt]);
+  if (p.outfit === "armour") raised.push(["the steps between the gorget's plates", GORGET.lame], ["the rolled edges of the plates", Math.min(CUIRASS.rim, PAULDRON.rim, GORGET.rim)], ["the steps between the pauldrons' plates", PAULDRON.step]);
+  if (p.cloak !== "none") raised.push(["the cloak's rolled hem", CLOAK.hem], ["the rims of the cloak's clasps", CLASP.rim]);
+  if (raised.length === 0) return null;
+  const [what, height] = raised.reduce((a, b) => (b[1] < a[1] ? b : a));
+  return { what, height };
+}
+
 // What an outfit's fit depends on, as a key: what is worn (and the beard, which lowers the collar), and the shape of the
 // body wherever any garment can reach, with a margin, and the anchors it is placed by. Not the settings: every slider
 // moves some of the body, and most move none of it under the clothes (a cheekbone, the nose, the brow), so the shape
@@ -275,15 +289,20 @@ export function fit(p: Params, body: BodySurface): Fitted {
   if (p.outfit === "armour") {
     // The breastplate: the chest and back, lower than the collar, with a round opening for each arm (the pauldrons
     // cover the top of it)
+    const plateTop = (x: number, z: number) => neckline(x, z) - 0.045 - 0.03 * front(x, z);
+    // (how far below the gorget's lower edge a point is: see below)
+    const covered = (x: number, y: number, z: number) => smooth((plateTop(x, z) - y - GORGET.drop + 0.045) / 0.04);
     const plate = grow(body, overTunic, {
       name: "cuirass",
-      edge: (x, y, z) => Math.max(y - (neckline(x, z) - 0.045 - 0.03 * front(x, z)), -armhole(x, y, z)),
+      edge: (x, y, z) => Math.max(y - plateTop(x, z), -armhole(x, y, z)),
       smoothing: CUIRASS.smoothing,
       ground: CUIRASS.ground,
       inset: 0.5 * TUNIC.thickness * MM,
       clearance: (_x, y) => CUIRASS.thickness * MM * tuck(y),
-      // (a ridge down the middle of the front, and a rolled edge all round)
-      relief: (x, y, z, depth) => (CUIRASS.ridge * Math.exp(-((x / 0.05) ** 2)) * smooth((z - axisZ) / 0.05) * smooth((depth - 0.02) / 0.04) + CUIRASS.rim * Math.exp(-(((depth - 0.045) / 0.025) ** 2))) * MM * tuck(y),
+      // (a ridge down the middle of the front, and a rolled edge all round; both begin below the gorget, which covers the
+      // top of it: rising under the gorget's lower edge, they notched it)
+      relief: (x, y, z, depth) =>
+        (CUIRASS.ridge * Math.exp(-((x / 0.05) ** 2)) * smooth((z - axisZ) / 0.05) * smooth((depth - 0.02) / 0.04) + CUIRASS.rim * Math.exp(-(((depth - 0.045) / 0.025) ** 2))) * MM * tuck(y) * covered(x, y, z),
     });
     garments.push(plate.garment);
     dressed = over(dressed, plate.dressed, overTunic);
@@ -705,7 +724,11 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
   }
 
   // Then its relief (a rolled collar, a ridge, the steps between plates) raised off that smooth outside
-  const smoothOut = vertexNormals(outer, triangles, count);
+  // (raised along the body's normals, evened out (see `out`), not the outside's own: at the edge, where the outside
+  // crinkled, they turned every way, and raised along them, its points were pushed apart, out of step with its inner
+  // side's, and the wall between them twisted. But a piece that hangs (the cloak) leaves the body below its widest, and
+  // there the body's normals point into it, not out of it: it is raised along its own)
+  const raise = piece.hang ? vertexNormals(outer, triangles, count) : out;
   // (evened out a little over the points round each: a rolled rim or the step between plates is no wider than a few of
   // the body's triangles, and read at each point alone, it rose and fell from one to the next, a scalloped edge)
   let relief = new Float32Array(count);
@@ -725,7 +748,7 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
   const inner = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) {
     for (let k = 0; k < 3; k++) {
-      outer[i * 3 + k] += smoothOut[i * 3 + k] * relief[i];
+      outer[i * 3 + k] += raise[i * 3 + k] * relief[i];
       inner[i * 3 + k] = within[i * 3 + k] - out[i * 3 + k] * piece.inset;
     }
     // (its outside never below half way to its inside: where its clearance thins to nothing at the flat cut, smoothed
