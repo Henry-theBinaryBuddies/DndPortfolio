@@ -27,7 +27,7 @@ export interface Paint {
   horns: string;
   teeth: string; // the teeth and tusks
   cloth: string; // the tunic
-  leather: string; // the jerkin
+  leather: string; // the jerkin and the spaulders
   cloak: string;
   metal: string; // the breastplate, gorget and pauldrons, and the cloak's clasps
   grime: number; // 0..1: dirt in the hollows, soot and wear

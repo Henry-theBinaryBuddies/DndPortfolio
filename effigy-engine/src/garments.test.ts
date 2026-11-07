@@ -42,7 +42,7 @@ describe("clothing", () => {
     for (const p of [human, dragonborn]) {
       expect(names(p("none"))).toEqual([]);
       expect(names(p("tunic"))).toEqual(["tunic"]);
-      expect(names(p("leather"))).toEqual(["tunic", "jerkin"]);
+      expect(names(p("leather"))).toEqual(["tunic", "jerkin", "spaulder", "spaulder"]);
       expect(names(p("armour"))).toEqual(["tunic", "cuirass", "gorget", "pauldron", "pauldron"]);
       expect(names(p("none", "cloak"))).toEqual(["cloak", "clasp", "clasp"]);
       expect(names(p("armour", "cowl"))).toEqual(["tunic", "cuirass", "gorget", "pauldron", "pauldron", "cloak", "clasp", "clasp"]);

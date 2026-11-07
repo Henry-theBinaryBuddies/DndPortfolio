@@ -71,6 +71,17 @@ const JERKIN = {
   smoothing: 60,
   ground: 80,
 };
+// A leather spaulder over each shoulder, where the pauldrons go, covering the jerkin's arm holes: a lower dome than a
+// pauldron's, in three overlapping bands, each with a rounded lower edge, and a seam inside its edge like the jerkin's
+const SPAULDER = {
+  thickness: 1.8,
+  dome: 1.0,
+  band: 0.9,
+  welt: 0.7,
+  radius: 0.4,
+  smoothing: 90,
+  ground: 120,
+};
 // The gorget: a plate collar over the top of the breastplate and up round the base of the neck, in three lames
 // (`rise`, how far above the base of the neck it comes; `drop`, how far below the tunic's collar)
 const GORGET = {
@@ -139,7 +150,7 @@ export function finestRelief(p: Params): { what: string; height: number } | null
   const raised: [string, number][] = [];
   if (p.outfit !== "none") raised.push(["the tunic's rolled collar", TUNIC.roll]);
   if (p.outfit === "tunic" || p.outfit === "leather") raised.push(["the tunic's folds", TUNIC.fold]);
-  if (p.outfit === "leather") raised.push(["the seam round the jerkin", JERKIN.welt]);
+  if (p.outfit === "leather") raised.push(["the seam round the jerkin", JERKIN.welt], ["the seams round the spaulders", SPAULDER.welt], ["the steps between the spaulders' bands", SPAULDER.band]);
   if (p.outfit === "armour") raised.push(["the steps between the gorget's plates", GORGET.lame], ["the rolled edges of the plates", Math.min(CUIRASS.rim, PAULDRON.rim, GORGET.rim)], ["the steps between the pauldrons' plates", PAULDRON.step]);
   if (p.cloak !== "none") raised.push(["the cloak's rolled hem", CLOAK.hem], ["the rims of the cloak's clasps", CLASP.rim]);
   if (raised.length === 0) return null;
@@ -284,6 +295,29 @@ export function fit(p: Params, body: BodySurface): Fitted {
     });
     garments.push(jerkin.garment);
     dressed = jerkin.dressed;
+    // A spaulder over each shoulder (over the top of the baldric, which runs on under it)
+    for (const shoulder of [shoulders.right, shoulders.left]) {
+      const side = Math.sign(shoulder.position.x);
+      const [cx, cy, cz] = [shoulder.position.x * 1.15, shoulder.position.y - 0.03, (shoulder.position.z + axisZ) / 2];
+      const from = (x: number, y: number, z: number) => Math.hypot(x - cx, y - cy, z - cz) / SPAULDER.radius;
+      const piece = grow(body, overTunic, {
+        name: "spaulder",
+        edge: (x, y, z) => (side * x > 0 ? (from(x, y, z) - 1) * SPAULDER.radius : 1),
+        smoothing: SPAULDER.smoothing,
+        ground: SPAULDER.ground,
+        inset: 0.5 * TUNIC.thickness * MM,
+        // (over the jerkin's thickness and the baldric on it too)
+        clearance: (x, y, z) => (JERKIN.thickness + JERKIN.strap + SPAULDER.thickness + SPAULDER.dome * (1 - from(x, y, z) ** 2)) * MM,
+        relief: (x, y, z, depth) => {
+          const d = from(x, y, z);
+          // (each band's lower edge rounded over the band below it, which it overlaps)
+          const bands = smooth((d - 0.45) / 0.12) + smooth((d - 0.72) / 0.12);
+          return (SPAULDER.band * (2 - bands) + SPAULDER.welt * Math.exp(-(((depth - 0.045) / 0.02) ** 2))) * MM;
+        },
+      });
+      garments.push(piece.garment);
+      dressed = over(dressed, piece.dressed, overTunic);
+    }
   }
 
   if (p.outfit === "armour") {

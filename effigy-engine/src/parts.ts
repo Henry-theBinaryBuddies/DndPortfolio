@@ -41,6 +41,7 @@ const PARTS: Record<string, PartInfo> = {
   cuirass: { material: "metal", label: "the breastplate", role: "garment" },
   pauldron: { material: "metal", label: "the pauldrons", role: "garment" },
   jerkin: { material: "leather", label: "the jerkin", role: "garment" },
+  spaulder: { material: "leather", label: "the spaulders", role: "garment" },
   gorget: { material: "metal", label: "the gorget", role: "garment" },
   cloak: { material: "cloak", label: "the cloak", role: "garment" },
   clasp: { material: "metal", label: "the cloak's clasps", role: "garment" },
