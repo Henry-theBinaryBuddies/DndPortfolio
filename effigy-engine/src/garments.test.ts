@@ -8,7 +8,7 @@ import { buildBust } from "./builder";
 import { parseDragonborn, type DragonbornManifest } from "./dragonborn";
 import { collectBust } from "./export";
 import { collectTabletop } from "./fit";
-import { buildOutfit } from "./garments";
+import { buildOutfit, fittedAlready } from "./garments";
 import { applyRace, defaultParams, type Params } from "./params";
 import { partInfo } from "./parts";
 import { printKey } from "./printPreview";
@@ -56,8 +56,8 @@ describe("clothing", () => {
       const cutY = body.baseY + body.cut * MM + 0.1;
       const point = new THREE.Vector3();
       for (const garment of outfit.garments) {
-        // (its outside is the first half of its vertices: see garments.ts)
-        const outside = garment.positions.length / 6;
+        // (its outside is its first vertices: see garments.ts)
+        const outside = garment.outside ?? garment.positions.length / 6;
         const offs: number[] = [];
         for (let i = 0; i < outside; i += 3) {
           point.fromArray(garment.positions, i * 3);
@@ -94,7 +94,7 @@ describe("clothing", () => {
       geometry.setIndex(new THREE.BufferAttribute(cloak.indices, 1));
       const bvh = new MeshBVH(geometry);
       // (the cloak's edge: the sides of its outside's triangles that no other of them shares)
-      const half = cloak.positions.length / 6;
+      const half = cloak.outside!;
       const sides = new Map<string, number>();
       for (let t = 0; t < cloak.indices.length; t += 3) {
         const v = [cloak.indices[t], cloak.indices[t + 1], cloak.indices[t + 2]];
@@ -111,7 +111,7 @@ describe("clothing", () => {
       let [through, deep, under] = [0, 0, 0];
       for (const garment of outfit.garments) {
         if (garment.name === "cloak" || garment.name === "clasp") continue;
-        for (let i = 0; i < garment.positions.length / 6; i += 3) {
+        for (let i = 0; i < (garment.outside ?? garment.positions.length / 6); i += 3) {
           point.fromArray(garment.positions, i * 3);
           if (point.y < cutY) continue;
           const normal = body.closest(point).normal.clone().normalize();
@@ -151,7 +151,7 @@ describe("clothing", () => {
       const body = bodySurface(p, assets);
       const tunic = buildOutfit(p, body)!.garments[0];
       let top = -Infinity;
-      for (let i = 0; i < tunic.positions.length / 2; i += 3) if (Math.abs(tunic.positions[i]) < 0.05 && tunic.positions[i + 2] > body.anchors.sternum.position.z - 0.2) top = Math.max(top, tunic.positions[i + 1]);
+      for (let i = 0; i < tunic.outside! * 3; i += 3) if (Math.abs(tunic.positions[i]) < 0.05 && tunic.positions[i + 2] > body.anchors.sternum.position.z - 0.2) top = Math.max(top, tunic.positions[i + 1]);
       return top;
     };
     expect(collar({ ...human("tunic"), beardStyle: "full" })).toBeLessThan(collar(human("tunic")) - 0.03);
@@ -164,6 +164,24 @@ describe("clothing", () => {
     expect(printKey(p, true, true)).not.toBe(printKey({ ...p, outfit: "tunic" }, true, true));
     expect(buildOutfit({ ...p, cloak: "cloak" }, body)).not.toBe(buildOutfit(p, body));
   });
+
+  it("is kept for the shape it was fitted to: a new face puts the same fit on again, a new body fits it anew", () => {
+    const p = human("armour", "cowl");
+    const fitted = buildOutfit(p, bodySurface(p, assets))!;
+    for (const face of [{ cheekbones: 0.8 }, { noseSize: 0.2 }, { smile: 0.7 }]) {
+      const q = { ...p, ...face };
+      const body = bodySurface(q, assets);
+      expect(fittedAlready(q, body), JSON.stringify(face)).toBe(true);
+      const again = buildOutfit(q, body)!;
+      expect(again.garments).toBe(fitted.garments);
+      // (and dressed over this body's own points: the face as now sculpted, the clothes where they were)
+      expect(Array.from(again.dressed)).toEqual(Array.from(body.fitting.positions).map((v, i) => (fitted.dressed[i] !== bodySurface(p, assets).fitting.positions[i] ? fitted.dressed[i] : v)));
+    }
+    for (const shape of [{ weight: 0.9 }, { torso: 0.7 }, { jawOpen: 0.8 }]) {
+      const q = { ...p, ...shape };
+      expect(fittedAlready(q, bodySurface(q, assets)), JSON.stringify(shape)).toBe(false);
+    }
+  }, 120000);
 
   it("is fitted to the one inch square with the bust at tabletop size", () => {
     const t = collectTabletop(human("armour", "cowl"), assets, true);

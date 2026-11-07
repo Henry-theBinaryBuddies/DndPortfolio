@@ -5,7 +5,7 @@ import { bodySurface } from "./bodySurface";
 import { buildBrows } from "./brows";
 import { buildDragonborn } from "./dragonborn";
 import { JAW, turnWithJaw } from "./jaw";
-import { frontPoint, sculptBust, topPoint } from "./face";
+import { frontPoint, sculptBust, topPoint, type Bust } from "./face";
 import { buildOutfit, dressedAtAll, type Dressed } from "./garments";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
@@ -144,7 +144,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // With detail off the beard is its plain shell, without the carving (about 750,000 triangles, which takes
 // a moment to build): that is the quick draft shown while a slider moves.
-export function buildBust(p: Params, assets: Assets, detail = true, gusset = false): THREE.Group {
+// (`sculpted`: a humanoid's bust already sculpted from these settings, as the page has one to see whether its clothes are
+// fitted yet, not sculpted again; a fresh one, as the bust's geometry is its own)
+export function buildBust(p: Params, assets: Assets, detail = true, gusset = false, sculpted?: Bust): THREE.Group {
   // (a Dragonborn is a sculpt of its own, with nothing to deform: see dragonborn.ts)
   if (p.family === "dragonborn") {
     if (!assets.dragonborn) throw new Error("the Dragonborn model has not loaded");
@@ -160,7 +162,7 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   const head = new THREE.Group();
   root.add(head);
 
-  const bust = sculptBust(p, base);
+  const bust = sculpted ?? sculptBust(p, base);
   // Clothing, fitted to the body (see garments.ts); the hair and the beard are then built over it
   const outfit = !dressedAtAll(p) ? null : buildOutfit(p, bodySurface(p, assets, bust));
   const worn = outfit?.dressed ?? bust.positions;

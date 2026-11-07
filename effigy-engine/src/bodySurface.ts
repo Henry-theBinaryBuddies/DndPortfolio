@@ -35,6 +35,7 @@ export interface BodySurface {
   stand: THREE.Vector3; // this frame to the bust's: the bust's head group sits at this offset
   baseY: number; // the lowest point
   cut: number; // mm above the lowest point where the bust is cut flat (see underside.ts)
+  chin: number; // the height of the bottom of the chin, which the neck is looked for under
   anchors: {
     neckBase: number; // the height where the neck meets the shoulders
     sternum: Anchor; // the front of the body there (the notch between the collarbones)
@@ -84,6 +85,12 @@ export function bodySurface(p: Params, assets: Assets, sculpted?: Bust): BodySur
   cache.set(key, made);
   return made;
 }
+
+// What a body surface is made from, as plain arrays and numbers, which can be sent to a worker (see fitWorker.ts) and
+// made into the same surface there
+export type SurfaceParts = Pick<BodySurface, "family" | "key" | "positions" | "normals" | "indices" | "skin" | "fitting" | "baseY" | "cut" | "chin"> & { stand: [number, number, number] };
+export const surfaceParts = (b: BodySurface): SurfaceParts => ({ family: b.family, key: b.key, positions: b.positions, normals: b.normals, indices: b.indices, skin: b.skin, fitting: b.fitting, stand: b.stand.toArray(), baseY: b.baseY, cut: b.cut, chin: b.chin });
+export const fromParts = (s: SurfaceParts): BodySurface => surface(s.family, s.key, s.positions, s.normals, s.indices, s.skin, s.fitting, new THREE.Vector3(...s.stand), s.baseY, s.cut, s.chin);
 
 function surface(family: Family, key: string, positions: Float32Array, normals: Float32Array, indices: Uint32Array, skin: Uint32Array, fitting: BodySurface["fitting"], stand: THREE.Vector3, baseY: number, cut: number, chin: number): BodySurface {
   // (the search is over its own copy of the triangles: building one reorders them, and the mesh's order must stay)
@@ -177,5 +184,5 @@ function surface(family: Family, key: string, positions: Float32Array, normals: 
   const shoulder = (side: number) =>
     near(`the top of its ${side > 0 ? "right" : "left"} shoulder`, (x, y, z, up) => (side * x > inner && side * x < outer && y < neckBase + 0.1 && Math.abs(z - middle) < 0.6 * depth && up > 0.5 ? y : -Infinity));
 
-  return { family, key, positions, normals, indices, skin, fitting, stand, baseY, cut, anchors: { neckBase, sternum, nape, shoulders: { right: shoulder(1), left: shoulder(-1) }, collar }, closest };
+  return { family, key, positions, normals, indices, skin, fitting, stand, baseY, cut, chin, anchors: { neckBase, sternum, nape, shoulders: { right: shoulder(1), left: shoulder(-1) }, collar }, closest };
 }

@@ -22,6 +22,7 @@ export interface Garment {
   name: string; // see parts.ts
   positions: Float32Array; // in the body's frame
   indices: Uint32Array;
+  outside?: number; // how many of its vertices, the first, are its outside (a garment grown over the body: see grow)
 }
 
 export interface Dressed {
@@ -108,26 +109,111 @@ const CLASP = {
 const COLLAR = { back: 0.025, front: 0.06, frontUnderBeard: 0.11 };
 const TUCK = 0.1; // head units above the flat cut over which the tunic thins to nothing
 const TOUCH = 0.4 * MM; // the least any garment stands off the body itself
+const RELIEF_PASSES = 4; // of evening out the relief (see grow)
+const EDGE_PASSES = 20; // of smoothing a garment's edge along itself, in what it is grown over (see grow)
 
 const smooth = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
 };
 
-// (each body's outfit is kept: an edit of the face, the colours or the hair fits nothing anew)
+// An outfit as it is kept: its garments, and the points of the body's fitting it moved, and where to (so it can be put on
+// another body of the same shape where it is worn: see fitKey)
+export interface Fitted {
+  garments: Garment[];
+  moved: Uint32Array;
+  to: Float32Array;
+}
+
+// (each body's outfit is kept, and each fit by the shape it was fitted to, so a body sculpted anew with only its face
+// changed is dressed in the outfit already fitted: see fitKey)
 const known = new WeakMap<BodySurface, Map<string, Dressed>>();
+const fits = new Map<string, Fitted>();
 
 // Whether anything is worn
 export const dressedAtAll = (p: Params) => p.outfit !== "none" || p.cloak !== "none";
 
+// What an outfit's fit depends on, as a key: what is worn (and the beard, which lowers the collar), and the shape of the
+// body wherever any garment can reach, with a margin, and the anchors it is placed by. Not the settings: every slider
+// moves some of the body, and most move none of it under the clothes (a cheekbone, the nose, the brow), so the shape
+// itself is read, and a slider that does move the neck or the shoulders (the jaw, the weight) still fits it anew.
+// (The margin: a garment's edge falls between the body's points, the cloak is grown over its neighbours two rings out,
+// and it is kept off the nearest of the body, which with the cowl may be a little way off)
+const REGION = { above: 0.15, margin: 0.15 };
+const shapes = new WeakMap<BodySurface, string>();
+export function fitKey(p: Params, body: BodySurface): string {
+  return `${p.outfit} ${p.cloak} ${p.family === "humanoid" ? p.beardStyle : ""} ${shapeKey(body)}`;
+}
+function shapeKey(body: BodySurface): string {
+  const found = shapes.get(body);
+  if (found) return found;
+  const { neckBase, sternum, nape, shoulders } = body.anchors;
+  const axisZ = (sternum.position.z + nape.position.z) / 2;
+  const centres = [shoulders.right, shoulders.left].map((s) => [s.position.x * 1.15, s.position.y - 0.03, (s.position.z + axisZ) / 2]);
+  const reached = (x: number, y: number, z: number) => y < neckBase + REGION.above || centres.some(([cx, cy, cz]) => Math.hypot(x - cx, y - cy, z - cz) < PAULDRON.radius + REGION.margin);
+  // (two 32-bit hashes of the exact bits, as one 64-bit key)
+  let [a, b] = [0x811c9dc5, 0x9e3779b9];
+  const word = new Float32Array(1);
+  const bits = new Uint32Array(word.buffer);
+  const mix = (n: number) => {
+    a = Math.imul(a ^ n, 0x01000193);
+    b = Math.imul(b ^ n, 0x85ebca6b) ^ (b >>> 13);
+  };
+  const number = (v: number) => {
+    word[0] = v;
+    mix(bits[0]);
+  };
+  for (const v of [body.baseY, body.cut, neckBase, ...[sternum, nape, shoulders.right, shoulders.left].flatMap((anchor) => [...anchor.position.toArray(), ...anchor.normal.toArray()])]) number(v);
+  // (the fitting's points, and the body's own where it is not the fitting, as a Dragonborn's is not: kept off that)
+  for (const points of body.positions === body.fitting.positions ? [body.positions] : [body.fitting.positions, body.positions]) {
+    mix(points.length);
+    for (let i = 0; i < points.length; i += 3)
+      if (reached(points[i], points[i + 1], points[i + 2])) {
+        mix(i);
+        number(points[i]);
+        number(points[i + 1]);
+        number(points[i + 2]);
+      }
+  }
+  const key = `${body.family} ${(a >>> 0).toString(16)}${(b >>> 0).toString(16)}`;
+  shapes.set(body, key);
+  return key;
+}
+
+// Whether this outfit has been fitted to a body of this shape already (so buildOutfit takes no time)
+export const fittedAlready = (p: Params, body: BodySurface) => !dressedAtAll(p) || fits.has(fitKey(p, body));
+
+// An outfit fitted elsewhere (in a worker: see fitWorker.ts), to a body of this shape, kept as if fitted here
+export function keepFit(p: Params, body: BodySurface, fitted: Fitted): void {
+  remember(fitKey(p, body), fitted);
+}
+function remember(key: string, fitted: Fitted) {
+  // (a few kept: the outfits and shapes most recently worn)
+  fits.delete(key);
+  if (fits.size >= 6) fits.delete(fits.keys().next().value!);
+  fits.set(key, fitted);
+}
+
 export function buildOutfit(p: Params, body: BodySurface): Dressed | null {
   if (!dressedAtAll(p)) return null;
-  const key = `${p.outfit} ${p.cloak} ${p.family === "humanoid" ? p.beardStyle : ""}`;
+  const key = fitKey(p, body);
   let cache = known.get(body);
   if (!cache) known.set(body, (cache = new Map()));
   const found = cache.get(key);
   if (found) return found;
+  const fitted = fits.get(key) ?? fit(p, body);
+  remember(key, fitted);
+  // (on this body: its own points, moved where the outfit moved them)
+  const dressed = Float32Array.from(body.fitting.positions);
+  for (let m = 0; m < fitted.moved.length; m++) dressed.set(fitted.to.subarray(m * 3, m * 3 + 3), fitted.moved[m] * 3);
+  const made = { garments: fitted.garments, dressed };
+  if (cache.size >= 4) cache.delete(cache.keys().next().value!);
+  cache.set(key, made);
+  return made;
+}
 
+// The outfit fitted to the body (see buildOutfit, which keeps it)
+export function fit(p: Params, body: BodySurface): Fitted {
   const { neckBase, sternum, nape, shoulders } = body.anchors;
   const axisZ = (sternum.position.z + nape.position.z) / 2;
   // How much a point is at the front of the body, round the neck's axis (1 straight ahead, 0 behind)
@@ -204,13 +290,19 @@ export function buildOutfit(p: Params, body: BodySurface): Dressed | null {
     // The gorget: from over the top of the breastplate to a little up the neck, standing off it as far as the
     // breastplate's edge does, in three lames, each lower one standing proud of the one above it
     const [low, high] = [(x: number, z: number) => neckline(x, z) - GORGET.drop - 0.03 * front(x, z), neckBase + GORGET.rise];
-    const gorget = grow(body, overTunic, {
+    // (grown over the breastplate as it is, rising over its ridge and rolled edge in a soft swell: kept off the tunic by
+    // the breastplate's thickness and its edge, it came down onto the ridge either side of the middle, and its edge was
+    // notched there; its inside still on the tunic, under the breastplate's edge)
+    const underGorget = spread(body, dressed, 2);
+    const gorget = grow(body, underGorget, {
+      inside: overTunic,
       name: "gorget",
       edge: (x, y, z) => Math.max(y - high, low(x, z) - y),
       smoothing: GORGET.smoothing,
       ground: GORGET.ground,
       inset: 0.5 * TUNIC.thickness * MM,
-      clearance: () => (CUIRASS.thickness + CUIRASS.rim + GORGET.thickness) * MM,
+      clear: 25,
+      clearance: () => GORGET.thickness * MM,
       relief: (x, y, z, depth) => {
         const up = (y - low(x, z)) / (high - low(x, z));
         const lames = smooth((up - 0.33) / 0.15) + smooth((up - 0.66) / 0.15);
@@ -218,7 +310,7 @@ export function buildOutfit(p: Params, body: BodySurface): Dressed | null {
       },
     });
     garments.push(gorget.garment);
-    dressed = over(dressed, gorget.dressed, overTunic);
+    dressed = over(dressed, gorget.dressed, underGorget);
     // A pauldron over each shoulder: a dome, highest over the top of the shoulder, in three overlapping plates
     for (const shoulder of [shoulders.right, shoulders.left]) {
       const side = Math.sign(shoulder.position.x);
@@ -279,7 +371,7 @@ export function buildOutfit(p: Params, body: BodySurface): Dressed | null {
     // Its clasps: a domed disc with a raised rim each side of the opening, below the collar, set into the cloak's
     // outside where it is nearest (smaller than the body's triangles would draw them, so turned as solids of their own)
     // (square to the cloak round it: at one point its surface may turn over its hem, a Dragonborn's body over a scale)
-    const outside = cloak.garment.positions.subarray(0, cloak.garment.positions.length / 2);
+    const outside = cloak.garment.positions.subarray(0, cloak.garment.outside! * 3);
     // (of its outside's triangles alone: the wall round its edge faces sideways along the opening)
     const half = outside.length / 3;
     const faces = Array.from(cloak.garment.indices).filter((_, i, list) => {
@@ -301,11 +393,10 @@ export function buildOutfit(p: Params, body: BodySurface): Dressed | null {
       garments.push(clasp(point, normal.normalize()));
     }
   }
-  const made = { garments, dressed };
-  // (a few kept: the outfits most recently worn)
-  if (cache.size >= 4) cache.delete(cache.keys().next().value!);
-  cache.set(key, made);
-  return made;
+  const bare = body.fitting.positions;
+  const moved: number[] = [];
+  for (let i = 0; i < bare.length; i += 3) if (dressed[i] !== bare[i] || dressed[i + 1] !== bare[i + 1] || dressed[i + 2] !== bare[i + 2]) moved.push(i / 3);
+  return { garments, moved: Uint32Array.from(moved), to: Float32Array.from(moved.flatMap((v) => [dressed[v * 3], dressed[v * 3 + 1], dressed[v * 3 + 2]])) };
 }
 
 // What is worn, each point taken out as far as the furthest of its neighbours `rings` away stands off the bare body,
@@ -448,20 +539,24 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
 
   // (its edge first run smoothly along itself where it was cut: cut across the triangles, it zigzagged from one to the
   // next, and the wall round the edge showed it)
-  const rimNeighbours: number[][] = Array.from({ length: count }, () => []);
+  const rimLists: number[][] = Array.from({ length: count }, () => []);
   for (const [a, b] of rim) {
-    rimNeighbours[a].push(b);
-    rimNeighbours[b].push(a);
+    rimLists[a].push(b);
+    rimLists[b].push(a);
   }
-  for (const points of [base, bare])
+  const rimNeighbours = packed(rimLists);
+  // (and its inner side's edge with it: left as it was cut, the wall from the smoothed outside down to it twisted from
+  // one triangle to the next, and showed as streaks down the edge of a plate)
+  for (const points of [base, bare, within])
     for (let pass = 0; pass < 20; pass++) {
       const next = points.slice();
       for (let i = 0; i < count; i++) {
-        if (!fixed[i] || rimNeighbours[i].length === 0) continue;
+        const [start, end] = [rimNeighbours.start[i], rimNeighbours.start[i + 1]];
+        if (!fixed[i] || start === end) continue;
         for (let k = 0; k < 3; k++) {
           let mean = 0;
-          for (const j of rimNeighbours[i]) mean += points[j * 3 + k];
-          next[i * 3 + k] += 0.5 * (mean / rimNeighbours[i].length - points[i * 3 + k]);
+          for (let n = start; n < end; n++) mean += points[rimNeighbours.list[n] * 3 + k];
+          next[i * 3 + k] += 0.5 * (mean / (end - start) - points[i * 3 + k]);
         }
       }
       for (let i = 0; i < next.length; i++) points[i] = next[i];
@@ -471,41 +566,54 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
   // its edge, toward its neighbours there, so the edge runs smoothly), then pushes it back out to its clearance where
   // that drew it in. So it spans the hollows of the body under it, and rests on the rest at its clearance: a garment
   // over the body, not the body painted on it.
-  const neighbours: number[][] = Array.from({ length: count }, () => []);
+  const lists: number[][] = Array.from({ length: count }, () => []);
   for (const [a, b] of triangleSides(triangles)) {
-    if (!neighbours[a].includes(b)) neighbours[a].push(b);
-    if (!neighbours[b].includes(a)) neighbours[b].push(a);
+    if (!lists[a].includes(b)) lists[a].push(b);
+    if (!lists[b].includes(a)) lists[b].push(a);
   }
+  // (packed into one array, each point's run of it from start[i] to start[i + 1]: the passes below read them hundreds of times)
+  const neighbours = packed(lists);
+  const { start, list } = neighbours;
   // (which way is out: the bare body's normals, evened out, so the lumps of the scales or of a muscle, or the edge of a
   // garment already worn, do not each turn the garment their own way)
   let out = vertexNormals(Float32Array.from(bare), triangles, count);
   for (let pass = 0; pass < 30; pass++) {
     const next = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      const [nx, ny, nz] = [out[i * 3], out[i * 3 + 1], out[i * 3 + 2]];
-      let [sx, sy, sz] = [nx, ny, nz];
-      for (const j of neighbours[i]) [sx, sy, sz] = [sx + out[j * 3], sy + out[j * 3 + 1], sz + out[j * 3 + 2]];
+      let [sx, sy, sz] = [out[i * 3], out[i * 3 + 1], out[i * 3 + 2]];
+      for (let n = start[i]; n < start[i + 1]; n++) {
+        const j = list[n] * 3;
+        sx += out[j];
+        sy += out[j + 1];
+        sz += out[j + 2];
+      }
       const length = Math.hypot(sx, sy, sz) || 1;
-      next.set([sx / length, sy / length, sz / length], i * 3);
+      next[i * 3] = sx / length;
+      next[i * 3 + 1] = sy / length;
+      next[i * 3 + 2] = sz / length;
     }
     out = next;
   }
   const clearance = new Float32Array(count);
   for (let i = 0; i < count; i++) clearance[i] = piece.clearance(base[i * 3], base[i * 3 + 1], base[i * 3 + 2], depth[i]);
-  // (the clearance is kept from what is under it smoothed, its edge held: from the surface itself, the garment rose over
-  // every scale of a Dragonborn, and they all showed through it. Smoothed by averaging, which reaches across the broad
-  // scales of its chest as smoothing that keeps the volume did not, then set back out by how far that sank it on
-  // average round each point: so it lies through the middle of the scales, not under them)
+  // (the clearance is kept from what is under it smoothed: from the surface itself, the garment rose over every scale of
+  // a Dragonborn, and they all showed through it. Smoothed by averaging, which reaches across the broad scales of its
+  // chest as smoothing that keeps the volume did not, then set back out by how far that sank it on average round each
+  // point: so it lies through the middle of the scales, not under them. Its edge is smoothed only along itself, and only
+  // a little, so it keeps its place: held as it was, the edge of a plate over the tunic rose and fell with each of the
+  // tunic's folds, a wavy edge on a smooth plate)
   const average = (values: Float32Array, width: number, passes: number) => {
     let v = values;
     for (let pass = 0; pass < passes; pass++) {
       const next = v.slice();
       for (let i = 0; i < count; i++) {
-        if (fixed[i] || neighbours[i].length === 0) continue;
+        const along = fixed[i] ? rimNeighbours : neighbours;
+        const [first, end] = [along.start[i], along.start[i + 1]];
+        if (first === end || (fixed[i] && pass >= EDGE_PASSES)) continue;
         for (let k = 0; k < width; k++) {
           let mean = 0;
-          for (const j of neighbours[i]) mean += v[j * width + k];
-          next[i * width + k] += 0.5 * (mean / neighbours[i].length - v[i * width + k]);
+          for (let n = first; n < end; n++) mean += v[along.list[n] * width + k];
+          next[i * width + k] += 0.5 * (mean / (end - first) - v[i * width + k]);
         }
       }
       v = next;
@@ -536,14 +644,15 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
   const stretch = (passes: number, from: Float32Array[]) => {
     for (let pass = 0; pass < passes; pass++) {
       const next = outer.slice();
+      const step = [0, 0, 0];
       for (let i = 0; i < count; i++) {
-        const toward = fixed[i] ? rimNeighbours[i] : neighbours[i];
-        if (toward.length === 0) continue;
-        const step = [0, 0, 0];
+        const toward = fixed[i] ? rimNeighbours : neighbours;
+        const [first, end] = [toward.start[i], toward.start[i + 1]];
+        if (first === end) continue;
         for (let k = 0; k < 3; k++) {
           let mean = 0;
-          for (const j of toward) mean += outer[j * 3 + k];
-          step[k] = 0.5 * (mean / toward.length - outer[i * 3 + k]);
+          for (let n = first; n < end; n++) mean += outer[toward.list[n] * 3 + k];
+          step[k] = 0.5 * (mean / (end - first) - outer[i * 3 + k]);
         }
         // (inside, only outward or inward, so nothing slides across the body and off what it measures its clearance from;
         // its edge also along itself, which evens out where it was cut across the triangles)
@@ -573,10 +682,10 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
     for (let pass = 0; pass < 12; pass++) {
       const next = rise.slice();
       for (let i = 0; i < count; i++) {
-        if (neighbours[i].length === 0) continue;
+        if (start[i] === start[i + 1]) continue;
         let mean = 0;
-        for (const j of neighbours[i]) mean += rise[j];
-        next[i] = Math.max(rise[i], 0.85 * (mean / neighbours[i].length));
+        for (let n = start[i]; n < start[i + 1]; n++) mean += rise[list[n]];
+        next[i] = Math.max(rise[i], 0.85 * (mean / (start[i + 1] - start[i])));
       }
       rise = next;
     }
@@ -597,11 +706,26 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
 
   // Then its relief (a rolled collar, a ridge, the steps between plates) raised off that smooth outside
   const smoothOut = vertexNormals(outer, triangles, count);
+  // (evened out a little over the points round each: a rolled rim or the step between plates is no wider than a few of
+  // the body's triangles, and read at each point alone, it rose and fell from one to the next, a scalloped edge)
+  let relief = new Float32Array(count);
+  for (let i = 0; i < count; i++) relief[i] = piece.relief(base[i * 3], base[i * 3 + 1], base[i * 3 + 2], depth[i]);
+  for (let pass = 0; pass < RELIEF_PASSES; pass++) {
+    const next = relief.slice();
+    for (let i = 0; i < count; i++) {
+      const toward = fixed[i] ? rimNeighbours : neighbours;
+      const [first, end] = [toward.start[i], toward.start[i + 1]];
+      if (first === end) continue;
+      let mean = 0;
+      for (let n = first; n < end; n++) mean += relief[toward.list[n]];
+      next[i] += 0.5 * (mean / (end - first) - relief[i]);
+    }
+    relief = next;
+  }
   const inner = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) {
-    const relief = piece.relief(base[i * 3], base[i * 3 + 1], base[i * 3 + 2], depth[i]);
     for (let k = 0; k < 3; k++) {
-      outer[i * 3 + k] += smoothOut[i * 3 + k] * relief;
+      outer[i * 3 + k] += smoothOut[i * 3 + k] * relief[i];
       inner[i * 3 + k] = within[i * 3 + k] - out[i * 3 + k] * piece.inset;
     }
     // (its outside never below half way to its inside: where its clearance thins to nothing at the flat cut, smoothed
@@ -611,13 +735,25 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
     if (off < 0.5 * piece.inset) for (let k = 0; k < 3; k++) outer[i * 3 + k] += out[i * 3 + k] * (0.5 * piece.inset - off);
   }
 
-  // Closed: the outside as the body's triangles run, the inside turned the other way, and a wall round the edge
-  const positions = new Float32Array(count * 6);
+  // Closed: the outside as the body's triangles run, the inside turned the other way, and a wall round the edge. (The
+  // wall has its own copies of the points along the edge, at the same places, so it is shaded apart from the outside: as
+  // one, the normals along the edge were turned every way by the wall's thin triangles, and the edge of a plate showed
+  // streaks. The print welds them together again: see printable.ts)
+  const edgePoints = [...new Set(rim.flat())];
+  const wall = new Map(edgePoints.map((v, k) => [v, 2 * count + 2 * k]));
+  const positions = new Float32Array((2 * count + 2 * edgePoints.length) * 3);
   positions.set(outer);
   positions.set(inner, count * 3);
+  for (const [v, at] of wall) {
+    positions.set(outer.subarray(v * 3, v * 3 + 3), at * 3);
+    positions.set(inner.subarray(v * 3, v * 3 + 3), (at + 1) * 3);
+  }
   const indices: number[] = [...triangles];
   for (let t = 0; t < triangles.length; t += 3) indices.push(triangles[t] + count, triangles[t + 2] + count, triangles[t + 1] + count);
-  for (const [a, b] of rim) indices.push(b, a, a + count, b, a + count, b + count);
+  for (const [a, b] of rim) {
+    const [wa, wb] = [wall.get(a)!, wall.get(b)!];
+    indices.push(wb, wa, wa + 1, wb, wa + 1, wb + 1);
+  }
 
   const dressed = Float32Array.from(under);
   for (let i = 0; i < count; i++) if (from[i] >= 0) dressed.set(outer.subarray(i * 3, i * 3 + 3), from[i] * 3);
@@ -626,6 +762,7 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
       name: piece.name,
       positions,
       indices: Uint32Array.from(indices),
+      outside: count,
     },
     dressed,
   };
@@ -700,6 +837,15 @@ function hang(points: Float32Array, { axisZ, reach }: { axisZ: number; reach: nu
       points[i * 3 + 2] = axisZ + (z * to) / r;
     }
   }
+}
+
+// Lists of neighbours packed into one array: point i's are list[start[i]] to list[start[i + 1] - 1], in their order
+function packed(lists: number[][]): { start: Int32Array; list: Int32Array } {
+  const start = new Int32Array(lists.length + 1);
+  for (let i = 0; i < lists.length; i++) start[i + 1] = start[i] + lists[i].length;
+  const list = new Int32Array(start[lists.length]);
+  for (let i = 0; i < lists.length; i++) list.set(lists[i], start[i]);
+  return { start, list };
 }
 
 function* triangleSides(triangles: number[]): Generator<[number, number]> {

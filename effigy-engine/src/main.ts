@@ -7,6 +7,10 @@ import { characterName, defaultParams, type Params } from "./params";
 import { loadDragonborn } from "./dragonborn";
 import { exportStl, describe } from "./exportStl";
 import { prepareInBackground, Superseded } from "./prepareClient";
+import { bodySurface, type BodySurface } from "./bodySurface";
+import { sculptBust, type Bust } from "./face";
+import { fitInBackground } from "./fitClient";
+import { dressedAtAll, fit, fittedAlready, keepFit } from "./garments";
 import { describePrint, disposePreview, previewGroup, printKey, type Prepared } from "./printPreview";
 import { mountPanel } from "./ui";
 import { characterFile, History, readCharacter, type Character } from "./character";
@@ -132,11 +136,33 @@ function swap(params: Params, detail: boolean) {
   // (a Dragonborn still loading: the bust on show stays until it is here, and is then built: see needDragonborn)
   if (params.family === "dragonborn" && !assets.dragonborn) return;
   const started = performance.now();
+  // Clothes not yet fitted to this shape are fitted in a worker, and the bust on show stays until they are (see
+  // fitSoon). (A humanoid's bust is sculpted once, both to see that and to build it)
+  let sculpted: Bust | undefined;
+  if (dressedAtAll(params)) {
+    sculpted = params.family === "humanoid" ? sculptBust(params, assets.head) : undefined;
+    const body = bodySurface(params, assets, sculpted);
+    if (!fittedAlready(params, body)) {
+      fitSoon(params, detail, body);
+      return;
+    }
+  }
+  // (the bust on show is replaced only once the new one is built: if it cannot be, the last one stays)
+  let made: THREE.Group;
+  try {
+    made = buildBust(params, assets, detail, false, sculpted);
+  } catch (error) {
+    console.error(error);
+    fileStatus.textContent = `This bust could not be built (${error instanceof Error ? error.message : String(error)}), so the last one is still shown.`;
+    return;
+  }
+  // (built: a fit still being made for older settings is no longer wanted when it lands)
+  fitWanted = null;
   if (figure) {
     pivot.remove(figure);
     disposeObject(figure);
   }
-  figure = buildBust(params, assets, detail);
+  figure = made;
   painter ??= new Painter(assets.head, paint);
   painter.apply(figure, params, clayOn);
   performance.measure(detail ? "effigy:carved build" : "effigy:draft build", { start: started });
@@ -160,6 +186,44 @@ function swap(params: Params, detail: boolean) {
   faceButton.dataset.distance = String(faceDistance());
   if (framingFace) distance = faceDistance();
   placeCamera();
+}
+
+// Clothing fitted off the page (see fitWorker.ts): one fit at a time, and when it lands, the latest settings asked for
+// meanwhile are built (fitted already, if they are of the same shape, as an edit of the face or the colours is; else
+// fitted next). Settings asked for and passed over in between are never fitted.
+let fitting = false;
+let fitWanted: { params: Params; detail: boolean } | null = null;
+const FITTING = "Fitting the clothes";
+function fitSoon(params: Params, detail: boolean, body: BodySurface) {
+  fitWanted = { params, detail };
+  if (fitting) return;
+  fitting = true;
+  fileStatus.textContent = FITTING;
+  const started = performance.now();
+  fitInBackground(params, body)
+    .then(
+      (fitted) => keepFit(params, body, fitted),
+      // (no worker, or it failed: fitted on the page, as it was before; and if that fails too, the bust on show stays,
+      // and nothing more is fitted until the next edit, which would only fail again)
+      (error: unknown) => {
+        console.error(error);
+        try {
+          keepFit(params, body, fit(params, body));
+        } catch (failed) {
+          console.error(failed);
+          fitWanted = null;
+          fileStatus.textContent = `The clothes could not be fitted (${failed instanceof Error ? failed.message : String(failed)}), so the last bust is still shown.`;
+        }
+      },
+    )
+    .finally(() => {
+      performance.measure("effigy:fit clothes", { start: started });
+      fitting = false;
+      if (fileStatus.textContent === FITTING) fileStatus.textContent = "";
+      const next = fitWanted;
+      fitWanted = null;
+      if (next) swap(next.params, next.detail);
+    });
 }
 
 // Every edit shows a quick draft (without the carving), and the carved beard replaces it once the controls
