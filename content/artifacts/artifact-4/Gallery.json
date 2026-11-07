@@ -11,8 +11,8 @@
   },
   {
     "src": "./assets/screenshots/artifact-4/04-three-way-call-p2p.webp",
-    "alt": "A CouchCrew room. A YouTube video is playing at the top. Below it the call shows three tiles: Henry on camera, a plain letter A for Adrian with his camera off, and John on camera, with In the call: 3 under them and Mute, Camera off, Share screen and Leave call buttons. The chat panel is open on the right with joined and left messages and lines from Adrian, John and Henry.",
-    "caption": "The test that counted: all three of us in the call at once on our own peer-to-peer version, with the video playing above and chat open. Adrian's camera was off, so he shows as a letter."
+    "alt": "A CouchCrew room. A YouTube video is playing at the top. Below it the call shows three tiles: Henry on camera, a plain letter A for Adrian, who has no webcam, and John on camera, with In the call: 3 under them and Mute, Camera off, Share screen and Leave call buttons. The chat panel is open on the right with joined and left messages and lines from Adrian, John and Henry.",
+    "caption": "The test that counted: three of us, each on a different network, in one call on our own peer-to-peer version, with the video playing above and chat open. Adrian has no webcam, so he shows as a letter and watched and listened."
   },
   {
     "src": "./assets/screenshots/artifact-4/03-three-way-call.png",
