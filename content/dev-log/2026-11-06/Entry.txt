@@ -1,0 +1,11 @@
+Artifact 4 (CouchCrew):
+
+The video call worked for all three of us in a test today: the three of us in one call at once, with a YouTube video playing above it and chat open (photo added to the card). Adrian's camera was off, so he shows as a letter.
+
+One thing is still not finished. After my laptop and phone failed to see each other on different networks, I added a relay: our server asks Cloudflare's TURN service for short-lived credentials when you join a call, so calls that cannot connect directly can be passed through a relay, with the secret key kept on the server. That code is merged, but when I checked the live server today it reported the relay as off, which means the key still has to be added on Render. Today's test therefore does not prove that two different networks can connect; that needs the key added and a repeat of the laptop and phone test.
+
+Two other things cleared up. The YouTube "sign in to confirm you're not a bot" message was a VPN on one of our connections; turning it off fixed it, so it was never a bug in our code. And I worked out that a 10-person room would use the relay's free 1,000 GB in around 25 hours if everything went through it, and would need about 9 megabits per second of upload from each person, which is why the team capped rooms at 5 people.
+
+Since then I built the extras I had listed: switching mic, camera and speaker during a call without leaving it, a loudness meter on every tile with a ring around whoever is speaking, a mute button and volume slider for each other person (this only changes what you hear), a first-visit tips panel in the room, and a leader-set room name that leaves the link alone. I tested all of it with two browser windows and a fake camera and microphone and pushed it for a teammate's review; it is not merged yet. Not tested: those extras on a phone.
+
+What is left is cosmetic, and John is taking the visual polish.
