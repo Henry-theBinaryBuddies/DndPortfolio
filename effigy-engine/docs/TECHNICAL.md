@@ -2,10 +2,7 @@
 
 This is the maintenance document for Effigy Engine. It says how the app is built, why it is built that way, how to run, test and change it, and what is known not to work. It is written so the project can be kept going without the session that built it. The README is the short introduction; this is the long one. The audits in this folder (`audit-19`, `audit-20`, `audit-21`) are the reviews the clothing work answered.
 
-Status, 7 Nov 2026: **feature complete.** No new features are planned. What remains:
-
-1. **A physical test print.** The clothing has never been printed. Its verdict decides which features stay (see section 11).
-2. **Hosting.** It is a static site. It is measured for that in section 10, and the plan is in section 13.
+Status, 8 Nov 2026: **feature complete, and deployed** at https://effigy.creaturecauldron.com (Cloudflare Pages, built from `master`; see section 13). No new features are planned. The test print of the clothing was stopped before it proved anything (section 11), so every feature ships, and the page says which are not yet proven on a print.
 
 Contents:
 
@@ -21,7 +18,7 @@ Contents:
 10. Performance
 11. What prints and what does not: evidence so far
 12. Running and testing it
-13. Hosting (planned)
+13. Hosting
 14. How to change things
 15. Troubleshooting
 16. Decisions and the reasons for them
@@ -474,14 +471,18 @@ A headless browser's own frame rates were unreliable (its GPU reported shader er
 - **Why one bust is enough:** those features cover the 0.5-1.2 mm range that the leather and armour relief also fall in, so its result stands for them too.
 - **Overhang check before printing:** every place a layer would start over air was checked, and nothing on the clothing starts in mid-air for more than 0.6 mm. The only islands are at the eyes and nose (1.4-2.5 mm tall), as on the dwarf that printed.
 
-**Rule agreed for the verdict:** a feature that does not communicate on a PLA FDM print is deprecated entirely. If the rings do not read as mail, the Mail outfit goes. Record the result here when the print is in.
+**Rule agreed for the verdict:** a feature that does not communicate on a PLA FDM print is deprecated entirely. If the rings do not read as mail, the Mail outfit goes.
+
+**What happened (8 Nov 2026):** the test print failed twice in its first layers, both times from bed adhesion, not from the model. The STL's underside is one flat 56 mm disc (about 2,470 mm², nothing below it), against the 20 mm calibration cube that printed: the larger solid base lifted at its edges, the skirt came off the bed, and the nozzle tore through the lifted plastic. The usual cures are a clean bed, a brim in place of the raft, levelling over the whole base, and a slower, cooler first layer; `out/effigy-adhesion-disc.stl` (the base alone, 2 mm tall) tests them in about 15 minutes. The owner chose to stop test printing there and deploy.
+
+**So the verdict is open.** Nothing was deprecated. Every feature ships, and the Print section says so in its opening note: the mail's rings, the cloak, and relief finer than about 1 mm are not yet proven on a print. The ram and Dragonborn horn tips (below) ship with a warning in the export and the print preview to use the slicer's supports under them. If a print later shows a feature does not read, the rule above still applies.
 
 **Known print risks, not yet fixed.** The exports were checked for every place a layer would start over open air (a local lowest point of the surface; how far it rises before it meets the rest says how long the printer builds it in mid-air). Two horn shapes fail:
 
 - **The ram horns** (humanoid): each tip starts **about 11 mm** in mid-air.
 - **The Dragonborn's horns:** each tip starts **about 23 mm** in mid-air. The 1:12 test STL in `assets/dragonborn/` also notes its horn tips and spine points are too thin, and the Dragonborn has no throat gusset (its export says so).
 
-This is the same failure as the first print's dreadlock tips, so these busts need the slicer's supports under the horn tips, or a fix such as a small breakaway tie from each tip to the body. Under the rule above, they are candidates for removal if neither is acceptable.
+This is the same failure as the first print's dreadlock tips, so these busts need the slicer's supports under the horn tips. The export and the print preview say so for both (`builder.ts` for the ram horns, `dragonborn.ts`). A small breakaway tie from each tip to the body would remove the need; it is not built.
 
 Every other horn style (goat, bull, demon, antelope, stubby), the tusks, and every outfit and cloak checked have nothing that starts more than about 2.5 mm in mid-air. The only small islands are at the eyes and nose.
 
@@ -533,33 +534,39 @@ blender -b --factory-startup --python tools/sculpt_dragonborn.py -- assets/drago
 
 Commits run the full suite first (the repository's rule). The browser tests are run when the token or page behaviour changes.
 
-## 13. Hosting (planned)
+## 13. Hosting
 
-It is a static site: `npm run build` writes `dist/`, and any static host serves it. No server, no keys, no database, no running cost beyond bandwidth. The natural choice is Cloudflare Pages, like Creature Cauldron's front end.
+It is a static site: `npm run build` writes `dist/`, and any static host serves it. No server, no keys, no database, no running cost beyond bandwidth. It is served by **Cloudflare Pages** at **https://effigy.creaturecauldron.com**, like Creature Cauldron's front end, on the same Cloudflare account and domain.
 
-**Things the host must do:**
+**The Pages project** (set up once, in the Cloudflare dashboard: Workers & Pages, Create, Pages, Connect to Git):
 
-- **Serve `.wasm` as `application/wasm`.** Cloudflare Pages does.
-- **Compress `.bin` files.** Cloudflare compresses by content type, and `application/octet-stream` is not compressed by default. So either:
-  - serve the model files gzip- or brotli-encoded (a `_headers` rule, or pre-compressed copies); or
-  - accept the raw sizes: about 3 MB at first load, plus 11 MB for the Dragonborn.
+| Setting | Value |
+|---|---|
+| Repository | `Henry-theBinaryBuddies/DndPortfolio` |
+| Production branch | `master` |
+| Root directory | `effigy-engine` |
+| Build command | `npm ci && npm run build` |
+| Output directory | `dist` |
+| Environment variable | `NODE_VERSION` = `22` |
+| Custom domain | `effigy.creaturecauldron.com` (Custom domains, Set up a custom domain; the DNS record is added for you, since the domain is on Cloudflare) |
 
-  Compression roughly halves them.
-- **Cache models long.** They change only when remade, so they can be cached long-term. The scripts already have content hashes in their names.
-- **Mind the file size limit.** Pages allows files up to 25 MiB; the largest is 11.3 MB.
+Every push to `master` rebuilds and redeploys it. Pushes to other branches make preview deployments at their own `*.pages.dev` addresses. A bad deploy is undone from the project's Deployments list (Rollback), with no rebuild.
 
-**Not decided yet:**
+**Headers** (`public/_headers`, copied into `dist/` and read by Pages):
 
-- the domain;
-- whether the backdrops ship as PNG (19.5 MB) or are converted to WebP or JPEG.
+- a Content-Security-Policy that allows only the site's own files. It has `'wasm-unsafe-eval'` because Manifold's WebAssembly must compile, and `worker-src 'self'` for the three workers. `img-src` allows `data:` and `blob:` for the token and its preview;
+- `nosniff`, a referrer policy and a permissions policy, as on Creature Cauldron;
+- caching: `/assets/*` (names carry content hashes) for a year, immutable; `/models/*` and `/backdrops/*` for a day, since they keep their names when remade.
 
-**Before each deploy:**
+The built site was checked under exactly these headers before the first deploy (served locally with them applied): it opened, previewed and exported with no errors.
+
+**What the host does on its own:** serves `.wasm` as `application/wasm`, and compresses scripts, styles and JSON. It does not compress the `.bin` models (`application/octet-stream`), so they go at full size: about 3 MB at first load, and 11.3 MB more the first time the Dragonborn is chosen. Compressing them would roughly halve that; it was left as it is, since it works. Pages allows files up to 25 MiB; the largest is 11.3 MB. The backdrops ship as PNG (19.5 MB in all, each loaded only when chosen).
+
+**Before each deploy (each push to `master` that touches `effigy-engine/`):**
 
 1. `npm test`
 2. `npm run perf`, which builds the site and checks that the built site exports
-3. Upload `dist/`
-
-The plan is to deploy after the test print is reviewed. Record the deployment steps here when it is done.
+3. Push. After the build, open https://effigy.creaturecauldron.com, export once, and check the browser console for Content-Security-Policy errors.
 
 ## 14. How to change things
 
@@ -660,3 +667,7 @@ The plan is to deploy after the test print is reviewed. Record the deployment st
   - clothing (tunic, armour, cloak, leather and spaulders, mail), with audits 19-21;
   - fits moved to a worker;
   - declared feature complete.
+- **8 Nov:**
+  - the clothing test print stopped by bed adhesion; nothing deprecated, unproven features labelled;
+  - horn-tip warnings for the ram and Dragonborn;
+  - deployed to Cloudflare Pages at effigy.creaturecauldron.com.

@@ -400,6 +400,8 @@ export function buildDragonborn(asset: DragonbornAsset, p: Params, gusset = fals
   root.userData.reach = shape.underside.reach;
   root.userData.flatCut = cut;
   root.userData.faceBottom = asset.manifest.chin - shape.baseY;
-  if (gusset) root.userData.warnings = ["The Dragonborn has no throat gusset yet: its chin and muzzle will need the slicer's supports."];
+  // (its horn tips start about 23 mm in mid-air at full size: see docs/TECHNICAL.md, section 11)
+  root.userData.warnings = ["The Dragonborn's horn tips start in mid-air: print them with the slicer's supports under the tips."];
+  if (gusset) root.userData.warnings.push("The Dragonborn has no throat gusset yet: its chin and muzzle will need the slicer's supports.");
   return root;
 }

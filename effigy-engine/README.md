@@ -2,7 +2,7 @@
 
 A procedural 3D character and monster designer. Shape a grim bust with sliders, paint it, then export a printable STL or a round PNG token for a virtual tabletop.
 
-**Status (7 Nov 2026): feature complete.** A physical test print of the clothing and hosting are what remain. The maintenance document, covering how it all works, how to run, test and change it, the performance measurements and the known limits, is [`docs/TECHNICAL.md`](docs/TECHNICAL.md).
+**Status (8 Nov 2026): feature complete and live** at https://effigy.creaturecauldron.com. The mail's rings, the cloak and relief finer than about 1 mm are not yet proven on a print, and ram and Dragonborn horn tips need the slicer's supports. The maintenance document, covering how it all works, how to run, test and change it, the performance measurements and the known limits, is [`docs/TECHNICAL.md`](docs/TECHNICAL.md).
 
 The sculpt is the form that prints; the paint is only for the picture. **Paint** (`src/paint.ts`, `src/paintPanel.ts`) colours the skin, eyes (optionally glowing), hair, beard and brows, horns, and teeth and tusks, with a Grime slider; each race starts with its own colours. The skin is a shader: pores, furrows and age creases as a per-pixel height field, and per-vertex weights worked out for each bust (shading in the hollows, flushed cheeks, the red of the lips, age, stubble, the scalp under the hair, grime). The hair is darker down its carved grooves. A change of colour only changes the materials' settings and never rebuilds the bust, and none of it reaches the STL or the print preview, which stay clay. **Clay** in the toolbar shows the bare form. **Save token PNG** (`src/token.ts`) saves the painted head and shoulders, turned a little toward three-quarter view, in a round frame with a dark iron rim, transparent outside it, at 256, 512 or 1024 px. Framing "Whole head and horns" fits everything above the chin (horns, hair, ears) inside the round as it is seen in that view; "Close portrait" frames the face larger and may crop wide horns. The picture and its file name are of the character as it was when the button was pressed. **Backdrop** stands the bust on one of the pictures in `public/backdrops/` (a dungeon, a forest, a forge and others, original images made for the project: see `CREDITS.md` there) instead of the plain dark glow, the whole picture drawn just as wide as the round inside the rim. The shoulders and chest always run on under the lower half of the rim, so no cut edge of the bust shows (found by drawing the bust's silhouette small, off screen, and bringing it down or nearer until its edge is covered); on Whole head and horns, very wide horns come first, so a bust with them may stay smaller. A **preview** at the top of the Token section shows the token as it would be saved, redrawn as the backdrop or framing changes and a moment after the character or its paint stops changing; ‹ and › beside Backdrop step through the backdrops to try each in turn. Archetype presets from the first version are in git history (up to commit `ca8ec31`).
 
@@ -76,10 +76,10 @@ Tabletop size (the "Tabletop size" checkbox on the export, on by default; the fi
 
 1. Sculpted character model, races, gendered builds, hair and beards (done)
 2. Sculpted hair and beard texture, sized for FDM printing (done)
-3. STL export: one closed solid with manifold-3d, wall thickness, overhang work, Trimesh check (done); a printed test of the clothing (next)
+3. STL export: one closed solid with manifold-3d, wall thickness, overhang work, Trimesh check (done); a printed test of the clothing (stopped by bed adhesion; see TECHNICAL.md, section 11)
 4. Circular PNG token export (done)
 5. Colour and shading (done)
 6. Clothing and armour (done)
-7. Hosting as a static site (after the test print)
+7. Hosting as a static site on Cloudflare Pages (done)
 
 Monster body plans and archetype presets are out of scope: the project is feature complete.

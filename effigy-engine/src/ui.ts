@@ -271,7 +271,7 @@ export function mountPanel(shape: HTMLElement, output: HTMLElement, initial: Par
     status.id = "export-status";
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base, on an 18 mm stand: the torso is slimmed to fit, and whatever is widest sets the size (a bare bust usually 40-45 mm tall, smaller in armour or a cloak; Preview print says how tall). Unticked it is the full size: a 75-90 mm bust, about 120 mm in all. Preview print shows it as it will print first. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing.";
+    status.textContent = "Merges the bust, with its base, into one solid. Tabletop size fits it inside a one inch square on a 25 mm base, on an 18 mm stand: the torso is slimmed to fit, and whatever is widest sets the size (a bare bust usually 40-45 mm tall, smaller in armour or a cloak; Preview print says how tall). Unticked it is the full size: a 75-90 mm bust, about 120 mm in all. Preview print shows it as it will print first. Sized for a 0.2 mm nozzle. Refuses, rather than save a file with something missing. Not yet proven on a print: the mail's rings, the cloak, and relief finer than about 1 mm.";
     // The print preview: the bust as the export will make it, in place of the sculpt, until the sculpt is edited
     const previewButton = document.createElement("button");
     previewButton.type = "button";
