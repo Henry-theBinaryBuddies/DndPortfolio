@@ -1,0 +1,13 @@
+Side Quest (Effigy Engine):
+
+The last features. Leather spaulders: a low leather dome over each shoulder of the jerkin, in three overlapping bands. And mail: a mail shirt over the tunic with rows of overlapping, leaning rings modelled into the surface and a binding round the neck. Mail is the riskiest feature for a print. Its rings are under a millimetre, and I agreed that if they do not read as mail on PLA, Mail goes. The armour's plate edges were also cleaned up so nothing notches, and the tabletop note now says honestly that whatever is widest sets the size, and where relief comes out finer than the 0.6 mm that reliably prints.
+
+Then I called the project feature complete and turned to what it would take to put it online.
+
+Testing the production build found a bug that had never shown on the dev server: every export from the built site failed with "Invalid typed array length: 5606499252". The built site uses relative addresses, and the print worker resolved them from its own folder, so it asked for the models in the wrong place and got the web page back. It then read the first characters of the page, "<!do", as the head's vertex count. The page now tells the worker its own address with each request.
+
+I added npm run perf, which builds the site and drives it in a real browser: opening it, dragging a slider, changing outfits on both families, loading the Dragonborn and exporting at full size. On my laptop the first bust appears in about 3 s, a slider step takes 0.65-1.2 s, an outfit change 2.3-3.6 s and a full-size export about 10 s. Drawing is fast even on integrated graphics (7-13 ms a frame at a million triangles). With the CPU slowed four times, as on a weak machine, a slider step takes 6-11 s, so the site is meant for a desktop or laptop, not a phone.
+
+Claude wrote the technical document (docs/TECHNICAL.md) for keeping the project going: how it all works, how to run, test and change it, the measurements, and what is known not to work. The ram horns and the Dragonborn's horns have tips that start 11 mm and 23 mm up in mid-air, so they need the slicer's supports.
+
+Tonight I started a test print on my older printer: a full-size human in mail with a cowl, chosen to test the rings, the cloak and the finest relief all at once.
