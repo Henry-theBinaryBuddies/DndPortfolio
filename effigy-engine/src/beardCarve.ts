@@ -24,13 +24,16 @@ export function carvingDepth(x: number, y: number, z: number): number {
   // that is the width, and down the side of the face it is the depth, where the width hardly changes (used
   // as the coordinate, the locks ran round the cheeks in ripples)
   const u = 0.4 * Math.atan2(x, z + 0.3) + 0.012 * Math.sin(y * 11 + x * 7) + 0.006 * Math.sin(y * 23 + 1.7 + z * 5);
-  const p1 = u / c.lockPitch;
+  // Wider, gently converging locks define the beard's chin/jaw masses; a finer
+  // secondary cut is intermittent rather than another equally strong stripe.
+  const flow = 0.77 * u + 0.006 * Math.sin(y * 5 + x * 3);
+  const p1 = flow / c.lockPitch;
   const lock = Math.floor(p1);
   // Each groove starts and stops along its length, as separate locks do, and no two are alike
   const major = vee(p1, c.lockGroove / c.lockPitch / 2) * (0.7 + 0.6 * hash(lock)) * (0.6 + 0.4 * Math.sin(y * 13 + lock * 2.3));
   const p2 = p1 + 0.5;
   const fine = vee(p2, c.fineGroove / c.lockPitch / 2) * (0.7 + 0.6 * hash(Math.floor(p2) + 57)) * (0.5 + 0.5 * Math.sin(y * 9 + Math.floor(p2) * 1.7));
-  const beard = Math.max(c.lockDepth * major, c.fineDepth * fine);
+  const beard = Math.max(c.lockDepth * major, c.fineDepth * fine * 0.45);
 
   // The moustache: locks fanning out from under the nose and down to the corners of the mouth
   const ax = Math.abs(x);
@@ -41,6 +44,6 @@ export function carvingDepth(x: number, y: number, z: number): number {
   const lockM = Math.floor(pm);
   const majorM = vee(pm, c.lockGroove / c.moustachePitch / 2) * (0.7 + 0.6 * hash(lockM + 200)) * (0.7 + 0.3 * Math.sin(y * 17 + lockM));
   const fineM = vee(pm + 0.5, c.fineGroove / c.moustachePitch / 2) * (0.7 + 0.6 * hash(lockM + 300)) * 0.8;
-  const moustache = Math.max(c.lockDepth * majorM, c.fineDepth * fineM);
+  const moustache = Math.max(c.lockDepth * majorM * 0.7, c.fineDepth * fineM * 0.4);
   return beard * (1 - zone) + moustache * zone;
 }

@@ -157,6 +157,17 @@ function archAt(distance: number): { x: number; z: number; tx: number; tz: numbe
   return { x: side * x, z: ARCH_Z(x), tx: (side * 1) / length, tz: (side * slope * side) / length, nx: (-slope * side) / length, nz: 1 / length };
 }
 
+// Where the lower canine stands, with the mouth shut, in the bust's own coordinates (the place of a half-orc's
+// tusk, which stands in for it: see builder.ts): x and z of its middle on the arch (on the right; the left
+// mirrors it), and the heights of its top and of the gum it stands in
+export function lowerCanine(p: Params): { x: number; z: number; top: number; gum: number } {
+  const k = derive(p);
+  const scale = 0.92 + 0.25 * k.angularity;
+  const at = archAt((WIDTHS[0] + WIDTHS[1] + WIDTHS[2] / 2) * scale);
+  const skull = (y: number) => y + (k.headHeight - 1) * (y + 0.59);
+  return { x: Math.abs(at.x) * k.headWidth, z: at.z + 0.006, top: skull(LOWER_TOP), gum: skull(LOWER_TOP - CROWN * 0.9) };
+}
+
 // Both rows as one geometry of closed solids, in the bust's own coordinates: carried by the skull's scaling,
 // and the lower row turned with the jaw as far as it is open. Null when the mouth is shut (nothing shows).
 export function buildTeeth(p: Params): THREE.BufferGeometry | null {
@@ -165,6 +176,7 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
   const into = { positions: [] as number[], index: [] as number[] };
   const scale = 0.92 + 0.25 * k.angularity; // broader teeth on a heavier face
   const jawAngle = p.jawOpen * JAW.max;
+  const soft: [number, number][] = []; // the vertices of the gums and the tongue (the rest are teeth), for the paint
 
   for (const lower of [false, true]) {
     const first = into.positions.length / 3;
@@ -179,6 +191,8 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
     }
     for (const side of [-1, 1]) {
       WIDTHS.forEach((w, i) => {
+        // (a half-orc's tusk stands in place of the lower canine: see builder.ts)
+        if (lower && i === 2 && k.tusks > 0.03) return;
         const at = archAt(side * centres[i]);
         const tangent = new THREE.Vector3(at.tx, 0, at.tz).normalize();
         const normal = new THREE.Vector3(at.nx, 0, at.nz).normalize();
@@ -201,6 +215,7 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
     // into the roof or the jaw (so the whole is joined to the head): the upper from a little over the crowns up
     // past the roof of the mouth, the lower from a little over the crowns down into the jaw. (The lower one is
     // set back a little, or it came out through the chin of a face with a small chin.)
+    const gumFrom = into.positions.length / 3;
     if (lower) {
       const top = LOWER_TOP - crown + 0.015;
       const bottom = -0.5;
@@ -210,6 +225,7 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
       const top = -0.225;
       gumLoft(into, arch, (top + bottom) / 2, 0.028, (top - bottom) / 2);
     }
+    soft.push([gumFrom, into.positions.length / 3]);
 
     // Into the bust's coordinates: the skull's scaling, and for the lower row the jaw's turn
     for (let v = first; v < into.positions.length / 3; v++) {
@@ -239,9 +255,13 @@ export function buildTeeth(p: Params): THREE.BufferGeometry | null {
       into.positions[v * 3 + 1] = y;
       into.positions[v * 3 + 2] = z;
     }
+    soft.push([first, into.positions.length / 3]);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(into.positions, 3));
+  const tissue = new Float32Array(into.positions.length / 3);
+  for (const [from, to] of soft) tissue.fill(1, from, to);
+  geometry.setAttribute("tissue", new THREE.BufferAttribute(tissue, 1));
   geometry.setIndex(into.index);
   geometry.computeVertexNormals();
   return geometry;

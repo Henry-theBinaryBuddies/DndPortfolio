@@ -20,11 +20,6 @@
     "caption": "A tiefling with ram horns. Horns come from a handful of generated shapes and are joined to the skull."
   },
   {
-    "src": "./assets/screenshots/artifact-7/05-human-braids.jpg",
-    "alt": "A grey clay bust of a bearded man with two long braids hanging beside his face.",
-    "caption": "Braids and a short beard. Hair and beards are carved shells with their strands cut in."
-  },
-  {
     "src": "./assets/screenshots/artifact-7/06-chin-overhang.jpg",
     "alt": "Two side sections of a bust through the middle of the face. On the left the underside of the chin is marked red as a flat overhang; on the right a straight sloping wedge joins the chin to the neck and the red is gone.",
     "caption": "Why the throat gusset exists: without it the chin's flat underside hangs about 9 mm over air and needs supports; with it the underside is a 45 degree slope that prints on its own."
@@ -32,7 +27,7 @@
   {
     "src": "./assets/screenshots/artifact-7/07-print-front.jpg",
     "alt": "A black 3D-printed bust of a bearded dwarf with dreadlocks and an open mouth, photographed from the front on its flared round base.",
-    "caption": "The first print, from the front: face, open mouth and beard came out clean on a 0.2 mm nozzle. This is the bust the throat gusset was made for."
+    "caption": "The first print, from the front: face, open mouth and beard came out clean. This is the bust the throat gusset was made for."
   },
   {
     "src": "./assets/screenshots/artifact-7/08-print-back.jpg",

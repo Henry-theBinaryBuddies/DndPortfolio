@@ -7,11 +7,16 @@
   {
     "src": "./assets/screenshots/artifact-4/02-room.jpg",
     "alt": "A CouchCrew room with a row of genre themes, a Watch Together box with a YouTube link field, a Video and Screen Share box holding the Jitsi call frame, and a chat box underneath.",
-    "caption": "Inside a room: the shared YouTube player, the video call (my part) and chat. The call frame is Jitsi Meet, loaded when you press Join call."
+    "caption": "Inside a room: the shared YouTube player, the video call (my part) and chat. This is the Jitsi version of the call, before the rebuild."
+  },
+  {
+    "src": "./assets/screenshots/artifact-4/04-three-way-call-p2p.webp",
+    "alt": "A CouchCrew room. A YouTube video is playing at the top. Below it the call shows three tiles: Henry on camera, a plain letter A for Adrian, who has no webcam, and John on camera, with In the call: 3 under them and Mute, Camera off, Share screen and Leave call buttons. The chat panel is open on the right with joined and left messages and lines from Adrian, John and Henry.",
+    "caption": "The test that counted: three of us, each on a different network, in one call on our own peer-to-peer version, with the video playing above and chat open. Adrian has no webcam, so he shows as a letter and watched and listened."
   },
   {
     "src": "./assets/screenshots/artifact-4/03-three-way-call.png",
     "alt": "A CouchCrew room on a narrow screen. The Watch Together box shows a YouTube message reading Sign in to confirm you're not a bot. Below it the video call shows three tiles: Adrian as a blue letter A, Henry in front of a world map, and John in front of a window.",
-    "caption": "The first real test, with all three of us in one room. The call works. The YouTube player did not: it asked us to sign in to prove we were not bots."
+    "caption": "The first real test of the Jitsi version, with all three of us in one room. The call worked. The YouTube player did not: it asked us to sign in to prove we were not bots."
   }
 ]

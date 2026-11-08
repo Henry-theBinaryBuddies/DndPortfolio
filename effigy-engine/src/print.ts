@@ -10,15 +10,25 @@ export const MM = 1 / 32; // one print millimetre, in head units
 export const PRINT = {
   nozzle: 0.2, // mm
   bustHeight: [75, 90] as const, // mm, the bust itself (without its base)
-  baseHeight: 24, // mm: the whole pedestal, disc and stem (below the bust's flat underside)
-  baseRadius: 25, // mm: the disc is at least this wide (a 50 mm base), and wider when the bust's underside needs it
-  baseMargin: 2, // mm: how far the disc reaches beyond the farthest corner of the bust's underside
-  discHeight: 3, // mm: the disc's rim, with its sloped top
-  discBevel: 2, // mm: how far the sloped top of the disc comes in
+  baseHeight: 34, // mm: the whole pedestal, foot, shaft and flare (below the bust's flat underside)
+  baseRadius: 25, // mm: the foot is at least this wide (a 50 mm base), and wider when the bust's underside needs it
+  baseMargin: 2, // mm: how far the foot reaches beyond the farthest corner of the bust's underside
   flatCut: 1.2, // mm: the least the bust is cut flat above its lowest point (see underside.ts: it goes higher where the underside hangs out)
   overhang: 1, // mm of outward growth allowed per mm of height above the cut: 1 is 45 degrees
   baseOverlap: 0.4, // mm: the base reaches this far up inside the bust, so the two are joined, not just touching
 };
+
+// Tabletop size (see fit.ts): the whole bust, hair and shoulders included, stands within a one inch square of a
+// gaming board, on a round base a little under that, and is about as tall as a miniature's head and shoulders
+// are wanted. All in millimetres as printed (the sculpt is scaled to fit).
+export const TABLETOP = {
+  base: 25, // mm: the base's width (a square is 25.4 mm)
+  bustHeight: [45, 55] as const, // mm, the bust itself (without its base)
+  aim: 50, // mm: the height aimed for
+  plinth: 18, // mm: the whole base is this tall (a board has no ceiling: height costs nothing, and buys the base its shape)
+  torso: 0.6, // the least the Torso size slider goes to, which the fit may slim the body to (thinner, the body deforms too far)
+};
+export const SQUARE = 25.4; // mm: one square of a gaming board, which a tabletop print stands inside
 
 export const MIN_GROOVE = 0.4 * MM; // the narrowest groove that prints
 export const MIN_FEATURE = 0.6 * MM; // the thinnest raised feature that prints
@@ -95,6 +105,24 @@ export function radiusAt(hull: Point[], angle: number): number {
   return reach;
 }
 
+// The pedestal's turned profile, from the foot up, in printed millimetres at either size (see pedestalRings: at
+// full size the shaft and flare are taller, the moldings the same). Sized so every molding survives even a
+// 0.4 mm nozzle, on which a ring that juts out less than about 0.5 mm prints as a faint line (the 0.2 mm
+// nozzle the rest is sized for draws them sharper). Every part either narrows
+// going up or widens no faster than 45 degrees, so it all prints without supports: a molding that juts out is a
+// diamond in section (out at an angle, then back in), never a round bead with an undercut.
+const SOCLE = {
+  bevel: 0.3, // the first layer's chamfer, so it does not squash out into an elephant's foot
+  band: 1.2, // the foot's upright band
+  chamfer: 0.6, // a 45 degree chamfer in from the top of the band (as far in as it is high)
+  ledge: 0.5, // then a flat step in: a ledge facing up, which prints like any top surface
+  tier: [0.7, 0.5, 0.4], // a second, narrower step on the first: its band, its chamfer, its ledge
+  cove: 1.8, // a concave sweep in from the ledge to the foot of the shaft
+  collar: [0.7, 0.75], // a ring round the foot of the shaft, doubled: each out this far, over this height, and back in (43 degrees)
+  neck: [0.55, 0.6], // the single ring where the flare begins (42 degrees)
+  shaft: 0.8, // how much wider the shaft is at its foot than at its waist
+};
+
 const ease = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
@@ -108,35 +136,69 @@ const flareEase = (t: number) => 0.65 * Math.min(1, Math.max(0, t)) + 0.35 * eas
 export const PEDESTAL_SIDES = 96;
 
 // The pedestal, as rings of points from its foot to its top (in head units: each ring is (x, y, z) triples, y up).
-// Like the busts on turned bases it stands on a round disc with a sloped rim, narrows to a waist and flares
-// out under the bust to the section of the bust at its flat cut (`reach`: how far that outline reaches from the
-// middle in each of PEDESTAL_SIDES directions), so the bust has solid support wherever it reaches (a bust
-// whose flat bottom hung out over a narrow stem would print as a bridge).
-export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: number): number[][] {
+// A turned socle (see SOCLE): a round foot with a chamfered band and a second, narrower stepped tier, a cove
+// sweeping in to a shaft with a doubled collar at its foot, narrowing to a waist; then a ring, and a flare out
+// under the bust that ends at the section of the bust at its flat cut (`reach`: how far that outline reaches
+// from the middle in each of PEDESTAL_SIDES directions), so the bust has solid support wherever it reaches and
+// meets it flush (a bust whose flat bottom hung out over a narrow stem would print as a bridge).
+// (`fixedDisc`: the foot's radius, head units, where it is fixed and not the least that the bust needs. `unit`:
+// one printed millimetre in head units: MM at full size, and MM over the print's scale at tabletop size, so the
+// moldings print at the sizes SOCLE gives whatever the scale. Grown with the taller full-size base they would
+// leave a broad bust's flare too little height to stay within 45 degrees.)
+export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: number, fixedDisc?: number, unit = MM): number[][] {
   const farthest = Math.max(...Array.from(reach));
   const nearest = Math.min(...Array.from(reach));
-  const disc = Math.max(PRINT.baseRadius * MM, farthest + PRINT.baseMargin * MM);
-  const waist = Math.min(16 * MM, Math.max(10 * MM, 0.65 * nearest));
-  const foot = disc - PRINT.discBevel * MM;
-  const discTop = bottom + PRINT.discHeight * MM;
-  const rim = bottom + PRINT.discHeight * MM * 0.4;
-  const stemSteps = 24;
-  const heights: [number, (k: number) => number][] = [
-    [bottom, () => disc - 0.4 * MM], // (a small bevel at the foot, so the first layer does not flare out)
-    [bottom + 0.4 * MM, () => disc],
-    [rim, () => disc],
-    [discTop, () => foot],
-  ];
-  // The flare is an overhang: each layer sticks out past the one below. It starts as low as the bust's reach
-  // needs, so that its steepest part stays near PRINT.overhang (45 degrees from vertical) and prints without supports.
-  const stem = top - discTop;
+  const disc = fixedDisc ?? Math.max(PRINT.baseRadius * MM, farthest + PRINT.baseMargin * MM);
+  const [tierBand, tierChamfer, tierLedge] = SOCLE.tier;
+  // (the moldings must fit between the foot and the shaft, however small the foot)
+  const step = disc - (SOCLE.chamfer + SOCLE.ledge) * unit;
+  const inner = step - (tierChamfer + tierLedge) * unit;
+  const waist = Math.min(16 * MM, Math.max(10 * MM, 0.65 * nearest), inner - (SOCLE.shaft + SOCLE.collar[0] + 1) * unit);
+  const shaftFoot = waist + SOCLE.shaft * unit;
+  const heights: [number, (k: number) => number][] = [];
+  const ring = (y: number, radius: (k: number) => number) => heights.push([y, radius]);
+  let y = bottom;
+  ring(y, () => disc - SOCLE.bevel * unit);
+  ring((y += SOCLE.bevel * unit), () => disc);
+  ring((y += (SOCLE.band - SOCLE.bevel) * unit), () => disc);
+  ring((y += SOCLE.chamfer * unit), () => disc - SOCLE.chamfer * unit);
+  // (a ledge: two rings at one height, the second further in)
+  ring(y, () => step);
+  // The second tier: a band, a chamfer and a ledge again, narrower
+  ring((y += tierBand * unit), () => step);
+  ring((y += tierChamfer * unit), () => step - tierChamfer * unit);
+  ring(y, () => inner);
+  // The cove: concave, steep at first and easing in to the shaft
+  const coveSteps = 8;
+  for (let s = 1; s <= coveSteps; s++) {
+    const t = s / coveSteps;
+    ring(y + SOCLE.cove * unit * t, () => shaftFoot + (inner - shaftFoot) * (1 - t) ** 2);
+  }
+  y += SOCLE.cove * unit;
+  const collar = (at: number, radius: number, [out, up]: number[]) => {
+    ring(at + up * unit, () => radius + out * unit);
+    ring(at + 2 * up * unit, () => radius);
+    return at + 2 * up * unit;
+  };
+  y = collar(collar(y, shaftFoot, SOCLE.collar), shaftFoot, SOCLE.collar);
+  // The shaft narrows to its waist, then the flare. The flare is an overhang: each layer sticks out past the one
+  // below. It starts as low as the bust's reach needs, so that its steepest part stays near PRINT.overhang (45
+  // degrees from vertical) and prints without supports; a ring marks where it begins.
+  const stem = top - y - 2 * SOCLE.neck[1] * unit;
   const flare = (farthest - waist) / (PRINT.overhang / FLARE_PEAK);
-  const start = Math.min(0.6, Math.max(0.12, 1 - flare / stem));
-  for (let s = 1; s <= stemSteps; s++) {
-    const t = s / stemSteps;
-    const y = discTop + stem * t;
-    const u = flareEase((t - start) / (1 - start));
-    heights.push([y, (k) => waist + (foot - waist) * (1 - ease(t / start)) + (reach[k] - waist) * u]);
+  const start = Math.min(0.6, Math.max(0.06, 1 - flare / stem));
+  const shaftSteps = 6;
+  for (let s = 1; s <= shaftSteps; s++) {
+    const t = s / shaftSteps;
+    ring(y + stem * start * t, () => waist + (shaftFoot - waist) * (1 - ease(t)));
+  }
+  y = collar(y + stem * start, waist, SOCLE.neck);
+  const flareSteps = 18;
+  const rest = top - y;
+  for (let s = 1; s <= flareSteps; s++) {
+    const t = s / flareSteps;
+    const u = flareEase(t);
+    ring(y + rest * t, (k) => waist + (reach[k] - waist) * u);
   }
   return heights.map(([y, radius]) => {
     const ring: number[] = [];
@@ -146,6 +208,33 @@ export function pedestalRings(reach: ArrayLike<number>, bottom: number, top: num
       ring.push(Math.cos(a) * r, y, Math.sin(a) * r);
     }
     return ring;
+  });
+}
+
+// The reach (see pedestalRings) of the same outline seen from a point `dx`, `dz` away from where it was measured
+// (the outline itself does not move): in each direction, the nearest place the ray from there leaves it, so the
+// pedestal's top stays inside the section however the outline curves. The point must be well inside the outline.
+export function shiftReach(reach: ArrayLike<number>, dx: number, dz: number): Float32Array {
+  const n = reach.length;
+  const outline: Point[] = Array.from({ length: n }, (_, k) => {
+    const a = (k / n) * 2 * Math.PI;
+    return [Math.cos(a) * reach[k] - dx, Math.sin(a) * reach[k] - dz];
+  });
+  return Float32Array.from({ length: n }, (_, j) => {
+    const a = (j / n) * 2 * Math.PI;
+    const [ux, uy] = [Math.cos(a), Math.sin(a)];
+    let nearest = Infinity;
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = outline[i];
+      const [bx, by] = outline[(i + 1) % n];
+      const [ex, ey] = [bx - ax, by - ay];
+      const denominator = ux * ey - uy * ex;
+      if (Math.abs(denominator) < 1e-12) continue;
+      const t = (ax * ey - ay * ex) / denominator;
+      const u = (ax * uy - ay * ux) / denominator;
+      if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) nearest = Math.min(nearest, t);
+    }
+    return nearest;
   });
 }
 

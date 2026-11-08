@@ -1,0 +1,17 @@
+# Headers for Cloudflare Pages (read from the built site's root; see docs/TECHNICAL.md, section 13). The page loads only its
+# own files: scripts, workers, the Manifold WASM (hence 'wasm-unsafe-eval'), the models and the backdrops. It talks to nothing else.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+# Scripts, styles and the WASM have content hashes in their names, so they never change
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The models and backdrops keep their names when remade, so a day
+/models/*
+  Cache-Control: public, max-age=86400
+/backdrops/*
+  Cache-Control: public, max-age=86400

@@ -50,13 +50,17 @@ export interface SurfaceHit {
 }
 
 const caster = new THREE.Raycaster();
+const normalMatrix = new THREE.Matrix3();
 
 // Finds where the surface is along a ray, for seating tusks, stitches, horns and armour on the skin.
 export function castRay(mesh: THREE.Mesh, origin: THREE.Vector3, direction: THREE.Vector3): SurfaceHit | null {
   caster.set(origin, direction.clone().normalize());
   const hit = caster.intersectObject(mesh, false)[0];
   if (!hit || !hit.face) return null;
-  return { position: hit.point.clone(), normal: hit.face.normal.clone() };
+  // (the hit is in the world's frame, and the face's normal in the mesh's own: turned into the world's to match, so a
+  // query against a mesh that has been moved, turned or stretched is right too; a normal is turned by the inverse
+  // transpose, which keeps it square to the surface when the mesh is stretched more one way than another)
+  return { position: hit.point.clone(), normal: hit.face.normal.clone().applyNormalMatrix(normalMatrix.getNormalMatrix(mesh.matrixWorld)) };
 }
 
 // Looking at the face from the front: the skin surface under the point (x, y)

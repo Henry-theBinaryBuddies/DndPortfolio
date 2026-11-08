@@ -1,15 +1,14 @@
 import * as THREE from "three";
-import { carveShell, hash, vee, type Pattern } from "./carve";
+import { carveShell, hash, type Pattern } from "./carve";
 import { scalp } from "./hair";
 import { HAIR_CARVING, locks } from "./hairCarve";
 import type { HeadBase } from "./headMesh";
 import type { Params } from "./params";
 import { MM } from "./print";
 
-// Dreadlocks and braids: hair as separate locks, each a closed tube. They are blocky on purpose, as a
+// Dreadlocks: hair as separate locks, each a closed tube. They are blocky on purpose, as a
 // sculptor makes them on a miniature (and as a printer can print them): a dreadlock is a rope with a spiral
-// groove, a braid is a thick plait with chevron grooves, where real hair would be strands far finer than a
-// 0.2 mm nozzle. Each starts in the scalp, which a close crop (hairShell.ts) covers between the roots, falls
+// groove, where real hair would be strands far finer than a 0.2 mm nozzle. Each starts in the scalp, which a close crop (hairShell.ts) covers between the roots, falls
 // under gravity, and rests on the head and shoulders rather than passing through them. Where they start
 // comes from the undeformed head, so there are always the same locks however the face is shaped (and a
 // rebuild is cheap); where they lie comes from the reshaped body.
@@ -18,10 +17,6 @@ export const LOCKS = {
   dreadRadius: 1.4 * MM, // each dreadlock is 2.8 mm thick
   dreadSpacing: 0.115, // between roots (head units): about 3.7 mm
   dreadGrooves: 3, // spiral grooves round a dreadlock
-  braidPitch: 3.2 * MM, // one plait every 3.2 mm
-  braidGroove: 0.6 * MM,
-  braidDepth: 0.5 * MM,
-  braidRadius: [2 * MM, 2.4 * MM] as const, // the two braids at the sides, and the one down the back
 };
 
 // The point of the tube's surface at the angle θ round it from the side turned away from the body, and how
@@ -31,18 +26,6 @@ export const dreadPattern: Pattern = (c, s, length) => {
   const angle = Math.atan2(s, c);
   const across = (angle / (2 * Math.PI)) * LOCKS.dreadGrooves * HAIR_CARVING.lockPitch + 0.9 * length;
   return locks(across, length, LOCKS.dreadGrooves);
-};
-
-// Chevrons down the front of a braid: grooves slanting back from the middle line, each side a mirror of the
-// other, as the plaits of a braid lie
-export const braidPattern: Pattern = (c, s, length) => {
-  const angle = Math.abs(Math.atan2(s, c));
-  const pitch = LOCKS.braidPitch;
-  const phase = length / pitch + angle * 0.55;
-  const plait = Math.floor(phase);
-  const deep = LOCKS.braidDepth * vee(phase, LOCKS.braidGroove / pitch / 2) * (0.85 + 0.3 * hash(plait));
-  const fine = 0.5 * LOCKS.braidDepth * vee(phase + 0.5, 0.8 * LOCKS.braidGroove / pitch / 2);
-  return Math.max(deep, fine);
 };
 
 // The points of the reshaped body, to find what a lock must stay clear of
@@ -102,6 +85,12 @@ interface Fall {
   rate: number; // how quickly it turns toward that
   // After its length, it goes on falling (this many more steps at most) until it rests on the body
   land?: number;
+  // Or, instead of a length: it falls until its tip is down to this height (at most `steps` three times over), the
+  // same on any body, so a lock is as long on a thick neck as on a thin one
+  endY?: number;
+  // ...and to come to rest it leans in toward the neck's axis (x, z) as it falls, instead of dropping plumb: dropping
+  // plumb beside a slim neck, it found nothing until the shoulders and came out far longer there
+  rest?: { x: number; z: number };
 }
 
 // A printer builds upward, so the end of a lock is laid first: over open air it has nothing to start on
@@ -112,6 +101,7 @@ const SINK = 0.5; // the end pressed this far (of the clearance) toward what it 
 const UNDER = 0.9; // body must also be this far (of the lock's radius) below the tip...
 const LANDED_UNDER = 1.5; // ...within this (times the clearance)
 const PLUMB = new THREE.Vector3(0, -1, 0);
+const REST_LEAN = 0.8; // how far in toward the neck a lock leans as it comes to rest (against 1 down: about 39 degrees)
 const STEEP = 0.72; // cosine of the steepest lean a lock may have over open air (44 degrees from vertical)
 const HELD = 1.65; // body within this many radii of the point just under a lock holds it up
 const EXTRA_RINGS = 10; // a lock has this many more rings than its length needs, whatever distance it falls to land
@@ -138,9 +128,16 @@ function fall(cloud: Cloud, spec: Fall): THREE.Vector3[] {
   const path = [p.clone()];
   const q = new THREE.Vector3();
   const away = new THREE.Vector3();
-  for (let i = 1; i <= spec.steps + (spec.land ?? 0); i++) {
-    // (past its length it falls straight down, sliding along whatever it meets, until it rests)
-    const aim = spec.land !== undefined && i > spec.steps ? PLUMB : spec.target(p, i).normalize();
+  // (how many steps its length took: a fixed count, or as many as brought it down to endY)
+  let length = spec.steps;
+  const most = spec.endY === undefined ? spec.steps : spec.steps * 3;
+  const toRest = new THREE.Vector3();
+  for (let i = 1; i <= length + (spec.land ?? 0); i++) {
+    // (past its length it falls straight down, or leans in toward the neck, sliding along whatever it meets, until
+    // it rests)
+    if (spec.endY !== undefined && i === length + 1 && p.y > spec.endY && length < most) length++;
+    const resting = spec.land !== undefined && i > length;
+    const aim = !resting ? spec.target(p, i).normalize() : spec.rest ? toRest.set(spec.rest.x - p.x, 0, spec.rest.z - p.z).setLength(REST_LEAN).add(PLUMB).normalize() : PLUMB;
     d.lerp(aim, spec.rate).normalize();
     // Where nothing is under the lock it may lean no more than 44 degrees from the vertical: more is an
     // overhang a printer cannot lay over open air. (Along the scalp or the shoulders it can lie as it likes.)
@@ -166,7 +163,7 @@ function fall(cloud: Cloud, spec: Fall): THREE.Vector3[] {
     }
     d.lerp(p.clone().sub(before).normalize(), 0.5).normalize();
     path.push(p.clone());
-    if (spec.land !== undefined && i >= spec.steps) {
+    if (spec.land !== undefined && i >= length) {
       // At rest when touching the body, and with body under the tip too (a wall beside it that falls away
       // below does not hold it up)
       const near = cloud.nearest(p.x, p.y, p.z);
@@ -260,9 +257,29 @@ class Tubes {
   }
 }
 
+// How far down a dreadlock falls before it rests: from this height, and up to this much lower (head units: the jaw is
+// about -0.55)
+const DREAD_END = [-0.42, 0.33];
+const DREAD_EAR = 0.08; // no dreadlock is rooted nearer an ear than this (head units, along the surface)
 const LAND_STEPS = 40; // at most about 58 mm further (the shoulders are never as far as that)
 const down = new THREE.Vector3(0, -1, -0.15);
 const back = new THREE.Vector3(0, 0.25, -1);
+// Beside the head at the height of the ears, a lock falls back as well as down, until it is behind the ear: it
+// tucks behind it, instead of hanging over it. Where the ears are is measured on the head as reshaped (an elf's
+// reach up well past a human's), from the vertices on them (see earClear in headMesh.ts).
+// (from well above the ear, and nearly level, so a lock passes over the top of the ear and comes down behind it:
+// starting lower or steeper, the lock was already at the ear when it turned, and lay across it)
+const behind = new THREE.Vector3(0, -0.3, -1);
+function earZone(positions: Float32Array, base: HeadBase): (p: THREE.Vector3) => boolean {
+  let [low, top, back] = [Infinity, -Infinity, Infinity];
+  for (let i = 0; i < positions.length / 3; i++) {
+    if (base.masks.earClear[i] > 0.05) continue;
+    low = Math.min(low, positions[i * 3 + 1]);
+    top = Math.max(top, positions[i * 3 + 1]);
+    back = Math.min(back, positions[i * 3 + 2]);
+  }
+  return (p) => Math.abs(p.x) > 0.2 && p.z > back - 0.04 && p.y > low - 0.05 && p.y < top + 0.25;
+}
 
 // Where dreadlocks start: spread over the scalp at a fixed spacing (always the same ones, chosen on the
 // undeformed head)
@@ -276,7 +293,10 @@ export function dreadRoots(base: HeadBase): number[] {
     const y = bp[v * 3 + 1];
     const z = bp[v * 3 + 2];
     if (y < -0.05 || scalp(x, y, z) < 0.9) continue;
-    if (Math.abs(x) > 0.4 && y > -0.3 && y < 0.2 && z > -0.7 && z < -0.2) continue; // (the ears)
+    if (base.masks.earDistance[v] < DREAD_EAR) continue; // (not on or beside the ears: rooted close behind one, a lock hangs over its lobe)
+    // (and below the top of the ear, beside the head, only well behind it: the hair comes down behind the ear, but a
+    // lock rooted there hangs past the back of the ear and over its lobe)
+    if (Math.abs(x) > 0.25 && y < 0.1 && z > -0.62) continue;
     order.push(v);
   }
   // A repeatable shuffle
@@ -306,6 +326,7 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
   const cloud = new Cloud(positions);
   const tubes = new Tubes();
   const bp = base.positions;
+  const besideEar = earZone(positions, base);
   for (const v of dreadRoots(base)) {
     const h = hash(v);
     const front = bp[v * 3 + 2] > -0.1 && bp[v * 3 + 1] > 0.1;
@@ -321,9 +342,12 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
       steps: Math.round(length / step),
       step,
       radius,
-      target: (p) => (front && p.z > -0.3 ? back : down),
+      target: (p) => (front && p.z > -0.3 ? back : besideEar(p) ? behind : down),
       rate: 0.35,
       land: LAND_STEPS,
+      // (each down to its own height, the same on any race and build: the longest to below the jaw)
+      endY: DREAD_END[0] - DREAD_END[1] * h,
+      rest: base.neck,
     });
     const phase = h * 6.28;
     // A rope: thick all the way, a little knobbly, closing in a rounded end (as long as it always was,
@@ -340,66 +364,14 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
   return tubes.geometry();
 }
 
-// The three braids: one behind each ear, falling over the shoulder to the chest, and one down the back
-function braidShell(positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry {
-  const cloud = new Cloud(positions);
-  const tubes = new Tubes();
-  const bp = base.positions;
-  const where: { x: number; y: number; z: number; side: number; radius: number }[] = [
-    { x: 0.36, y: 0.12, z: -0.38, side: 1, radius: LOCKS.braidRadius[0] },
-    { x: -0.36, y: 0.12, z: -0.38, side: -1, radius: LOCKS.braidRadius[0] },
-    { x: 0, y: 0.1, z: -0.55, side: 0, radius: LOCKS.braidRadius[1] },
-  ];
-  for (const w of where) {
-    // The scalp vertex nearest the wanted place
-    let v = 0;
-    let best = Infinity;
-    for (let i = 0; i < bp.length / 3; i++) {
-      if (scalp(bp[i * 3], bp[i * 3 + 1], bp[i * 3 + 2]) < 0.7) continue;
-      const d = Math.hypot(bp[i * 3] - w.x, bp[i * 3 + 1] - w.y, bp[i * 3 + 2] - w.z);
-      if (d < best) {
-        best = d;
-        v = i;
-      }
-    }
-    const n = new THREE.Vector3(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]);
-    const start = new THREE.Vector3(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]).addScaledVector(n, -0.02);
-    const step = 0.05;
-    // Down the side of the neck, then forward over the shoulder onto the chest; the back one hangs straight
-    const aim = new THREE.Vector3(-w.side * 0.35, -1, w.side === 0 ? -0.1 : 0.4);
-    const path = fall(cloud, { start, direction: n, steps: 30, step, radius: w.radius, target: () => aim, rate: 0.3, land: LAND_STEPS });
-    const total = path.reduce((sum, point, i) => (i ? sum + point.distanceTo(path[i - 1]) : 0), 0);
-    const cap = Math.min(0.5, (0.07 * 30 * step) / total);
-    const q = new THREE.Vector3();
-    const toward = new THREE.Vector3();
-    const smoothOut = new THREE.Vector3(0, 0, 1);
-    tubes.add(
-      path,
-      (t) => w.radius * (1 - 0.4 * t ** 1.5) * (1 + 0.05 * Math.cos((t * 30 * Math.PI) / 2)) * (t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1),
-      12,
-      (i) => {
-        // Away from the nearest part of the body, so the chevrons lie on the side that shows
-        const near = cloud.nearest(path[i].x, path[i].y, path[i].z);
-        if (!near) return smoothOut;
-        cloud.point(near.i, q);
-        toward.copy(path[i]).sub(q);
-        if (toward.lengthSq() > 1e-10) smoothOut.lerp(toward.normalize(), 0.5).normalize();
-        return smoothOut;
-      },
-    );
-  }
-  return tubes.geometry();
-}
-
-// The locks of a dreadlocks or braids style, as a closed solid made of tubes; null for any other style
+// The locks of a dreadlocks style, as a closed solid made of tubes; null for any other style
 export function buildLockShell(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   if (p.hairStyle === "dreadlocks") return dreadShell(positions, normals, base);
-  if (p.hairStyle === "braids") return braidShell(positions, normals, base);
   return null;
 }
 
 // ...and as they print: subdivided, with their grooves carved in
 export function buildLocks(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   const shell = buildLockShell(p, positions, normals, base);
-  return shell ? carveShell(shell, base, p.hairStyle, p.hairStyle === "braids" ? braidPattern : dreadPattern) : null;
+  return shell ? carveShell(shell, base, p.hairStyle, dreadPattern) : null;
 }

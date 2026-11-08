@@ -1,20 +1,22 @@
 import { readFileSync } from "node:fs";
 import * as THREE from "three";
+import { MeshBVH } from "three-mesh-bvh";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildBust, fitSphere, socketFit } from "./builder";
+import { pocketWalls } from "./mouthFill";
 import { BEARD_CARVING, carvingDepth } from "./beardCarve";
 import { BROW_CARVING, buildBrows } from "./brows";
 import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
 import { deformHead } from "./deform";
-import { sculptBust } from "./face";
+import { frontPoint, sculptBust } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
-import { braidPattern, buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
+import { buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
 import { scalp } from "./hair";
-import { jawWeights } from "./jaw";
-import { buildTeeth } from "./teeth";
+import { JAW, jawWeights, turnWithJaw } from "./jaw";
+import { buildTeeth, lowerCanine } from "./teeth";
 import { parseAssets, SHAPE_NAMES, type Assets, type ShapeName } from "./assets";
-import type { HeadBase } from "./headMesh";
+import { LANDMARK, type HeadBase } from "./headMesh";
 import { applyRace, defaultParams, derive, RACES, type Params } from "./params";
 
 let assets: Assets;
@@ -202,8 +204,10 @@ describe("deformation", () => {
   it("gives a half-orc a heavy jaw without ballooning the cheeks", () => {
     const human = shape(applyRace(defaultParams(), "human"));
     const orc = shape(applyRace(defaultParams(), "half-orc"));
-    // At the cheeks the orc is broader only by about its skull's breadth (1.08)
-    expect(extent(orc, -0.3, -0.2, 0).x / extent(human, -0.3, -0.2, 0).x).toBeLessThan(1.12);
+    // At the cheeks the orc is broader than the unshaped base head only by about its skull's breadth (1.08). (Measured
+    // against the base, not the human, whose sculpted planes hollow its own cheeks.)
+    const ratio = extent(orc, -0.3, -0.2, 0).x / extent(base.positions, -0.3, -0.2, 0).x;
+    expect(ratio).toBeLessThan(1.12);
     // ...and broader still at the jaw
     expect(extent(orc, -0.55, -0.45, -0.2).x).toBeGreaterThan(extent(human, -0.55, -0.45, -0.2).x * 1.05);
   });
@@ -390,6 +394,42 @@ describe("buildBust", () => {
     const shapes = new Set(["ram", "goat", "bull", "demon", "antelope", "stubby"].map((name) => JSON.stringify(Array.from(assets.shapes[name as ShapeName].positions.slice(0, 12)))));
     expect(shapes.size).toBeGreaterThan(1);
   });
+
+  it("grows every horn out from the skull and clear of it: no horn curls back into the head", () => {
+    for (const race of ["human", "tiefling", "half-orc"] as const) {
+      for (const hornStyle of ["ram", "goat", "bull", "demon", "antelope", "stubby"] as const) {
+        for (const horns of [0.5, 1]) {
+          const group = buildBust({ ...applyRace(defaultParams(), race), hairStyle: "none", hornStyle, horns }, assets, false);
+          group.updateMatrixWorld(true);
+          const skin = group.getObjectByName("head") as THREE.Mesh;
+          // (a copy of the skin to cast through: building the hierarchy reorders the triangles)
+          const copy = new THREE.BufferGeometry();
+          copy.setAttribute("position", skin.geometry.attributes.position);
+          copy.setIndex(new THREE.BufferAttribute(Uint32Array.from(skin.geometry.index!.array), 1));
+          const bvh = new MeshBVH(copy);
+          const toSkin = skin.matrixWorld.clone().invert();
+          const ray = new THREE.Ray();
+          const direction = new THREE.Vector3(0.31, 0.83, 0.47).normalize();
+          let inside = 0;
+          group.traverse((object) => {
+            if (!(object instanceof THREE.Mesh) || object.name !== "horn") return;
+            const position = object.geometry.attributes.position;
+            const v = new THREE.Vector3();
+            for (let i = 0; i < position.count; i++) {
+              v.fromBufferAttribute(position, i);
+              // (the root is buried in the skull on purpose: only the horn beyond its first third)
+              if (v.length() < 0.35) continue;
+              v.applyMatrix4(object.matrixWorld).applyMatrix4(toSkin);
+              ray.set(v, direction);
+              // inside the skin when a ray from it crosses the skin an odd number of times
+              if (bvh.raycast(ray, THREE.DoubleSide).length % 2 === 1) inside++;
+            }
+          });
+          expect(inside, `${race} ${hornStyle} ${horns}`).toBe(0);
+        }
+      }
+    }
+  }, 300000);
 
   it("gives tusks to half-orcs only", () => {
     const tusked = (race: Params["race"]) => countObjects(buildBust(applyRace({ ...defaultParams(), hairStyle: "none" }, race), assets));
@@ -804,6 +844,74 @@ describe("carved beards", () => {
   }, 120000);
 });
 
+describe("hair round the ears", () => {
+  // The ears' flaps on the head as reshaped, and how much of their outer face (the side that is seen) hair lies on
+  // or over: hair within `near` of a vertex, and outside it. (An ear is thin, and one that lies back against the
+  // head, as an elf's does, has hair close behind it, as a lock tucked behind the ear does: that is what is wanted.)
+  // (`within`: how far along the surface from the ear's rim counts as ear: the rim and lobe alone, or the bowl too)
+  const covered = (positions: Float32Array, normals: Float32Array, hair: THREE.BufferGeometry, near: number, within = 0) => {
+    const ear: number[] = [];
+    for (let i = 0; i < positions.length / 3; i++) {
+      if (base.masks.earDistance[i] <= within && base.masks.earClear[i] < 1 && normals[i * 3] * Math.sign(positions[i * 3]) + 0.3 * normals[i * 3 + 2] > 0.3) ear.push(i);
+    }
+    const cell = 0.05;
+    const grid = new Map<string, number[]>();
+    const h = hair.attributes.position;
+    for (let j = 0; j < h.count; j++) {
+      const key = [h.getX(j), h.getY(j), h.getZ(j)].map((v) => Math.floor(v / cell)).join(",");
+      (grid.get(key) ?? grid.set(key, []).get(key)!).push(j);
+    }
+    let hit = 0;
+    for (const i of ear) {
+      const [x, y, z] = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
+      const [cx, cy, cz] = [x, y, z].map((v) => Math.floor(v / cell));
+      search: for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dz = -1; dz <= 1; dz++)
+            for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
+              const [ox, oy, oz] = [h.getX(j) - x, h.getY(j) - y, h.getZ(j) - z];
+              if (Math.hypot(ox, oy, oz) < near && ox * normals[i * 3] + oy * normals[i * 3 + 1] + oz * normals[i * 3 + 2] > 0) {
+                hit++;
+                break search;
+              }
+            }
+    }
+    return hit / ear.length;
+  };
+
+  it("keeps off the ears, whatever the race's ears are like: the hairline tucks round and behind them", () => {
+    for (const race of ["human", "elf", "gnome", "halfling", "tiefling"] as const) {
+      for (const body of ["masculine", "feminine"] as const) {
+        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks"] as const) {
+          const p = { ...applyRace(defaultParams(), race), body, hairStyle };
+          const { positions, normals } = sculptBust(p, base);
+          const shell = buildHairShell(p, positions, normals, base)!;
+          // (next to none of the ear under the cap of hair, within a millimetre outside it: a stray vertex of its rim,
+          // or, on an elf, whose ear lies back against the head with the hair close behind it, the edge of its rim: 2.5%)
+          expect(covered(positions, normals, shell, 1 * MM), `${race} ${body} ${hairStyle}: cap`).toBeLessThan(0.03);
+          if (hairStyle === "dreadlocks") {
+            // the locks pass over the top of the ear and down behind it: little of it has one lying on it (an elf's
+            // point reaches up among the locks, so a little of its tip has one close above: 6% of the ear; a human's 3%)
+            const share = covered(positions, normals, buildLockShell(p, positions, normals, base)!, 0.6 * MM);
+            expect(share, `${race} ${body}: locks`).toBeLessThan(0.08);
+          }
+        }
+      }
+    }
+  }, 300000);
+
+  it("keeps beards off the ears too: the sideburns stop at the ear, never over its lobe", () => {
+    for (const race of ["human", "dwarf", "half-orc", "elf", "gnome"] as const) {
+      for (const beardStyle of ["short", "full"] as const) {
+        const p = { ...applyRace(defaultParams(), race), beardStyle };
+        const { positions, normals } = sculptBust(p, base);
+        // (the beard ends at the lobe's edge, so a little of the lobe's rim has beard close beside it: 3%)
+        expect(covered(positions, normals, buildBeardShell(p, positions, normals, base)!, 1 * MM), `${race} ${beardStyle}`).toBeLessThan(0.04);
+      }
+    }
+  }, 300000);
+});
+
 describe("carved hair", () => {
   const styles = ["cropped", "swept", "mohawk", "long"] as const;
 
@@ -905,8 +1013,8 @@ describe("carved hair", () => {
   }, 300000);
 });
 
-describe("dreadlocks and braids", () => {
-  const styles = ["dreadlocks", "braids"] as const;
+describe("dreadlocks", () => {
+  const styles = ["dreadlocks"] as const;
   const shellOf = (hairStyle: (typeof styles)[number], overrides: Partial<Params> = {}) => {
     const p = params({ hairStyle, ...overrides });
     const bust = sculptBust(p, base);
@@ -927,11 +1035,8 @@ describe("dreadlocks and braids", () => {
     return open;
   };
 
-  it("are sized so they print: thick ropes and plaits, grooves no finer than the nozzle can hold", () => {
+  it("are sized so they print: thick ropes", () => {
     expect(LOCKS.dreadRadius * 2).toBeGreaterThanOrEqual(2.4 * MM);
-    expect(LOCKS.braidRadius[0] * 2).toBeGreaterThanOrEqual(3.6 * MM);
-    expect(LOCKS.braidGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
-    expect(LOCKS.braidPitch - LOCKS.braidGroove).toBeGreaterThanOrEqual(MIN_FEATURE * 2);
     expect(LOCKS.dreadSpacing).toBeGreaterThan(LOCKS.dreadRadius * 2 * 1.2);
   });
 
@@ -1039,12 +1144,12 @@ describe("dreadlocks and braids", () => {
             for (let z = -1; z <= 1; z++) {
               for (const i of grid.get(`${cx + x},${cy + y},${cz + z}`) ?? []) {
                 const dx = pos.getX(v) - bust.positions[i];
-                const dy = pos.getY(v) - LOCKS.braidRadius[0] - bust.positions[i + 1];
+                const dy = pos.getY(v) - 1.45 * LOCKS.dreadRadius - bust.positions[i + 1];
                 const dz = pos.getZ(v) - bust.positions[i + 2];
                 const d = Math.hypot(dx, dy, dz);
                 // body within a lock's thickness of a point just under the tip (a wall that falls away
                 // below it would not hold it up)
-                if (d < 1.3 * LOCKS.braidRadius[0]) rests = true;
+                if (d < 1.9 * LOCKS.dreadRadius) rests = true;
               }
             }
           }
@@ -1071,16 +1176,11 @@ describe("dreadlocks and braids", () => {
     }
   }, 300000);
 
-  it("carve continuously round a lock (no seam) and, on a braid, the same either side of its middle", () => {
+  it("carve continuously round a lock (no seam)", () => {
     const at = (angle: number, length: number) => [Math.cos(angle), Math.sin(angle), length] as const;
     for (const length of [0.05, 0.13, 0.31]) {
       expect(Math.abs(dreadPattern(...at(Math.PI - 1e-4, length)) - dreadPattern(...at(-Math.PI + 1e-4, length)))).toBeLessThan(0.0005);
-      for (const angle of [0.3, 1.1, 2.5]) expect(braidPattern(...at(angle, length))).toBeCloseTo(braidPattern(...at(-angle, length)), 8);
     }
-    // ...and a braid's grooves are deep enough to show
-    let most = 0;
-    for (let length = 0; length < 0.4; length += 0.002) most = Math.max(most, braidPattern(...at(0.4, length)));
-    expect(most).toBeGreaterThan(0.3 * MM);
   });
 
   it("are only for the styles that have them", () => {
@@ -1090,6 +1190,59 @@ describe("dreadlocks and braids", () => {
       expect(buildLockShell(p, bust.positions, bust.normals, base), hairStyle).toBeNull();
     }
   }, 120000);
+});
+
+describe("the filling of the mouth", () => {
+  it("stays inside the face, whatever the race, age and expression: it never shows through the skin", () => {
+    // (the cases where it once came out under the nose, as two dark dots: a snarl, old age, thin lips)
+    // A point of the filling is outside the face when it is on the outer side of the skin nearest it (the walls of
+    // the hollow of the mouth aside: their outer side is the hollow it fills)
+    const pocket = pocketWalls(base);
+    const cases: Partial<Params>[] = [
+      { race: "human", body: "feminine", age: 1, snarl: 0.6 },
+      { race: "half-orc", body: "feminine", snarl: 0.6, age: 1 },
+      { race: "human", age: 1, lips: 0.2 },
+      { race: "elf", snarl: 1 },
+      { race: "half-orc", body: "feminine", age: 0, lips: 0.2 },
+      { race: "tiefling", body: "feminine", age: 1, snarl: 0.6 },
+    ];
+    for (const overrides of cases) {
+      const p = { ...applyRace({ ...defaultParams(), body: overrides.body ?? "masculine" }, overrides.race ?? "human"), ...overrides, hairStyle: "none" as const, beardStyle: "none" as const };
+      const bust = buildBust(p, assets, false);
+      const meshes = new Map<string, THREE.Mesh>();
+      bust.traverse((o) => o instanceof THREE.Mesh && meshes.set(o.name, o));
+      const head = meshes.get("head")!;
+      const fill = meshes.get("mouthFill")!;
+      const skin = head.geometry.attributes.position.array as Float32Array;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", head.geometry.attributes.position);
+      g.setIndex(new THREE.BufferAttribute(Uint32Array.from(head.geometry.index!.array), 1));
+      const bvh = new MeshBVH(g);
+      const order = g.index!;
+      const hit = { point: new THREE.Vector3(), distance: 0, faceIndex: 0 };
+      const outside = (v: THREE.Vector3) => {
+        bvh.closestPointToPoint(v, hit);
+        const [i, j, k] = [0, 1, 2].map((n) => order.getX(hit.faceIndex * 3 + n));
+        if (pocket[i] && pocket[j] && pocket[k]) return false;
+        const [a, b, c] = [i, j, k].map((n) => new THREE.Vector3().fromArray(skin, n * 3));
+        return new THREE.Vector3().crossVectors(b.sub(a), c.sub(a)).dot(v.clone().sub(hit.point)) > 0;
+      };
+      const position = fill.geometry.attributes.position;
+      const index = fill.geometry.index!;
+      let out = 0;
+      for (let t = 0; t < index.count; t += 3) {
+        const [a, b, c] = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(position, index.getX(t + k)));
+        for (const v of [a, a.clone().add(b).add(c).divideScalar(3), a.clone().lerp(b, 0.5), b.clone().lerp(c, 0.5), c.clone().lerp(a, 0.5)]) {
+          // (in the parting of the closed lips it shows as the dark of the mouth, as it should)
+          if (Math.abs(v.y - LANDMARK.stomion) < 0.025) continue;
+          if (outside(v)) out++;
+        }
+      }
+      expect(out, JSON.stringify(overrides)).toBe(0);
+      // ...and it says so itself, for the print to report (see builder.ts)
+      expect(fill.geometry.userData.outside ?? 0, JSON.stringify(overrides)).toBe(0);
+    }
+  }, 300000);
 });
 
 describe("the open mouth, teeth and expressions", () => {
@@ -1230,25 +1383,99 @@ describe("the open mouth, teeth and expressions", () => {
     expect(box.max.y).toBeLessThan(-0.15);
   });
 
+  // The tusks of a half-orc, by name, and the middle of each (in the head's own space)
+  const tusksOf = (p: Params) => {
+    const group = buildBust({ ...p, hairStyle: "none" }, assets, false);
+    group.updateMatrixWorld(true);
+    const found: { mesh: THREE.Mesh; box: THREE.Box3 }[] = [];
+    group.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.name === "tusk") {
+        o.geometry.computeBoundingBox();
+        found.push({ mesh: o, box: o.geometry.boundingBox!.clone() });
+      }
+    });
+    return { group, found };
+  };
+
   it("carries a half-orc's tusks with the jaw, so they rise out of the open mouth", () => {
-    const tuskVertices = assets.shapes.tusk.positions.length / 3;
-    const tusks = (jawOpen: number) => {
-      const found: THREE.Mesh[] = [];
-      const p = applyRace({ ...defaultParams(), hairStyle: "none" }, "half-orc");
-      p.jawOpen = jawOpen;
-      buildBust(p, assets).traverse((o) => {
-        if (o instanceof THREE.Mesh && o.geometry.attributes.position.count === tuskVertices) found.push(o);
-      });
-      return found;
-    };
-    const shut = tusks(0);
-    const open = tusks(0.6);
+    const orc = applyRace(defaultParams(), "half-orc");
+    const shut = tusksOf({ ...orc, jawOpen: 0 }).found;
+    const open = tusksOf({ ...orc, jawOpen: 0.6 }).found;
     expect(shut.length).toBe(2);
     expect(open.length).toBe(2);
+    // (each goes down with the jaw, as the lower jaw turns and glides: its root end where the jaw takes it)
     for (let i = 0; i < 2; i++) {
-      expect(open[i].position.y).toBeLessThan(shut[i].position.y - 0.05);
-      expect(open[i].position.z).toBeLessThan(shut[i].position.z);
+      const [a, b] = [shut[i].box.getCenter(new THREE.Vector3()), open[i].box.getCenter(new THREE.Vector3())];
+      expect(b.y).toBeLessThan(a.y - 0.05);
+      const rootOf = (mesh: THREE.Mesh) => new THREE.Vector3().fromBufferAttribute(mesh.geometry.attributes.position, mesh.geometry.attributes.position.count - 2);
+      const [y, z] = turnWithJaw(rootOf(shut[i].mesh).y, rootOf(shut[i].mesh).z, 0.6 * JAW.max);
+      expect(rootOf(open[i].mesh).y).toBeCloseTo(y, 4);
+      expect(rootOf(open[i].mesh).z).toBeCloseTo(z, 4);
     }
+  }, 120000);
+
+  it("roots each tusk in the lower jaw in place of the canine, and brings it out between the lips, in front of the upper lip", () => {
+    for (const tusks of [0.2, 0.6, 1]) {
+      const p = { ...applyRace(defaultParams(), "half-orc"), tusks };
+      const { group, found } = tusksOf(p);
+      const skin = group.getObjectByName("head") as THREE.Mesh;
+      const copy = new THREE.BufferGeometry();
+      copy.setAttribute("position", skin.geometry.attributes.position);
+      copy.setIndex(new THREE.BufferAttribute(Uint32Array.from(skin.geometry.index!.array), 1));
+      const bvh = new MeshBVH(copy);
+      const inside = (v: THREE.Vector3) => bvh.raycast(new THREE.Ray(v, new THREE.Vector3(0.31, 0.83, 0.47).normalize()), THREE.DoubleSide).length % 2 === 1;
+      const canine = lowerCanine(p);
+      expect(found.length).toBe(2);
+      for (const { mesh } of found) {
+        const position = mesh.geometry.attributes.position;
+        // (the two end points of the swept tube: the root's, then the tip's)
+        const root = new THREE.Vector3().fromBufferAttribute(position, position.count - 2);
+        const tip = new THREE.Vector3().fromBufferAttribute(position, position.count - 1);
+        // the root is in the jaw, under the canine's place on the arch
+        expect(Math.abs(Math.abs(root.x) - canine.x), `tusks ${tusks}`).toBeLessThan(0.005);
+        expect(root.y).toBeLessThan(canine.gum);
+        expect(inside(root), `root inside, tusks ${tusks}`).toBe(true);
+        // the tip is out in the air, above the line of the lips and in front of the upper lip
+        expect(inside(tip), `tip outside, tusks ${tusks}`).toBe(false);
+        expect(tip.y).toBeGreaterThan(LANDMARK.stomion + 0.035);
+        const lip = frontPoint(new THREE.Mesh(skin.geometry), tip.x, LANDMARK.stomion + 0.035)!;
+        expect(tip.z).toBeGreaterThan(lip.position.z);
+      }
+    }
+  }, 300000);
+
+  it("builds each tusk as a closed solid wound outward: every edge shared by two triangles running opposite ways", () => {
+    for (const jawOpen of [0, 0.6]) {
+      for (const { mesh } of tusksOf({ ...applyRace(defaultParams(), "half-orc"), tusks: 1, jawOpen }).found) {
+        const index = mesh.geometry.index!.array;
+        const p = mesh.geometry.attributes.position.array;
+        const edges = new Map<string, number>();
+        let volume = 0;
+        for (let t = 0; t < index.length; t += 3) {
+          for (let e = 0; e < 3; e++) edges.set(`${index[t + e]},${index[t + ((e + 1) % 3)]}`, (edges.get(`${index[t + e]},${index[t + ((e + 1) % 3)]}`) ?? 0) + 1);
+          const [a, b, c] = [index[t] * 3, index[t + 1] * 3, index[t + 2] * 3];
+          volume += p[a] * (p[b + 1] * p[c + 2] - p[b + 2] * p[c + 1]) - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c]) + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c]);
+        }
+        for (const [key, n] of edges) {
+          const [from, to] = key.split(",");
+          expect(n).toBe(1);
+          expect(edges.get(`${to},${from}`)).toBe(1);
+        }
+        expect(volume).toBeGreaterThan(0);
+      }
+    }
+  }, 120000);
+
+  it("parts the lips round a tusk instead of swelling the lower lip over it", () => {
+    const front = (tusks: number) => {
+      const p = { ...applyRace(defaultParams(), "half-orc"), tusks };
+      const mesh = new THREE.Mesh(sculptBust(p, base).geometry);
+      mesh.updateMatrixWorld(true);
+      const x = lowerCanine(p).x;
+      return frontPoint(mesh, x, LANDMARK.stomion - 0.035)!.position.z;
+    };
+    // (the lower lip comes no further forward where the tusk comes up than it does without one)
+    expect(front(1)).toBeLessThanOrEqual(front(0) + 0.002);
   }, 120000);
 });
 

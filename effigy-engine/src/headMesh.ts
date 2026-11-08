@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { siteUrl } from "./site";
 
 // The sculpted base head the whole app deforms. It is a CC0 mesh (see public/models/README.md), exported
 // to a small binary file. Everything downstream works in "head-local" units: the origin is the midpoint
@@ -8,6 +9,11 @@ export const SCALE = 5;
 
 // Light smoothing of the shoulders and chest at load, to even out the wrapped rings
 const SMOOTH_PASSES = 3;
+
+// The ears on the undeformed head: where the flap stands out past the skull (head units), and how far off it the
+// hair may start (see earClear below): close, so the hairline comes down to the ear and round it (further off, it
+// rode high up the side of the skull)
+const EAR = { out: 0.41, lobeOut: 0.38, lobeTop: -0.12, low: -0.34, high: 0.12, back: -0.7, front: -0.2, margin: 0.008, fade: 0.025, reach: 0.2 };
 
 // Where the eyes sit in the source file's own units (metres): the midpoint between the eyes, and the
 // eyeball radius that fits this head's eyelids. The bundle's own eyeball mesh is larger (12.4 mm), but the
@@ -46,8 +52,10 @@ export interface HeadBase {
   bottom: Uint32Array; // the vertices on that underside, used to centre the bust on its plinth
   // Per-vertex landmark weights (0..1) measured on the undeformed head, so they stay on the lips however
   // the face is reshaped. lipsSoft is the red of the lips with a gentle edge, for lip fullness and for
-  // keeping a beard off the lips.
-  masks: { lipsSoft: Float32Array };
+  // keeping a beard off the lips; mouthLine and nostrils are where the paint darkens; earClear is how clear of
+  // the ears a vertex is (0 on them, 1 away), so hair keeps off them.
+  // (earDistance is the distance itself, along the surface, for a part that keeps further off than the hair: a beard)
+  masks: { lipsSoft: Float32Array; mouthLine: Float32Array; nostrils: Float32Array; earClear: Float32Array; earDistance: Float32Array };
   neck: { x: number; z: number }; // centre line of the neck
   // The same vertices with the shoulders and chest wrapped onto a sculpted female body instead of a male
   // one (see tools/export_head.py). The build blends between the two.
@@ -170,13 +178,75 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     return c * c * (3 - 2 * c);
   };
   const lipsSoft = new Float32Array(vertexCount);
+  const mouthLine = new Float32Array(vertexCount);
+  const nostrils = new Float32Array(vertexCount);
   for (let i = 0; i < vertexCount; i++) {
     const x = Math.abs(positions[i * 3]);
     const y = positions[i * 3 + 1];
     const z = positions[i * 3 + 2];
+    const ny = normals[i * 3 + 1];
     const mouthWindow = (1 - smooth((x - 0.125) / 0.02)) * smooth((z - 0.06) / 0.06);
     lipsSoft[i] = smooth((y - (LANDMARK.stomion - 0.08)) / 0.04) * (1 - smooth((y - (LANDMARK.stomion + 0.04)) / 0.04)) * mouthWindow;
+    mouthLine[i] = Math.exp(-(((y - LANDMARK.stomion) / 0.008) ** 2)) * (1 - smooth((x - 0.13) / 0.02)) * smooth((z - 0.06) / 0.06);
+    // The underside of the nose, where the nostrils open
+    nostrils[i] = Math.exp(-(((x - 0.055) / 0.035) ** 2) - ((y + 0.225) / 0.05) ** 2) * smooth((-ny - 0.2) / 0.3) * smooth((z - 0.08) / 0.05);
   }
+
+  // How clear of the ears each vertex is, along the surface: 0 on the ear, rising to 1 a little way off it. The
+  // ear is the flap that stands out past the side of the skull (which is about 0.39 across there; the ear 0.45),
+  // and the distance from it is walked over the mesh, so on a race whose ears are reshaped (an elf's point, a
+  // gnome's size) it is still the same vertices, and the hair tucks behind them.
+  const earDistance = new Float32Array(vertexCount).fill(Infinity);
+  const heap: [number, number][] = [];
+  const push = (d: number, v: number) => {
+    heap.push([d, v]);
+    for (let k = heap.length - 1; k > 0; ) {
+      const parent = (k - 1) >> 1;
+      if (heap[parent][0] <= heap[k][0]) break;
+      [heap[parent], heap[k]] = [heap[k], heap[parent]];
+      k = parent;
+    }
+  };
+  const pop = (): [number, number] => {
+    const top = heap[0];
+    const last = heap.pop()!;
+    if (heap.length) {
+      heap[0] = last;
+      for (let k = 0; ; ) {
+        const [l, r] = [2 * k + 1, 2 * k + 2];
+        let m = k;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === k) break;
+        [heap[m], heap[k]] = [heap[k], heap[m]];
+        k = m;
+      }
+    }
+    return top;
+  };
+  for (let i = 0; i < vertexCount; i++) {
+    const [x, y, z] = [Math.abs(positions[i * 3]), positions[i * 3 + 1], positions[i * 3 + 2]];
+    // (the lobe, low on the ear, stands out less than the rim above it, but past the side of the skull there, which is
+    // no wider than about 0.36)
+    const out = y < EAR.lobeTop ? EAR.lobeOut : EAR.out;
+    if (x > out && y > EAR.low && y < EAR.high && z > EAR.back && z < EAR.front) {
+      earDistance[i] = 0;
+      push(0, i);
+    }
+  }
+  while (heap.length) {
+    const [d, v] = pop();
+    if (d > earDistance[v] || d > EAR.reach) continue;
+    for (let k = offsets[v]; k < offsets[v + 1]; k++) {
+      const u = neighbours[k];
+      const step = Math.hypot(positions[u * 3] - positions[v * 3], positions[u * 3 + 1] - positions[v * 3 + 1], positions[u * 3 + 2] - positions[v * 3 + 2]);
+      if (d + step < earDistance[u]) {
+        earDistance[u] = d + step;
+        push(d + step, u);
+      }
+    }
+  }
+  const earClear = Float32Array.from(earDistance, (d) => smooth((d - EAR.margin) / EAR.fade));
 
   const half = SOURCE.eyeHalfSpacing * SCALE;
   return {
@@ -188,7 +258,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
     eyes: { left: [half, 0, 0], right: [-half, 0, 0], radius: SOURCE.eyeRadius * SCALE },
     baseY,
     bottom: Uint32Array.from(underside),
-    masks: { lipsSoft },
+    masks: { lipsSoft, mouthLine, nostrils, earClear, earDistance },
     neck: { x: neckX / neckCount, z: neckZ / neckCount },
     feminine: { positions: femininePositions, normals: normalsOf(femininePositions) },
   };
@@ -198,7 +268,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
 export async function loadHead(): Promise<HeadBase> {
   const [head, feminine] = await Promise.all(
     ["head", "feminine"].map(async (name) => {
-      const response = await fetch(`${import.meta.env.BASE_URL}models/${name}.bin`);
+      const response = await fetch(siteUrl(`models/${name}.bin`));
       if (!response.ok) throw new Error(`Could not load the ${name} model (${response.status})`);
       return response.arrayBuffer();
     }),

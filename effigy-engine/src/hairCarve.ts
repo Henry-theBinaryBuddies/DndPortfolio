@@ -1,6 +1,7 @@
 import { hash, smooth, vee, type Pattern } from "./carve";
 import type { HairStyle } from "./params";
 import { MM } from "./print";
+import { sweptCoordinate } from "./sculptForms";
 
 // How hair is carved, the way a sculptor does it on a miniature: broad locks separated by V-grooves, with a
 // finer groove down the middle of each lock, running the way the hair is combed. Bolder than the beard (hair
@@ -22,6 +23,13 @@ export const HAIR_CARVING = {
 export function locks(across: number, along: number, period = 0): number {
   const c = HAIR_CARVING;
   const wrap = (k: number) => (period ? ((k % period) + period) % period : k);
+  // (on the head, not round a rope: locks of uneven widths, their partings wandering along their length, so they
+  // read as hair and not as a comb's even teeth. Only ever wider than the pitch, never narrower, so the ridges
+  // between grooves stay as thick as the printer needs.)
+  if (!period) {
+    const k = (2 * Math.PI) / (3.3 * c.lockPitch);
+    across = 0.82 * across + (0.13 / k) * Math.sin(k * across + 4 * along) + (0.02 / k) * Math.sin(2.3 * k * across - 7 * along + 1.3); // (its slope 0.64..1)
+  }
   const p1 = across / c.lockPitch;
   const lock = wrap(Math.floor(p1));
   const major = vee(p1, c.lockGroove / c.lockPitch / 2) * (0.7 + 0.6 * hash(lock)) * (0.6 + 0.4 * Math.sin(along * 13 + lock * 2.3));
@@ -62,12 +70,12 @@ const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   cropped: crop,
   // A crest swept back: locks run along its length, side by side across its width
   mohawk: (x, y, z) => locks(x + 0.008 * Math.sin(z * 11 + y * 5), z),
-  // (dreadlocks and braids grow from a close crop)
+  // (dreadlocks grow from a close crop)
   dreadlocks: crop,
-  braids: crop,
 };
 
 export function hairPattern(style: Exclude<HairStyle, "none">): Pattern {
+  if (style === "swept") return (x, y, z) => 0.65 * locks(0.62 * sweptCoordinate(x, y, z), z) * smooth((Math.hypot(x, y - 0.05) - 0.22) / 0.1);
   return PATTERNS[style];
 }
 

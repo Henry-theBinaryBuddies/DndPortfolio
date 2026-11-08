@@ -87,7 +87,9 @@ function makePlan(source: Uint32Array, first: number): Plan {
 
 // Subdivides a closed shell and cuts the pattern into its outer surface. `owner` and `key` say what the
 // subdivision pattern may be cached under (the head, and the style).
-export function carveShell(shell: THREE.BufferGeometry, owner: object, key: string, pattern: Pattern): THREE.BufferGeometry {
+// (`keep`: how much of the shell's thickness a groove must always leave, if more than its share: for a shell whose
+// inner surface lies under the skin, enough that no groove dips under the skin where the shell thins at its edge)
+export function carveShell(shell: THREE.BufferGeometry, owner: object, key: string, pattern: Pattern, keep = 0): THREE.BufferGeometry {
   const position = shell.attributes.position;
   const first = position.count;
   const source = Uint32Array.from(shell.index!.array);
@@ -140,18 +142,33 @@ export function carveShell(shell: THREE.BufferGeometry, owner: object, key: stri
   geometry.setIndex(new THREE.BufferAttribute(plan.index, 1));
   geometry.computeVertexNormals();
   const normal = geometry.attributes.normal.array as Float32Array;
+  geometry.computeBoundingBox();
+  const envelope = geometry.boundingBox!;
+  const groove = new Float32Array(count); // how deep each vertex was carved, for the paint to darken the grooves
   for (let v = 0; v < count; v++) {
     if (!outer[v]) continue;
     // Not at the faded edge of the hair, and never through the shell
     const amount = smooth((hair[v] - 0.3) / 0.4);
     if (amount <= 0) continue;
-    const depth = Math.min(pattern(head[v * 3], head[v * 3 + 1], head[v * 3 + 2]) * amount, CARVE.share * thick[v]);
+    let depth = Math.min(pattern(head[v * 3], head[v * 3 + 1], head[v * 3 + 2]) * amount, CARVE.share * thick[v], Math.max(0, thick[v] - keep));
+    // At a bent tip an averaged normal can tilt a cut past the shell's own extent. There the cut is made shallower,
+    // so it stops at the extent (clamping the point onto it instead flattened the tip into a small face)
+    for (let a = 0; a < 3; a++) {
+      const n = -normal[v * 3 + a]; // the way the cut moves along this axis
+      const [low, high] = a === 0 ? [envelope.min.x, envelope.max.x] : a === 1 ? [envelope.min.y, envelope.max.y] : [envelope.min.z, envelope.max.z];
+      const at = pos[v * 3 + a];
+      if (n > 1e-9 && at + n * depth > high) depth = Math.max(0, (high - at) / n);
+      if (n < -1e-9 && at + n * depth < low) depth = Math.max(0, (low - at) / n);
+    }
     pos[v * 3] -= normal[v * 3] * depth;
     pos[v * 3 + 1] -= normal[v * 3 + 1] * depth;
     pos[v * 3 + 2] -= normal[v * 3 + 2] * depth;
+    groove[v] = depth;
   }
   geometry.setAttribute("hairAmount", new THREE.BufferAttribute(hair, 1));
+  geometry.setAttribute("groove", new THREE.BufferAttribute(groove, 1));
   geometry.attributes.position.needsUpdate = true;
+  geometry.computeBoundingBox();
   geometry.computeVertexNormals();
   return geometry;
 }

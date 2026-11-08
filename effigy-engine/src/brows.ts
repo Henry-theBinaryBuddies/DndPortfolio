@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { HeadBase } from "./headMesh";
-import { masculinity, type Params } from "./params";
+import { masculinity, RACE_INFO, type Params } from "./params";
 import { MM } from "./print";
 
 // Eyebrows, sculpted as a sculptor would carve them on a miniature: a low raised form in the shape of the
@@ -145,7 +145,8 @@ export function buildBrows(p: Params, positions: Float32Array, normals: Float32A
   if (bushy < 0.03) return null;
   const m = masculinity(p);
   const lookup = frontLookup(base);
-  const peak = (0.35 + 0.5 * bushy) * MM;
+  const { browHeight, browCarve } = RACE_INFO[p.race].skeleton;
+  const peak = (0.35 + 0.5 * bushy) * MM * browHeight;
   const { pitch, grooveWidth, depth, minWidth } = BROW_CARVING;
   const rows = ACROSS + 1;
   const per = (ALONG + 1) * rows;
@@ -188,7 +189,7 @@ export function buildBrows(p: Params, positions: Float32Array, normals: Float32A
         const phase = (u * Math.sin(angle) - v * Math.cos(angle)) / pitch;
         const n = Math.floor(phase);
         const vee = Math.max(0, 1 - Math.abs(phase - n - 0.5) / (grooveWidth / pitch / 2));
-        const cut = Math.min(depth * (0.75 + 0.5 * hash(n, side)), 0.5 * height) * vee;
+        const cut = Math.min(depth * browCarve * (0.75 + 0.5 * hash(n, side)), 0.5 * height) * vee;
         // (at its very edge it dips just under the skin, so the two never fight over the same depth)
         lift[k] = height - cut - SKIN_GAP * (1 - smooth(height / (0.2 * MM)));
       }

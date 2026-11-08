@@ -12,6 +12,11 @@
   box-sizing: border-box;
 }
 
+/* (hidden means hidden, whatever display a row or section otherwise has) */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -99,6 +104,58 @@ h1 {
   color: var(--ember);
 }
 
+/* undo, redo, and the character's file, above the tabs */
+.file-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.file-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#file-status:empty {
+  display: none;
+}
+
+/* the panel's three tabs: Shape, Appearance, Output */
+.tabs {
+  margin: 12px 0 0;
+}
+
+.tabs button[aria-selected="true"] {
+  color: var(--ink);
+  background: var(--edge);
+  border-color: var(--ember);
+}
+
+/* a section's reset, at the right of its heading */
+h2 .reset {
+  float: right;
+  margin-top: -3px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  background: transparent;
+  border: 1px solid var(--edge);
+  cursor: pointer;
+}
+
+h2 .reset:hover {
+  color: var(--ink);
+  border-color: var(--ember);
+}
+
+/* where the keyboard is, plainly */
+:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
 h2 {
   margin: 20px 0 8px;
   padding-bottom: 4px;
@@ -133,6 +190,76 @@ input[type="range"] {
 
 .select {
   grid-template-columns: 96px minmax(0, 1fr);
+}
+
+/* the token preview: the token as it would be saved, over the panel (its corners are transparent) */
+.token-preview {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 4px auto 10px;
+}
+
+/* a picker with a step back and a step on either side of it */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stepper select {
+  flex: 1;
+  min-width: 0;
+}
+
+.option.indented {
+  margin: -2px 0 8px 106px;
+}
+
+.swatches {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.swatches div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--edge);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatch[aria-pressed="true"] {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* the picker for any other colour: a swatch with a dashed edge */
+input.swatch.picker {
+  border-style: dashed;
+  background: none;
+  overflow: hidden;
+}
+
+input.swatch.picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input.swatch.picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+input.swatch.picker::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
 }
 
 .segmented {

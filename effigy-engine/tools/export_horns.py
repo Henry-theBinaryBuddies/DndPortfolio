@@ -145,9 +145,10 @@ def sweep(points, base_radius, tip_radius, taper, ridge_amp=0.0, ridge_count=0.0
 
 # Each style: control points (the horn grows up +Y, curving toward +X and back toward -Z) and cross-section settings
 STYLES = {
-    # A heavy spiral that sweeps back, then curls down and forward around the ear
+    # A heavy spiral that sweeps back, then curls down and forward around the ear. It drifts outward as it
+    # coils, as a ram's horn does (a helix, not a flat curl): coiling flat, its end came back into the skull.
     "ram": dict(
-        points=[(0, 0, 0), (0.25, 0.3, -0.05), (0.62, 0.5, -0.3), (0.88, 0.25, -0.72), (0.74, -0.2, -0.95), (0.38, -0.36, -0.72), (0.26, -0.12, -0.4)],
+        points=[(0, 0, 0), (0.25, 0.3, -0.05), (0.6, 0.5, -0.3), (0.86, 0.28, -0.7), (0.98, -0.18, -0.9), (1.06, -0.38, -0.66), (1.12, -0.2, -0.36)],
         base_radius=0.11, tip_radius=0.012, taper=0.8, ridge_amp=0.07, ridge_count=11, flatten=1.2,
     ),
     # A long smooth arc that sweeps back over the head

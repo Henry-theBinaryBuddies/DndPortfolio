@@ -1,15 +1,19 @@
 import * as THREE from "three";
+import { MeshBVH } from "three-mesh-bvh";
 import { shapeGeometry, type Assets } from "./assets";
+import { bodySurface } from "./bodySurface";
 import { buildBrows } from "./brows";
+import { buildDragonborn } from "./dragonborn";
 import { JAW, turnWithJaw } from "./jaw";
-import { TUSK_X } from "./deform";
-import { frontPoint, sculptBust, topPoint } from "./face";
+import { frontPoint, sculptBust, topPoint, type Bust } from "./face";
+import { buildOutfit, dressedAtAll, type Dressed } from "./garments";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
 import { buildLockShell, buildLocks } from "./locks";
 import { buildThroatGusset } from "./gusset";
-import { buildMouthFill } from "./mouthFill";
-import { buildTeeth } from "./teeth";
+import { buildMouthFill, pocketWalls } from "./mouthFill";
+import { buildTeeth, lowerCanine } from "./teeth";
+import { tuskGeometry } from "./tusk";
 import { derive, type Params } from "./params";
 import { MM, PEDESTAL_SIDES, pedestalRings } from "./print";
 
@@ -20,7 +24,8 @@ import { MM, PEDESTAL_SIDES, pedestalRings } from "./print";
 // The bust's origin is the middle of its plinth: y = 0 is the top of the base, and the sculpted head
 // is shifted so the centre of its underside lands on the plinth's centre.
 //
-// Everything is one plain clay material: for now the bust is the sculpt alone, the form that prints.
+// Everything is one plain clay material, the form that prints; the viewer paints it afterwards, part by part
+// (see paint.ts), so each mesh is named for what it is.
 
 // The eyeball's radius in each direction, so it fills its socket. The sculpt's lids were made for an eye
 // with a bulging cornea, so a plain sphere leaves a gap behind the lids (a dark wedge in profile, and lids
@@ -139,7 +144,17 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // With detail off the beard is its plain shell, without the carving (about 750,000 triangles, which takes
 // a moment to build): that is the quick draft shown while a slider moves.
-export function buildBust(p: Params, assets: Assets, detail = true, gusset = false): THREE.Group {
+// (`sculpted`: a humanoid's bust already sculpted from these settings, as the page has one to see whether its clothes are
+// fitted yet, not sculpted again; a fresh one, as the bust's geometry is its own)
+export function buildBust(p: Params, assets: Assets, detail = true, gusset = false, sculpted?: Bust): THREE.Group {
+  // (a Dragonborn is a sculpt of its own, with nothing to deform: see dragonborn.ts)
+  if (p.family === "dragonborn") {
+    if (!assets.dragonborn) throw new Error("the Dragonborn model has not loaded");
+    const root = buildDragonborn(assets.dragonborn, p, gusset);
+    const outfit = !dressedAtAll(p) ? null : buildOutfit(p, bodySurface(p, assets));
+    if (outfit) addGarments(root.children[0] as THREE.Group, outfit, root.userData.flatCut as number);
+    return root;
+  }
   const root = new THREE.Group();
   const k = derive(p);
   const base = assets.head;
@@ -147,7 +162,10 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   const head = new THREE.Group();
   root.add(head);
 
-  const bust = sculptBust(p, base);
+  const bust = sculpted ?? sculptBust(p, base);
+  // Clothing, fitted to the body (see garments.ts); the hair and the beard are then built over it
+  const outfit = !dressedAtAll(p) ? null : buildOutfit(p, bodySurface(p, assets, bust));
+  const worn = outfit?.dressed ?? bust.positions;
   // The bust is cut flat a little above its lowest point (see underside.ts): everything below this plane is
   // trimmed off, which leaves a clean flat underside for the pedestal. (The viewer clips it away; the export
   // cuts the solid.)
@@ -195,9 +213,9 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     }
   }
 
-  // Tusks: only half-orcs have them. Each grows from the lower jaw inside the mouth and comes out
-  // between the lips beside the middle of the mouth, leaning forward so it rises in front of the upper lip
-  // and a little outward. A third of it (the root and its flared base) stays hidden inside the mouth; the lips are shaped around it in deform.ts (the lower lip swells over it, the upper lip lifts).
+  // Tusks: only half-orcs have them. Each is a tooth of the lower jaw standing in place of the lower canine: from
+  // its root in the gum it runs forward through the parting of the lips, which part around it (see deform.ts),
+  // and curves up in front of the upper lip and a little outward (see tusk.ts).
   // It belongs to the lower jaw, so it is placed with the mouth shut (as above) and then turned with the jaw
   // as far as the mouth is open: the tusk rises out of the open mouth instead of staying where the lips were.
   const jawAngle = p.jawOpen * JAW.max;
@@ -207,44 +225,56 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
       shut = new THREE.Mesh(sculptBust({ ...p, jawOpen: 0 }, base).geometry);
       shut.updateMatrixWorld(true);
     }
-    const geometry = shapeGeometry(assets.shapes.tusk);
-    // The tusk asset is one unit long. The largest stays small enough for its hidden root to fit behind the
-    // lower lip (any bigger and the root shows in front of the chin).
-    const size = 0.09 + 0.09 * k.tusks;
-    const rootX = TUSK_X * (1 + 0.8 * (k.mouthWidth - 1));
+    const canine = lowerCanine(p);
+    // Thicker as the slider rises, and longer above the lip
+    const thick = 0.028 + 0.018 * k.tusks;
+    const rise = 0.05 + 0.07 * k.tusks;
     for (const side of [-1, 1]) {
-      const mouth = frontPoint(shut, side * rootX, LANDMARK.stomion);
-      const upperLip = frontPoint(shut, side * rootX, LANDMARK.stomion + 0.035);
-      if (!mouth || !upperLip) continue;
-      // Where it leaves the mouth: on the mouth line, just inside the lips
-      const exit = mouth.position.clone().add(new THREE.Vector3(0, 0, -0.015));
-      // Aimed to pass just in front of the upper lip, so even a small tusk's tip clears it instead of
-      // seeming to pierce it, however full the lips or heavy the jaw
-      const clear = upperLip.position.clone().add(new THREE.Vector3(0, 0, 0.008)).sub(exit);
-      const lean = Math.min(0.85, Math.max(0.35, clear.z / Math.max(clear.y, 1e-3)));
-      const along = new THREE.Vector3(side * 0.12, 1, lean).normalize();
-      const tusk = new THREE.Mesh(side === 1 ? geometry : geometry.clone(), clay);
-      tusk.name = "tusk";
-      tusk.scale.set(side * size, size, size);
-      tusk.quaternion.setFromUnitVectors(UP, along);
-      tusk.position.copy(exit).addScaledVector(along, -0.33 * size);
+      const x = side * canine.x;
+      const parting = frontPoint(shut, x, LANDMARK.stomion);
+      const upperLip = frontPoint(shut, x, LANDMARK.stomion + 0.035);
+      if (!parting || !upperLip) continue;
+      // It turns forward inside the lips, out of sight, and leaves the parting at the front of the lips; it passes
+      // just in front of the upper lip (drawn back there) and rises from there: up, a little forward and outward
+      const exit = parting.position.clone().add(new THREE.Vector3(0, 0.002, -0.012));
+      const clear = upperLip.position.clone().add(new THREE.Vector3(side * 0.006, 0, thick * 1.1));
+      const up = new THREE.Vector3(side * 0.25, 1, 0.3).normalize();
+      const path = [
+        // the root, in the gum below the row of teeth, and where it leaves the gum
+        new THREE.Vector3(x, canine.gum - 0.04, canine.z - 0.005),
+        new THREE.Vector3(x, canine.gum + 0.01, canine.z + 0.005),
+        // forward through the parting, below the line of the lips
+        new THREE.Vector3(x, LANDMARK.stomion - 0.012, (canine.z + exit.z) / 2 + 0.01),
+        exit,
+        clear,
+        // the tip
+        clear.clone().addScaledVector(up, rise),
+      ];
+      const geometry = tuskGeometry(path, thick, thick * 0.3);
       if (jawAngle > 0) {
-        const [y, z] = turnWithJaw(tusk.position.y, tusk.position.z, jawAngle);
-        tusk.position.set(tusk.position.x, y, z);
-        tusk.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), jawAngle));
+        const position = geometry.attributes.position;
+        for (let i = 0; i < position.count; i++) {
+          const [y, z] = turnWithJaw(position.getY(i), position.getZ(i), jawAngle);
+          position.setY(i, y);
+          position.setZ(i, z);
+        }
+        geometry.computeVertexNormals();
       }
+      const tusk = new THREE.Mesh(geometry, clay);
+      tusk.name = "tusk";
       head.add(tusk);
     }
   }
 
   // Hair: a sculpted shell over the scalp, and, for long hair, a draped curtain for the lengths that hang
   // free; and a beard, sculpted like the hair
-  const beard = (detail ? buildBeard : buildBeardShell)(p, bust.positions, bust.normals, base);
+  // (over the clothes, if any: `worn` is the body with each garment's outside over what it covers)
+  const beard = (detail ? buildBeard : buildBeardShell)(p, worn, bust.normals, base);
   const forms: [string, THREE.BufferGeometry | null][] = [
-    ["hair", (detail ? buildHair : buildHairShell)(p, bust.positions, bust.normals, base)],
-    ["curtain", detail ? buildHanging(p, bust.positions, base) : buildHangingHair(p, bust.positions, base)],
+    ["hair", (detail ? buildHair : buildHairShell)(p, worn, bust.normals, base)],
+    ["curtain", detail ? buildHanging(p, worn, base) : buildHangingHair(p, worn, base)],
     ["beard", beard],
-    ["locks", (detail ? buildLocks : buildLockShell)(p, bust.positions, bust.normals, base)],
+    ["locks", (detail ? buildLocks : buildLockShell)(p, worn, bust.normals, base)],
   ];
   for (const [name, form] of forms) {
     if (!form) continue;
@@ -271,13 +301,23 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     mesh.name = "teeth";
     head.add(mesh);
   }
-  // With the jaw shut, the hollow behind the lips is filled solid (see mouthFill.ts)
-  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen);
+  // The hollow behind the lips is filled solid: all of it with the jaw shut, and with it open, all but a shallow
+  // recess behind the front teeth (see mouthFill.ts)
+  let teethFront: number | undefined;
+  if (teeth) {
+    const position = teeth.attributes.position;
+    for (let i = 0; i < position.count; i++) if (Math.abs(position.getX(i)) < 0.05) teethFront = Math.max(teethFront ?? -Infinity, position.getZ(i));
+  }
+  const fill = buildMouthFill(bust.positions, bust.normals, p.jawOpen, teethFront, base, frontOutside(bust.positions, base.indices, pocketWalls(base)));
   if (fill) {
     const mesh = new THREE.Mesh(fill, clay);
     mesh.name = "mouthFill";
     head.add(mesh);
+    // (if it could not be kept inside the face everywhere, the print says so: see mouthFill.ts)
+    if (fill.userData.outside) root.userData.warnings = [`The filling of the mouth could not be kept inside the face everywhere (${fill.userData.outside} places): look under the nose and at the lips before printing.`];
   }
+  // The ram horns' tips start about 11 mm in mid-air at full size (see docs/TECHNICAL.md, section 11)
+  if (p.hornStyle === "ram") root.userData.warnings = [...((root.userData.warnings as string[] | undefined) ?? []), "The ram horns' tips start in mid-air: print them with the slicer's supports under the tips."];
   // Optionally, a wedge under the chin so it needs no supports (see gusset.ts)
   const wedge = gusset ? buildThroatGusset(bust.geometry, bust.positions, bust.normals) : null;
   if (wedge) {
@@ -285,6 +325,8 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     mesh.name = "gusset";
     head.add(mesh);
   }
+
+  if (outfit) addGarments(head, outfit, cut);
 
   // Eyebrows, sculpted with carved hair (see brows.ts)
   const brows = buildBrows(p, bust.positions, bust.normals, base);
@@ -297,14 +339,67 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
   return root;
 }
 
+// The garments as meshes of the head's group, which is the body's frame (see bodySurface.ts), each named for what it
+// is, so the paint and the print know it (see parts.ts). (Each its own geometry over the outfit's kept arrays: a
+// bust's geometry is let go when the bust is replaced, the outfit is kept for the next.)
+function addGarments(head: THREE.Group, outfit: Dressed, cut: number): void {
+  const clay = new THREE.MeshStandardMaterial({ color: 0x9c9a96, roughness: 0.75, clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, 1, 0), -cut * MM)] });
+  for (const garment of outfit.garments) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(garment.positions, 3));
+    geometry.setIndex(new THREE.BufferAttribute(garment.indices, 1));
+    geometry.computeVertexNormals();
+    const mesh = new THREE.Mesh(geometry, clay);
+    mesh.name = garment.name;
+    head.add(mesh);
+  }
+}
+
+// Whether a point around the mouth is outside the face: on the outer side of the skin nearest it. (Not of the walls of
+// the hollow of the mouth, whose outer side is the hollow the filling is to fill: `pocket` marks their vertices.)
+// Tested by rays before, a point in the crease between the wing of the nose and the lip read as inside, with the
+// pout of the lip in front of it, the nose above and the cheeks either side, and the filling showed there. The
+// whole head is searched, as a bounding volume hierarchy built once for its triangles and refitted to each bust's
+// shape, which is far quicker than building it again.
+const headSearch = new WeakMap<ArrayLike<number>, { geometry: THREE.BufferGeometry; bvh: MeshBVH }>();
+function frontOutside(positions: Float32Array, indices: ArrayLike<number>, pocket: Uint8Array): (v: THREE.Vector3) => boolean {
+  let search = headSearch.get(indices);
+  if (!search) {
+    // (over a copy of the triangles: building one reorders them, and the head's own order must stay as it is)
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(Float32Array.from(positions), 3));
+    geometry.setIndex(new THREE.BufferAttribute(Uint32Array.from(indices), 1));
+    search = { geometry, bvh: new MeshBVH(geometry) };
+    headSearch.set(indices, search);
+  } else {
+    (search.geometry.attributes.position.array as Float32Array).set(positions);
+    search.bvh.refit();
+  }
+  const { bvh, geometry } = search;
+  const index = geometry.index!;
+  const hit = { point: new THREE.Vector3(), distance: 0, faceIndex: 0 };
+  const [a, b, c, normal] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  return (v) => {
+    if (!bvh.closestPointToPoint(v, hit)) return false;
+    const [i, j, k] = [index.getX(hit.faceIndex * 3), index.getX(hit.faceIndex * 3 + 1), index.getX(hit.faceIndex * 3 + 2)];
+    if (pocket[i] && pocket[j] && pocket[k]) return false;
+    a.fromArray(positions, i * 3);
+    b.fromArray(positions, j * 3);
+    c.fromArray(positions, k * 3);
+    normal.crossVectors(b.sub(a), c.sub(a));
+    return normal.dot(v.clone().sub(hit.point)) > 0;
+  };
+}
+
 // Geometry and materials live on the GPU, and JavaScript's garbage collector
-// cannot free them. Whenever a bust is replaced we release them by hand.
+// cannot free them. Whenever a bust is replaced we release them by hand. (The paint's materials are
+// shared by every bust in turn, so they are kept: see paint.ts.)
 export function disposeObject(object: THREE.Object3D): void {
   object.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
     child.geometry.dispose();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
-    for (const material of materials) material.dispose();
+    for (const material of materials) if (!material.userData.shared) material.dispose();
   });
 }
 
@@ -342,8 +437,8 @@ export function basePrism(outline: [number, number][], bottom: number, top: numb
 
 // The pedestal as a closed solid (see pedestalRings), from `bottom` up to `top`: a round disc and a waisted stem
 // flaring out to the outline of the bust at its cut
-export function pedestalGeometry(reach: ArrayLike<number>, bottom: number, top: number): THREE.BufferGeometry {
-  const rings = pedestalRings(reach, bottom, top);
+export function pedestalGeometry(reach: ArrayLike<number>, bottom: number, top: number, fixedDisc?: number, unit?: number): THREE.BufferGeometry {
+  const rings = pedestalRings(reach, bottom, top, fixedDisc, unit);
   const n = PEDESTAL_SIDES;
   const positions: number[] = rings.flat();
   const index: number[] = [];
