@@ -1,0 +1,93 @@
+# Adventurer Anvil: requirements
+
+A D&D character creator that aims for the simplicity of Roll20's Charactermancer: guided steps, legal choices only, a finished sheet at the end. It is an original design and does not copy Roll20's look or text.
+
+Agreed 8 Nov 2026. The prototype is **Milestone 1** below. Everything else is planned and must not be blocked by M1's design.
+
+## 1. Guiding principle: modular systems
+
+The prototype supports **only the 2014 D&D 5e rules**, but every layer stays system-agnostic so other systems can be added later as modules (D&D 2024, Pathfinder, Cyberpunk, Kids on Bikes, ...).
+
+- **Core** knows nothing about D&D. It knows: a *system* module, *content packs*, a *character* document, *build steps*, *choices*, *derived values*, *validation results* and *overrides*.
+- **A system module** (first: `dnd5e-2014`) supplies its own build steps, its rules engine (derived stats, legality checks, level-up), sheet layout, dice expressions, optional rules and exporters.
+- **Content packs** are data only (JSON, validated against a schema the system module publishes). Rules logic never lives in content, and content never lives in code.
+- **Character files** record the system and version, the packs (id and version) they use, and the choices made. Derived values are recomputed, not stored.
+- Litmus test for every M1 design decision: *could a Kids on Bikes module plug in without changing core?*
+
+## 2. Rules and content
+
+| Item | Decision |
+|---|---|
+| Ruleset | 2014 5e (PHB rules) |
+| Built-in content | **SRD 5.1** (CC-BY-4.0), with attribution on the page and in exports |
+| Levels | Create at any level 1-20; **level up** saved characters later |
+| Multiclassing | Yes, with ability score prerequisites, multiclass proficiencies and the multiclass spell slot table |
+| Rule strictness | Enforced by default; a per-character **DM override** unlocks any choice and marks it on the sheet |
+| Optional rules (toggleable per character, or set by a campaign) | Feats instead of ASIs and Variant Human; HP rolled or average per level (rolls logged); variant encumbrance; custom lineage/origin (Tasha's-style moved bonuses, for packs you own) |
+
+### Own content packs (book content you own)
+
+- Uploaded to your account and **private: readable only by the account that uploaded them. No sharing**, campaigns included.
+- Validated against the published pack schema on upload.
+- Packs hold **mechanics** (numbers, choices, prerequisites) plus a description in your own words or a page reference, not copied rules text.
+- Sheets store the *results* of choices (e.g. "Darkvision 60 ft"), so a DM viewing your sheet sees the character, not the pack.
+- Each player who owns a book imports their own pack.
+- Before anyone else can upload: a terms checkbox ("I own the rights to what I upload"), a takedown contact, and a DMCA agent registration.
+- **Homebrew editor:** later. M1 defines and documents the schema only.
+
+## 3. The builder (guided steps)
+
+Order: **Race → Class → Abilities → Background → Equipment → Spells → Details → Review**. Any step can be revisited; choices made invalid by a later change are flagged where they were made and listed on Review. A live summary of the character stays visible beside the steps.
+
+- **Abilities:** point buy (27), standard array, rolled 4d6-drop-lowest (in-app roller, the roll log kept with the character). No manual entry.
+- **Equipment:** class and background kit choices ("(a) or (b)"); or starting gold and a shop of SRD items; a full inventory editor (weight, coin, attunement, encumbrance); the equipped armour and shield set AC, and equipped weapons make attack rows.
+- **Spells:** search and filter the class list (level, school, ritual, concentration) with full descriptions; correct known/prepared/cantrip counts per class, including the wizard's spellbook; slots tracked, including multiclass and Pact Magic; printable spell cards.
+- **Details:** personality traits, ideals, bonds, flaws (with the background's roll tables), alignment, backstory; appearance (age, height, weight, eyes, skin, hair, with random suggestions from the species); a name generator flavoured by species; allies, organisations, notes and a session journal.
+- **Portrait:** upload an image, or sculpt one in **Effigy Engine** (opened with the race preset) and bring the token PNG back.
+
+## 4. The character sheet
+
+- An on-screen sheet, printable.
+- **At the table:** HP, temp HP and death saves; click to roll checks, saves, attacks and damage, with a roll log; short and long rests restore slots, hit dice and class resources (Ki, Rage, ...); conditions and exhaustion, with their effects shown.
+- Works well on a **phone**, the play sheet especially.
+
+## 5. Output
+
+- JSON save file (the app's own versioned format), to reopen and level up.
+- Fillable PDF character sheet.
+- VTT exports: **Foundry VTT** (dnd5e actor; Creature Cauldron's exporter is a starting point), **Roll20** (by a Pro API Mod script that reads the export in the game), **Fantasy Grounds** (XML), and **Owlbear Rodeo** (token and stats bundle).
+
+## 6. Accounts, campaigns and the other apps
+
+- **Sign-in:** OAuth with Google and Discord. Characters are saved to the account and reachable from any device.
+- **Campaigns:** a DM creates one and invites by link; players attach characters; the DM sees every party sheet; the DM sets allowed content and optional rules (feats, multiclassing, ...). Campaign rules never expose anyone's private packs.
+- **Creature Cauldron:** pull familiars, companions, wild shape and summon stat blocks.
+- **Chronomancer:** link a campaign to its group and sessions.
+
+## 7. Platform
+
+| Item | Decision |
+|---|---|
+| Frontend | Vite + React + TypeScript (as Creature Cauldron) |
+| Backend | Python, in the style of Chronomancer (FastAPI, SQLAlchemy, Alembic; it already has Discord OAuth) |
+| Hosting | **anvil.creaturecauldron.com**: frontend on Cloudflare Pages; API on the home server beside Creature Cauldron's service, behind a Cloudflare Tunnel |
+| Look | Matches Effigy Engine: dark, iron and forge |
+| Devices | Desktop and phone, responsive throughout |
+| Accessibility | WCAG 2.2 AA: keyboard-only use, screen-reader labels, contrast, reduced motion; automated checks in tests |
+| Repo | Branch `claude/anvil`, folder `adventurer-anvil/`, merged to master by PR |
+
+## 8. Milestones
+
+1. **M1, the prototype (core builder):** the system-agnostic core, the `dnd5e-2014` module, SRD 5.1 as a pack, the pack schema (documented), all builder steps for levels 1-20 including multiclassing and optional rules, the DM override, the on-screen sheet, JSON save and open. Browser only: characters kept in localStorage and JSON files, with the data layer shaped for accounts.
+2. **M2, accounts:** OAuth sign-in, cloud saves, level-up of saved characters across devices, private pack upload with the terms, takedown and DMCA steps.
+3. **M3, play sheet:** HP and death saves, dice and the roll log, rests and resources, conditions.
+4. **M4, outputs:** fillable PDF, spell cards, Foundry, Fantasy Grounds, Owlbear, then Roll20.
+5. **M5, campaigns:** invites, party view, campaign content rules.
+6. **M6, the other apps:** Effigy Engine portraits, Creature Cauldron companions, Chronomancer links.
+7. **Later:** homebrew editor; more system modules.
+
+## 9. Resolved questions
+
+- **Roll20 export:** through the Roll20 Pro API (the owner has a Pro account). A Mod (API) script in the game reads an Adventurer Anvil export and builds the character on the sheet.
+- **Storage before M2:** characters stay local in M1: in the browser (localStorage), plus JSON save and open.
+- **Where the API runs:** on the home server, beside Creature Cauldron's service, behind a Cloudflare Tunnel.
