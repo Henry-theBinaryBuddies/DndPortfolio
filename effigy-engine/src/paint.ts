@@ -29,7 +29,7 @@ export interface Paint {
   cloth: string; // the tunic
   leather: string; // the jerkin and the spaulders
   cloak: string;
-  metal: string; // the breastplate, gorget and pauldrons, and the cloak's clasps
+  metal: string; // the breastplate, gorget and pauldrons, the mail shirt, and the cloak's clasps
   grime: number; // 0..1: dirt in the hollows, soot and wear
 }
 

@@ -43,6 +43,7 @@ describe("clothing", () => {
       expect(names(p("none"))).toEqual([]);
       expect(names(p("tunic"))).toEqual(["tunic"]);
       expect(names(p("leather"))).toEqual(["tunic", "jerkin", "spaulder", "spaulder"]);
+      expect(names(p("mail"))).toEqual(["tunic", "mail"]);
       expect(names(p("armour"))).toEqual(["tunic", "cuirass", "gorget", "pauldron", "pauldron"]);
       expect(names(p("none", "cloak"))).toEqual(["cloak", "clasp", "clasp"]);
       expect(names(p("armour", "cowl"))).toEqual(["tunic", "cuirass", "gorget", "pauldron", "pauldron", "cloak", "clasp", "clasp"]);
@@ -50,7 +51,7 @@ describe("clothing", () => {
   });
 
   it("stands clear of the body everywhere above the flat cut, nearly all of it by a millimetre or more", () => {
-    for (const p of [human("armour", "cowl"), dragonborn("armour", "cowl"), human("leather"), dragonborn("leather")]) {
+    for (const p of [human("armour", "cowl"), dragonborn("armour", "cowl"), human("leather"), dragonborn("leather"), human("mail"), dragonborn("mail")]) {
       const body = bodySurface(p, assets);
       const outfit = buildOutfit(p, body)!;
       const cutY = body.baseY + body.cut * MM + 0.1;
@@ -73,7 +74,7 @@ describe("clothing", () => {
   }, 120000);
 
   it("prints as one closed solid with the bust, at both ends of the torso, for either family", async () => {
-    const worn = [human("tunic"), dragonborn("tunic"), human("leather", "cowl"), dragonborn("leather", "cloak"), human("none", "cloak"), dragonborn("none", "cowl")];
+    const worn = [human("tunic"), dragonborn("tunic"), human("leather", "cowl"), dragonborn("leather", "cloak"), human("none", "cloak"), dragonborn("none", "cowl"), human("mail", "cowl"), dragonborn("mail")];
     for (const p of worn.concat([0.6, 1.1].flatMap((torso) => [{ ...human("armour", "cowl"), torso }, { ...dragonborn("armour", "cowl"), torso }]))) {
       const { parts, flatCut } = collectBust(p, assets);
       const { report } = await mergeParts(parts, undefined, undefined, flatCut);
@@ -85,7 +86,7 @@ describe("clothing", () => {
   it("puts the cloak over everything else worn, which shows through it nowhere but at its very edge", () => {
     // (a point of a garment within the cloak's reach that is outside it: traced straight inward, it meets the cloak's
     // outside; one inside the cloak's own solid meets its inside instead, and is hidden)
-    for (const p of [human("leather", "cowl"), human("armour", "cowl"), dragonborn("leather", "cowl"), dragonborn("armour", "cowl")]) {
+    for (const p of [human("leather", "cowl"), human("armour", "cowl"), human("mail", "cowl"), dragonborn("leather", "cowl"), dragonborn("armour", "cowl"), dragonborn("mail", "cowl")]) {
       const body = bodySurface(p, assets);
       const outfit = buildOutfit(p, body)!;
       const cloak = outfit.garments.find((g) => g.name === "cloak")!;

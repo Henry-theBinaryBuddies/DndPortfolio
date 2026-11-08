@@ -239,12 +239,12 @@ export function mountPaint(initial: Paint, onPaint: (paint: Paint) => void, onTo
     // shown again)
     refreshToken: () => refreshToken(),
     // (a Dragonborn has no hair: that colour is hidden while it is shown; and the clothes' colours only while they are worn)
-    // (the metal is the armour's, and the cloak's clasps')
+    // (the metal is the armour's or the mail's, and the cloak's clasps')
     showFor(kind: PaintKind, { outfit, cloak }: Pick<Params, "outfit" | "cloak">) {
       rows.get("hair")!.row.hidden = kind === "dragonborn";
       rows.get("cloth")!.row.hidden = outfit === "none";
       rows.get("leather")!.row.hidden = outfit !== "leather";
-      rows.get("metal")!.row.hidden = outfit !== "armour" && cloak === "none";
+      rows.get("metal")!.row.hidden = outfit !== "armour" && outfit !== "mail" && cloak === "none";
       rows.get("cloak")!.row.hidden = cloak === "none";
       rows.get("skin")!.row.querySelector("span")!.textContent = kind === "dragonborn" ? "Scales" : "Skin";
     },

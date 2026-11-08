@@ -61,10 +61,10 @@ export type HairStyle = (typeof HAIR_STYLES)[number];
 export const BEARD_STYLES = ["none", "goatee", "short", "full"] as const;
 export type BeardStyle = (typeof BEARD_STYLES)[number];
 
-// Clothing, built over the body of either family (see garments.ts): a thick tunic; a leather jerkin over it; or a
-// breastplate, gorget and pauldrons over it. And over any of them (or none), a cloak, plain or with its hood down,
-// gathered round the back of the neck (a cowl)
-export const OUTFITS = ["none", "tunic", "leather", "armour"] as const;
+// Clothing, built over the body of either family (see garments.ts): a thick tunic; a leather jerkin and spaulders over
+// it; a mail shirt over it; or a breastplate, gorget and pauldrons over it. And over any of them (or none), a cloak,
+// plain or with its hood down, gathered round the back of the neck (a cowl)
+export const OUTFITS = ["none", "tunic", "leather", "mail", "armour"] as const;
 export type Outfit = (typeof OUTFITS)[number];
 export const CLOAKS = ["none", "cloak", "cowl"] as const;
 export type Cloak = (typeof CLOAKS)[number];

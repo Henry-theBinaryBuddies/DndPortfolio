@@ -82,6 +82,22 @@ const SPAULDER = {
   smoothing: 90,
   ground: 120,
 };
+// The mail shirt: over the tunic from just below its collar, over the shoulders and down, a leather binding round its
+// neck, and rings all over it: rows of rings (`across` apart along a row, `row` apart up), each row half a ring along
+// from the one above, each ring (`radius` out to the middle of its wire, the wire `wire` across) standing `ring` proud.
+// The body's triangles are too large for rings, so its outside is divided finer (`levels` of halving: see grow)
+const MAIL = {
+  thickness: 1.6,
+  binding: 1.0,
+  ring: 0.7,
+  across: 2.0,
+  row: 1.4,
+  radius: 0.9,
+  wire: 0.3,
+  levels: 2,
+  smoothing: 40,
+  ground: 60,
+};
 // The gorget: a plate collar over the top of the breastplate and up round the base of the neck, in three lames
 // (`rise`, how far above the base of the neck it comes; `drop`, how far below the tunic's collar)
 const GORGET = {
@@ -128,6 +144,34 @@ const smooth = (t: number) => {
   return c * c * (3 - 2 * c);
 };
 
+// The rings of mail seen square on, at a point `s` along and `t` up (head units): how much of a ring's wire is there
+// (1 at the top of a wire). Rings overlap their neighbours, so the nearest few of each of the nearest rows are read; each
+// leans along its row, one side standing higher than the other, the next row leaning the other way, as woven mail does
+// (upright, the overlapping rings were one even honeycomb of ridges)
+function links(s: number, t: number): number {
+  const [w, h, radius, wire] = [MAIL.across * MM, MAIL.row * MM, MAIL.radius * MM, MAIL.wire * MM];
+  const row = Math.round(t / h);
+  let most = 0;
+  for (let r = row - 1; r <= row + 1; r++) {
+    const shift = ((r & 1) * w) / 2;
+    const lean = r & 1 ? 1 : -1;
+    const column = Math.round((s - shift) / w);
+    for (let c = column - 1; c <= column + 1; c++) {
+      const [ds, dt] = [s - shift - c * w, t - r * h];
+      const d = Math.hypot(ds, dt) || 1e-9;
+      most = Math.max(most, Math.exp(-(((d - radius) / wire) ** 2)) * (0.6 + 0.4 * lean * (ds / d)));
+    }
+  }
+  return most;
+}
+
+// The rings over a surface facing (nx, ny, nz): seen square on from the side, the front and above, each as much as the
+// surface faces that way (so the rows run round the body, and over the tops of the shoulders)
+function mailAt(x: number, y: number, z: number, nx: number, ny: number, nz: number): number {
+  const [ax, ay, az] = [nx ** 4, ny ** 4, nz ** 4];
+  return (ax * links(z, y) + az * links(x, y) + ay * links(x, z)) / (ax + ay + az || 1);
+}
+
 // An outfit as it is kept: its garments, and the points of the body's fitting it moved, and where to (so it can be put on
 // another body of the same shape where it is worn: see fitKey)
 export interface Fitted {
@@ -151,6 +195,7 @@ export function finestRelief(p: Params): { what: string; height: number } | null
   if (p.outfit !== "none") raised.push(["the tunic's rolled collar", TUNIC.roll]);
   if (p.outfit === "tunic" || p.outfit === "leather") raised.push(["the tunic's folds", TUNIC.fold]);
   if (p.outfit === "leather") raised.push(["the seam round the jerkin", JERKIN.welt], ["the seams round the spaulders", SPAULDER.welt], ["the steps between the spaulders' bands", SPAULDER.band]);
+  if (p.outfit === "mail") raised.push(["the rings of the mail", MAIL.ring], ["the binding round the mail's neck", MAIL.binding]);
   if (p.outfit === "armour") raised.push(["the steps between the gorget's plates", GORGET.lame], ["the rolled edges of the plates", Math.min(CUIRASS.rim, PAULDRON.rim, GORGET.rim)], ["the steps between the pauldrons' plates", PAULDRON.step]);
   if (p.cloak !== "none") raised.push(["the cloak's rolled hem", CLOAK.hem], ["the rims of the cloak's clasps", CLASP.rim]);
   if (raised.length === 0) return null;
@@ -318,6 +363,28 @@ export function fit(p: Params, body: BodySurface): Fitted {
       garments.push(piece.garment);
       dressed = over(dressed, piece.dressed, overTunic);
     }
+  }
+
+  if (p.outfit === "mail") {
+    // The mail shirt: all of the body below a line a little under the tunic's collar, so the collar shows above it
+    const mailTop = (x: number, z: number) => neckline(x, z) - 0.012;
+    const mail = grow(body, overTunic, {
+      name: "mail",
+      edge: (x, y, z) => y - mailTop(x, z),
+      smoothing: MAIL.smoothing,
+      ground: MAIL.ground,
+      inset: 0.5 * TUNIC.thickness * MM,
+      clearance: (_x, y) => MAIL.thickness * MM * tuck(y),
+      // (the binding round its neck; the rings begin inside it, and are gone before its edge, so the wall there meets
+      // the outside where it is smooth)
+      relief: (_x, y, _z, depth) => MAIL.binding * Math.exp(-(((depth - 0.03) / 0.02) ** 2)) * MM * tuck(y),
+      fine: {
+        levels: MAIL.levels,
+        raised: (x, y, z, nx, ny, nz, depth) => MAIL.ring * MM * mailAt(x, y, z, nx, ny, nz) * smooth((depth - 0.055) / 0.03) * tuck(y),
+      },
+    });
+    garments.push(mail.garment);
+    dressed = mail.dressed;
   }
 
   if (p.outfit === "armour") {
@@ -503,6 +570,9 @@ interface Piece {
   // Whether its clearance is kept from what is under it smoothed only this much too (passes), not only from that
   // smoothed as much as `ground` says (over other garments, whose edges and rounded tops that sinks below)
   clear?: number;
+  // Relief finer than the body's triangles (the rings of mail): its outside divided `levels` times, each triangle into
+  // four, and raised along the evened normals by `raised` at each point (head units; nothing at its edge)
+  fine?: { levels: number; raised: (x: number, y: number, z: number, nx: number, ny: number, nz: number, depth: number) => number };
 }
 
 // One garment, grown from `under` (the body, or the body dressed in what is already worn) over the body's skin as it is
@@ -796,6 +866,9 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
   // wall has its own copies of the points along the edge, at the same places, so it is shaded apart from the outside: as
   // one, the normals along the edge were turned every way by the wall's thin triangles, and the edge of a plate showed
   // streaks. The print welds them together again: see printable.ts)
+  const dressed = Float32Array.from(under);
+  for (let i = 0; i < count; i++) if (from[i] >= 0) dressed.set(outer.subarray(i * 3, i * 3 + 3), from[i] * 3);
+  if (piece.fine) return { garment: finely(piece, outer, inner, raise, depth, triangles, rim, count), dressed };
   const edgePoints = [...new Set(rim.flat())];
   const wall = new Map(edgePoints.map((v, k) => [v, 2 * count + 2 * k]));
   const positions = new Float32Array((2 * count + 2 * edgePoints.length) * 3);
@@ -812,8 +885,6 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
     indices.push(wb, wa, wa + 1, wb, wa + 1, wb + 1);
   }
 
-  const dressed = Float32Array.from(under);
-  for (let i = 0; i < count; i++) if (from[i] >= 0) dressed.set(outer.subarray(i * 3, i * 3 + 3), from[i] * 3);
   return {
     garment: {
       name: piece.name,
@@ -823,6 +894,74 @@ function grow(body: BodySurface, under: Float32Array, piece: Piece): { garment: 
     },
     dressed,
   };
+}
+
+// A garment closed with its outside divided finer than the body's triangles, and its fine relief raised on that (see
+// Piece.fine): each triangle into four, `levels` times, a new point halfway along each side, shared by the triangles
+// either side of it. Its inside is left as it was. The wall round its edge joins each side of the inside's edge to the
+// run of the outside's finer points along it: the first half of them to the inside's point at one end, the second half
+// to the one at the other, and a triangle between. (What the garment covers is the same: what goes over it is grown over
+// its outside before the fine relief, which stands no further off it than the next garment's own inside)
+function finely(piece: Piece, outer: Float32Array, inner: Float32Array, raise: Float32Array, depth: number[], triangles: number[], rim: [number, number][], count: number): Garment {
+  const points = Array.from(outer.subarray(0, count * 3));
+  const normals = Array.from(raise.subarray(0, count * 3));
+  const depths = depth.slice(0, count);
+  const halfway = new Map<number, number>();
+  const middle = (a: number, b: number) => {
+    const key = Math.min(a, b) * 2 ** 26 + Math.max(a, b);
+    let at = halfway.get(key);
+    if (at === undefined) {
+      at = depths.length;
+      halfway.set(key, at);
+      for (let k = 0; k < 3; k++) points.push((points[a * 3 + k] + points[b * 3 + k]) / 2);
+      const n = [0, 1, 2].map((k) => normals[a * 3 + k] + normals[b * 3 + k]);
+      const length = Math.hypot(n[0], n[1], n[2]) || 1;
+      normals.push(n[0] / length, n[1] / length, n[2] / length);
+      depths.push((depths[a] + depths[b]) / 2);
+    }
+    return at;
+  };
+  let faces = triangles;
+  let runs = rim.map(([a, b]) => [a, b]);
+  for (let level = 0; level < piece.fine!.levels; level++) {
+    const next: number[] = [];
+    for (let t = 0; t < faces.length; t += 3) {
+      const [a, b, c] = [faces[t], faces[t + 1], faces[t + 2]];
+      const [ab, bc, ca] = [middle(a, b), middle(b, c), middle(c, a)];
+      next.push(a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca);
+    }
+    faces = next;
+    runs = runs.map((run) => run.flatMap((v, k) => (k === 0 ? [v] : [middle(run[k - 1], v), v])));
+  }
+  const fine = depths.length;
+  for (let i = 0; i < fine; i++) {
+    const [x, y, z] = [points[i * 3], points[i * 3 + 1], points[i * 3 + 2]];
+    const [nx, ny, nz] = [normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]];
+    const h = depths[i] > 0 ? piece.fine!.raised(x, y, z, nx, ny, nz, depths[i]) : 0;
+    for (let k = 0; k < 3; k++) points[i * 3 + k] += normals[i * 3 + k] * h;
+  }
+
+  // (its own copies along the edge, as grow's wall has: of the outside's finer points, and the inside's)
+  const along = [...new Set(runs.flat())];
+  const ends = [...new Set(rim.flat())];
+  const wallOut = new Map(along.map((v, k) => [v, fine + count + k]));
+  const wallIn = new Map(ends.map((v, k) => [v, fine + count + along.length + k]));
+  const positions = new Float32Array((fine + count + along.length + ends.length) * 3);
+  positions.set(points);
+  positions.set(inner.subarray(0, count * 3), fine * 3);
+  for (const [v, at] of wallOut) positions.set(points.slice(v * 3, v * 3 + 3), at * 3);
+  for (const [v, at] of wallIn) positions.set(inner.subarray(v * 3, v * 3 + 3), at * 3);
+  const indices: number[] = [...faces];
+  for (let t = 0; t < triangles.length; t += 3) indices.push(triangles[t] + fine, triangles[t + 2] + fine, triangles[t + 1] + fine);
+  rim.forEach(([a, b], r) => {
+    const run = runs[r].map((v) => wallOut.get(v)!);
+    const [ia, ib] = [wallIn.get(a)!, wallIn.get(b)!];
+    const half = (run.length - 1) / 2;
+    for (let j = 0; j < half; j++) indices.push(run[j + 1], run[j], ia);
+    indices.push(run[half], ia, ib);
+    for (let j = half; j < run.length - 1; j++) indices.push(run[j + 1], run[j], ib);
+  });
+  return { name: piece.name, positions, indices: Uint32Array.from(indices), outside: fine };
 }
 
 // A clasp: a disc turned about `normal`, its back sunk into the cloak at `at`, domed, with a raised rim. (One closed
