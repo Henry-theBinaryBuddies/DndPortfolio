@@ -1,5 +1,40 @@
 [
   {
+    "src": "./assets/screenshots/artifact-7/17-token-half-orc.png",
+    "alt": "A round token of a green-skinned half-orc with short brown hair, amber eyes and two tusks, in a green cloak with silver clasps over a blue tunic, framed by a dark iron rim against a cavern backdrop with glowing mushrooms.",
+    "caption": "A token saved from the live site: the painted bust in a round iron frame, over one of the ten backdrops, ready for a virtual tabletop."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/11-armour-cowl.jpg",
+    "alt": "A painted bust of a human man with swept brown hair, wearing a polished breastplate and gorget under a green cloak with a cowl, fastened with two round metal clasps, on a dark turned pedestal.",
+    "caption": "Painted, in armour under a cowled cloak. Every garment is grown from the body's own surface, so it fits at any setting."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/12-dwarf-leather-cloak.jpg",
+    "alt": "A painted bust of a red-haired dwarf with a full carved beard, wearing a brown leather jerkin under a green cloak with two metal clasps.",
+    "caption": "A dwarf in a leather jerkin and a plain cloak. Hair and beards are built over the clothes, so a full beard sits over the collar."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/13-dragonborn.jpg",
+    "alt": "A painted Dragonborn bust with bronze scales in rows, large plates on the head, curled horns, spines along the cheek, a slit-pupilled amber eye and fangs.",
+    "caption": "The Dragonborn, sculpted by a Blender script and loaded only when chosen. Each scale is its own shade, with larger plates on the head and a paler throat."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/14-dragonborn-armour.jpg",
+    "alt": "The same Dragonborn bust wearing a breastplate and gorget under a green cloak with metal clasps.",
+    "caption": "The same clothing fits the Dragonborn: a coarser copy of its skin lets the clothes clear its scales."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/15-mail-clay.jpg",
+    "alt": "A grey clay bust of a bearded human in a mail shirt, its surface covered in rows of small overlapping rings.",
+    "caption": "Mail in clay, as it would print: rows of modelled rings. They are under a millimetre, so they are not yet proven on a print."
+  },
+  {
+    "src": "./assets/screenshots/artifact-7/16-print-preview.jpg",
+    "alt": "A grey clay bust slimmed and scaled down on a tall turned pedestal, standing over a thin orange square drawn under its base.",
+    "caption": "Preview print at tabletop size: the torso slimmed and the bust scaled to stand inside the one inch square drawn under it, before anything is saved."
+  },
+  {
     "src": "./assets/screenshots/artifact-7/01-human.jpg",
     "alt": "A grey clay bust of a human man with swept-back hair, seen from three-quarter view, standing on a round turned pedestal base.",
     "caption": "The default bust in grey clay on its printable base. The shoulders are cut flat and the bust stands on a turned pedestal."
