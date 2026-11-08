@@ -3,6 +3,7 @@ import type { Vec3 } from "./headMesh";
 import type { Params } from "./params";
 import { MM } from "./print";
 import { findUnderside, type Underside } from "./underside";
+import { siteUrl } from "./site";
 
 // The Dragonborn: not a race of the humanoid head (which cannot be pushed that far) but a family of its own, with its
 // own sculpt: a closed-mouthed bust made by tools/sculpt_dragonborn.py (see assets/dragonborn/README.md), loaded only
@@ -140,11 +141,11 @@ export function parseDragonborn(buffer: ArrayBuffer, manifest: DragonbornManifes
 
 export async function loadDragonborn(): Promise<DragonbornAsset> {
   const [manifest, buffer] = await Promise.all([
-    fetch(`${import.meta.env.BASE_URL}models/dragonborn.json`).then((response) => {
+    fetch(siteUrl("models/dragonborn.json")).then((response) => {
       if (!response.ok) throw new Error(`could not load the Dragonborn model's description (${response.status})`);
       return response.json() as Promise<DragonbornManifest>;
     }),
-    fetch(`${import.meta.env.BASE_URL}models/dragonborn.bin`).then((response) => {
+    fetch(siteUrl("models/dragonborn.bin")).then((response) => {
       if (!response.ok) throw new Error(`could not load the Dragonborn model (${response.status})`);
       return response.arrayBuffer();
     }),

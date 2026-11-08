@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { siteUrl } from "./site";
 
 // The token: a picture of the painted bust for a virtual tabletop (Foundry, Roll20 and the like), round, with a
 // dark metal rim, and transparent outside it so it sits on the map as a counter would. The bust is drawn over a
@@ -13,7 +14,7 @@ export interface Backdrop {
   label: string;
 }
 
-const BACKDROPS = `${import.meta.env.BASE_URL}backdrops/`;
+const BACKDROPS = siteUrl("backdrops/");
 
 // The list, or none if it cannot be read (then only the plain glow is offered)
 export async function loadBackdrops(): Promise<Backdrop[]> {

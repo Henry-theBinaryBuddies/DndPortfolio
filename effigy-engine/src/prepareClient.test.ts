@@ -39,6 +39,12 @@ afterEach(() => vi.unstubAllGlobals());
 const ask = (latest = false) => client.prepareInBackground(defaultParams(), false, true, latest);
 
 describe("the print worker's client", () => {
+  it("tells the worker the page's address, which it finds the models from (see site.ts)", async () => {
+    void ask();
+    const { siteBase } = await import("./site");
+    expect((FakeWorker.made[0].sent[0] as { base?: string }).base).toBe(siteBase());
+  });
+
   it("answers each request by its own id", async () => {
     const [a, b] = [ask(), ask()];
     const [worker] = FakeWorker.made;

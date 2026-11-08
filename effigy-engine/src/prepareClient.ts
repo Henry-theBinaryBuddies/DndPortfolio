@@ -1,5 +1,6 @@
 import type { Params } from "./params";
 import type { Prepared } from "./printPreview";
+import { siteBase } from "./site";
 
 // The page's side of the print preparation worker (see prepareWorker.ts): one worker, started the first time it is
 // needed and kept; each request is answered by its own id, so answers never cross. Whether an answer is still for the
@@ -54,7 +55,7 @@ export function prepareInBackground(params: Params, gusset: boolean, tabletop: b
   return new Promise((resolve, reject) => {
     waiting.set(id, { resolve, reject });
     try {
-      worker!.postMessage({ id, params, gusset, tabletop });
+      worker!.postMessage({ id, params, gusset, tabletop, base: siteBase() });
     } catch (error) {
       // (not sent: nothing will answer it)
       waiting.delete(id);

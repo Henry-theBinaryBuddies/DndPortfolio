@@ -3,6 +3,7 @@ import { loadAssets, type Assets } from "./assets";
 import { loadDragonborn } from "./dragonborn";
 import type { Params } from "./params";
 import { preparePrint, type Prepared } from "./printPreview";
+import { useSiteBase } from "./site";
 
 // The print prepared off the page (audit 19): the parts as the export will merge them, and at tabletop size the fit,
 // whose repeated builds took seconds and held the page still meanwhile. The worker loads its own copy of the models
@@ -11,9 +12,11 @@ import { preparePrint, type Prepared } from "./printPreview";
 
 let assets: Promise<Assets> | null = null;
 
-self.onmessage = async (event: MessageEvent<{ id: number; params: Params; gusset: boolean; tabletop: boolean }>) => {
-  const { id, params, gusset, tabletop } = event.data;
+self.onmessage = async (event: MessageEvent<{ id: number; params: Params; gusset: boolean; tabletop: boolean; base: string }>) => {
+  const { id, params, gusset, tabletop, base } = event.data;
   try {
+    // (the models are found from the page's address, not this script's: see site.ts)
+    useSiteBase(base);
     assets ??= loadAssets();
     const loaded = await assets;
     if (params.family === "dragonborn" && !loaded.dragonborn) loaded.dragonborn = await loadDragonborn();

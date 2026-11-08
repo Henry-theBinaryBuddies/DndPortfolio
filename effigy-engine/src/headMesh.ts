@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { siteUrl } from "./site";
 
 // The sculpted base head the whole app deforms. It is a CC0 mesh (see public/models/README.md), exported
 // to a small binary file. Everything downstream works in "head-local" units: the origin is the midpoint
@@ -267,7 +268,7 @@ export function parseHead(buffer: ArrayBuffer, feminineBuffer?: ArrayBuffer): He
 export async function loadHead(): Promise<HeadBase> {
   const [head, feminine] = await Promise.all(
     ["head", "feminine"].map(async (name) => {
-      const response = await fetch(`${import.meta.env.BASE_URL}models/${name}.bin`);
+      const response = await fetch(siteUrl(`models/${name}.bin`));
       if (!response.ok) throw new Error(`Could not load the ${name} model (${response.status})`);
       return response.arrayBuffer();
     }),
