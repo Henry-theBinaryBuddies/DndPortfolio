@@ -1,3 +1,38 @@
 SIDE QUEST:
 Reflection
-To be continued...
+Another ambitious project. Overall, this was a test in hardware and the limitations of
+what kind of 3d blender models codex and Claude code are capable of generating. This wasn't
+a perfect success, but it will be something to iteratively improve with time.
+
+The best the graphic quality we could generate based on the slider functionality I wanted to
+maintain was circa mid 2000s era character models. Fortunately, the assets can be adapted with
+custom-built models, whether they are built by myself or contacted out remains to be decided.
+In addition, it is very likely that in sometime the general LLMs will have improved their
+skill set in this regard, which may be a faster timeline than trying to work with a graphic designer
+or teaching myself blender. Overall, the functionality for Virtual Table Tops is successful and
+works for what I will primarily be using this application for, quick PNG images of a custom
+character.
+
+The STL 3d prints was always overly ambitious because I have a very legacy 3d printer (Ender3 V1).
+With the default 0.4mm nozzle, larger busts prints were successful. However, during
+this process I upgraded to a 0.2mm nozzle to maintain finer details at Claude's suggestion. This
+was suggested due to the fact the printed busts are far too big to play on a standard sized Dungeons
+and Dragons board. Everything started to fall apart at this stage, this was my first time swapping
+hardware on my 3d printer, and required a lot of recalibration and testing. While I was able to
+successfully calibrate the machine, my machines heat plate and balancing was too archaic to support
+the models. The Ender3 V1 is an 8-year-old model, and was never designed to support this level of
+detail. To fully test prints, I will need to upgrade the hardware. However, all implemented virtual
+tests are successful so theoretically all features are complete.
+
+This was the first project where I set up an agentic workflow with adversarial models. Claude built,
+Codex audited and improved sculpting due to having better imaging than Claude. Sometimes I had them
+reverse roles to see the difference in improvement, but it ultimately revealed the limitation of using
+generated and open-source modeling tools. As stated above, to fully optimize this prototype it will
+require either advancement in AI generated blender modeling, or custom-built models.
+Fortunately, I ensured that this modular architecture can be supported without code refactors. Future
+3d models simply need to maintain:
+-A closed, watertight mesh
+-Detail sized for printing
+-Variants that share topology in place
+
+
