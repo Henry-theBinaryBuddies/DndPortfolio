@@ -1,0 +1,7 @@
+Side Quest (Effigy Engine):
+
+The second test print came off: the dwarf with dreadlocks and an open mouth, full size, about five hours in black PLA. The landed dreadlock tips worked, with no spaghetti this time, and the spiral grooves on the locks read clearly. The open mouth did not. The pocket behind the lips is about 15 mm deep, so its roof printed as a bridge over air and sagged into a hole. The filling that already closed the mouth when the jaw is shut now runs with it open too. It stops flat 3 mm behind the front teeth, so the mouth still looks open with its teeth showing, and the printer never has to bridge it.
+
+At tabletop size the rings on the stand shrank to about 0.35 mm and would print as faint lines. The stand's moldings are now sized in printed millimetres at either size, so every ring sticks out 0.55-0.7 mm. It also got a stepped second tier and a doubled collar on an 18 mm plinth. A test checks at three scales that every ring is at least 0.5 mm proud and nothing is steeper than 45 degrees.
+
+Codex's audit 14 found that the print preview could be out of date: after an edit, the old report stayed on screen as if it described the new bust. Now any edit takes the report down, and anything an earlier preview says afterwards is labelled as being for the earlier settings. The preview also frames the whole stand and the one inch square, and sizes are measured where parts cross the flat cut.

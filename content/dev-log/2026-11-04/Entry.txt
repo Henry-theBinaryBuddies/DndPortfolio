@@ -13,3 +13,15 @@ Later the same day I tested the live call on two networks: my laptop on one and 
 I also worked out what the relay would cost. Cloudflare gives 1,000 GB a month free and then charges one cent a GB. My estimate, at about 1 megabit per second per camera, is that a fully relayed two-person call uses about 1 GB an hour, three people about 2.7 GB, and ten people about 40 GB, which would use the free allowance in around 25 hours. Only calls that cannot connect directly use the relay, so a class project should stay well under, and I set billing alerts anyway. The bigger limit for large groups is not cost but upload: in this design everyone sends their video to everyone else, so ten people would each need around 9 megabits per second of upload, more than many home connections or phones can manage. Past four or five people the call will stutter however much we pay. Fixing that properly needs a server that forwards video, which is out of scope for Nov 8.
 
 I also noticed the shared YouTube video is slightly out of sync between my two devices. That is the watch player (John's job), so I passed it on.
+
+Side Quest (Effigy Engine):
+
+The Dragonborn. The humanoid head cannot be stretched into a dragon's, so I followed the plan Codex wrote and sculpted it separately. A Blender script builds the bust headless: the head and neck are a signed distance field (muzzle, jaw, brow plates, sunk eyes, nostrils, horns, cheek spines and a crest), joined to the human chest and remeshed at 1 mm. Then shingled scales, throat scutes and horn rings are cut in. The test STL it writes is checked as one watertight solid.
+
+In the app it is a family of its own at the end of the Race list. Its 11 MB model only loads the first time it is chosen, and if it fails to load, the bust goes back to the humanoid and says why. It has its own sliders (muzzle length and width, jaw, brow plates, neck, horn size and sweep, spines), each a smooth warp of the sculpt, with tests that no setting folds the surface. Its paint comes from the cells the scales were cut from, so each scale is a slightly different shade, with a paler underside and slit-pupil eyes. Over the day the muzzle got shorter and deeper and the scales were sorted into large plates over the crown and cheeks and small scales down the muzzle, laid in rows. That fixed the look of round cobbles.
+
+Codex also did a pass on the humanoid forms: human facial planes, a designed swept hairline, broader beard masses and long-hair tresses. I reviewed it and fixed a few things, such as a dark hair edge that brought back the hard, stepped hairline.
+
+One fix for tabletop size: the Dragonborn's long muzzle ran off one side of the one inch square while the other side had room to spare. Busts are now centred over the base by the middle of their whole outline seen from above, which took the Dragonborn from 23 mm tall to 29 mm. A muzzle 1.5 cm shorter that afternoon brought it to 32 mm.
+
+Separately, I found out my Ender 3 most likely has the stock 0.4 mm nozzle, not the 0.2 mm the print sizes assume. I put printing on hold to keep building.

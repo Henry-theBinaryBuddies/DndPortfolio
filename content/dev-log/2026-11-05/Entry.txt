@@ -1,0 +1,9 @@
+Side Quest (Effigy Engine):
+
+Getting ready for clothing. Codex's audit 19 said what had to be in place before any garment could be fitted. The first piece is a body surface for either family: the bare body with no hair, beard or eyes, plus a fast way to find the nearest point on it and named anchors (the base of the neck, the sternum, the top of each shoulder, a ring of points round the neck). The anchors are found from the surface itself, so the same code works on a human, a dwarf and the Dragonborn. There is also one table of what every part of a bust is, which the paint, the fit and the export all read instead of each keeping its own list.
+
+The print moved off the page. Preview print and Export STL used to freeze the view for as long as the tabletop fit took, about 12 seconds for a default human. They now run in a worker: the longest pause on the page fell to about half a second, and 0.15 s for a Dragonborn.
+
+The Dragonborn got a mouth that opens, with teeth, fangs that stay with the upper jaw, and a tongue, plus Snarl, Scowl and Smile. The jaw's weights first changed faster down into each groove between the scales, so the groove walls folded. Averaging them over space instead of over the surface fixed it, and the test now forbids any triangle turning over at any tenth of the jaw's opening with every other slider at its extremes.
+
+Audit 20 found the shoulder anchors landed inside the collar on slim builds (an elf, a halfling, a gnome, a 60% torso). They are now searched for between the collar and the widest part of the body, and a test sweeps all 52 race, build and torso cases.
