@@ -5,3 +5,7 @@ The test print failed twice in a row in its first few layers, both times from th
 So nothing was cut. Every feature ships, and the site says plainly what has not been proven on a print: the mail's rings, the cloak, and relief finer than about 1 mm. The export and print preview warn that ram and Dragonborn horn tips need supports.
 
 Effigy Engine is live at effigy.creaturecauldron.com, on Cloudflare Pages next to Creature Cauldron. It is a static site, with no server, keys or database, and every push to master rebuilds it. Before the first deploy, Claude served the built site locally with the same security headers Pages would send (it may load only its own files, plus the exception Manifold's WebAssembly needs) and checked that it opened, previewed and exported with no errors. After I connected it, I exported a tabletop half-orc from the live site and saved its token, and both came out right.
+
+Artifact 4 (CouchCrew):
+
+The call controls (switching mic, camera and speaker mid-call, loudness meters, per-person mute and volume) were merged into the main branch today. Before that, GitHub showed a merge conflict: Adrian had added a Watch Together screen-share option to the same video file and the same stylesheet and log that I had edited. Nothing was broken, both sides had just added code in the same places, so I kept both, checked that the site still builds, and pushed. The room tips and room name branch is still waiting for review. The only work left is visual polish, which John is taking.

@@ -6,7 +6,7 @@ A correction to my own story. After my laptop and phone failed to see each other
 
 Two other things cleared up. The YouTube "sign in to confirm you're not a bot" message was a VPN on one of our connections; turning it off fixed it, so it was never a bug in our code. And I worked out that a 10-person room would use the relay's free 1,000 GB in around 25 hours if everything went through it, and would need about 9 megabits per second of upload from each person, which is why the team capped rooms at 5 people.
 
-Since then I built the extras I had listed: switching mic, camera and speaker during a call without leaving it, a loudness meter on every tile with a ring around whoever is speaking, a mute button and volume slider for each other person (this only changes what you hear), a first-visit tips panel in the room, and a leader-set room name that leaves the link alone. I tested all of it with two browser windows and a fake camera and microphone and pushed it for a teammate's review; it is not merged yet. Not tested: those extras on a phone.
+Since then I built the extras I had listed: switching mic, camera and speaker during a call without leaving it, a loudness meter on every tile with a ring around whoever is speaking, a mute button and volume slider for each other person (this only changes what you hear), a first-visit tips panel in the room, and a leader-set room name that leaves the link alone. I tested all of it with two browser windows and a fake camera and microphone and pushed it for a teammate's review (the call controls were merged on Nov 8; the tips and room name are still in review). Not tested: those extras on a phone.
 
 What is left is cosmetic, and John is taking the visual polish.
 
