@@ -1,3 +1,21 @@
 Artifact 4:
 Reflection
-To be continued...
+I owned the audio, video, and screen share for CouchCrew.
+We had to redesign for few reasons, the first being Daily.co hosting
+required a credit card on file. The second was that Jitsi's free
+server kept ending calls and wouldn't let us rejoin, so I rebuilt the call as our own
+peer-to-peer WebRTC. I later added switching mic, camera, and speaker mid-call,
+loudness meters, per-person volume, and first-visit tips.
+The test calls worked with three of us on three different network.
+
+My biggest mistake here was a wrong diagnosis. When a laptop and phone test failed,
+I assumed a networking limit and built a relay server. The real cause was my work
+network's firewall blocking the video connections. The relay is still unproven,
+but seems redundant at this point.
+
+Working with Claude was fast at building and testing, but I had to correct its facts several times,
+including the firewall cause Claude has misdiagnosed and whether test calls were successful.
+Overall, this was a tough experience as we were all using unfamiliar tech stacks. Many of our pieces
+of the project ended up having dependencies of another persons contributions, so there was a lot
+of back and forth that had to occur. The boundaries between pieces weren't clear enough before we
+got started.

@@ -1,13 +1,13 @@
 [
   {
     "src": "./assets/screenshots/artifact-4/01-home.jpg",
-    "alt": "The CouchCrew home page: a theatre screen with red curtains, the title CouchCrew, a Create a Room button and a Join with a code link, a chat box beside it, and the start of a row of genre themes below.",
-    "caption": "The home page. One button makes a room and puts its link in the address bar; the link is what you send."
+    "alt": "The CouchCrew home page after John's polish, styled as a cinema lobby: a lit marquee sign, a box office with a Buy a Ticket button, a concessions stand with popcorn, soda and candy, and a Theater 1 entrance where you type a room code and press Join.",
+    "caption": "The home page now. One ticket makes a room and its link is what you send; the entrance on the right joins one by code. The cinema look is John's polish pass."
   },
   {
     "src": "./assets/screenshots/artifact-4/02-room.jpg",
-    "alt": "A CouchCrew room with a row of genre themes, a Watch Together box with a YouTube link field, a Video and Screen Share box holding the Jitsi call frame, and a chat box underneath.",
-    "caption": "Inside a room: the shared YouTube player, the video call (my part) and chat. This is the Jitsi version of the call, before the rebuild."
+    "alt": "A new CouchCrew room in the cinema theme: a movie screen showing a film countdown, with a Join call button and Mic on and Camera on checkboxes under it, a YouTube link field with a Load button below that, and rows of red seats in front.",
+    "caption": "Inside a new room: the screen waits for a video, and under it the video call (my part) starts when you press Join call, with mic and camera optional. Only the room leader chooses what plays."
   },
   {
     "src": "./assets/screenshots/artifact-4/04-three-way-call-p2p.webp",
