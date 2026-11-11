@@ -1,14 +1,15 @@
 // Paint strokes, stamps and the stamp library. Pure logic: every edit returns a new MapDoc.
 
 import { snap } from "./grid";
-import type { Asset, Grid, Label, LabelStyle, MapDoc, Marker, MarkerKind, Point, SnapMode, Stamp, Stroke } from "./model";
+import type { Asset, Grid, Label, LabelStyle, Light, MapDoc, Marker, MarkerKind, Point, SnapMode, Stamp, Stroke } from "./model";
 import { closestOnSegment, distance, moveRoom, removeItem } from "./rooms";
 
-export type ItemKind = "room" | "opening" | "stamp" | "stroke" | "label" | "marker";
+export type ItemKind = "room" | "opening" | "stamp" | "stroke" | "label" | "marker" | "light";
 
 export function itemKind(doc: MapDoc, id: string | null): ItemKind | null {
   if (!id) return null;
   if (doc.markers.some((m) => m.id === id)) return "marker";
+  if (doc.lights.some((l) => l.id === id)) return "light";
   if (doc.labels.some((l) => l.id === id)) return "label";
   if (doc.stamps.some((s) => s.id === id)) return "stamp";
   if (doc.openings.some((o) => o.id === id)) return "opening";
@@ -146,6 +147,30 @@ export function updateLabel(doc: MapDoc, id: string, change: (label: Label) => L
   return { ...doc, labels: doc.labels.map((l) => (l === label ? change(l) : l)) };
 }
 
+// ---- lights -----------------------------------------------------------
+
+export function makeLight(id: string, centre: Point, radius: number, color: string): Light {
+  return { id, x: centre.x, y: centre.y, radius, color };
+}
+
+export function addLight(doc: MapDoc, light: Light): MapDoc {
+  return { ...doc, lights: [...doc.lights, light] };
+}
+
+export function updateLight(doc: MapDoc, id: string, change: (light: Light) => Light): MapDoc {
+  const light = doc.lights.find((l) => l.id === id);
+  if (!light) return doc;
+  return { ...doc, lights: doc.lights.map((l) => (l === light ? change(l) : l)) };
+}
+
+/** The topmost light whose icon (radius `reach`) contains p, or null. */
+export function lightAt(lights: Light[], p: Point, reach: number): Light | null {
+  for (let i = lights.length - 1; i >= 0; i--) {
+    if (distance(p, lights[i]) <= reach) return lights[i];
+  }
+  return null;
+}
+
 // ---- GM markers -------------------------------------------------------
 
 /** The number the next room-number marker should get. */
@@ -229,6 +254,8 @@ export function moveItem(doc: MapDoc, id: string, dx: number, dy: number): MapDo
       return updateLabel(doc, id, (l) => ({ ...l, x: l.x + dx, y: l.y + dy }));
     case "marker":
       return updateMarker(doc, id, (m) => ({ ...m, x: m.x + dx, y: m.y + dy }));
+    case "light":
+      return updateLight(doc, id, (l) => ({ ...l, x: l.x + dx, y: l.y + dy }));
     default:
       return doc; // doors and windows stay on their wall
   }
@@ -244,6 +271,8 @@ export function removeById(doc: MapDoc, id: string): MapDoc {
       return { ...doc, labels: doc.labels.filter((l) => l.id !== id) };
     case "marker":
       return { ...doc, markers: doc.markers.filter((m) => m.id !== id) };
+    case "light":
+      return { ...doc, lights: doc.lights.filter((l) => l.id !== id) };
     default:
       return removeItem(doc, id);
   }
@@ -295,6 +324,8 @@ export function filterAssets(assets: Asset[], query: string, favouritesOnly: boo
     .sort((a, b) => Number(b.favourite) - Number(a.favourite) || a.name.localeCompare(b.name));
 }
 
+/** The pictures used by stamps on any level. */
 export function usedAssetIds(doc: MapDoc): Set<string> {
-  return new Set(doc.stamps.map((s) => s.assetId));
+  const stamps = [...doc.stamps, ...doc.levels.flatMap((l) => l.content?.stamps ?? [])];
+  return new Set(stamps.map((s) => s.assetId));
 }

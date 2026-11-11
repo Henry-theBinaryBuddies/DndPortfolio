@@ -157,6 +157,7 @@ export interface Marker {
 /** Layers from top to bottom. Each kind of thing lives on its own layer. */
 export const LAYERS = [
   { id: "gm", label: "GM notes" },
+  { id: "lights", label: "Lights" },
   { id: "labels", label: "Text" },
   { id: "objects", label: "Stamps" },
   { id: "walls", label: "Walls and doors" },
@@ -170,6 +171,45 @@ export interface LayerState {
   locked: boolean;
 }
 
+/** A source of light. x and y are its centre; light fades out by `radius` map pixels. */
+export interface Light {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  color: string;
+}
+
+/** Ready-made lights. Sizes are in cells. */
+export const LIGHT_PRESETS = [
+  { id: "candle", label: "Candle", cells: 2, color: "#ffc680" },
+  { id: "torch", label: "Torch", cells: 4, color: "#ffb454" },
+  { id: "lantern", label: "Lantern", cells: 6, color: "#ffd88a" },
+  { id: "magic", label: "Magic glow", cells: 5, color: "#7fb2ff" },
+  { id: "daylight", label: "Daylight", cells: 9, color: "#fff3c4" },
+] as const;
+
+/** Everything on one level of the map. */
+export interface LevelContent {
+  rooms: Room[];
+  openings: Opening[];
+  strokes: Stroke[];
+  stamps: Stamp[];
+  labels: Label[];
+  markers: Marker[];
+  lights: Light[];
+}
+
+/**
+ * One level. The level being edited has `content: null`, because its content is the map's own lists;
+ * see levels.ts.
+ */
+export interface LevelInfo {
+  id: string;
+  name: string;
+  content: LevelContent | null;
+}
+
 export interface MapDoc {
   version: 1;
   name: string;
@@ -180,6 +220,13 @@ export interface MapDoc {
   stamps: Stamp[];
   labels: Label[];
   markers: Marker[];
+  lights: Light[];
+  /** How dark the map is where no light reaches, from 0 (not at all) to 0.95. */
+  ambient: number;
+  /** Every level, lowest first. */
+  levels: LevelInfo[];
+  /** Which of the levels the lists above belong to. */
+  level: number;
   layers: Record<LayerId, LayerState>;
   showGrid: boolean;
 }
@@ -200,6 +247,12 @@ export const LIMITS = {
   maxMarkers: 2000,
   maxLabelText: 120,
   maxMarkerText: 400,
+  maxLights: 500,
+  maxLevels: 20,
+  maxLevelName: 40,
+  /** Light radius, in cells. */
+  minLight: 1,
+  maxLight: 15,
   /** Text height, in cells. */
   minLabel: 0.2,
   maxLabel: 5,
@@ -226,6 +279,10 @@ export function newMap(): MapDoc {
     stamps: [],
     labels: [],
     markers: [],
+    lights: [],
+    ambient: 0.7,
+    levels: [{ id: "level-1", name: "Level 1", content: null }],
+    level: 0,
     layers: defaultLayers(),
     showGrid: true,
   };
@@ -234,6 +291,7 @@ export function newMap(): MapDoc {
 export function defaultLayers(): Record<LayerId, LayerState> {
   return {
     gm: { visible: true, locked: false },
+    lights: { visible: true, locked: false },
     labels: { visible: true, locked: false },
     objects: { visible: true, locked: false },
     walls: { visible: true, locked: false },

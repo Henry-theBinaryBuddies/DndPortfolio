@@ -2,10 +2,13 @@ import "./style.css";
 import { Library } from "./assets";
 import { cellAt, mapSize, snap } from "./grid";
 import { History } from "./history";
+import { addLevel, levelDoc, removeLevel, renameLevel, switchLevel } from "./levels";
+import { LightCache } from "./lighting";
 import {
   FLOORS,
   FONTS,
   LABEL_PRESETS,
+  LIGHT_PRESETS,
   LAYERS,
   LIMITS,
   MARKER_KINDS,
@@ -20,6 +23,7 @@ import {
   type Label,
   type LabelStyle,
   type LayerId,
+  type Light,
   type MapDoc,
   type Marker,
   type MarkerKind,
@@ -31,13 +35,16 @@ import {
 } from "./model";
 import {
   addLabel,
+  addLight,
   addMarker,
   addStamps,
   addStroke,
   filterAssets,
   itemKind,
   labelAt,
+  lightAt,
   makeLabel,
+  makeLight,
   makeMarker,
   makeStamp,
   markerAt,
@@ -51,12 +58,13 @@ import {
   stampSnap,
   strokeAt,
   updateLabel,
+  updateLight,
   updateMarker,
   updateStamp,
   usedAssetIds,
   type ItemKind,
 } from "./objects";
-import { markerRadius, measureLabel, render } from "./render";
+import { lightIconRadius, markerRadius, measureLabel, render } from "./render";
 import {
   HANDLE_PAD_PX,
   SCALE_DIRECTIONS,
@@ -86,7 +94,7 @@ import {
 import { fileName, loadAutosave, parseFile, saveAutosave, serialize } from "./storage";
 import { fit, mapToScreen, pan, screenToMap, zoomAt, type View } from "./view";
 
-type Tool = "select" | "room" | "circle" | "triangle" | "polygon" | "door" | "window" | "brush" | "stamp" | "text" | "gm";
+type Tool = "select" | "room" | "circle" | "triangle" | "polygon" | "door" | "window" | "brush" | "stamp" | "text" | "light" | "gm";
 
 const SNAP_KEY = "scenic-sorcerer.snap";
 const AUTOSAVE_DELAY_MS = 400;
@@ -105,6 +113,7 @@ const HINTS: Record<Tool, string> = {
   brush: "Drag to paint the ground. Hold Space and drag to move around.",
   stamp: "Pick a stamp on the right, then click the map to place it.",
   text: "Click the map where the text should go. Then type your words on the right.",
+  light: "Click to place a light. Turn on “Preview lighting” to see its effect.",
   gm: "Pick a kind of note on the right, then click the map. Only you see these.",
 };
 
@@ -119,6 +128,7 @@ const TOOL_LAYER: Record<Exclude<Tool, "select">, LayerId> = {
   brush: "paint",
   stamp: "objects",
   text: "labels",
+  light: "lights",
   gm: "gm",
 };
 const KIND_LAYER: Record<ItemKind, LayerId> = {
@@ -128,6 +138,7 @@ const KIND_LAYER: Record<ItemKind, LayerId> = {
   stamp: "objects",
   label: "labels",
   marker: "gm",
+  light: "lights",
 };
 const KIND_NAME: Record<ItemKind, string> = {
   room: "room",
@@ -136,6 +147,7 @@ const KIND_NAME: Record<ItemKind, string> = {
   stamp: "stamp",
   label: "text",
   marker: "note",
+  light: "light",
 };
 
 const canvas = el<HTMLCanvasElement>("canvas");
@@ -204,6 +216,18 @@ const markerNumberRow = el("marker-number-row");
 const markerNumberInput = el<HTMLInputElement>("marker-number");
 const markerTextInput = el<HTMLInputElement>("marker-text");
 const renumberButton = el<HTMLButtonElement>("btn-renumber");
+const lightSection = el("light-section");
+const lightTitle = el("light-title");
+const lightPresets = el("light-presets");
+const lightSizeInput = el<HTMLInputElement>("light-size");
+const lightColorInput = el<HTMLInputElement>("light-color");
+const levelList = el("level-list");
+const levelNameInput = el<HTMLInputElement>("level-name");
+const removeLevelButton = el<HTMLButtonElement>("btn-remove-level");
+const showBelowRow = el("show-below-row");
+const showBelowInput = el<HTMLInputElement>("show-below");
+const lightingPreviewInput = el<HTMLInputElement>("lighting-preview");
+const ambientInput = el<HTMLInputElement>("ambient");
 const measureCtx = document.createElement("canvas").getContext("2d")!;
 const measure = (label: Label) => measureLabel(measureCtx, label);
 const layersBody = el("layers").querySelector("tbody")!;
@@ -248,6 +272,11 @@ let stampShadow = true;
 let scatter = false;
 let labelStyle: LabelStyle = { ...LABEL_PRESETS[0].style, size: LABEL_PRESETS[0].cells * newMap().grid.cellPx };
 let markerKind: MarkerKind = "key";
+let lightCells = 4; // reach of the next light, in cells
+let lightColor = "#ffb454";
+let lightingOn = false; // preview the map by light
+let showBelow = true; // show the level underneath, faintly
+const lightCache = new LightCache();
 
 for (const f of FLOORS) {
   const button = document.createElement("button");
@@ -267,6 +296,13 @@ for (const preset of LABEL_PRESETS) {
   button.dataset.value = preset.id;
   button.textContent = preset.label;
   labelPresets.append(button);
+}
+for (const preset of LIGHT_PRESETS) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.value = preset.id;
+  button.textContent = preset.label;
+  lightPresets.append(button);
 }
 for (const kind of MARKER_KINDS) {
   const button = document.createElement("button");
@@ -450,6 +486,32 @@ function syncControls(): void {
   if (document.activeElement !== markerNumberInput) markerNumberInput.value = String(marker?.number ?? "");
   if (document.activeElement !== markerTextInput) markerTextInput.value = marker?.text ?? "";
   renumberButton.hidden = !d.markers.some((m) => m.kind === "key");
+
+  const light = selectedLight();
+  lightSection.hidden = !(tool === "light" || light);
+  lightTitle.textContent = light ? "Selected light" : "New light";
+  lightSizeInput.value = String(light ? light.radius / d.grid.cellPx : lightCells);
+  lightColorInput.value = light?.color ?? lightColor;
+
+  levelList.replaceChildren(
+    ...d.levels
+      .map((level, i) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute("role", "radio");
+        button.setAttribute("aria-checked", String(i === d.level));
+        button.dataset.value = String(i);
+        button.textContent = level.name;
+        return button;
+      })
+      .reverse(), // the top level first, like a building
+  );
+  if (document.activeElement !== levelNameInput) levelNameInput.value = d.levels[d.level].name;
+  removeLevelButton.disabled = d.levels.length <= 1;
+  showBelowRow.hidden = d.level === 0;
+  showBelowInput.checked = showBelow;
+  lightingPreviewInput.checked = lightingOn;
+  ambientInput.value = String(Math.round(d.ambient * 100));
   syncOutputs();
 
   selectionSection.hidden = !kind;
@@ -480,6 +542,8 @@ function syncOutputs(): void {
   el("stamp-rotation-out").textContent = `${stampRotationInput.value}°`;
   el("label-size-out").textContent = cells(Number(labelSizeInput.value).toFixed(2));
   el("label-spacing-out").textContent = `${labelSpacingInput.value}%`;
+  el("light-size-out").textContent = cells(lightSizeInput.value);
+  el("ambient-out").textContent = `${ambientInput.value}%`;
 }
 
 function setChoice(group: HTMLElement, value: string): void {
@@ -683,6 +747,86 @@ markerNumberInput.addEventListener("change", () => {
   else editMarker((m) => ({ ...m, number }), true);
 });
 renumberButton.addEventListener("click", () => commit(renumberKeys(history.present)));
+
+function selectedLight(): Light | undefined {
+  return history.present.lights.find((l) => l.id === selectedId);
+}
+
+/** Change the selected light: shown at once while sliding, one undo step when done. */
+function editLight(change: (light: Light) => Light, done: boolean): void {
+  const next = updateLight(history.present, selectedId!, change);
+  if (done) commit(next);
+  else {
+    liveDoc = next;
+    draw();
+  }
+}
+
+lightPresets.addEventListener("click", (event) => {
+  const id = (event.target as HTMLElement).closest("button")?.dataset.value;
+  const preset = LIGHT_PRESETS.find((p) => p.id === id);
+  if (!preset) return;
+  if (selectedLight()) {
+    editLight((l) => ({ ...l, radius: preset.cells * history.present.grid.cellPx, color: preset.color }), true);
+  } else {
+    lightCells = preset.cells;
+    lightColor = preset.color;
+    syncControls();
+  }
+});
+onSlide(lightSizeInput, (value, done) => {
+  if (selectedLight()) editLight((l) => ({ ...l, radius: value * history.present.grid.cellPx }), done);
+  else lightCells = value;
+});
+lightColorInput.addEventListener("input", () => {
+  if (selectedLight()) editLight((l) => ({ ...l, color: lightColorInput.value }), false);
+});
+lightColorInput.addEventListener("change", () => {
+  if (selectedLight()) editLight((l) => ({ ...l, color: lightColorInput.value }), true);
+  else lightColor = lightColorInput.value;
+});
+
+lightingPreviewInput.addEventListener("change", () => {
+  lightingOn = lightingPreviewInput.checked;
+  draw();
+});
+onSlide(ambientInput, (value, done) => {
+  const next = { ...history.present, ambient: value / 100 };
+  if (done) commit(next);
+  else {
+    liveDoc = next;
+    draw();
+  }
+});
+
+onChoice(levelList, (value) => {
+  cancelDrawing();
+  commit(switchLevel(history.present, Number(value)));
+});
+el("btn-add-level").addEventListener("click", () => {
+  const d = history.present;
+  const next = addLevel(d, newId(), `Level ${d.levels.length + 1}`);
+  if (next) {
+    cancelDrawing();
+    commit(next);
+  } else {
+    showMessage(`A map can have up to ${LIMITS.maxLevels} levels.`);
+  }
+});
+removeLevelButton.addEventListener("click", () => {
+  cancelDrawing();
+  commit(removeLevel(history.present, history.present.level));
+});
+levelNameInput.addEventListener("change", () => {
+  const d = history.present;
+  const next = renameLevel(d, d.level, levelNameInput.value);
+  if (next === d) syncControls();
+  else commit(next);
+});
+showBelowInput.addEventListener("change", () => {
+  showBelow = showBelowInput.checked;
+  draw();
+});
 
 layersBody.addEventListener("change", (event) => {
   const box = event.target as HTMLInputElement;
@@ -952,6 +1096,10 @@ function pick(p: Point): { id: string; kind: ItemKind } | null {
     const marker = markerAt(d.markers, p, markerRadius(d) + 4 / view.scale);
     if (marker) return { id: marker.id, kind: "marker" };
   }
+  if (layerOpen("lights")) {
+    const light = lightAt(d.lights, p, lightIconRadius(d) + 4 / view.scale);
+    if (light) return { id: light.id, kind: "light" };
+  }
   if (layerOpen("labels")) {
     const label = labelAt(d.labels, p, measure, 4 / view.scale);
     if (label) return { id: label.id, kind: "label" };
@@ -1038,6 +1186,9 @@ canvas.addEventListener("pointerdown", (event) => {
     setTool("select");
     labelTextInput.focus();
     labelTextInput.select();
+  } else if (tool === "light") {
+    const centre = stampSnap(d.grid, mapPoint, snapMode);
+    commit(addLight(d, makeLight(newId(), centre, lightCells * d.grid.cellPx, lightColor)));
   } else if (tool === "gm") {
     const marker = markerUnder(screen);
     commit(addMarker(d, marker));
@@ -1195,6 +1346,7 @@ const TOOL_KEYS: Record<string, Tool> = {
   s: "stamp",
   t: "text",
   g: "gm",
+  l: "light",
   c: "circle",
   "3": "triangle",
 };
@@ -1292,6 +1444,13 @@ function draw(): void {
       draftStroke: drag?.kind === "brush" ? drag.stroke : null,
       ghostMarker: aiming && tool === "gm" && !drag ? markerUnder(cursor!) : null,
       measure,
+      lighting: lightingOn,
+      lightCache,
+      below: showBelow && d.level > 0 ? levelDoc(d, d.level - 1) : null,
+      ghostLight:
+        aiming && tool === "light" && !drag
+          ? makeLight(newId(), stampSnap(d.grid, mapPoint!, snapMode), lightCells * d.grid.cellPx, lightColor)
+          : null,
       ghostStamp: aiming && tool === "stamp" && !drag ? stampUnder(cursor!) : null,
       brushRing: aiming && tool === "brush" && mapPoint ? { ...mapPoint, radius: (brushSize * d.grid.cellPx) / 2 } : null,
       image: (id, tint) => library.image(id, tint),

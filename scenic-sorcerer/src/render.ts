@@ -1,7 +1,8 @@
 // Draws the map onto a canvas. Reads the document and view; changes nothing.
 
 import { cellPolygon, mapSize } from "./grid";
-import { FONTS, WALL_RATIO, type Label, type Room, type MapDoc, type Marker, type Opening, type Point, type Stamp, type Stroke } from "./model";
+import { FONTS, WALL_RATIO, type Label, type Light, type Room, type MapDoc, type Marker, type Opening, type Point, type Stamp, type Stroke } from "./model";
+import type { LightCache } from "./lighting";
 import { labelCorners, stampCorners, type Box } from "./objects";
 import { HANDLE_PAD_PX, boundsOf, scaleHandles, vertexHandles } from "./rooms";
 import { floorFill } from "./textures";
@@ -24,6 +25,9 @@ const COLORS = {
   draftFill: "rgba(224, 128, 58, 0.18)",
 };
 
+/** Multiplies the opacity of everything drawn, so a level can be shown faintly. */
+let dim = 1;
+
 export interface Scene {
   doc: MapDoc;
   view: View;
@@ -42,6 +46,13 @@ export interface Scene {
   ghostMarker: Marker | null;
   /** Outline of the brush under the cursor. */
   brushRing: { x: number; y: number; radius: number } | null;
+  /** Show the map as it looks by light, with darkness where no light reaches. */
+  lighting: boolean;
+  lightCache: LightCache;
+  /** The level underneath, to show faintly behind this one, or null. */
+  below: MapDoc | null;
+  /** Light that a click would place. */
+  ghostLight: Light | null;
   /** How big a label is on the map, so its selection box can be drawn. */
   measure: (label: Label) => Box;
   /** The picture for a stamp, or null while it loads or if it is missing from the library. */
@@ -67,6 +78,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   ctx.rect(0, 0, size.width, size.height);
   ctx.clip();
   const layers = doc.layers;
+  if (scene.below) drawBelow(ctx, scene, dpr, px);
   if (layers.floors.visible) drawFloors(ctx, doc);
   if (layers.paint.visible) {
     for (const stroke of doc.strokes) drawStroke(ctx, doc, stroke);
@@ -86,6 +98,11 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   if (doc.showGrid) drawGrid(ctx, doc, px);
   if (layers.labels.visible) {
     for (const label of doc.labels) drawLabel(ctx, label);
+  }
+  if (scene.lighting) drawLighting(ctx, scene, width, height, dpr);
+  if (layers.lights.visible) {
+    for (const light of doc.lights) drawLightIcon(ctx, doc, light, 1, px);
+    if (scene.ghostLight) drawLightIcon(ctx, doc, scene.ghostLight, 0.6, px);
   }
   if (layers.gm.visible) {
     for (const marker of doc.markers) drawMarker(ctx, doc, marker, 1);
@@ -137,7 +154,7 @@ function drawFloors(ctx: CanvasRenderingContext2D, doc: MapDoc): void {
 function drawStroke(ctx: CanvasRenderingContext2D, doc: MapDoc, stroke: Stroke): void {
   const fill = floorFill(ctx, stroke.texture, doc.grid.cellPx);
   ctx.save();
-  ctx.globalAlpha = stroke.opacity;
+  ctx.globalAlpha = stroke.opacity * dim;
   if (stroke.points.length === 1) {
     ctx.beginPath();
     ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
@@ -157,7 +174,7 @@ function drawStroke(ctx: CanvasRenderingContext2D, doc: MapDoc, stroke: Stroke):
 function drawStamp(ctx: CanvasRenderingContext2D, scene: Scene, stamp: Stamp, alpha: number, shadowScale: number, px: number): void {
   const image = scene.image(stamp.assetId, stamp.tint);
   ctx.save();
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha = alpha * dim;
   ctx.translate(stamp.x, stamp.y);
   ctx.rotate(stamp.rotation);
   if (image) {
@@ -283,7 +300,7 @@ function drawOpening(ctx: CanvasRenderingContext2D, doc: MapDoc, o: Opening, alp
   const length = Math.hypot(o.b.x - o.a.x, o.b.y - o.a.y);
   if (length === 0) return;
   ctx.save();
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha = alpha * dim;
   ctx.translate(o.a.x, o.a.y);
   ctx.rotate(Math.atan2(o.b.y - o.a.y, o.b.x - o.a.x));
   ctx.lineWidth = wall * 0.18;
@@ -344,7 +361,13 @@ function drawSelection(ctx: CanvasRenderingContext2D, scene: Scene, px: number):
   const stroke = scene.doc.strokes.find((s) => s.id === scene.selectedId);
   const label = scene.doc.labels.find((l) => l.id === scene.selectedId);
   const marker = scene.doc.markers.find((m) => m.id === scene.selectedId);
-  if (label) {
+  const light = scene.doc.lights.find((l) => l.id === scene.selectedId);
+  if (light) {
+    ctx.lineWidth = 2 * px;
+    ctx.beginPath();
+    ctx.arc(light.x, light.y, light.radius, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (label) {
     ctx.lineWidth = 2 * px;
     outline(ctx, labelCorners(label, scene.measure(label)), true);
     ctx.stroke();
@@ -423,4 +446,121 @@ function drawDraft(ctx: CanvasRenderingContext2D, scene: Scene, px: number): voi
     ctx.lineWidth = 1.5 * px;
     ctx.stroke();
   }
+}
+
+/** The level underneath, drawn faintly so rooms can be lined up with it. */
+function drawBelow(ctx: CanvasRenderingContext2D, scene: Scene, dpr: number, px: number): void {
+  const below = scene.below!;
+  const shadowScale = below.grid.cellPx * scene.view.scale * dpr;
+  dim = 0.28;
+  ctx.save();
+  ctx.globalAlpha = dim;
+  drawFloors(ctx, below);
+  for (const stroke of below.strokes) drawStroke(ctx, below, stroke);
+  drawWalls(ctx, below);
+  for (const opening of below.openings) drawOpening(ctx, below, opening, 1);
+  for (const stamp of below.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px);
+  ctx.restore();
+  dim = 1;
+}
+
+/** Radius of a light's icon, in map pixels. */
+export function lightIconRadius(doc: MapDoc): number {
+  return doc.grid.cellPx * 0.2;
+}
+
+function drawLightIcon(ctx: CanvasRenderingContext2D, doc: MapDoc, light: Light, alpha: number, px: number): void {
+  const r = lightIconRadius(doc);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(light.x, light.y);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = light.color;
+  ctx.lineWidth = Math.max(r * 0.22, 1.5 * px);
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    ctx.moveTo(Math.cos(a) * r * 1.45, Math.sin(a) * r * 1.45);
+    ctx.lineTo(Math.cos(a) * r * 2, Math.sin(a) * r * 2);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = light.color;
+  ctx.fill();
+  ctx.lineWidth = Math.max(r * 0.18, 1.5 * px);
+  ctx.strokeStyle = "#fff";
+  ctx.stroke();
+  ctx.restore();
+}
+
+function pathPolygon(ctx: CanvasRenderingContext2D, points: Point[]): void {
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.closePath();
+}
+
+function rgba(hex: string, alpha: number): string {
+  return `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${alpha})`;
+}
+
+let darkness: HTMLCanvasElement | null = null;
+
+/**
+ * Show the map by lamplight. A warm glow is added round each light; then a dark sheet is laid over the map
+ * with a hole cut for each light, shaped by the walls it cannot see through.
+ */
+function drawLighting(ctx: CanvasRenderingContext2D, scene: Scene, width: number, height: number, dpr: number): void {
+  const { doc, view } = scene;
+  const size = mapSize(doc.grid);
+  const w = Math.round(width * dpr);
+  const h = Math.round(height * dpr);
+  if (!darkness || darkness.width !== w || darkness.height !== h) {
+    darkness = document.createElement("canvas");
+    darkness.width = w;
+    darkness.height = h;
+  }
+  const sheet = darkness.getContext("2d")!;
+  sheet.setTransform(1, 0, 0, 1, 0, 0);
+  sheet.globalCompositeOperation = "source-over";
+  sheet.clearRect(0, 0, w, h);
+  sheet.setTransform(dpr, 0, 0, dpr, 0, 0);
+  sheet.translate(view.x, view.y);
+  sheet.scale(view.scale, view.scale);
+  sheet.fillStyle = `rgba(8, 10, 28, ${doc.ambient})`;
+  sheet.fillRect(0, 0, size.width, size.height);
+
+  for (const light of doc.lights) {
+    const area = scene.lightCache.polygonFor(doc, light);
+    if (area.length < 3) continue;
+    const reach = light.radius;
+
+    ctx.save();
+    pathPolygon(ctx, area);
+    ctx.clip();
+    const glow = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, reach);
+    glow.addColorStop(0, rgba(light.color, 0.42));
+    glow.addColorStop(1, rgba(light.color, 0)); // a plain tint: it colours the floor without washing it out
+    ctx.fillStyle = glow;
+    ctx.fillRect(light.x - reach, light.y - reach, reach * 2, reach * 2);
+    ctx.restore();
+
+    sheet.save();
+    pathPolygon(sheet, area);
+    sheet.clip();
+    sheet.globalCompositeOperation = "destination-out";
+    const hole = sheet.createRadialGradient(light.x, light.y, 0, light.x, light.y, reach);
+    hole.addColorStop(0, "rgba(0, 0, 0, 1)");
+    hole.addColorStop(0.55, "rgba(0, 0, 0, 0.9)");
+    hole.addColorStop(1, "rgba(0, 0, 0, 0)");
+    sheet.fillStyle = hole;
+    sheet.fillRect(light.x - reach, light.y - reach, reach * 2, reach * 2);
+    sheet.restore();
+  }
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(darkness, 0, 0);
+  ctx.restore();
 }

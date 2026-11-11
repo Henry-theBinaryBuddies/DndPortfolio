@@ -495,3 +495,16 @@ select.input {
 #cursor-cell {
   white-space: nowrap;
 }
+
+#level-list button {
+  padding: 6px 12px;
+}
+#show-below-row {
+  font-size: 13px;
+}
+.tools {
+  gap: 5px;
+}
+.tools button {
+  padding: 8px 8px;
+}

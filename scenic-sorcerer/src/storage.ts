@@ -13,6 +13,9 @@ import {
   type FontId,
   type GridType,
   type Label,
+  type LevelContent,
+  type LevelInfo,
+  type Light,
   type LayerId,
   type LayerState,
   type MapDoc,
@@ -83,6 +86,9 @@ export function parseFile(text: string): { doc: MapDoc; assets: Asset[] } {
     stamps: parseStamps(raw.stamps),
     labels: parseLabels(raw.labels),
     markers: parseMarkers(raw.markers),
+    lights: parseLights(raw.lights),
+    ambient: typeof raw.ambient === "number" && Number.isFinite(raw.ambient) ? Math.min(0.95, Math.max(0, raw.ambient)) : 0.7,
+    ...parseLevels(raw.levels, raw.level),
     layers: parseLayers(raw.layers),
     showGrid: raw.showGrid !== false,
   };
@@ -203,6 +209,52 @@ function parseMarkers(raw: unknown): Marker[] {
     });
   }
   return markers;
+}
+
+function parseLights(raw: unknown): Light[] {
+  if (!Array.isArray(raw)) return [];
+  const lights: Light[] = [];
+  for (const item of raw.slice(0, LIMITS.maxLights)) {
+    if (!isRecord(item) || typeof item.id !== "string") continue;
+    const centre = parsePoint(item);
+    if (!centre || !isPositive(item.radius)) continue;
+    lights.push({
+      id: item.id,
+      x: centre.x,
+      y: centre.y,
+      radius: Math.min(5000, item.radius),
+      color: typeof item.color === "string" && TINT.test(item.color) ? item.color : "#ffb454",
+    });
+  }
+  return lights;
+}
+
+function parseContent(raw: Record<string, unknown>): LevelContent {
+  return {
+    rooms: parseRooms(raw.rooms),
+    openings: parseOpenings(raw.openings),
+    strokes: parseStrokes(raw.strokes),
+    stamps: parseStamps(raw.stamps),
+    labels: parseLabels(raw.labels),
+    markers: parseMarkers(raw.markers),
+    lights: parseLights(raw.lights),
+  };
+}
+
+/** The list of levels, and which one the map's own lists belong to. A map without levels has one. */
+function parseLevels(raw: unknown, rawLevel: unknown): { levels: LevelInfo[]; level: number } {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { levels: [{ id: "level-1", name: "Level 1", content: null }], level: 0 };
+  }
+  const items = raw.slice(0, LIMITS.maxLevels);
+  const level = typeof rawLevel === "number" && Number.isInteger(rawLevel) && rawLevel >= 0 && rawLevel < items.length ? rawLevel : 0;
+  const levels = items.map((item, i): LevelInfo => {
+    const entry = isRecord(item) ? item : {};
+    const id = typeof entry.id === "string" && entry.id ? entry.id.slice(0, 64) : `level-${i + 1}`;
+    const name = typeof entry.name === "string" && entry.name.trim() ? entry.name.trim().slice(0, LIMITS.maxLevelName) : `Level ${i + 1}`;
+    return { id, name, content: i === level ? null : parseContent(isRecord(entry.content) ? entry.content : {}) };
+  });
+  return { levels, level };
 }
 
 function parseLayers(raw: unknown): Record<LayerId, LayerState> {
