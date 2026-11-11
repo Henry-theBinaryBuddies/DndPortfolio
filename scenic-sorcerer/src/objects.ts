@@ -1,13 +1,15 @@
 // Paint strokes, stamps and the stamp library. Pure logic: every edit returns a new MapDoc.
 
 import { snap } from "./grid";
-import type { Asset, Grid, MapDoc, Point, SnapMode, Stamp, Stroke } from "./model";
+import type { Asset, Grid, Label, LabelStyle, MapDoc, Marker, MarkerKind, Point, SnapMode, Stamp, Stroke } from "./model";
 import { closestOnSegment, distance, moveRoom, removeItem } from "./rooms";
 
-export type ItemKind = "room" | "opening" | "stamp" | "stroke";
+export type ItemKind = "room" | "opening" | "stamp" | "stroke" | "label" | "marker";
 
 export function itemKind(doc: MapDoc, id: string | null): ItemKind | null {
   if (!id) return null;
+  if (doc.markers.some((m) => m.id === id)) return "marker";
+  if (doc.labels.some((l) => l.id === id)) return "label";
   if (doc.stamps.some((s) => s.id === id)) return "stamp";
   if (doc.openings.some((o) => o.id === id)) return "opening";
   if (doc.strokes.some((s) => s.id === id)) return "stroke";
@@ -56,12 +58,17 @@ export function stampCorners(stamp: Stamp): Point[] {
   }));
 }
 
+/** Is p inside the box of the given size centred on (cx, cy) and turned by `rotation`? */
+function inTurnedBox(cx: number, cy: number, width: number, height: number, rotation: number, p: Point): boolean {
+  const dx = p.x - cx;
+  const dy = p.y - cy;
+  const cos = Math.cos(-rotation);
+  const sin = Math.sin(-rotation);
+  return Math.abs(dx * cos - dy * sin) <= width / 2 && Math.abs(dx * sin + dy * cos) <= height / 2;
+}
+
 export function pointInStamp(stamp: Stamp, p: Point): boolean {
-  const dx = p.x - stamp.x;
-  const dy = p.y - stamp.y;
-  const cos = Math.cos(-stamp.rotation);
-  const sin = Math.sin(-stamp.rotation);
-  return Math.abs(dx * cos - dy * sin) <= stamp.width / 2 && Math.abs(dx * sin + dy * cos) <= stamp.height / 2;
+  return inTurnedBox(stamp.x, stamp.y, stamp.width, stamp.height, stamp.rotation, p);
 }
 
 /** The topmost stamp under p, or null. */
@@ -92,6 +99,92 @@ export function updateStamp(doc: MapDoc, id: string, change: (stamp: Stamp) => S
   const stamp = doc.stamps.find((s) => s.id === id);
   if (!stamp) return doc;
   return { ...doc, stamps: doc.stamps.map((s) => (s === stamp ? change(s) : s)) };
+}
+
+// ---- text -------------------------------------------------------------
+
+export interface Box {
+  width: number;
+  height: number;
+}
+/** How big a label is on the map. Needs a canvas, so the caller supplies it. */
+export type Measure = (label: Label) => Box;
+
+export function makeLabel(id: string, text: string, centre: Point, style: LabelStyle): Label {
+  return { ...style, id, text, x: centre.x, y: centre.y, rotation: 0 };
+}
+
+/** Corners of a label's box on the map, after rotation. */
+export function labelCorners(label: Label, box: Box): Point[] {
+  const cos = Math.cos(label.rotation);
+  const sin = Math.sin(label.rotation);
+  const hw = box.width / 2;
+  const hh = box.height / 2;
+  return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([x, y]) => ({
+    x: label.x + x * cos - y * sin,
+    y: label.y + x * sin + y * cos,
+  }));
+}
+
+/** The topmost label under p, or null. `reach` widens the target so small text is easy to grab. */
+export function labelAt(labels: Label[], p: Point, measure: Measure, reach: number): Label | null {
+  for (let i = labels.length - 1; i >= 0; i--) {
+    const label = labels[i];
+    const box = measure(label);
+    if (inTurnedBox(label.x, label.y, box.width + reach * 2, box.height + reach * 2, label.rotation, p)) return label;
+  }
+  return null;
+}
+
+export function addLabel(doc: MapDoc, label: Label): MapDoc {
+  return { ...doc, labels: [...doc.labels, label] };
+}
+
+export function updateLabel(doc: MapDoc, id: string, change: (label: Label) => Label): MapDoc {
+  const label = doc.labels.find((l) => l.id === id);
+  if (!label) return doc;
+  return { ...doc, labels: doc.labels.map((l) => (l === label ? change(l) : l)) };
+}
+
+// ---- GM markers -------------------------------------------------------
+
+/** The number the next room-number marker should get. */
+export function nextKeyNumber(markers: Marker[]): number {
+  return markers.reduce((top, m) => (m.kind === "key" ? Math.max(top, m.number) : top), 0) + 1;
+}
+
+export function makeMarker(id: string, kind: MarkerKind, centre: Point, markers: Marker[]): Marker {
+  return { id, kind, x: centre.x, y: centre.y, number: kind === "key" ? nextKeyNumber(markers) : 0, text: "" };
+}
+
+export function addMarker(doc: MapDoc, marker: Marker): MapDoc {
+  return { ...doc, markers: [...doc.markers, marker] };
+}
+
+/** The topmost marker whose circle (radius `radius`) contains p, or null. */
+export function markerAt(markers: Marker[], p: Point, radius: number): Marker | null {
+  for (let i = markers.length - 1; i >= 0; i--) {
+    if (distance(p, markers[i]) <= radius) return markers[i];
+  }
+  return null;
+}
+
+export function updateMarker(doc: MapDoc, id: string, change: (marker: Marker) => Marker): MapDoc {
+  const marker = doc.markers.find((m) => m.id === id);
+  if (!marker) return doc;
+  return { ...doc, markers: doc.markers.map((m) => (m === marker ? change(m) : m)) };
+}
+
+/** Number the room markers 1, 2, 3... in reading order: top row first, left to right. */
+export function renumberKeys(doc: MapDoc): MapDoc {
+  const cell = doc.grid.cellPx;
+  const keys = doc.markers
+    .filter((m) => m.kind === "key")
+    .sort((a, b) => Math.round(a.y / cell) - Math.round(b.y / cell) || a.x - b.x);
+  const numbers = new Map(keys.map((m, i) => [m.id, i + 1]));
+  const changed = keys.some((m) => m.number !== numbers.get(m.id));
+  if (!changed) return doc;
+  return { ...doc, markers: doc.markers.map((m) => (numbers.has(m.id) ? { ...m, number: numbers.get(m.id)! } : m)) };
 }
 
 // ---- paint ------------------------------------------------------------
@@ -132,6 +225,10 @@ export function moveItem(doc: MapDoc, id: string, dx: number, dy: number): MapDo
           s.id === id ? { ...s, points: s.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) } : s,
         ),
       };
+    case "label":
+      return updateLabel(doc, id, (l) => ({ ...l, x: l.x + dx, y: l.y + dy }));
+    case "marker":
+      return updateMarker(doc, id, (m) => ({ ...m, x: m.x + dx, y: m.y + dy }));
     default:
       return doc; // doors and windows stay on their wall
   }
@@ -143,6 +240,10 @@ export function removeById(doc: MapDoc, id: string): MapDoc {
       return { ...doc, stamps: doc.stamps.filter((s) => s.id !== id) };
     case "stroke":
       return { ...doc, strokes: doc.strokes.filter((s) => s.id !== id) };
+    case "label":
+      return { ...doc, labels: doc.labels.filter((l) => l.id !== id) };
+    case "marker":
+      return { ...doc, markers: doc.markers.filter((m) => m.id !== id) };
     default:
       return removeItem(doc, id);
   }
@@ -168,6 +269,10 @@ export function reorder(doc: MapDoc, id: string, to: "front" | "back"): MapDoc {
     case "room": {
       const rooms = move(doc.rooms);
       return rooms === doc.rooms ? doc : { ...doc, rooms };
+    }
+    case "label": {
+      const labels = move(doc.labels);
+      return labels === doc.labels ? doc : { ...doc, labels };
     }
     default:
       return doc;

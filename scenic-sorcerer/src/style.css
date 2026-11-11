@@ -446,3 +446,42 @@ input:focus-visible {
 [hidden] {
   display: none !important;
 }
+
+.field {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+}
+select.input {
+  cursor: pointer;
+}
+.presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 12px;
+}
+.presets button {
+  padding: 6px 4px;
+  font-size: 13px;
+}
+.check.inline {
+  margin-top: 0;
+  font-size: 13px;
+}
+#marker-kinds {
+  margin-top: 10px;
+}
+#btn-renumber {
+  margin-top: 12px;
+}

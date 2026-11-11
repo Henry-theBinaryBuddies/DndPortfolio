@@ -33,6 +33,8 @@
         <button type="button" role="radio" data-value="window" title="Add a window to a wall (W)">Window</button>
         <button type="button" role="radio" data-value="brush" title="Paint ground textures (B)">Brush</button>
         <button type="button" role="radio" data-value="stamp" title="Place pictures such as furniture and trees (S)">Stamp</button>
+        <button type="button" role="radio" data-value="text" title="Add a piece of text, such as a room name (T)">Text</button>
+        <button type="button" role="radio" data-value="gm" title="GM notes: room numbers, traps and secrets that players should not see (G)">GM notes</button>
       </nav>
 
       <div id="stage" class="stage">
@@ -92,6 +94,41 @@
             <label class="tint">Tint <input id="stamp-tint" type="color" /></label>
             <button id="btn-clear-tint" type="button">No tint</button>
           </div>
+        </section>
+
+        <section id="text-section" hidden>
+          <h2 id="text-title">New text</h2>
+          <label class="field" id="label-text-row">Words
+            <input id="label-text" class="input" type="text" maxlength="120" autocomplete="off" />
+          </label>
+          <div class="presets" id="label-presets"></div>
+          <label class="field">Font <select id="label-font" class="input"></select></label>
+          <label class="slider">Size <output id="label-size-out"></output>
+            <input id="label-size" type="range" min="0.2" max="5" step="0.05" />
+          </label>
+          <label class="slider">Letter spacing <output id="label-spacing-out"></output>
+            <input id="label-spacing" type="range" min="0" max="50" step="5" />
+          </label>
+          <div class="row">
+            <label class="tint">Colour <input id="label-color" type="color" /></label>
+            <label class="check inline"><input id="label-outline" type="checkbox" /> Halo</label>
+            <label class="check inline"><input id="label-italic" type="checkbox" /> Italic</label>
+          </div>
+        </section>
+
+        <section id="gm-section" hidden>
+          <h2 id="gm-title">GM notes</h2>
+          <div class="choice" role="radiogroup" aria-label="Kind of GM note" id="marker-kinds"></div>
+          <div id="marker-fields">
+            <label class="field" id="marker-number-row">Room number
+              <input id="marker-number" class="input" type="number" min="1" max="999" step="1" />
+            </label>
+            <label class="field">Note for the GM
+              <input id="marker-text" class="input" type="text" maxlength="400" autocomplete="off" />
+            </label>
+          </div>
+          <button id="btn-renumber" type="button" class="wide" title="Number the rooms 1, 2, 3 from the top left">Renumber rooms in reading order</button>
+          <p class="note">GM notes are for you. Turn off “GM notes” under Layers to see what players will see.</p>
         </section>
 
         <section id="selection-section" hidden>

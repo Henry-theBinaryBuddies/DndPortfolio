@@ -1,8 +1,8 @@
 // Draws the map onto a canvas. Reads the document and view; changes nothing.
 
 import { cellPolygon, mapSize } from "./grid";
-import { WALL_RATIO, type MapDoc, type Opening, type Point, type Stamp, type Stroke } from "./model";
-import { stampCorners } from "./objects";
+import { FONTS, WALL_RATIO, type Label, type MapDoc, type Marker, type Opening, type Point, type Stamp, type Stroke } from "./model";
+import { labelCorners, stampCorners, type Box } from "./objects";
 import { floorFill } from "./textures";
 import type { View } from "./view";
 
@@ -16,6 +16,10 @@ const COLORS = {
   windowFrame: "#e9e2d0",
   windowGlass: "#7fc4e4",
   accent: "#e0803a",
+  gmKey: "#b3261e",
+  gmTrap: "#c77700",
+  gmSecret: "#6a3ea1",
+  gmNote: "#1f6aa5",
   draftFill: "rgba(224, 128, 58, 0.18)",
 };
 
@@ -33,8 +37,12 @@ export interface Scene {
   draftStroke: Stroke | null;
   /** Stamp that a click would place. */
   ghostStamp: Stamp | null;
+  /** GM marker that a click would place. */
+  ghostMarker: Marker | null;
   /** Outline of the brush under the cursor. */
   brushRing: { x: number; y: number; radius: number } | null;
+  /** How big a label is on the map, so its selection box can be drawn. */
+  measure: (label: Label) => Box;
   /** The picture for a stamp, or null while it loads or if it is missing from the library. */
   image: (assetId: string, tint: string | null) => CanvasImageSource | null;
 }
@@ -75,6 +83,13 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     if (scene.ghostStamp) drawStamp(ctx, scene, scene.ghostStamp, 0.6, shadowScale, px);
   }
   if (doc.showGrid) drawGrid(ctx, doc, px);
+  if (layers.labels.visible) {
+    for (const label of doc.labels) drawLabel(ctx, label);
+  }
+  if (layers.gm.visible) {
+    for (const marker of doc.markers) drawMarker(ctx, doc, marker, 1);
+    if (scene.ghostMarker) drawMarker(ctx, doc, scene.ghostMarker, 0.6);
+  }
   ctx.restore();
 
   ctx.lineWidth = 2 * px;
@@ -165,6 +180,91 @@ function drawStamp(ctx: CanvasRenderingContext2D, scene: Scene, stamp: Stamp, al
   ctx.restore();
 }
 
+/** The canvas font string for a label. */
+function labelFont(label: Label): string {
+  const stack = FONTS.find((f) => f.id === label.font)?.stack ?? "serif";
+  const weight = label.font === "bold" ? "" : "600 ";
+  return `${label.italic ? "italic " : ""}${weight}${Math.round(label.size)}px ${stack}`;
+}
+
+function setLabelText(ctx: CanvasRenderingContext2D, label: Label): void {
+  ctx.font = labelFont(label);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.letterSpacing = `${(label.spacing * label.size).toFixed(2)}px`;
+}
+
+/** How big a label is on the map, text and spacing included. */
+export function measureLabel(ctx: CanvasRenderingContext2D, label: Label): Box {
+  ctx.save();
+  setLabelText(ctx, label);
+  const width = ctx.measureText(label.text || " ").width;
+  ctx.restore();
+  return { width, height: label.size * 1.25 };
+}
+
+/** A halo colour that contrasts with the text: light round dark text, dark round light text. */
+function haloFor(color: string): string {
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 140 ? "rgba(30, 24, 16, 0.85)" : "rgba(246, 240, 224, 0.9)";
+}
+
+function drawLabel(ctx: CanvasRenderingContext2D, label: Label): void {
+  if (!label.text) return;
+  ctx.save();
+  ctx.translate(label.x, label.y);
+  ctx.rotate(label.rotation);
+  setLabelText(ctx, label);
+  if (label.outline) {
+    ctx.lineWidth = label.size * 0.2;
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = haloFor(label.color);
+    ctx.strokeText(label.text, 0, 0);
+  }
+  ctx.fillStyle = label.color;
+  ctx.fillText(label.text, 0, 0);
+  ctx.restore();
+}
+
+/** Radius of a GM marker, in map pixels. */
+export function markerRadius(doc: MapDoc): number {
+  return doc.grid.cellPx * 0.3;
+}
+
+function drawMarker(ctx: CanvasRenderingContext2D, doc: MapDoc, marker: Marker, alpha: number): void {
+  const r = markerRadius(doc);
+  const color = { key: COLORS.gmKey, trap: COLORS.gmTrap, secret: COLORS.gmSecret, note: COLORS.gmNote }[marker.kind];
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(marker.x, marker.y);
+  ctx.beginPath();
+  if (marker.kind === "trap") {
+    ctx.moveTo(0, -r * 1.15);
+    ctx.lineTo(r * 1.05, r * 0.85);
+    ctx.lineTo(-r * 1.05, r * 0.85);
+    ctx.closePath();
+  } else if (marker.kind === "note") {
+    ctx.roundRect(-r, -r, r * 2, r * 2, r * 0.3);
+  } else {
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+  }
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.lineWidth = r * 0.14;
+  ctx.strokeStyle = "#fff";
+  ctx.stroke();
+  const glyph = { key: String(marker.number), trap: "!", secret: "S", note: "i" }[marker.kind];
+  ctx.fillStyle = "#fff";
+  ctx.font = `bold ${Math.round(r * (glyph.length > 2 ? 0.85 : 1.15))}px system-ui, Arial, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.letterSpacing = "0px";
+  ctx.fillText(glyph, 0, marker.kind === "trap" ? r * 0.2 : r * 0.04);
+  ctx.restore();
+}
+
 function drawWalls(ctx: CanvasRenderingContext2D, doc: MapDoc): void {
   ctx.lineWidth = doc.grid.cellPx * WALL_RATIO;
   ctx.lineJoin = "miter";
@@ -241,7 +341,18 @@ function drawSelection(ctx: CanvasRenderingContext2D, scene: Scene, px: number):
   const opening = scene.doc.openings.find((o) => o.id === scene.selectedId);
   const stamp = scene.doc.stamps.find((s) => s.id === scene.selectedId);
   const stroke = scene.doc.strokes.find((s) => s.id === scene.selectedId);
-  if (room) {
+  const label = scene.doc.labels.find((l) => l.id === scene.selectedId);
+  const marker = scene.doc.markers.find((m) => m.id === scene.selectedId);
+  if (label) {
+    ctx.lineWidth = 2 * px;
+    outline(ctx, labelCorners(label, scene.measure(label)), true);
+    ctx.stroke();
+  } else if (marker) {
+    ctx.lineWidth = 3 * px;
+    ctx.beginPath();
+    ctx.arc(marker.x, marker.y, markerRadius(scene.doc) * 1.35, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (room) {
     outline(ctx, room.points, true);
     ctx.stroke();
   } else if (stamp) {

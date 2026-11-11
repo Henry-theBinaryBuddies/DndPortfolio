@@ -6,12 +6,18 @@ import {
   LIMITS,
   clampInt,
   defaultLayers,
+  FONTS,
+  MARKER_KINDS,
   type Asset,
   type FloorId,
+  type FontId,
   type GridType,
+  type Label,
   type LayerId,
   type LayerState,
   type MapDoc,
+  type Marker,
+  type MarkerKind,
   type Opening,
   type Point,
   type Room,
@@ -74,6 +80,8 @@ export function parseFile(text: string): { doc: MapDoc; assets: Asset[] } {
     openings: parseOpenings(raw.openings),
     strokes: parseStrokes(raw.strokes),
     stamps: parseStamps(raw.stamps),
+    labels: parseLabels(raw.labels),
+    markers: parseMarkers(raw.markers),
     layers: parseLayers(raw.layers),
     showGrid: raw.showGrid !== false,
   };
@@ -141,6 +149,51 @@ function parseStamps(raw: unknown): Stamp[] {
     });
   }
   return stamps;
+}
+
+function parseLabels(raw: unknown): Label[] {
+  if (!Array.isArray(raw)) return [];
+  const labels: Label[] = [];
+  for (const item of raw.slice(0, LIMITS.maxLabels)) {
+    if (!isRecord(item) || typeof item.id !== "string" || typeof item.text !== "string") continue;
+    const centre = parsePoint(item);
+    if (!centre || !isPositive(item.size)) continue;
+    labels.push({
+      id: item.id,
+      text: item.text.slice(0, LIMITS.maxLabelText),
+      x: centre.x,
+      y: centre.y,
+      rotation: typeof item.rotation === "number" && Number.isFinite(item.rotation) ? item.rotation : 0,
+      font: FONTS.some((f) => f.id === item.font) ? (item.font as FontId) : "classic",
+      size: item.size,
+      color: typeof item.color === "string" && TINT.test(item.color) ? item.color : "#2b2620",
+      outline: item.outline !== false,
+      italic: item.italic === true,
+      spacing: typeof item.spacing === "number" && item.spacing >= 0 && item.spacing <= 1 ? item.spacing : 0,
+    });
+  }
+  return labels;
+}
+
+function parseMarkers(raw: unknown): Marker[] {
+  if (!Array.isArray(raw)) return [];
+  const markers: Marker[] = [];
+  for (const item of raw.slice(0, LIMITS.maxMarkers)) {
+    if (!isRecord(item) || typeof item.id !== "string") continue;
+    const centre = parsePoint(item);
+    if (!centre || !MARKER_KINDS.some((k) => k.id === item.kind)) continue;
+    const kind = item.kind as MarkerKind;
+    const number = typeof item.number === "number" && Number.isInteger(item.number) ? Math.min(999, Math.max(0, item.number)) : 0;
+    markers.push({
+      id: item.id,
+      kind,
+      x: centre.x,
+      y: centre.y,
+      number: kind === "key" ? number : 0,
+      text: typeof item.text === "string" ? item.text.slice(0, LIMITS.maxMarkerText) : "",
+    });
+  }
+  return markers;
 }
 
 function parseLayers(raw: unknown): Record<LayerId, LayerState> {

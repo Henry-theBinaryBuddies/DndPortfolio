@@ -4,17 +4,25 @@ import { cellAt, mapSize, snap } from "./grid";
 import { History } from "./history";
 import {
   FLOORS,
+  FONTS,
+  LABEL_PRESETS,
   LAYERS,
   LIMITS,
+  MARKER_KINDS,
   WALL_RATIO,
   clampInt,
   newId,
   newMap,
   type Asset,
   type FloorId,
+  type FontId,
   type GridType,
+  type Label,
+  type LabelStyle,
   type LayerId,
   type MapDoc,
+  type Marker,
+  type MarkerKind,
   type Opening,
   type Point,
   type SnapMode,
@@ -22,24 +30,33 @@ import {
   type Stroke,
 } from "./model";
 import {
+  addLabel,
+  addMarker,
   addStamps,
   addStroke,
   filterAssets,
   itemKind,
+  labelAt,
+  makeLabel,
+  makeMarker,
   makeStamp,
+  markerAt,
   moveItem,
   removeById,
+  renumberKeys,
   reorder,
   resizeStamp,
   stampAt,
   stampLongest,
   stampSnap,
   strokeAt,
+  updateLabel,
+  updateMarker,
   updateStamp,
   usedAssetIds,
   type ItemKind,
 } from "./objects";
-import { render } from "./render";
+import { markerRadius, measureLabel, render } from "./render";
 import {
   addOpening,
   addRoom,
@@ -57,7 +74,7 @@ import {
 import { fileName, loadAutosave, parseFile, saveAutosave, serialize } from "./storage";
 import { fit, mapToScreen, pan, screenToMap, zoomAt, type View } from "./view";
 
-type Tool = "select" | "room" | "polygon" | "door" | "window" | "brush" | "stamp";
+type Tool = "select" | "room" | "polygon" | "door" | "window" | "brush" | "stamp" | "text" | "gm";
 
 const SNAP_KEY = "scenic-sorcerer.snap";
 const AUTOSAVE_DELAY_MS = 400;
@@ -73,6 +90,8 @@ const HINTS: Record<Tool, string> = {
   window: "Click a wall to add a window.",
   brush: "Drag to paint the ground. Hold Space and drag to move around.",
   stamp: "Pick a stamp on the right, then click the map to place it.",
+  text: "Click the map where the text should go. Then type your words on the right.",
+  gm: "Pick a kind of note on the right, then click the map. Only you see these.",
 };
 
 /** The layer each tool draws on, and the layer each kind of thing lives on. */
@@ -83,9 +102,25 @@ const TOOL_LAYER: Record<Exclude<Tool, "select">, LayerId> = {
   window: "walls",
   brush: "paint",
   stamp: "objects",
+  text: "labels",
+  gm: "gm",
 };
-const KIND_LAYER: Record<ItemKind, LayerId> = { room: "floors", opening: "walls", stroke: "paint", stamp: "objects" };
-const KIND_NAME: Record<ItemKind, string> = { room: "room", opening: "door", stroke: "paint", stamp: "stamp" };
+const KIND_LAYER: Record<ItemKind, LayerId> = {
+  room: "floors",
+  opening: "walls",
+  stroke: "paint",
+  stamp: "objects",
+  label: "labels",
+  marker: "gm",
+};
+const KIND_NAME: Record<ItemKind, string> = {
+  room: "room",
+  opening: "door",
+  stroke: "paint",
+  stamp: "stamp",
+  label: "text",
+  marker: "note",
+};
 
 const canvas = el<HTMLCanvasElement>("canvas");
 const stage = el<HTMLDivElement>("stage");
@@ -133,6 +168,27 @@ const stampTintInput = el<HTMLInputElement>("stamp-tint");
 const selectionSection = el("selection-section");
 const selectionTitle = el("selection-title");
 const orderRow = el("order-row");
+const textSection = el("text-section");
+const textTitle = el("text-title");
+const labelTextRow = el("label-text-row");
+const labelTextInput = el<HTMLInputElement>("label-text");
+const labelPresets = el("label-presets");
+const labelFontSelect = el<HTMLSelectElement>("label-font");
+const labelSizeInput = el<HTMLInputElement>("label-size");
+const labelSpacingInput = el<HTMLInputElement>("label-spacing");
+const labelColorInput = el<HTMLInputElement>("label-color");
+const labelOutlineInput = el<HTMLInputElement>("label-outline");
+const labelItalicInput = el<HTMLInputElement>("label-italic");
+const gmSection = el("gm-section");
+const gmTitle = el("gm-title");
+const markerKinds = el("marker-kinds");
+const markerFields = el("marker-fields");
+const markerNumberRow = el("marker-number-row");
+const markerNumberInput = el<HTMLInputElement>("marker-number");
+const markerTextInput = el<HTMLInputElement>("marker-text");
+const renumberButton = el<HTMLButtonElement>("btn-renumber");
+const measureCtx = document.createElement("canvas").getContext("2d")!;
+const measure = (label: Label) => measureLabel(measureCtx, label);
 const layersBody = el("layers").querySelector("tbody")!;
 
 type Drag =
@@ -171,6 +227,8 @@ let stampSize = 1; // longest side, in cells
 let stampRotation = 0; // degrees
 let stampShadow = true;
 let scatter = false;
+let labelStyle: LabelStyle = { ...LABEL_PRESETS[0].style, size: LABEL_PRESETS[0].cells * newMap().grid.cellPx };
+let markerKind: MarkerKind = "key";
 
 for (const f of FLOORS) {
   const button = document.createElement("button");
@@ -181,6 +239,23 @@ for (const f of FLOORS) {
   chip.style.background = f.color;
   button.append(chip, f.label);
   floorGroup.append(button);
+}
+
+for (const font of FONTS) labelFontSelect.append(new Option(font.label, font.id));
+for (const preset of LABEL_PRESETS) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.value = preset.id;
+  button.textContent = preset.label;
+  labelPresets.append(button);
+}
+for (const kind of MARKER_KINDS) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("role", "radio");
+  button.dataset.value = kind.id;
+  button.textContent = kind.label;
+  markerKinds.append(button);
 }
 
 for (const row of [...LAYERS, { id: "grid", label: "Grid lines" }] as const) {
@@ -332,11 +407,42 @@ function syncControls(): void {
   scatterRow.hidden = Boolean(stamp);
   stampExtras.hidden = !stamp;
   stampTintInput.value = stamp?.tint ?? "#ffffff";
+
+  const label = selectedLabel();
+  const style = label ?? labelStyle;
+  textSection.hidden = !(tool === "text" || label);
+  textTitle.textContent = label ? "Selected text" : "New text";
+  labelTextRow.hidden = !label;
+  if (document.activeElement !== labelTextInput) labelTextInput.value = label?.text ?? "";
+  labelFontSelect.value = style.font;
+  labelSizeInput.value = String(style.size / d.grid.cellPx);
+  labelSpacingInput.value = String(Math.round(style.spacing * 100));
+  labelColorInput.value = style.color;
+  labelOutlineInput.checked = style.outline;
+  labelItalicInput.checked = style.italic;
+
+  const marker = selectedMarker();
+  gmSection.hidden = !(tool === "gm" || marker);
+  gmTitle.textContent = marker ? `Selected ${MARKER_KINDS.find((k) => k.id === marker.kind)!.label.toLowerCase()}` : "GM notes";
+  markerKinds.hidden = Boolean(marker);
+  setChoice(markerKinds, markerKind);
+  markerFields.hidden = !marker;
+  markerNumberRow.hidden = marker?.kind !== "key";
+  if (document.activeElement !== markerNumberInput) markerNumberInput.value = String(marker?.number ?? "");
+  if (document.activeElement !== markerTextInput) markerTextInput.value = marker?.text ?? "";
+  renumberButton.hidden = !d.markers.some((m) => m.kind === "key");
   syncOutputs();
 
   selectionSection.hidden = !kind;
-  selectionTitle.textContent = kind === "opening" ? `Selected ${opening!.kind}` : kind ? `Selected ${KIND_NAME[kind]}` : "";
-  orderRow.hidden = kind === "opening";
+  selectionTitle.textContent =
+    kind === "opening"
+      ? `Selected ${opening!.kind}`
+      : kind === "marker"
+        ? gmTitle.textContent
+        : kind
+          ? `Selected ${KIND_NAME[kind]}`
+          : "";
+  orderRow.hidden = kind === "opening" || kind === "marker";
 
   for (const box of layersBody.querySelectorAll("input")) {
     const layer = box.dataset.layer!;
@@ -352,6 +458,8 @@ function syncOutputs(): void {
   el("brush-opacity-out").textContent = `${brushOpacityInput.value}%`;
   el("stamp-size-out").textContent = cells(Number(stampSizeInput.value).toFixed(2));
   el("stamp-rotation-out").textContent = `${stampRotationInput.value}°`;
+  el("label-size-out").textContent = cells(Number(labelSizeInput.value).toFixed(2));
+  el("label-spacing-out").textContent = `${labelSpacingInput.value}%`;
 }
 
 function setChoice(group: HTMLElement, value: string): void {
@@ -477,6 +585,84 @@ el("btn-flip").addEventListener("click", () => {
 });
 el("btn-front").addEventListener("click", () => selectedId && commit(reorder(history.present, selectedId, "front")));
 el("btn-back").addEventListener("click", () => selectedId && commit(reorder(history.present, selectedId, "back")));
+
+function selectedLabel(): Label | undefined {
+  return history.present.labels.find((l) => l.id === selectedId);
+}
+
+function selectedMarker(): Marker | undefined {
+  return history.present.markers.find((m) => m.id === selectedId);
+}
+
+/** Change the selected piece of text: shown at once while typing or sliding, one undo step when done. */
+function editLabel(change: (label: Label) => Label, done: boolean): void {
+  const next = updateLabel(history.present, selectedId!, change);
+  if (done) commit(next);
+  else {
+    liveDoc = next;
+    draw();
+  }
+}
+
+function editMarker(change: (marker: Marker) => Marker, done: boolean): void {
+  const next = updateMarker(history.present, selectedId!, change);
+  if (done) commit(next);
+  else {
+    liveDoc = next;
+    draw();
+  }
+}
+
+/** Change the look of the selected text, or of the text that will be added next. */
+function applyStyle(patch: Partial<LabelStyle>, done: boolean): void {
+  if (selectedLabel()) {
+    editLabel((l) => ({ ...l, ...patch }), done);
+  } else {
+    labelStyle = { ...labelStyle, ...patch };
+    if (done) syncControls();
+  }
+}
+
+labelTextInput.addEventListener("input", () => {
+  if (selectedLabel()) editLabel((l) => ({ ...l, text: labelTextInput.value }), false);
+});
+labelTextInput.addEventListener("change", () => {
+  if (!selectedLabel()) return;
+  if (labelTextInput.value.trim() === "") deleteSelected(); // text with no words would be invisible
+  else editLabel((l) => ({ ...l, text: labelTextInput.value }), true);
+});
+labelPresets.addEventListener("click", (event) => {
+  const id = (event.target as HTMLElement).closest("button")?.dataset.value;
+  const preset = LABEL_PRESETS.find((p) => p.id === id);
+  if (preset) applyStyle({ ...preset.style, size: preset.cells * history.present.grid.cellPx }, true);
+});
+labelFontSelect.addEventListener("change", () => applyStyle({ font: labelFontSelect.value as FontId }, true));
+onSlide(labelSizeInput, (value, done) => applyStyle({ size: value * history.present.grid.cellPx }, done));
+onSlide(labelSpacingInput, (value, done) => applyStyle({ spacing: value / 100 }, done));
+labelColorInput.addEventListener("input", () => applyStyle({ color: labelColorInput.value }, false));
+labelColorInput.addEventListener("change", () => applyStyle({ color: labelColorInput.value }, true));
+labelOutlineInput.addEventListener("change", () => applyStyle({ outline: labelOutlineInput.checked }, true));
+labelItalicInput.addEventListener("change", () => applyStyle({ italic: labelItalicInput.checked }, true));
+
+onChoice(markerKinds, (value) => {
+  markerKind = value as MarkerKind;
+  syncControls();
+  draw();
+});
+markerTextInput.addEventListener("input", () => {
+  if (selectedMarker()) editMarker((m) => ({ ...m, text: markerTextInput.value }), false);
+});
+markerTextInput.addEventListener("change", () => {
+  if (selectedMarker()) editMarker((m) => ({ ...m, text: markerTextInput.value }), true);
+});
+markerNumberInput.addEventListener("change", () => {
+  const marker = selectedMarker();
+  if (!marker) return;
+  const number = clampInt(Number(markerNumberInput.value), 1, 999);
+  if (number === marker.number) syncControls();
+  else editMarker((m) => ({ ...m, number }), true);
+});
+renumberButton.addEventListener("click", () => commit(renumberKeys(history.present)));
 
 layersBody.addEventListener("change", (event) => {
   const box = event.target as HTMLInputElement;
@@ -705,6 +891,12 @@ function stampUnder(screen: Point): Stamp | null {
   return makeStamp(newId(), asset, centre, stampSize * grid.cellPx, (stampRotation * Math.PI) / 180, stampShadow);
 }
 
+/** The GM note a click at this screen point would place. */
+function markerUnder(screen: Point): Marker {
+  const d = history.present;
+  return makeMarker(newId(), markerKind, stampSnap(d.grid, screenToMap(view, screen), snapMode), d.markers);
+}
+
 /** One stamp of a scatter: near the point, with its own size and turn. */
 function scatteredStamp(asset: Asset, p: Point): Stamp {
   const longest = stampSize * history.present.grid.cellPx;
@@ -716,6 +908,14 @@ function scatteredStamp(asset: Asset, p: Point): Stamp {
 /** The topmost selectable thing under a map point, skipping hidden and locked layers. */
 function pick(p: Point): { id: string; kind: ItemKind } | null {
   const d = history.present;
+  if (layerOpen("gm")) {
+    const marker = markerAt(d.markers, p, markerRadius(d) + 4 / view.scale);
+    if (marker) return { id: marker.id, kind: "marker" };
+  }
+  if (layerOpen("labels")) {
+    const label = labelAt(d.labels, p, measure, 4 / view.scale);
+    if (label) return { id: label.id, kind: "label" };
+  }
   if (layerOpen("objects")) {
     const stamp = stampAt(d.stamps, p);
     if (stamp) return { id: stamp.id, kind: "stamp" };
@@ -783,6 +983,22 @@ canvas.addEventListener("pointerdown", (event) => {
     } else {
       commit(addStamps(d, [stampUnder(screen)!]));
     }
+  } else if (tool === "text") {
+    const centre = stampSnap(d.grid, mapPoint, snapMode);
+    const label = makeLabel(newId(), "New text", centre, labelStyle);
+    commit(addLabel(d, label));
+    selectedId = label.id;
+    setTool("select");
+    labelTextInput.focus();
+    labelTextInput.select();
+  } else if (tool === "gm") {
+    const marker = markerUnder(screen);
+    commit(addMarker(d, marker));
+    if (marker.kind === "note") {
+      selectedId = marker.id;
+      setTool("select");
+      markerTextInput.focus();
+    }
   } else {
     const opening = openingUnder(screen, tool);
     if (opening) commit(addOpening(d, opening));
@@ -828,8 +1044,9 @@ canvas.addEventListener("pointermove", (event) => {
     if (drag.moved) {
       // Move by the difference between snapped positions, so things on the grid stay on the grid.
       const grid = drag.base.grid;
+      const item = drag.item;
       const place = (p: Point): Point =>
-        drag!.kind !== "move" || drag!.item === "stroke" ? p : drag!.item === "stamp" ? stampSnap(grid, p, snapMode) : snap(grid, p, snapMode);
+        item === "stroke" ? p : item === "room" ? snap(grid, p, snapMode) : stampSnap(grid, p, snapMode);
       const from = place(drag.startMap);
       const to = place(mapPoint);
       liveDoc = moveItem(drag.base, drag.id, to.x - from.x, to.y - from.y);
@@ -899,6 +1116,8 @@ const TOOL_KEYS: Record<string, Tool> = {
   w: "window",
   b: "brush",
   s: "stamp",
+  t: "text",
+  g: "gm",
 };
 
 window.addEventListener("keydown", (event) => {
@@ -912,6 +1131,10 @@ window.addEventListener("keydown", (event) => {
   } else if (mod && key === "o") {
     event.preventDefault();
     fileInput.click();
+  } else if (typing && (key === "enter" || key === "escape")) {
+    event.preventDefault();
+    (target as HTMLInputElement).blur(); // finishes the edit
+    canvas.focus();
   } else if (typing) {
     return; // leave Ctrl+Z, Delete and friends to the text box
   } else if (mod && key === "z" && !event.shiftKey) {
@@ -941,7 +1164,7 @@ window.addEventListener("keydown", (event) => {
     draw();
   } else if (key === "delete" || key === "backspace") {
     deleteSelected();
-  } else if (TOOL_KEYS[key] && !(target instanceof HTMLInputElement)) {
+  } else if (TOOL_KEYS[key] && !(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) {
     setTool(TOOL_KEYS[key]);
   }
 });
@@ -988,6 +1211,8 @@ function draw(): void {
       draft,
       ghost: aiming && (tool === "door" || tool === "window") ? openingUnder(cursor!, tool) : null,
       draftStroke: drag?.kind === "brush" ? drag.stroke : null,
+      ghostMarker: aiming && tool === "gm" && !drag ? markerUnder(cursor!) : null,
+      measure,
       ghostStamp: aiming && tool === "stamp" && !drag ? stampUnder(cursor!) : null,
       brushRing: aiming && tool === "brush" && mapPoint ? { ...mapPoint, radius: (brushSize * d.grid.cellPx) / 2 } : null,
       image: (id, tint) => library.image(id, tint),

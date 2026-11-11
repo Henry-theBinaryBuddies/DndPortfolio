@@ -82,8 +82,70 @@ export interface Asset {
   favourite: boolean;
 }
 
+export const FONTS = [
+  { id: "classic", label: "Classic", stack: 'Georgia, "Times New Roman", serif' },
+  { id: "book", label: "Storybook", stack: '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif' },
+  { id: "clean", label: "Clean", stack: 'system-ui, "Segoe UI", Arial, sans-serif' },
+  { id: "script", label: "Handwritten", stack: '"Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive' },
+  { id: "bold", label: "Bold", stack: 'Impact, "Arial Black", sans-serif' },
+] as const;
+export type FontId = (typeof FONTS)[number]["id"];
+
+/** How a piece of text looks. */
+export interface LabelStyle {
+  font: FontId;
+  /** Text height in map pixels. */
+  size: number;
+  color: string;
+  /** A light or dark halo round the letters, so they read on any floor. */
+  outline: boolean;
+  italic: boolean;
+  /** Extra space between letters, as a fraction of the text height. */
+  spacing: number;
+}
+
+/** A piece of text on the map. x and y are its centre. */
+export interface Label extends LabelStyle {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  /** Radians, clockwise. */
+  rotation: number;
+}
+
+/** Ready-made looks. Sizes are in cells; the editor turns them into pixels. */
+export const LABEL_PRESETS = [
+  { id: "room", label: "Room name", cells: 0.45, style: { font: "book", color: "#2b2620", outline: true, italic: false, spacing: 0 } },
+  { id: "region", label: "Region", cells: 1.2, style: { font: "book", color: "#3a3327", outline: true, italic: false, spacing: 0.2 } },
+  { id: "sea", label: "Sea", cells: 0.8, style: { font: "classic", color: "#1d4e75", outline: true, italic: true, spacing: 0.15 } },
+  { id: "note", label: "Small note", cells: 0.3, style: { font: "clean", color: "#2b2620", outline: true, italic: false, spacing: 0 } },
+] as const;
+
+/** What a GM marker means. Markers live on the GM layer, which can be hidden for players. */
+export const MARKER_KINDS = [
+  { id: "key", label: "Room number" },
+  { id: "trap", label: "Trap" },
+  { id: "secret", label: "Secret door" },
+  { id: "note", label: "Note" },
+] as const;
+export type MarkerKind = (typeof MARKER_KINDS)[number]["id"];
+
+export interface Marker {
+  id: string;
+  kind: MarkerKind;
+  x: number;
+  y: number;
+  /** The room number, for room-number markers. 0 for the others. */
+  number: number;
+  /** A note for the GM, shown when the marker is selected. */
+  text: string;
+}
+
 /** Layers from top to bottom. Each kind of thing lives on its own layer. */
 export const LAYERS = [
+  { id: "gm", label: "GM notes" },
+  { id: "labels", label: "Text" },
   { id: "objects", label: "Stamps" },
   { id: "walls", label: "Walls and doors" },
   { id: "paint", label: "Paint" },
@@ -104,6 +166,8 @@ export interface MapDoc {
   openings: Opening[];
   strokes: Stroke[];
   stamps: Stamp[];
+  labels: Label[];
+  markers: Marker[];
   layers: Record<LayerId, LayerState>;
   showGrid: boolean;
 }
@@ -120,6 +184,13 @@ export const LIMITS = {
   maxStrokes: 5000,
   maxStrokePoints: 4000,
   maxStamps: 20000,
+  maxLabels: 2000,
+  maxMarkers: 2000,
+  maxLabelText: 120,
+  maxMarkerText: 400,
+  /** Text height, in cells. */
+  minLabel: 0.2,
+  maxLabel: 5,
   /** Brush width, in cells. */
   minBrush: 0.25,
   maxBrush: 5,
@@ -141,6 +212,8 @@ export function newMap(): MapDoc {
     openings: [],
     strokes: [],
     stamps: [],
+    labels: [],
+    markers: [],
     layers: defaultLayers(),
     showGrid: true,
   };
@@ -148,6 +221,8 @@ export function newMap(): MapDoc {
 
 export function defaultLayers(): Record<LayerId, LayerState> {
   return {
+    gm: { visible: true, locked: false },
+    labels: { visible: true, locked: false },
     objects: { visible: true, locked: false },
     walls: { visible: true, locked: false },
     paint: { visible: true, locked: false },
