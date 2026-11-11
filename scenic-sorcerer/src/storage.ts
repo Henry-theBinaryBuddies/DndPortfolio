@@ -55,7 +55,7 @@ function parseRooms(raw: unknown): Room[] {
     const points = item.points.slice(0, LIMITS.maxRoomPoints).map(parsePoint);
     if (points.includes(null) || !isValidOutline(points as Point[])) continue;
     const floor = FLOORS.some((f) => f.id === item.floor) ? (item.floor as FloorId) : "stone";
-    rooms.push({ id: item.id, points: points as Point[], floor });
+    rooms.push({ id: item.id, points: points as Point[], floor, walls: item.walls !== false });
   }
   return rooms;
 }

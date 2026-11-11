@@ -135,9 +135,15 @@ function isOnRoom(room: Room, o: Opening): boolean {
   return false;
 }
 
+/** The rooms that have walls. Doors and windows can only sit on these. */
+export function walledRooms(rooms: Room[]): Room[] {
+  return rooms.filter((room) => room.walls);
+}
+
 /** Drop doors and windows that are no longer on any wall. */
 export function pruneOpenings(doc: MapDoc): MapDoc {
-  const openings = doc.openings.filter((o) => doc.rooms.some((room) => isOnRoom(room, o)));
+  const walled = walledRooms(doc.rooms);
+  const openings = doc.openings.filter((o) => walled.some((room) => isOnRoom(room, o)));
   return openings.length === doc.openings.length ? doc : { ...doc, openings };
 }
 
@@ -175,6 +181,13 @@ export function setRoomFloor(doc: MapDoc, roomId: string, floor: FloorId): MapDo
   const room = doc.rooms.find((r) => r.id === roomId);
   if (!room || room.floor === floor) return doc;
   return { ...doc, rooms: doc.rooms.map((r) => (r === room ? { ...r, floor } : r)) };
+}
+
+/** Turn a room's walls on or off. Turning them off removes the doors and windows left without a wall. */
+export function setRoomWalls(doc: MapDoc, roomId: string, walls: boolean): MapDoc {
+  const room = doc.rooms.find((r) => r.id === roomId);
+  if (!room || room.walls === walls) return doc;
+  return pruneOpenings({ ...doc, rooms: doc.rooms.map((r) => (r === room ? { ...r, walls } : r)) });
 }
 
 function midpoint(o: Opening): Point {

@@ -270,6 +270,18 @@ input:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  cursor: pointer;
+}
+.check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
 .wide {
   width: 100%;
 }

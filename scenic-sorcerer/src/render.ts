@@ -94,6 +94,7 @@ function drawWalls(ctx: CanvasRenderingContext2D, doc: MapDoc): void {
   ctx.miterLimit = 3; // sharp corners are cut off instead of growing long spikes
   ctx.strokeStyle = COLORS.wall;
   for (const room of doc.rooms) {
+    if (!room.walls) continue;
     outline(ctx, room.points, true);
     ctx.stroke();
   }

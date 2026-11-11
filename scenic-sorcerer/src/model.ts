@@ -26,11 +26,13 @@ export const FLOORS = [
 ] as const;
 export type FloorId = (typeof FLOORS)[number]["id"];
 
-/** A room is a closed outline in map pixels. Every edge of the outline is a wall. */
+/** A room is a closed outline in map pixels. With walls on, every edge of the outline is a wall. */
 export interface Room {
   id: string;
   points: Point[];
   floor: FloorId;
+  /** False for an open area such as a pond or a patch of grass: floor only, no outline, no doors. */
+  walls: boolean;
 }
 
 export type OpeningKind = "door" | "window";

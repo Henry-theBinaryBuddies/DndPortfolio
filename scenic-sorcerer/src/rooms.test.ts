@@ -15,12 +15,14 @@ import {
   removeItem,
   roomAt,
   setRoomFloor,
+  setRoomWalls,
+  walledRooms,
 } from "./rooms";
 import { parse, serialize } from "./storage";
 
 // A 70 px grid. Room A covers cells (1,1)-(4,3); room B sits against A's right wall.
-const roomA: Room = { id: "a", points: rectPoints({ x: 70, y: 70 }, { x: 350, y: 280 })!, floor: "stone" };
-const roomB: Room = { id: "b", points: rectPoints({ x: 350, y: 70 }, { x: 560, y: 210 })!, floor: "wood" };
+const roomA: Room = { id: "a", points: rectPoints({ x: 70, y: 70 }, { x: 350, y: 280 })!, floor: "stone", walls: true };
+const roomB: Room = { id: "b", points: rectPoints({ x: 350, y: 70 }, { x: 560, y: 210 })!, floor: "wood", walls: true };
 const base = (): MapDoc => ({ ...newMap(), rooms: [roomA, roomB] });
 const grid = newMap().grid;
 
@@ -60,7 +62,7 @@ describe("finding things", () => {
     expect(roomAt(doc.rooms, { x: 500, y: 100 }, 5)?.id).toBe("b");
     expect(roomAt(doc.rooms, { x: 67, y: 150 }, 5)?.id).toBe("a");
     expect(roomAt(doc.rooms, { x: 30, y: 30 }, 5)).toBeNull();
-    const overlap: Room = { id: "top", points: rectPoints({ x: 70, y: 70 }, { x: 140, y: 140 })!, floor: "dirt" };
+    const overlap: Room = { id: "top", points: rectPoints({ x: 70, y: 70 }, { x: 140, y: 140 })!, floor: "dirt", walls: true };
     expect(roomAt([...doc.rooms, overlap], { x: 100, y: 100 }, 5)?.id).toBe("top");
   });
 
@@ -93,7 +95,7 @@ describe("doors and windows", () => {
     const atEnd = doorOn(base(), 349, 70, "d", "off");
     expect(atEnd.b.x).toBeCloseTo(350, 6);
     expect(atEnd.a.x).toBeCloseTo(280, 6);
-    const tiny: Room = { id: "t", points: rectPoints({ x: 0, y: 0 }, { x: 35, y: 35 })!, floor: "stone" };
+    const tiny: Room = { id: "t", points: rectPoints({ x: 0, y: 0 }, { x: 35, y: 35 })!, floor: "stone", walls: true };
     const hit = nearestWall([tiny], { x: 10, y: 0 }, 5)!;
     const door = openingOnWall(grid, hit, "door", "cell", "d");
     expect(door.a.x).toBeCloseTo(0, 6);
@@ -101,7 +103,7 @@ describe("doors and windows", () => {
   });
 
   it("places doors on slanted walls", () => {
-    const tri: Room = { id: "t", points: [{ x: 0, y: 0 }, { x: 300, y: 400 }, { x: 0, y: 400 }], floor: "stone" };
+    const tri: Room = { id: "t", points: [{ x: 0, y: 0 }, { x: 300, y: 400 }, { x: 0, y: 400 }], floor: "stone", walls: true };
     const hit = nearestWall([tri], { x: 150, y: 200 }, 5)!;
     const door = openingOnWall(grid, hit, "door", "off", "d");
     expect(Math.hypot(door.b.x - door.a.x, door.b.y - door.a.y)).toBeCloseTo(70, 6);
@@ -177,6 +179,32 @@ describe("edits", () => {
   });
 });
 
+describe("rooms without walls", () => {
+  it("turning walls off removes that room's doors but keeps a door on a neighbour's shared wall", () => {
+    let doc = addOpening(base(), doorOn(base(), 200, 72, "onlyA"));
+    doc = addOpening(doc, doorOn(doc, 350, 120, "shared"));
+    const open = setRoomWalls(doc, "a", false);
+    expect(open.rooms[0].walls).toBe(false);
+    expect(open.openings.map((o) => o.id)).toEqual(["shared"]);
+    expect(setRoomWalls(open, "a", false)).toBe(open);
+    expect(setRoomWalls(open, "a", true).rooms[0].walls).toBe(true);
+  });
+
+  it("offers no wall to put a door on, but the room can still be selected", () => {
+    const pond: Room = { ...roomA, walls: false };
+    expect(nearestWall(walledRooms([pond]), { x: 200, y: 72 }, 20)).toBeNull();
+    expect(roomAt([pond], { x: 100, y: 100 }, 5)?.id).toBe("a");
+  });
+
+  it("saves the setting, and treats older maps as walled", () => {
+    const doc = setRoomWalls(base(), "b", false);
+    expect(parse(serialize(doc)).rooms.map((r) => r.walls)).toEqual([true, false]);
+    const raw = JSON.parse(serialize(base()));
+    delete raw.rooms[0].walls;
+    expect(parse(JSON.stringify(raw)).rooms[0].walls).toBe(true);
+  });
+});
+
 describe("saving rooms", () => {
   it("round-trips rooms, doors and windows", () => {
     const doc = addOpening(base(), doorOn(base(), 200, 72));
@@ -191,8 +219,8 @@ describe("saving rooms", () => {
   it("skips damaged rooms and openings but keeps the good ones", () => {
     const doc = addOpening(base(), doorOn(base(), 200, 72));
     const raw = JSON.parse(serialize(doc));
-    raw.rooms.push({ id: "bad", points: [{ x: 0, y: 0 }, { x: 1, y: "two" }, { x: 5, y: 5 }], floor: "stone" });
-    raw.rooms.push({ id: "flat", points: [{ x: 0, y: 0 }, { x: 5, y: 0 }], floor: "stone" });
+    raw.rooms.push({ id: "bad", points: [{ x: 0, y: 0 }, { x: 1, y: "two" }, { x: 5, y: 5 }], floor: "stone", walls: true });
+    raw.rooms.push({ id: "flat", points: [{ x: 0, y: 0 }, { x: 5, y: 0 }], floor: "stone", walls: true });
     raw.rooms.push("nonsense");
     raw.rooms[0].floor = "lava";
     raw.openings.push({ id: "x", kind: "portal", a: { x: 0, y: 0 }, b: { x: 1, y: 1 } });

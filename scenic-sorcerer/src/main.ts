@@ -28,6 +28,8 @@ import {
   removeItem,
   roomAt,
   setRoomFloor,
+  setRoomWalls,
+  walledRooms,
 } from "./rooms";
 import { fileName, loadAutosave, parse, saveAutosave, serialize } from "./storage";
 import { fit, mapToScreen, pan, screenToMap, zoomAt, type View } from "./view";
@@ -67,6 +69,7 @@ const snapGroup = el("snap-mode");
 const floorGroup = el("floors");
 const floorSection = el("floor-section");
 const floorTitle = el("floor-title");
+const wallsInput = el<HTMLInputElement>("walls");
 const selectionSection = el("selection-section");
 const selectionTitle = el("selection-title");
 
@@ -80,6 +83,7 @@ let view: View = { x: 0, y: 0, scale: 1 };
 let snapMode: SnapMode = readSnapMode();
 let tool: Tool = "select";
 let floor: FloorId = "stone"; // floor for new rooms
+let walls = true; // whether new rooms get walls
 let selectedId: string | null = null;
 let cursor: Point | null = null; // screen position over the canvas
 let drag: Drag | null = null;
@@ -191,6 +195,7 @@ function syncControls(): void {
   floorSection.hidden = !(drawingRooms || room);
   floorTitle.textContent = room ? "Floor of this room" : "Floor for new rooms";
   setChoice(floorGroup, room ? room.floor : floor);
+  wallsInput.checked = room ? room.walls : walls;
   selectionSection.hidden = !(room || opening);
   selectionTitle.textContent = room ? "Selected room" : opening?.kind === "door" ? "Selected door" : "Selected window";
 }
@@ -249,6 +254,15 @@ onChoice(floorGroup, (value) => {
   } else {
     floor = value as FloorId;
     syncControls();
+  }
+});
+
+wallsInput.addEventListener("change", () => {
+  const d = history.present;
+  if (d.rooms.some((r) => r.id === selectedId)) {
+    commit(setRoomWalls(d, selectedId!, wallsInput.checked));
+  } else {
+    walls = wallsInput.checked;
   }
 });
 
@@ -350,7 +364,7 @@ function wallReach(): number {
 /** The door or window a click at this screen point would place, or null away from walls. */
 function openingUnder(screen: Point, kind: "door" | "window"): Opening | null {
   const d = history.present;
-  const hit = nearestWall(d.rooms, screenToMap(view, screen), d.grid.cellPx * 0.5);
+  const hit = nearestWall(walledRooms(d.rooms), screenToMap(view, screen), d.grid.cellPx * 0.5);
   return hit ? openingOnWall(d.grid, hit, kind, snapMode, newId()) : null;
 }
 
@@ -408,7 +422,7 @@ function addShapeCorner(screen: Point): void {
 function finishShape(): void {
   const points = shape;
   shape = [];
-  if (isValidOutline(points)) commit(addRoom(history.present, { id: newId(), points, floor }));
+  if (isValidOutline(points)) commit(addRoom(history.present, { id: newId(), points, floor, walls }));
   else draw();
 }
 
@@ -438,7 +452,7 @@ function endDrag(event: PointerEvent): void {
   canvas.classList.remove("panning");
   if (finished?.kind === "room" && event.type === "pointerup") {
     const points = rectPoints(finished.start, snapped(eventPoint(event)));
-    if (points) commit(addRoom(history.present, { id: newId(), points, floor }));
+    if (points) commit(addRoom(history.present, { id: newId(), points, floor, walls }));
   } else if (finished?.kind === "move") {
     const moved = liveDoc;
     liveDoc = null;
@@ -469,7 +483,7 @@ canvas.addEventListener(
 const TOOL_KEYS: Record<string, Tool> = { v: "select", r: "room", p: "polygon", d: "door", w: "window" };
 
 window.addEventListener("keydown", (event) => {
-  const typing = event.target instanceof HTMLInputElement;
+  const typing = event.target instanceof HTMLInputElement && event.target.type !== "checkbox";
   const key = event.key.toLowerCase();
   const mod = event.ctrlKey || event.metaKey;
   if (mod && key === "s") {
