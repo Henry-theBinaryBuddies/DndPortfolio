@@ -1,7 +1,7 @@
 // Which parts of the map a light can reach. Walls stop light; windows let it through.
 // Pure geometry: the renderer turns these shapes into the lit and dark areas.
 
-import type { Light, MapDoc, Point } from "./model";
+import type { Light, MapDoc, OpeningKind, Point } from "./model";
 import { closestOnSegment, distance, walledRooms } from "./rooms";
 
 export interface Segment {
@@ -17,7 +17,12 @@ const ON_WALL = 1.5;
  * Doors stop light too (they are shown closed), and rooms without walls stop nothing.
  */
 export function blockingSegments(doc: MapDoc): Segment[] {
-  const windows = doc.openings.filter((o) => o.kind === "window");
+  return wallPieces(doc, ["window"]);
+}
+
+/** Every wall of every room with walls, cut open wherever a door or window of the listed kinds sits. */
+export function wallPieces(doc: MapDoc, cutOut: OpeningKind[]): Segment[] {
+  const windows = doc.openings.filter((o) => cutOut.includes(o.kind));
   const tolerance = Math.max(0.5, doc.grid.cellPx * 0.12);
   const segments: Segment[] = [];
   for (const room of walledRooms(doc.rooms)) {

@@ -81,6 +81,26 @@ export class Library {
     return { added: await this.add(ready), problems };
   }
 
+  /** Wait until these pictures are decoded, so a picture of the map does not draw them as empty boxes. */
+  async preload(ids: string[]): Promise<void> {
+    await Promise.all([...new Set(ids)].map((id) => this.decode(id)));
+  }
+
+  private decode(id: string): Promise<void> {
+    if (this.images.get(id) instanceof HTMLImageElement) return Promise.resolve();
+    const asset = this.get(id);
+    if (!asset) return Promise.resolve();
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        this.images.set(id, img);
+        resolve();
+      };
+      img.onerror = () => resolve(); // a broken picture is drawn as an empty box, as on screen
+      img.src = asset.dataUrl;
+    });
+  }
+
   /** The picture to draw for a stamp, or null while it is loading or if it is missing. */
   image(assetId: string, tint: string | null): Drawable | null {
     const base = this.baseImage(assetId);

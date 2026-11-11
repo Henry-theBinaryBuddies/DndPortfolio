@@ -14,6 +14,7 @@
         <button id="btn-new" type="button" title="Start a new map">New</button>
         <button id="btn-open" type="button" title="Open a saved map (Ctrl+O)">Open</button>
         <button id="btn-save" type="button" title="Save this map to a file (Ctrl+S)">Save</button>
+        <button id="btn-export" type="button" title="Make a picture of the map, or files for a virtual tabletop">Export</button>
       </div>
       <div class="group">
         <button id="btn-undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
@@ -206,6 +207,47 @@
         </div>
       </aside>
     </main>
+
+    <dialog id="export-dialog" class="dialog" aria-labelledby="export-title">
+      <form method="dialog" class="dialog-body">
+        <h2 id="export-title">Export</h2>
+        <label class="field" id="export-level-row">Level
+          <select id="export-level" class="input"></select>
+        </label>
+        <label class="field">Pixels per cell
+          <input id="export-ppc" class="input" type="number" min="20" step="1" />
+        </label>
+        <p id="export-size" class="note"></p>
+
+        <section class="export-group">
+          <h3>Picture</h3>
+          <div class="wrap">
+            <label class="check"><input id="export-grid" type="checkbox" /> Grid lines</label>
+            <label class="check"><input id="export-gm" type="checkbox" /> GM notes and lights</label>
+            <label class="check"><input id="export-lighting" type="checkbox" /> Bake in the lighting</label>
+          </div>
+          <label class="field">File type
+            <select id="export-format" class="input">
+              <option value="png">PNG (best quality)</option>
+              <option value="jpeg">JPG (smaller file)</option>
+              <option value="webp">WebP (smaller file)</option>
+            </select>
+          </label>
+          <button id="btn-export-image" type="button" class="wide">Download picture</button>
+        </section>
+
+        <section class="export-group">
+          <h3>For a virtual tabletop</h3>
+          <p class="note">These use a clean picture with no grid lines or GM notes, because the tabletop draws its own. They carry the walls, doors and lights too.</p>
+          <button id="btn-export-uvtt" type="button" class="wide">Universal VTT (.dd2vtt)</button>
+          <button id="btn-export-foundry" type="button" class="wide">Foundry scene (picture and .json)</button>
+          <p id="export-hex-note" class="note" hidden>Universal VTT is made for square grids. On a hex map, use the Foundry scene, which sets up the hex grid.</p>
+        </section>
+
+        <p id="export-status" class="note" role="status"></p>
+        <div class="row"><button type="submit">Close</button></div>
+      </form>
+    </dialog>
 
     <footer class="statusbar">
       <span id="hint"></span>

@@ -91,6 +91,7 @@ import {
   walledRooms,
   type DraftShape,
 } from "./rooms";
+import { setupExport } from "./exportFlow";
 import { fileName, loadAutosave, parseFile, saveAutosave, serialize } from "./storage";
 import { fit, mapToScreen, pan, screenToMap, zoomAt, type View } from "./view";
 
@@ -1352,6 +1353,7 @@ const TOOL_KEYS: Record<string, Tool> = {
 };
 
 window.addEventListener("keydown", (event) => {
+  if (document.querySelector("dialog[open]")) return; // a dialog is open; its keys are not shortcuts
   const target = event.target;
   const typing = target instanceof HTMLInputElement && ["text", "number", "search"].includes(target.type);
   const key = event.key.toLowerCase();
@@ -1479,6 +1481,8 @@ function readSnapMode(): SnapMode {
   }
   return "cell";
 }
+
+setupExport({ doc: () => history.present, library, lightCache });
 
 fitView();
 syncControls();

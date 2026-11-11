@@ -564,3 +564,71 @@ function drawLighting(ctx: CanvasRenderingContext2D, scene: Scene, width: number
   ctx.drawImage(darkness, 0, 0);
   ctx.restore();
 }
+
+export interface ExportRender {
+  /** Output pixels per map pixel. */
+  scale: number;
+  /** Draw the grid lines. */
+  grid: boolean;
+  /** Draw the GM notes and the light icons. */
+  gm: boolean;
+  /** Bake the darkness and light into the picture. */
+  lighting: boolean;
+}
+
+/**
+ * Draw the finished map, with none of the editor's handles, onto a canvas sized to the whole map at `opts.scale`.
+ * Layers that are hidden stay hidden. The level below is never drawn.
+ */
+export function renderExport(
+  ctx: CanvasRenderingContext2D,
+  doc: MapDoc,
+  opts: ExportRender,
+  image: Scene["image"],
+  lightCache: LightCache,
+): void {
+  const size = mapSize(doc.grid);
+  const px = 1 / opts.scale;
+  const scene: Scene = {
+    doc,
+    view: { x: 0, y: 0, scale: 1 },
+    snapPoint: null,
+    selectedId: null,
+    draft: null,
+    ghost: null,
+    draftStroke: null,
+    ghostStamp: null,
+    ghostMarker: null,
+    ghostLight: null,
+    brushRing: null,
+    lighting: opts.lighting,
+    lightCache,
+    below: null,
+    measure: () => ({ width: 0, height: 0 }),
+    image,
+  };
+  ctx.setTransform(opts.scale, 0, 0, opts.scale, 0, 0);
+  ctx.fillStyle = COLORS.paper;
+  ctx.fillRect(0, 0, size.width, size.height);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, size.width, size.height);
+  ctx.clip();
+  const layers = doc.layers;
+  if (layers.floors.visible) drawFloors(ctx, doc);
+  if (layers.paint.visible) for (const stroke of doc.strokes) drawStroke(ctx, doc, stroke);
+  if (layers.walls.visible) {
+    drawWalls(ctx, doc);
+    for (const opening of doc.openings) drawOpening(ctx, doc, opening, 1);
+  }
+  if (layers.objects.visible) {
+    const shadowScale = doc.grid.cellPx * opts.scale;
+    for (const stamp of doc.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px);
+  }
+  if (opts.grid) drawGrid(ctx, doc, px);
+  if (layers.labels.visible) for (const label of doc.labels) drawLabel(ctx, label);
+  if (opts.lighting) drawLighting(ctx, scene, size.width, size.height, opts.scale);
+  if (opts.gm && layers.lights.visible) for (const light of doc.lights) drawLightIcon(ctx, doc, light, 1, px);
+  if (opts.gm && layers.gm.visible) for (const marker of doc.markers) drawMarker(ctx, doc, marker, 1);
+  ctx.restore();
+}
