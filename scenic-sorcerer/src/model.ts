@@ -26,10 +26,22 @@ export const FLOORS = [
 ] as const;
 export type FloorId = (typeof FLOORS)[number]["id"];
 
-/** A room is a closed outline in map pixels. With walls on, every edge of the outline is a wall. */
+/** A box in map pixels. */
+export interface Rect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/**
+ * A room is a closed outline in map pixels. With walls on, every edge of the outline is a wall.
+ * A circle or oval room also remembers the box it was drawn in, and its points are made from that box.
+ */
 export interface Room {
   id: string;
   points: Point[];
+  ellipse?: Rect;
   floor: FloorId;
   /** False for an open area such as a pond or a patch of grass: floor only, no outline, no doors. */
   walls: boolean;

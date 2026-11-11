@@ -1,8 +1,9 @@
 // Draws the map onto a canvas. Reads the document and view; changes nothing.
 
 import { cellPolygon, mapSize } from "./grid";
-import { FONTS, WALL_RATIO, type Label, type MapDoc, type Marker, type Opening, type Point, type Stamp, type Stroke } from "./model";
+import { FONTS, WALL_RATIO, type Label, type Room, type MapDoc, type Marker, type Opening, type Point, type Stamp, type Stroke } from "./model";
 import { labelCorners, stampCorners, type Box } from "./objects";
+import { HANDLE_PAD_PX, boundsOf, scaleHandles, vertexHandles } from "./rooms";
 import { floorFill } from "./textures";
 import type { View } from "./view";
 
@@ -373,6 +374,32 @@ function drawSelection(ctx: CanvasRenderingContext2D, scene: Scene, px: number):
     ctx.stroke();
   }
   ctx.setLineDash([]);
+  if (room) drawHandles(ctx, room, px);
+}
+
+/** Round dots reshape a room; square handles, on a box round it, stretch it. */
+function drawHandles(ctx: CanvasRenderingContext2D, room: Room, px: number): void {
+  const pad = HANDLE_PAD_PX * px;
+  const b = room.ellipse ?? boundsOf(room.points);
+  ctx.lineWidth = px;
+  ctx.strokeStyle = "rgba(224, 128, 58, 0.6)";
+  ctx.setLineDash([4 * px, 4 * px]);
+  ctx.strokeRect(b.x0 - pad, b.y0 - pad, b.x1 - b.x0 + pad * 2, b.y1 - b.y0 + pad * 2);
+  ctx.setLineDash([]);
+  ctx.lineWidth = 1.5 * px;
+  ctx.strokeStyle = COLORS.accent;
+  ctx.fillStyle = "#fff";
+  const half = 4.5 * px;
+  for (const { p } of scaleHandles(room, pad)) {
+    ctx.fillRect(p.x - half, p.y - half, half * 2, half * 2);
+    ctx.strokeRect(p.x - half, p.y - half, half * 2, half * 2);
+  }
+  for (const p of vertexHandles(room)) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5 * px, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
 }
 
 function drawDraft(ctx: CanvasRenderingContext2D, scene: Scene, px: number): void {

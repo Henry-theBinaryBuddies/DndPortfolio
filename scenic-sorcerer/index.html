@@ -27,8 +27,10 @@
     <main class="workspace">
       <nav class="tools" role="radiogroup" aria-label="Tools" id="tools">
         <button type="button" role="radio" data-value="select" title="Select, move and delete things (V)">Select</button>
-        <button type="button" role="radio" data-value="room" title="Draw a rectangular room (R)">Room</button>
-        <button type="button" role="radio" data-value="polygon" title="Draw a room of any shape, corner by corner (P)">Shape room</button>
+        <button type="button" role="radio" data-value="room" title="Draw a rectangular room (R)">Rectangle</button>
+        <button type="button" role="radio" data-value="circle" title="Draw a round room: drag out from the middle. Stretch it into an oval afterwards (C)">Circle</button>
+        <button type="button" role="radio" data-value="triangle" title="Draw a triangular room: drag along the base. Reshape it afterwards (3)">Triangle</button>
+        <button type="button" role="radio" data-value="polygon" title="Draw a room of any shape, corner by corner (P)">Free shape</button>
         <button type="button" role="radio" data-value="door" title="Add a door to a wall (D)">Door</button>
         <button type="button" role="radio" data-value="window" title="Add a window to a wall (W)">Window</button>
         <button type="button" role="radio" data-value="brush" title="Paint ground textures (B)">Brush</button>
@@ -133,6 +135,7 @@
 
         <section id="selection-section" hidden>
           <h2 id="selection-title">Selected</h2>
+          <p id="room-help" class="note" hidden>Drag the round dots to reshape the room. Drag the square handles to stretch it; hold Shift to keep its proportions. Double-click an edge to add a dot, or a dot to remove it.</p>
           <div class="row" id="order-row">
             <button id="btn-front" type="button">Bring to front</button>
             <button id="btn-back" type="button">Send to back</button>

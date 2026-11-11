@@ -485,3 +485,13 @@ select.input {
 #btn-renumber {
   margin-top: 12px;
 }
+
+#hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#cursor-cell {
+  white-space: nowrap;
+}

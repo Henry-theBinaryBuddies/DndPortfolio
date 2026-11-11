@@ -20,11 +20,12 @@ import {
   type MarkerKind,
   type Opening,
   type Point,
+  type Rect,
   type Room,
   type Stamp,
   type Stroke,
 } from "./model";
-import { isValidOutline } from "./rooms";
+import { ellipsePoints, isValidOutline, isValidRect } from "./rooms";
 
 export const FILE_EXTENSION = ".scenic.json";
 export const AUTOSAVE_KEY = "scenic-sorcerer.autosave";
@@ -95,9 +96,17 @@ function parseRooms(raw: unknown): Room[] {
   const rooms: Room[] = [];
   for (const item of raw.slice(0, LIMITS.maxRooms)) {
     if (!isRecord(item) || typeof item.id !== "string") continue;
-    const points = parsePoints(item.points, LIMITS.maxRoomPoints);
+    const ellipse = parseRect(item.ellipse);
+    // A circle or oval is rebuilt from its box, so its points can never disagree with it.
+    const points = ellipse ? ellipsePoints(ellipse) : parsePoints(item.points, LIMITS.maxRoomPoints);
     if (!points || !isValidOutline(points)) continue;
-    rooms.push({ id: item.id, points, floor: parseFloor(item.floor), walls: item.walls !== false });
+    rooms.push({
+      id: item.id,
+      points,
+      ...(ellipse ? { ellipse } : {}),
+      floor: parseFloor(item.floor),
+      walls: item.walls !== false,
+    });
   }
   return rooms;
 }
@@ -221,6 +230,12 @@ function parseAssets(raw: unknown): Asset[] {
 
 function parseFloor(raw: unknown): FloorId {
   return FLOORS.some((f) => f.id === raw) ? (raw as FloorId) : "stone";
+}
+
+function parseRect(raw: unknown): Rect | null {
+  if (!isRecord(raw)) return null;
+  const rect = { x0: Number(raw.x0), y0: Number(raw.y0), x1: Number(raw.x1), y1: Number(raw.y1) };
+  return isValidRect(rect) ? rect : null;
 }
 
 function parsePoints(raw: unknown, max: number): Point[] | null {

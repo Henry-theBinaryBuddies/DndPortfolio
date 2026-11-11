@@ -58,23 +58,35 @@ import {
 } from "./objects";
 import { markerRadius, measureLabel, render } from "./render";
 import {
+  HANDLE_PAD_PX,
+  SCALE_DIRECTIONS,
   addOpening,
   addRoom,
   distance,
+  draftOutline,
+  edgeAt,
+  insertVertex,
   isValidOutline,
+  moveVertex,
   nearestWall,
   openingAt,
+  openingOnCurve,
   openingOnWall,
-  rectPoints,
+  removeVertex,
+  replaceRoom,
   roomAt,
+  scaleHandles,
+  scaleRoom,
   setRoomFloor,
   setRoomWalls,
+  vertexHandles,
   walledRooms,
+  type DraftShape,
 } from "./rooms";
 import { fileName, loadAutosave, parseFile, saveAutosave, serialize } from "./storage";
 import { fit, mapToScreen, pan, screenToMap, zoomAt, type View } from "./view";
 
-type Tool = "select" | "room" | "polygon" | "door" | "window" | "brush" | "stamp" | "text" | "gm";
+type Tool = "select" | "room" | "circle" | "triangle" | "polygon" | "door" | "window" | "brush" | "stamp" | "text" | "gm";
 
 const SNAP_KEY = "scenic-sorcerer.snap";
 const AUTOSAVE_DELAY_MS = 400;
@@ -83,8 +95,10 @@ const CLOSE_SHAPE_PX = 12; // how near the first corner a click must be to finis
 const MAX_SHOWN_ASSETS = 150;
 
 const HINTS: Record<Tool, string> = {
-  select: "Click something to select it. Drag it to move it. Drag empty space to move around.",
-  room: "Drag to draw a room. Hold Space and drag to move around.",
+  select: "Click to select, drag to move. A room's dots reshape it; its squares stretch it.",
+  room: "Drag to draw a rectangular room. Hold Space and drag to move around.",
+  circle: "Drag out from the middle to draw a round room. Stretch it into an oval afterwards.",
+  triangle: "Drag along the base to draw a triangle. Drag up to point it up, down to point it down.",
   polygon: "Click each corner of the room. Click the first corner again, or press Enter, to finish.",
   door: "Click a wall to add a door.",
   window: "Click a wall to add a window.",
@@ -97,6 +111,8 @@ const HINTS: Record<Tool, string> = {
 /** The layer each tool draws on, and the layer each kind of thing lives on. */
 const TOOL_LAYER: Record<Exclude<Tool, "select">, LayerId> = {
   room: "floors",
+  circle: "floors",
+  triangle: "floors",
   polygon: "floors",
   door: "walls",
   window: "walls",
@@ -168,6 +184,7 @@ const stampTintInput = el<HTMLInputElement>("stamp-tint");
 const selectionSection = el("selection-section");
 const selectionTitle = el("selection-title");
 const orderRow = el("order-row");
+const roomHelp = el("room-help");
 const textSection = el("text-section");
 const textTitle = el("text-title");
 const labelTextRow = el("label-text-row");
@@ -193,7 +210,9 @@ const layersBody = el("layers").querySelector("tbody")!;
 
 type Drag =
   | { kind: "pan" }
-  | { kind: "room"; start: Point }
+  | { kind: "room"; shape: DraftShape; start: Point }
+  | { kind: "vertex"; roomId: string; index: number; base: MapDoc }
+  | { kind: "scale"; roomId: string; index: number; base: MapDoc }
   | { kind: "move"; id: string; item: ItemKind; startScreen: Point; startMap: Point; base: MapDoc; moved: boolean }
   | { kind: "brush"; stroke: Stroke }
   | { kind: "scatter"; base: MapDoc; asset: Asset; placed: Stamp[]; last: Point };
@@ -386,7 +405,7 @@ function syncControls(): void {
   const opening = d.openings.find((o) => o.id === selectedId);
   const stamp = selectedStamp();
 
-  const drawingRooms = tool === "room" || tool === "polygon";
+  const drawingRooms = tool === "room" || tool === "circle" || tool === "triangle" || tool === "polygon";
   floorSection.hidden = !(drawingRooms || room || tool === "brush");
   floorTitle.textContent = tool === "brush" ? "Texture" : room ? "Floor of this room" : "Floor for new rooms";
   setChoice(floorGroup, tool === "brush" ? paintTexture : room ? room.floor : floor);
@@ -443,6 +462,7 @@ function syncControls(): void {
           ? `Selected ${KIND_NAME[kind]}`
           : "";
   orderRow.hidden = kind === "opening" || kind === "marker";
+  roomHelp.hidden = kind !== "room";
 
   for (const box of layersBody.querySelectorAll("input")) {
     const layer = box.dataset.layer!;
@@ -877,8 +897,28 @@ function wallReach(): number {
 /** The door or window a click at this screen point would place, or null away from walls. */
 function openingUnder(screen: Point, kind: "door" | "window"): Opening | null {
   const d = history.present;
-  const hit = nearestWall(walledRooms(d.rooms), screenToMap(view, screen), d.grid.cellPx * 0.5);
-  return hit ? openingOnWall(d.grid, hit, kind, snapMode, newId()) : null;
+  const p = screenToMap(view, screen);
+  const hit = nearestWall(walledRooms(d.rooms), p, d.grid.cellPx * 0.5);
+  if (!hit) return null;
+  const room = d.rooms.find((r) => r.id === hit.roomId);
+  // Circles and ovals have curved walls made of many short edges, so their doors run round them.
+  return room?.ellipse ? openingOnCurve(d.grid, room, p, kind, newId()) : openingOnWall(d.grid, hit, kind, snapMode, newId());
+}
+
+const HANDLE_HIT_PX = 9; // how near (screen pixels) the pointer must be to grab a handle
+
+/** The reshape dot or stretch square under a screen point, on the selected room. Dots win where they overlap. */
+function handleAt(screen: Point): { kind: "vertex" | "scale"; index: number } | null {
+  const room = history.present.rooms.find((r) => r.id === selectedId);
+  if (!room || !layerOpen("floors")) return null;
+  const near = (p: Point) => {
+    const s = mapToScreen(view, p);
+    return Math.hypot(s.x - screen.x, s.y - screen.y) <= HANDLE_HIT_PX;
+  };
+  const dots = vertexHandles(room);
+  for (let i = 0; i < dots.length; i++) if (near(dots[i])) return { kind: "vertex", index: i };
+  for (const handle of scaleHandles(room, HANDLE_PAD_PX / view.scale)) if (near(handle.p)) return { kind: "scale", index: handle.index };
+  return null;
 }
 
 /** The stamp a click at this screen point would place, or null when no stamp is picked. */
@@ -949,6 +989,12 @@ canvas.addEventListener("pointerdown", (event) => {
 
   if (event.button === 1 || spaceDown) {
     startPan();
+  } else if (tool === "select" && handleAt(screen)) {
+    const handle = handleAt(screen)!;
+    drag =
+      handle.kind === "vertex"
+        ? { kind: "vertex", roomId: selectedId!, index: handle.index, base: d }
+        : { kind: "scale", roomId: selectedId!, index: handle.index, base: d };
   } else if (tool === "select") {
     const hit = pick(mapPoint);
     selectedId = hit?.id ?? null;
@@ -960,8 +1006,9 @@ canvas.addEventListener("pointerdown", (event) => {
     syncControls();
   } else if (!canDraw()) {
     // The message has been shown.
-  } else if (tool === "room") {
-    drag = { kind: "room", start: snapped(screen) };
+  } else if (tool === "room" || tool === "circle" || tool === "triangle") {
+    const shape: DraftShape = tool === "room" ? "rect" : tool;
+    drag = { kind: "room", shape, start: snapped(screen) };
   } else if (tool === "polygon") {
     addShapeCorner(screen);
   } else if (tool === "brush") {
@@ -1051,6 +1098,18 @@ canvas.addEventListener("pointermove", (event) => {
       const to = place(mapPoint);
       liveDoc = moveItem(drag.base, drag.id, to.x - from.x, to.y - from.y);
     }
+  } else if (drag?.kind === "vertex") {
+    const { roomId, index, base } = drag;
+    const room = base.rooms.find((r) => r.id === roomId);
+    const next = room && moveVertex(room, index, snap(base.grid, mapPoint, snapMode));
+    if (next) liveDoc = replaceRoom(base, next);
+  } else if (drag?.kind === "scale") {
+    // The handle sits outside the room's box; take that gap off so the edge follows the pointer exactly.
+    const [hx, hy] = SCALE_DIRECTIONS[drag.index];
+    const pad = HANDLE_PAD_PX / view.scale;
+    const to = snap(drag.base.grid, { x: mapPoint.x - hx * pad, y: mapPoint.y - hy * pad }, snapMode);
+    const next = scaleRoom(drag.base, drag.roomId, drag.index, to, event.shiftKey);
+    if (next) liveDoc = next;
   } else if (drag?.kind === "brush") {
     const points = drag.stroke.points;
     const gap = Math.max(1.5, drag.stroke.size * 0.04);
@@ -1077,8 +1136,10 @@ function endDrag(event: PointerEvent): void {
   const live = liveDoc;
   liveDoc = null;
   if (finished?.kind === "room" && released) {
-    const points = rectPoints(finished.start, snapped(eventPoint(event)));
-    if (points) commit(addRoom(history.present, { id: newId(), points, floor, walls }));
+    const outline = draftOutline(finished.shape, finished.start, snapped(eventPoint(event)));
+    if (outline) commit(addRoom(history.present, { id: newId(), ...outline, floor, walls }));
+  } else if ((finished?.kind === "vertex" || finished?.kind === "scale") && released) {
+    if (live && live !== finished.base) commit(live);
   } else if (finished?.kind === "move" && released) {
     if (live && live !== finished.base) commit(live);
   } else if (finished?.kind === "brush" && released) {
@@ -1094,6 +1155,22 @@ canvas.addEventListener("pointercancel", endDrag);
 canvas.addEventListener("pointerleave", () => {
   cursor = null;
   draw();
+});
+
+// Double-click an edge of the selected room to add a dot, or a dot to take it away.
+canvas.addEventListener("dblclick", (event) => {
+  const room = history.present.rooms.find((r) => r.id === selectedId);
+  if (tool !== "select" || !room || room.ellipse || !layerOpen("floors")) return;
+  const screen = eventPoint(event);
+  const handle = handleAt(screen);
+  let next = null;
+  if (handle?.kind === "vertex") {
+    next = removeVertex(room, handle.index);
+  } else if (!handle) {
+    const edge = edgeAt(room, screenToMap(view, screen), 8 / view.scale);
+    if (edge) next = insertVertex(room, edge.index, edge.point, LIMITS.maxRoomPoints);
+  }
+  if (next) commit(replaceRoom(history.present, next));
 });
 
 canvas.addEventListener(
@@ -1118,6 +1195,8 @@ const TOOL_KEYS: Record<string, Tool> = {
   s: "stamp",
   t: "text",
   g: "gm",
+  c: "circle",
+  "3": "triangle",
 };
 
 window.addEventListener("keydown", (event) => {
@@ -1197,12 +1276,12 @@ function draw(): void {
     let draft: Point[] | null = null;
     if (drag?.kind === "room" && cursor) {
       const end = snapped(cursor);
-      draft = rectPoints(drag.start, end) ?? [drag.start, end];
+      draft = draftOutline(drag.shape, drag.start, end)?.points ?? [drag.start, end];
     } else if (shape.length > 0) {
       draft = cursor ? [...shape, snapped(cursor)] : shape;
     }
 
-    const drawsRooms = tool === "room" || tool === "polygon";
+    const drawsRooms = tool === "room" || tool === "circle" || tool === "triangle" || tool === "polygon";
     render(ctx, size.width, size.height, dpr, {
       doc: d,
       view,
