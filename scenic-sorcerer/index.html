@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scenic Sorcerer</title>
+    <meta name="description" content="A free map maker for tabletop role-playing games. Square and hex grids, no account needed." />
+  </head>
+  <body>
+    <header class="topbar">
+      <span class="brand">Scenic Sorcerer</span>
+      <input id="map-name" class="name" type="text" maxlength="80" aria-label="Map name" />
+      <div class="group">
+        <button id="btn-new" type="button" title="Start a new map">New</button>
+        <button id="btn-open" type="button" title="Open a saved map (Ctrl+O)">Open</button>
+        <button id="btn-save" type="button" title="Save this map to a file (Ctrl+S)">Save</button>
+      </div>
+      <div class="group">
+        <button id="btn-undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="btn-redo" type="button" title="Redo (Ctrl+Y)">Redo</button>
+      </div>
+      <span id="save-status" class="status" role="status"></span>
+      <input id="file-input" type="file" accept=".json,application/json" hidden />
+    </header>
+
+    <main class="workspace">
+      <div id="stage" class="stage">
+        <canvas id="canvas" aria-label="Map"></canvas>
+        <div class="zoom">
+          <button id="btn-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">&minus;</button>
+          <button id="btn-fit" type="button" title="Show the whole map (0)"><span id="zoom-label">100%</span></button>
+          <button id="btn-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+        </div>
+        <p id="message" class="message" role="alert" hidden></p>
+      </div>
+
+      <aside class="panel" aria-label="Map settings">
+        <h2>Grid</h2>
+        <div class="choice" role="radiogroup" aria-label="Grid shape" id="grid-type">
+          <button type="button" role="radio" data-value="square">Square</button>
+          <button type="button" role="radio" data-value="hex-flat">Hex, flat top</button>
+          <button type="button" role="radio" data-value="hex-pointy">Hex, pointy top</button>
+        </div>
+
+        <h2>Map size</h2>
+        <div class="fields">
+          <label>Width <input id="cols" type="number" min="1" max="100" step="1" /> <span>cells</span></label>
+          <label>Height <input id="rows" type="number" min="1" max="100" step="1" /> <span>cells</span></label>
+        </div>
+
+        <h2>Snap to grid</h2>
+        <div class="choice" role="radiogroup" aria-label="Snap to grid" id="snap-mode">
+          <button type="button" role="radio" data-value="cell">Full</button>
+          <button type="button" role="radio" data-value="half">Half</button>
+          <button type="button" role="radio" data-value="off">Off</button>
+        </div>
+
+        <p class="hint">Drag to move around. Scroll to zoom.</p>
+      </aside>
+    </main>
+
+    <footer class="statusbar">
+      <span id="cursor-cell">&nbsp;</span>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
