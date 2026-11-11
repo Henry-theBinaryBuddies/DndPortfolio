@@ -660,6 +660,7 @@ textarea {
 .module-card[data-code="A5"] { --accent: #3d2a52; }
 .module-card[data-code="A6"] { --accent: #6a5214; }
 .module-card[data-code="A7"] { --accent: #17435b; }
+.module-card[data-code="A9"] { --accent: #6b2f4e; }
 
 
 /* The binding down the left edge. */
@@ -3023,6 +3024,67 @@ p {
 
     animation-iteration-count:
       1 !important;
+  }
+
+}
+
+/* =========================================================
+   A PANEL WITH THREE COVERS
+   A panel normally holds two covers. The right panel holds
+   three (Artifact 6, 7 and 9), so it gets three rows and
+   smaller covers, so none of them hides another's title.
+   ========================================================= */
+
+.dm-screen__surface--three {
+  grid-template-rows:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+
+  gap: 1.5%;
+}
+
+
+@media (orientation: landscape) and (min-height: 561px) {
+
+  .dm-screen__surface--three
+  .module-card {
+    --card-w: min(10.5vw, 14.2vh);
+  }
+
+}
+
+
+@media (orientation: portrait), (max-height: 560px) {
+
+  .dm-screen__surface--three
+  .module-card {
+    --card-w: min(44vw, 17.5dvh);
+  }
+
+}
+
+/* On a phone held sideways the covers sit in a row, so three of them need three columns. */
+@media (orientation: landscape) and (max-height: 560px) {
+
+  .dm-screen__surface--three {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+
+    grid-template-rows:
+      minmax(0, 1fr);
+
+    gap: 2%;
+  }
+
+
+  .dm-screen__surface--three
+  .module-card {
+    --card-w: min(15vw, 36dvh);
   }
 
 }

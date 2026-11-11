@@ -1,0 +1,37 @@
+[
+  {
+    "src": "./assets/screenshots/artifact-9/01-editor.jpg",
+    "alt": "The Scenic Sorcerer editor showing a demo dungeon called The Sunken Keep: a wooden great hall, a stone crypt, a round tower, a brown triangular chamber, a blue pond and a grass garden, with red numbered room markers, a warning triangle, light icons and text labels. Tools run down the left and settings down the right.",
+    "caption": "The editor with a demo map. Tools on the left, settings on the right. The red numbers, the triangle and the sun-like icons are GM notes and lights, which only the GM sees."
+  },
+  {
+    "src": "./assets/screenshots/artifact-9/02-reshape.jpg",
+    "alt": "The same map with the triangular room selected: small round dots sit on its three corners, eight small squares sit on a dashed box round it, and a panel on the right explains what each does.",
+    "caption": "Select a room and it grows handles. The round dots on the corners reshape it, so a triangle can go obtuse or acute. The squares on the box round it stretch it, and Shift keeps its proportions."
+  },
+  {
+    "src": "./assets/screenshots/artifact-9/03-lighting.jpg",
+    "alt": "The demo map with the lighting preview on: the map is dim, the wooden hall is lit warmly from two torches, the crypt by a candle, and pools of light surround the round tower, the pond and the garden.",
+    "caption": "Lighting preview. The map goes dark except where lights reach, walls stop the light, and a window lets a little out. The same lights go into the exports."
+  },
+  {
+    "src": "./assets/screenshots/artifact-9/04-levels.jpg",
+    "alt": "The editor on an Upper floor level: a wooden gallery joined by a bridge to a round turret, with the ground floor's rooms showing faintly underneath. The Levels list on the right shows Upper floor and Ground floor.",
+    "caption": "Several levels in one map. The level below shows faintly, so a room upstairs can be lined up with the rooms under it."
+  },
+  {
+    "src": "./assets/screenshots/artifact-9/05-hex.jpg",
+    "alt": "A hex-grid map called The Ashen Marches: a blue lake, a grey hill range, a small walled fort, a brown road and patches of grass, over a pointy-topped hex grid, with labels for Lake Vael, the Ashen Hills and Fort Kerrin.",
+    "caption": "A hex map. The grid can be flat-top or pointy-top, and a picture of it is sized from the cell so the hexes line up in the tabletop."
+  },
+  {
+    "src": "./assets/screenshots/artifact-9/06-export-dialog.jpg",
+    "alt": "The Export dialog over the editor: pixels per cell, a size readout, picture options for grid lines, GM notes and baked lighting, a file type choice, and buttons for a picture, a Universal VTT file and a Foundry scene.",
+    "caption": "The Export dialog. One picture, or files for a virtual tabletop that carry the walls, doors, windows and lights with them."
+  },
+  {
+    "src": "./assets/screenshots/artifact-9/07-exported-picture.jpg",
+    "alt": "A clean picture of the demo map exported at 1680 by 1120 pixels, with no grid lines, no room numbers and no light icons.",
+    "caption": "What a tabletop receives: a clean picture, with no grid lines and no GM notes, because the tabletop draws its own grid and keeps the walls separately."
+  }
+]
