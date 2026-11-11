@@ -285,3 +285,164 @@ input:focus-visible {
 .wide {
   width: 100%;
 }
+
+.panel {
+  width: 264px;
+}
+.panel section[hidden] {
+  display: none;
+}
+.row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  align-items: center;
+}
+.row button {
+  flex: 1;
+  padding: 6px 6px;
+  font-size: 13px;
+}
+.wide + .wide,
+.row + .wide {
+  margin-top: 8px;
+}
+.slider {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin-top: 12px;
+}
+.slider output {
+  color: var(--muted);
+  font-size: 13px;
+}
+.slider input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--accent);
+}
+.search {
+  width: 100%;
+  margin-top: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 232px;
+  overflow-y: auto;
+}
+.asset-grid:empty {
+  display: none;
+}
+.asset-grid button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 3px;
+  font-size: 11px;
+  min-width: 0;
+}
+.asset-grid img {
+  width: 100%;
+  height: 46px;
+  object-fit: contain;
+  background: #efe6d2;
+  border-radius: 4px;
+}
+.asset-grid span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asset-grid button[aria-selected="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.asset-grid button.favourite::after {
+  content: "★";
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  color: var(--accent);
+  font-size: 13px;
+  text-shadow: 0 0 2px #000;
+}
+.note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.note:empty {
+  display: none;
+}
+.tint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.tint input {
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.layers {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.layers th {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding-bottom: 2px;
+}
+.layers td {
+  padding: 4px 0;
+}
+.layers td:not(:first-child) {
+  width: 44px;
+  text-align: center;
+}
+.layers input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.drop-hint {
+  position: absolute;
+  inset: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: rgba(29, 31, 36, 0.8);
+  font-size: 18px;
+  pointer-events: none;
+}
+.drop-hint[hidden] {
+  display: none;
+}
+
+/* An element's own display rule must never beat the hidden attribute. */
+[hidden] {
+  display: none !important;
+}

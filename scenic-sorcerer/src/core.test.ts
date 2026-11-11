@@ -140,7 +140,7 @@ describe("history", () => {
 });
 
 describe("storage", () => {
-  const sample: MapDoc = { version: 1, name: "Goblin Cave", grid: grid("hex-flat", 12, 9, 100), rooms: [], openings: [] };
+  const sample: MapDoc = { ...newMap(), name: "Goblin Cave", grid: grid("hex-flat", 12, 9, 100) };
 
   it("round-trips a map", () => {
     expect(parse(serialize(sample))).toEqual(sample);
@@ -161,7 +161,7 @@ describe("storage", () => {
       name: "   ",
       grid: { type: "square", cols: 99999, rows: -3, cellPx: "abc" },
     });
-    expect(parse(text)).toEqual({ version: 1, name: "Untitled map", grid: grid("square", 100, 1, 20), rooms: [], openings: [] });
+    expect(parse(text)).toEqual({ ...newMap(), grid: grid("square", 100, 1, 20) });
   });
 
   it("makes a safe file name", () => {

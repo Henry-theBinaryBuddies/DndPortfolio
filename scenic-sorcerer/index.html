@@ -21,6 +21,7 @@
       </div>
       <span id="save-status" class="status" role="status"></span>
       <input id="file-input" type="file" accept=".json,application/json" hidden />
+      <input id="asset-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden />
     </header>
 
     <main class="workspace">
@@ -30,6 +31,8 @@
         <button type="button" role="radio" data-value="polygon" title="Draw a room of any shape, corner by corner (P)">Shape room</button>
         <button type="button" role="radio" data-value="door" title="Add a door to a wall (D)">Door</button>
         <button type="button" role="radio" data-value="window" title="Add a window to a wall (W)">Window</button>
+        <button type="button" role="radio" data-value="brush" title="Paint ground textures (B)">Brush</button>
+        <button type="button" role="radio" data-value="stamp" title="Place pictures such as furniture and trees (S)">Stamp</button>
       </nav>
 
       <div id="stage" class="stage">
@@ -40,19 +43,73 @@
           <button id="btn-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
         </div>
         <p id="message" class="message" role="alert" hidden></p>
+        <div id="drop-hint" class="drop-hint" hidden>Drop pictures to add them to your stamps</div>
       </div>
 
-      <aside class="panel" aria-label="Map settings">
+      <aside class="panel" aria-label="Settings">
         <section id="floor-section">
           <h2 id="floor-title">Floor</h2>
           <div class="swatches" role="radiogroup" aria-labelledby="floor-title" id="floors"></div>
-          <label class="check"><input id="walls" type="checkbox" /> Walls around the room</label>
+          <label class="check" id="walls-row"><input id="walls" type="checkbox" /> Walls around the room</label>
+        </section>
+
+        <section id="brush-section" hidden>
+          <label class="slider">Size <output id="brush-size-out"></output>
+            <input id="brush-size" type="range" min="0.25" max="5" step="0.25" />
+          </label>
+          <label class="slider">Strength <output id="brush-opacity-out"></output>
+            <input id="brush-opacity" type="range" min="10" max="100" step="5" />
+          </label>
+        </section>
+
+        <section id="library-section" hidden>
+          <h2>Your stamps</h2>
+          <button id="btn-import" type="button" class="wide">Add pictures…</button>
+          <input id="asset-search" type="search" class="search" placeholder="Search stamps" aria-label="Search stamps" />
+          <label class="check"><input id="asset-favourites" type="checkbox" /> Favourites only</label>
+          <div id="asset-grid" class="asset-grid" role="listbox" aria-label="Stamps"></div>
+          <p id="asset-note" class="note"></p>
+          <div id="asset-actions" class="row" hidden>
+            <button id="btn-favourite" type="button"></button>
+            <button id="btn-remove-asset" type="button" title="Take this picture out of your stamps">Remove</button>
+          </div>
+        </section>
+
+        <section id="stamp-section" hidden>
+          <h2 id="stamp-title">Stamp</h2>
+          <label class="slider">Size <output id="stamp-size-out"></output>
+            <input id="stamp-size" type="range" min="0.25" max="10" step="0.25" />
+          </label>
+          <label class="slider">Turn <output id="stamp-rotation-out"></output>
+            <input id="stamp-rotation" type="range" min="-180" max="180" step="5" />
+          </label>
+          <label class="check"><input id="stamp-shadow" type="checkbox" /> Shadow</label>
+          <label class="check" id="scatter-row" title="Drag to drop many at once, each a little different">
+            <input id="stamp-scatter" type="checkbox" /> Scatter while dragging
+          </label>
+          <div id="stamp-extras" class="row" hidden>
+            <button id="btn-flip" type="button">Flip</button>
+            <label class="tint">Tint <input id="stamp-tint" type="color" /></label>
+            <button id="btn-clear-tint" type="button">No tint</button>
+          </div>
         </section>
 
         <section id="selection-section" hidden>
           <h2 id="selection-title">Selected</h2>
+          <div class="row" id="order-row">
+            <button id="btn-front" type="button">Bring to front</button>
+            <button id="btn-back" type="button">Send to back</button>
+          </div>
           <button id="btn-delete" type="button" class="wide" title="Delete (Delete key)">Delete</button>
         </section>
+
+        <h2>Layers</h2>
+        <table class="layers" id="layers">
+          <thead>
+            <tr><th></th><th>Show</th><th>Lock</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
 
         <h2>Grid</h2>
         <div class="choice" role="radiogroup" aria-label="Grid shape" id="grid-type">
@@ -73,7 +130,6 @@
           <button type="button" role="radio" data-value="half">Half</button>
           <button type="button" role="radio" data-value="off">Off</button>
         </div>
-
       </aside>
     </main>
 

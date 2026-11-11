@@ -1,7 +1,8 @@
 // Draws the map onto a canvas. Reads the document and view; changes nothing.
 
 import { cellPolygon, mapSize } from "./grid";
-import { WALL_RATIO, type MapDoc, type Opening, type Point } from "./model";
+import { WALL_RATIO, type MapDoc, type Opening, type Point, type Stamp, type Stroke } from "./model";
+import { stampCorners } from "./objects";
 import { floorFill } from "./textures";
 import type { View } from "./view";
 
@@ -28,6 +29,14 @@ export interface Scene {
   draft: Point[] | null;
   /** Door or window that a click would place. */
   ghost: Opening | null;
+  /** Paint stroke being drawn right now. */
+  draftStroke: Stroke | null;
+  /** Stamp that a click would place. */
+  ghostStamp: Stamp | null;
+  /** Outline of the brush under the cursor. */
+  brushRing: { x: number; y: number; radius: number } | null;
+  /** The picture for a stamp, or null while it loads or if it is missing from the library. */
+  image: (assetId: string, tint: string | null) => CanvasImageSource | null;
 }
 
 export function render(ctx: CanvasRenderingContext2D, width: number, height: number, dpr: number, scene: Scene): void {
@@ -48,11 +57,24 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   ctx.beginPath();
   ctx.rect(0, 0, size.width, size.height);
   ctx.clip();
-  drawFloors(ctx, doc);
-  drawGrid(ctx, doc, px);
-  drawWalls(ctx, doc);
-  for (const opening of doc.openings) drawOpening(ctx, doc, opening, 1);
-  if (scene.ghost) drawOpening(ctx, doc, scene.ghost, 0.6);
+  const layers = doc.layers;
+  if (layers.floors.visible) drawFloors(ctx, doc);
+  if (layers.paint.visible) {
+    for (const stroke of doc.strokes) drawStroke(ctx, doc, stroke);
+    if (scene.draftStroke) drawStroke(ctx, doc, scene.draftStroke);
+  }
+  if (layers.walls.visible) {
+    drawWalls(ctx, doc);
+    for (const opening of doc.openings) drawOpening(ctx, doc, opening, 1);
+    if (scene.ghost) drawOpening(ctx, doc, scene.ghost, 0.6);
+  }
+  if (layers.objects.visible) {
+    // Shadow sizes are in screen pixels, so scale them with the zoom.
+    const shadowScale = doc.grid.cellPx * view.scale * dpr;
+    for (const stamp of doc.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px);
+    if (scene.ghostStamp) drawStamp(ctx, scene, scene.ghostStamp, 0.6, shadowScale, px);
+  }
+  if (doc.showGrid) drawGrid(ctx, doc, px);
   ctx.restore();
 
   ctx.lineWidth = 2 * px;
@@ -61,6 +83,14 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
 
   drawSelection(ctx, scene, px);
   drawDraft(ctx, scene, px);
+
+  if (scene.brushRing) {
+    ctx.beginPath();
+    ctx.arc(scene.brushRing.x, scene.brushRing.y, scene.brushRing.radius, 0, Math.PI * 2);
+    ctx.lineWidth = 1.5 * px;
+    ctx.strokeStyle = COLORS.accent;
+    ctx.stroke();
+  }
 
   if (scene.snapPoint) {
     ctx.beginPath();
@@ -86,6 +116,53 @@ function drawFloors(ctx: CanvasRenderingContext2D, doc: MapDoc): void {
     ctx.fillStyle = floorFill(ctx, room.floor, doc.grid.cellPx);
     ctx.fill();
   }
+}
+
+function drawStroke(ctx: CanvasRenderingContext2D, doc: MapDoc, stroke: Stroke): void {
+  const fill = floorFill(ctx, stroke.texture, doc.grid.cellPx);
+  ctx.save();
+  ctx.globalAlpha = stroke.opacity;
+  if (stroke.points.length === 1) {
+    ctx.beginPath();
+    ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  } else {
+    outline(ctx, stroke.points, false);
+    ctx.lineWidth = stroke.size;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = fill;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawStamp(ctx: CanvasRenderingContext2D, scene: Scene, stamp: Stamp, alpha: number, shadowScale: number, px: number): void {
+  const image = scene.image(stamp.assetId, stamp.tint);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(stamp.x, stamp.y);
+  ctx.rotate(stamp.rotation);
+  if (image) {
+    if (stamp.flip) ctx.scale(-1, 1);
+    if (stamp.shadow) {
+      ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
+      ctx.shadowBlur = shadowScale * 0.1;
+      ctx.shadowOffsetX = shadowScale * 0.05;
+      ctx.shadowOffsetY = shadowScale * 0.07;
+    }
+    ctx.drawImage(image, -stamp.width / 2, -stamp.height / 2, stamp.width, stamp.height);
+  } else {
+    // The picture is still loading, or is not in this browser's library.
+    ctx.setLineDash([6 * px, 4 * px]);
+    ctx.lineWidth = 1.5 * px;
+    ctx.strokeStyle = COLORS.wall;
+    ctx.fillStyle = "rgba(43, 38, 32, 0.12)";
+    ctx.fillRect(-stamp.width / 2, -stamp.height / 2, stamp.width, stamp.height);
+    ctx.strokeRect(-stamp.width / 2, -stamp.height / 2, stamp.width, stamp.height);
+  }
+  ctx.restore();
 }
 
 function drawWalls(ctx: CanvasRenderingContext2D, doc: MapDoc): void {
@@ -162,8 +239,22 @@ function drawSelection(ctx: CanvasRenderingContext2D, scene: Scene, px: number):
   ctx.setLineDash([8 * px, 5 * px]);
   const room = scene.doc.rooms.find((r) => r.id === scene.selectedId);
   const opening = scene.doc.openings.find((o) => o.id === scene.selectedId);
+  const stamp = scene.doc.stamps.find((s) => s.id === scene.selectedId);
+  const stroke = scene.doc.strokes.find((s) => s.id === scene.selectedId);
   if (room) {
     outline(ctx, room.points, true);
+    ctx.stroke();
+  } else if (stamp) {
+    ctx.lineWidth = 2 * px;
+    outline(ctx, stampCorners(stamp), true);
+    ctx.stroke();
+  } else if (stroke) {
+    if (stroke.points.length === 1) {
+      ctx.beginPath();
+      ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
+    } else {
+      outline(ctx, stroke.points, false);
+    }
     ctx.stroke();
   } else if (opening) {
     ctx.lineWidth = 5 * px;

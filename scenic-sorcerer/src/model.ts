@@ -45,12 +45,67 @@ export interface Opening {
   b: Point;
 }
 
+/** One drag of the texture brush: a line of the given width painted with a texture. */
+export interface Stroke {
+  id: string;
+  texture: FloorId;
+  /** Brush width in map pixels. */
+  size: number;
+  /** 0 to 1. */
+  opacity: number;
+  points: Point[];
+}
+
+/** A picture placed on the map. x and y are its centre; width and height are before rotation. */
+export interface Stamp {
+  id: string;
+  assetId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Radians, clockwise. */
+  rotation: number;
+  flip: boolean;
+  /** A colour such as "#aa3311" to tint the picture, or null to leave it as it is. */
+  tint: string | null;
+  shadow: boolean;
+}
+
+/** An imported picture in the stamp library. */
+export interface Asset {
+  id: string;
+  name: string;
+  dataUrl: string;
+  width: number;
+  height: number;
+  favourite: boolean;
+}
+
+/** Layers from top to bottom. Each kind of thing lives on its own layer. */
+export const LAYERS = [
+  { id: "objects", label: "Stamps" },
+  { id: "walls", label: "Walls and doors" },
+  { id: "paint", label: "Paint" },
+  { id: "floors", label: "Floors" },
+] as const;
+export type LayerId = (typeof LAYERS)[number]["id"];
+
+export interface LayerState {
+  visible: boolean;
+  locked: boolean;
+}
+
 export interface MapDoc {
   version: 1;
   name: string;
   grid: Grid;
   rooms: Room[];
   openings: Opening[];
+  strokes: Stroke[];
+  stamps: Stamp[];
+  layers: Record<LayerId, LayerState>;
+  showGrid: boolean;
 }
 
 export const LIMITS = {
@@ -62,6 +117,16 @@ export const LIMITS = {
   maxRooms: 5000,
   maxOpenings: 10000,
   maxRoomPoints: 500,
+  maxStrokes: 5000,
+  maxStrokePoints: 4000,
+  maxStamps: 20000,
+  /** Brush width, in cells. */
+  minBrush: 0.25,
+  maxBrush: 5,
+  /** Longest side of a stamp, in cells. */
+  minStamp: 0.25,
+  maxStamp: 10,
+  maxAssetBytes: 8 * 1024 * 1024,
 } as const;
 
 /** Wall thickness as a fraction of a cell. */
@@ -74,6 +139,19 @@ export function newMap(): MapDoc {
     grid: { type: "square", cols: 30, rows: 20, cellPx: 70 },
     rooms: [],
     openings: [],
+    strokes: [],
+    stamps: [],
+    layers: defaultLayers(),
+    showGrid: true,
+  };
+}
+
+export function defaultLayers(): Record<LayerId, LayerState> {
+  return {
+    objects: { visible: true, locked: false },
+    walls: { visible: true, locked: false },
+    paint: { visible: true, locked: false },
+    floors: { visible: true, locked: false },
   };
 }
 
