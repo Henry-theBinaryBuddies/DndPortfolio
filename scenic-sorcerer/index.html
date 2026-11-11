@@ -24,8 +24,16 @@
     </header>
 
     <main class="workspace">
+      <nav class="tools" role="radiogroup" aria-label="Tools" id="tools">
+        <button type="button" role="radio" data-value="select" title="Select, move and delete things (V)">Select</button>
+        <button type="button" role="radio" data-value="room" title="Draw a rectangular room (R)">Room</button>
+        <button type="button" role="radio" data-value="polygon" title="Draw a room of any shape, corner by corner (P)">Shape room</button>
+        <button type="button" role="radio" data-value="door" title="Add a door to a wall (D)">Door</button>
+        <button type="button" role="radio" data-value="window" title="Add a window to a wall (W)">Window</button>
+      </nav>
+
       <div id="stage" class="stage">
-        <canvas id="canvas" aria-label="Map"></canvas>
+        <canvas id="canvas" aria-label="Map" tabindex="0"></canvas>
         <div class="zoom">
           <button id="btn-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">&minus;</button>
           <button id="btn-fit" type="button" title="Show the whole map (0)"><span id="zoom-label">100%</span></button>
@@ -35,6 +43,16 @@
       </div>
 
       <aside class="panel" aria-label="Map settings">
+        <section id="floor-section">
+          <h2 id="floor-title">Floor</h2>
+          <div class="swatches" role="radiogroup" aria-labelledby="floor-title" id="floors"></div>
+        </section>
+
+        <section id="selection-section" hidden>
+          <h2 id="selection-title">Selected</h2>
+          <button id="btn-delete" type="button" class="wide" title="Delete (Delete key)">Delete</button>
+        </section>
+
         <h2>Grid</h2>
         <div class="choice" role="radiogroup" aria-label="Grid shape" id="grid-type">
           <button type="button" role="radio" data-value="square">Square</button>
@@ -55,11 +73,11 @@
           <button type="button" role="radio" data-value="off">Off</button>
         </div>
 
-        <p class="hint">Drag to move around. Scroll to zoom.</p>
       </aside>
     </main>
 
     <footer class="statusbar">
+      <span id="hint"></span>
       <span id="cursor-cell">&nbsp;</span>
     </footer>
 

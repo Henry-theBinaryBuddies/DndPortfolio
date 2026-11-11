@@ -1,6 +1,7 @@
 // Saving and loading maps: a JSON file the user owns, plus an autosave copy in the browser.
 
-import { LIMITS, clampInt, type GridType, type MapDoc } from "./model";
+import { FLOORS, LIMITS, clampInt, type FloorId, type GridType, type MapDoc, type Opening, type Point, type Room } from "./model";
+import { isValidOutline } from "./rooms";
 
 export const FILE_EXTENSION = ".scenic.json";
 export const AUTOSAVE_KEY = "scenic-sorcerer.autosave";
@@ -39,7 +40,43 @@ export function parse(text: string): MapDoc {
       rows: clampInt(Number(grid.rows), LIMITS.minCells, LIMITS.maxCells),
       cellPx: clampInt(Number(grid.cellPx), LIMITS.minCellPx, LIMITS.maxCellPx),
     },
+    rooms: parseRooms(raw.rooms),
+    openings: parseOpenings(raw.openings),
   };
+}
+
+// Damaged rooms, doors and windows are skipped so the rest of the map still opens.
+
+function parseRooms(raw: unknown): Room[] {
+  if (!Array.isArray(raw)) return [];
+  const rooms: Room[] = [];
+  for (const item of raw.slice(0, LIMITS.maxRooms)) {
+    if (!isRecord(item) || typeof item.id !== "string" || !Array.isArray(item.points)) continue;
+    const points = item.points.slice(0, LIMITS.maxRoomPoints).map(parsePoint);
+    if (points.includes(null) || !isValidOutline(points as Point[])) continue;
+    const floor = FLOORS.some((f) => f.id === item.floor) ? (item.floor as FloorId) : "stone";
+    rooms.push({ id: item.id, points: points as Point[], floor });
+  }
+  return rooms;
+}
+
+function parseOpenings(raw: unknown): Opening[] {
+  if (!Array.isArray(raw)) return [];
+  const openings: Opening[] = [];
+  for (const item of raw.slice(0, LIMITS.maxOpenings)) {
+    if (!isRecord(item) || typeof item.id !== "string") continue;
+    const a = parsePoint(item.a);
+    const b = parsePoint(item.b);
+    if (!a || !b || (item.kind !== "door" && item.kind !== "window")) continue;
+    openings.push({ id: item.id, kind: item.kind, a, b });
+  }
+  return openings;
+}
+
+function parsePoint(raw: unknown): Point | null {
+  if (!isRecord(raw) || typeof raw.x !== "number" || typeof raw.y !== "number") return null;
+  if (!Number.isFinite(raw.x) || !Number.isFinite(raw.y)) return null;
+  return { x: raw.x, y: raw.y };
 }
 
 /** A safe file name for a map, e.g. "Goblin Cave" -> "Goblin Cave.scenic.json". */

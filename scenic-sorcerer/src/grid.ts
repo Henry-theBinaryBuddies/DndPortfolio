@@ -5,12 +5,9 @@
 //   hex-flat:   columns are straight, odd columns are shifted down by half a cell.
 // cellPx is the distance between neighbouring centres, i.e. the hex measured flat side to flat side.
 
-import type { Grid, SnapMode } from "./model";
+import type { Grid, Point, SnapMode } from "./model";
 
-export interface Point {
-  x: number;
-  y: number;
-}
+export type { Point };
 export interface Size {
   width: number;
   height: number;
