@@ -101,7 +101,7 @@ computer. The bundled stamps are not packed in; they come from the site. Maps fr
 - **Text is one line,** and cannot yet follow a curve.
 - **Universal VTT is made for square grids.** On a hex map, use the Foundry scene.
 - **Bundled stamps are not tinted or given an extra shadow,** because the artist's licence does not allow editing the art
-  and the shadows are already painted in. They were only shrunk and re-saved as WebP.
+  and the shadows are already painted in. They were only shrunk and re-saved as WebP, which Tom Cartos confirmed is fine.
 - **Stamp art is most of the bundle, not all of it:** 676 of 800 props. Left out are repetitive pieces (pipes, cogs, sails,
   cliff faces) and the extra copies of near-identical variants. Props only, no terrain tiles.
 - **Not built yet:** regional, town and hex-crawl modes, the dungeon, land and town generators, print PDF, boolean shape

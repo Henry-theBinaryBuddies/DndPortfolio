@@ -3,4 +3,4 @@ Taken from the Tom Cartos Open License Asset Bundle, used under Tom's Open Map L
 https://www.tomcartos.com/toms-open-map-license
 
 Changes made: the pictures were only shrunk to 200 pixels per grid square and saved as WebP so the site loads quickly.
-They are not recoloured or otherwise edited, and they are free to use in Scenic Sorcerer, never sold or paywalled.
+Tom Cartos confirmed that shrinking them is fine. They are not recoloured or otherwise edited, and they are free to use in Scenic Sorcerer, never sold or paywalled.
