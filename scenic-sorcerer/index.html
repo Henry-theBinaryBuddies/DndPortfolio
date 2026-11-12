@@ -94,6 +94,28 @@
           <label class="slider">Turn <output id="stamp-rotation-out"></output>
             <input id="stamp-rotation" type="range" min="-180" max="180" step="5" />
           </label>
+          <div id="stairs-extras" hidden>
+            <label class="slider">Steps <output id="stairs-steps-out"></output>
+              <input id="stairs-steps" type="range" min="2" max="24" step="1" />
+            </label>
+            <label class="slider">Width <output id="stairs-width-out"></output>
+              <input id="stairs-width" type="range" min="0.5" max="8" step="0.25" />
+            </label>
+            <label class="slider">Length <output id="stairs-length-out"></output>
+              <input id="stairs-length" type="range" min="0.5" max="12" step="0.25" />
+            </label>
+            <label class="field">Material
+              <select id="stairs-material" class="input"></select>
+            </label>
+            <label class="field">Arrow
+              <select id="stairs-dir" class="input">
+                <option value="up">Going up</option>
+                <option value="down">Going down</option>
+                <option value="none">No arrow</option>
+              </select>
+            </label>
+            <p class="note">The arrow points to the top of the picture; turn the stairs to point it where you want.</p>
+          </div>
           <label class="check"><input id="stamp-shadow" type="checkbox" /> Shadow</label>
           <label class="check" id="scatter-row" title="Drag to drop many at once, each a little different">
             <input id="stamp-scatter" type="checkbox" /> Scatter while dragging

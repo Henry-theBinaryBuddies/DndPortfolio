@@ -23,14 +23,16 @@ export function itemKind(doc: MapDoc, id: string | null): ItemKind | null {
 /** A stamp whose longest side is `longest` map pixels, keeping the picture's proportions. */
 export function makeStamp(
   id: string,
-  asset: Pick<Asset, "id" | "width" | "height">,
+  asset: Pick<Asset, "id" | "width" | "height" | "stairs">,
   centre: Point,
   longest: number,
   rotation: number,
   shadow: boolean,
 ): Stamp {
   const size = sized(asset.width, asset.height, longest);
-  return { id, assetId: asset.id, x: centre.x, y: centre.y, ...size, rotation, flip: false, tint: null, shadow };
+  const stamp: Stamp = { id, assetId: asset.id, x: centre.x, y: centre.y, ...size, rotation, flip: false, tint: null, shadow };
+  // Stairs shade themselves, so they take no extra shadow.
+  return asset.stairs ? { ...stamp, shadow: false, stairs: { ...asset.stairs } } : stamp;
 }
 
 function sized(width: number, height: number, longest: number): { width: number; height: number } {

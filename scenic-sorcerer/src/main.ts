@@ -70,6 +70,7 @@ import {
   type Order,
 } from "./objects";
 import { lightIconRadius, markerRadius, measureLabel, render } from "./render";
+import { clampSteps } from "./stairs";
 import {
   HANDLE_PAD_PX,
   SCALE_DIRECTIONS,
@@ -190,6 +191,12 @@ const assetFavourites = el<HTMLInputElement>("asset-favourites");
 const assetGroup = el<HTMLSelectElement>("asset-group");
 const assetCredit = el("asset-credit");
 const stampTintLabel = el("stamp-tint-label");
+const stairsExtras = el("stairs-extras");
+const stairsSteps = el<HTMLInputElement>("stairs-steps");
+const stairsWidth = el<HTMLInputElement>("stairs-width");
+const stairsLength = el<HTMLInputElement>("stairs-length");
+const stairsMaterial = el<HTMLSelectElement>("stairs-material");
+const stairsDir = el<HTMLSelectElement>("stairs-dir");
 const clearTintButton = el<HTMLButtonElement>("btn-clear-tint");
 const removeAssetButton = el<HTMLButtonElement>("btn-remove-asset");
 const assetGrid = el("asset-grid");
@@ -304,6 +311,7 @@ for (const f of FLOORS) {
 }
 
 for (const font of FONTS) labelFontSelect.append(new Option(font.label, font.id));
+for (const f of FLOORS) if (f.id !== "plain") stairsMaterial.append(new Option(f.label, f.id));
 for (const preset of LABEL_PRESETS) {
   const button = document.createElement("button");
   button.type = "button";
@@ -636,7 +644,15 @@ function syncControls(): void {
   stampShadowInput.checked = stamp ? stamp.shadow : stampShadow;
   // Bundled art already has its shadow painted in, so the extra one is not offered for it.
   const bundledArt = stamp ? library.get(stamp.assetId)?.builtin : assetId ? library.get(assetId)?.builtin : false;
-  stampShadowInput.closest("label")!.hidden = Boolean(bundledArt);
+  stampShadowInput.closest("label")!.hidden = Boolean(bundledArt) || Boolean(stamp?.stairs);
+  stairsExtras.hidden = !stamp?.stairs;
+  if (stamp?.stairs) {
+    stairsSteps.value = String(stamp.stairs.steps);
+    stairsWidth.value = String(stamp.width / d.grid.cellPx);
+    stairsLength.value = String(stamp.height / d.grid.cellPx);
+    stairsMaterial.value = stamp.stairs.material;
+    stairsDir.value = stamp.stairs.dir;
+  }
   stampScatterInput.checked = scatter;
   scatterRow.hidden = Boolean(stamp);
   stampExtras.hidden = !stamp;
@@ -722,6 +738,9 @@ function syncOutputs(): void {
   el("brush-size-out").textContent = cells(brushSizeInput.value);
   el("brush-opacity-out").textContent = `${brushOpacityInput.value}%`;
   el("stamp-size-out").textContent = cells(Number(stampSizeInput.value).toFixed(2));
+  el("stairs-steps-out").textContent = stairsSteps.value;
+  el("stairs-width-out").textContent = cells(Number(stairsWidth.value).toFixed(2));
+  el("stairs-length-out").textContent = cells(Number(stairsLength.value).toFixed(2));
   el("stamp-rotation-out").textContent = `${stampRotationInput.value}°`;
   el("label-size-out").textContent = cells(Number(labelSizeInput.value).toFixed(2));
   el("label-spacing-out").textContent = `${labelSpacingInput.value}%`;
@@ -824,6 +843,19 @@ function editSelectedStamp(change: (stamp: Stamp) => Stamp, done: boolean): void
 onSlide(stampSizeInput, (value, done) => {
   if (selectedStamp()) editSelectedStamp((s) => resizeStamp(s, value * history.present.grid.cellPx), done);
   else stampSize = value;
+});
+
+// Stairs: the number of steps, the box they fill, what they are made of, and which way the arrow points.
+onSlide(stairsSteps, (value, done) => {
+  editSelectedStamp((s) => (s.stairs ? { ...s, stairs: { ...s.stairs, steps: clampSteps(value) } } : s), done);
+});
+onSlide(stairsWidth, (value, done) => editSelectedStamp((s) => (s.stairs ? { ...s, width: value * history.present.grid.cellPx } : s), done));
+onSlide(stairsLength, (value, done) => editSelectedStamp((s) => (s.stairs ? { ...s, height: value * history.present.grid.cellPx } : s), done));
+stairsMaterial.addEventListener("change", () => {
+  editSelectedStamp((s) => (s.stairs ? { ...s, stairs: { ...s.stairs, material: stairsMaterial.value as FloorId } } : s), true);
+});
+stairsDir.addEventListener("change", () => {
+  editSelectedStamp((s) => (s.stairs ? { ...s, stairs: { ...s.stairs, dir: stairsDir.value as "up" | "down" | "none" } } : s), true);
 });
 
 onSlide(stampRotationInput, (value, done) => {

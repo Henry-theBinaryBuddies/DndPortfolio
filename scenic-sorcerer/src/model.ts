@@ -90,6 +90,15 @@ export interface Stamp {
   /** A colour such as "#aa3311" to tint the picture, or null to leave it as it is. */
   tint: string | null;
   shadow: boolean;
+  /** Set for stairs, which the editor draws itself instead of showing a picture. */
+  stairs?: StairsSpec;
+}
+
+/** How a set of stairs looks. The arrow points to the top end: going up makes that end high, going down makes it low. */
+export interface StairsSpec {
+  steps: number;
+  material: FloorId;
+  dir: "up" | "down" | "none";
 }
 
 /** An imported picture in the stamp library. */
@@ -106,6 +115,8 @@ export interface Asset {
   group?: string;
   /** Pixels per grid cell in the source art, so a stamp can be placed at its natural size. */
   ppc?: number;
+  /** Set for the ready-made stairs in the list; placing one makes stairs, not a picture. */
+  stairs?: StairsSpec;
 }
 
 export const FONTS = [

@@ -1,5 +1,6 @@
 // Saving and loading maps: a JSON file the user owns, plus an autosave copy in the browser.
 
+import { parseStairs } from "./stairs";
 import {
   FLOORS,
   LAYERS,
@@ -161,6 +162,7 @@ function parseStamps(raw: unknown): Stamp[] {
       flip: item.flip === true,
       tint: typeof item.tint === "string" && TINT.test(item.tint) ? item.tint : null,
       shadow: item.shadow === true,
+      ...(parseStairs(item.stairs) ? { stairs: parseStairs(item.stairs)! } : {}),
     });
   }
   return stamps;

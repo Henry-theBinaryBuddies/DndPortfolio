@@ -5,6 +5,7 @@ import { FONTS, WALL_RATIO, type Label, type Light, type Room, type MapDoc, type
 import type { LightCache } from "./lighting";
 import { labelCorners, stampCorners, type Box } from "./objects";
 import { HANDLE_PAD_PX, boundsOf, scaleHandles, vertexHandles } from "./rooms";
+import { drawStairs } from "./stairs";
 import { floorFill } from "./textures";
 import type { View } from "./view";
 
@@ -92,8 +93,8 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   if (layers.objects.visible) {
     // Shadow sizes are in screen pixels, so scale them with the zoom.
     const shadowScale = doc.grid.cellPx * view.scale * dpr;
-    for (const stamp of doc.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px);
-    if (scene.ghostStamp) drawStamp(ctx, scene, scene.ghostStamp, 0.6, shadowScale, px);
+    for (const stamp of doc.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px, doc.grid.cellPx);
+    if (scene.ghostStamp) drawStamp(ctx, scene, scene.ghostStamp, 0.6, shadowScale, px, doc.grid.cellPx);
   }
   if (doc.showGrid) drawGrid(ctx, doc, px);
   if (layers.labels.visible) {
@@ -171,13 +172,16 @@ function drawStroke(ctx: CanvasRenderingContext2D, doc: MapDoc, stroke: Stroke):
   ctx.restore();
 }
 
-function drawStamp(ctx: CanvasRenderingContext2D, scene: Scene, stamp: Stamp, alpha: number, shadowScale: number, px: number): void {
-  const image = scene.image(stamp.assetId, stamp.tint);
+function drawStamp(ctx: CanvasRenderingContext2D, scene: Scene, stamp: Stamp, alpha: number, shadowScale: number, px: number, cellPx: number): void {
+  const image = stamp.stairs ? null : scene.image(stamp.assetId, stamp.tint);
   ctx.save();
   ctx.globalAlpha = alpha * dim;
   ctx.translate(stamp.x, stamp.y);
   ctx.rotate(stamp.rotation);
-  if (image) {
+  if (stamp.stairs) {
+    if (stamp.flip) ctx.scale(-1, 1);
+    drawStairs(ctx, stamp.stairs, stamp.width, stamp.height, cellPx, floorFill(ctx, stamp.stairs.material, cellPx));
+  } else if (image) {
     if (stamp.flip) ctx.scale(-1, 1);
     if (stamp.shadow) {
       ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
@@ -459,7 +463,7 @@ function drawBelow(ctx: CanvasRenderingContext2D, scene: Scene, dpr: number, px:
   for (const stroke of below.strokes) drawStroke(ctx, below, stroke);
   drawWalls(ctx, below);
   for (const opening of below.openings) drawOpening(ctx, below, opening, 1);
-  for (const stamp of below.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px);
+  for (const stamp of below.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px, below.grid.cellPx);
   ctx.restore();
   dim = 1;
 }
@@ -623,7 +627,7 @@ export function renderExport(
   }
   if (layers.objects.visible) {
     const shadowScale = doc.grid.cellPx * opts.scale;
-    for (const stamp of doc.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px);
+    for (const stamp of doc.stamps) drawStamp(ctx, scene, stamp, 1, shadowScale, px, doc.grid.cellPx);
   }
   if (opts.grid) drawGrid(ctx, doc, px);
   if (layers.labels.visible) for (const label of doc.labels) drawLabel(ctx, label);

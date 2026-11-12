@@ -3,6 +3,8 @@
 
 import { LIMITS, type Asset } from "./model";
 import { assetName } from "./objects";
+import { STAIRS_PRESETS, drawStairs } from "./stairs";
+import { floorFill } from "./textures";
 
 const DB_NAME = "scenic-sorcerer";
 const STORE = "assets";
@@ -48,6 +50,34 @@ export function builtinAssets(manifest: unknown, baseUrl: string, favourites: Se
     });
   }
   return assets;
+}
+
+const STAIRS_PPC = 100;
+
+/** The ready-made stairs, each with a small picture of itself for the list. Needs a browser to draw the pictures. */
+export function stairsAssets(favourites: Set<string>): Asset[] {
+  return STAIRS_PRESETS.map((p) => {
+    const width = p.widthCells * STAIRS_PPC;
+    const height = p.lengthCells * STAIRS_PPC;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.translate(width / 2, height / 2);
+    drawStairs(ctx, p.spec, width, height, STAIRS_PPC, floorFill(ctx, p.spec.material, STAIRS_PPC));
+    return {
+      id: p.id,
+      name: p.name,
+      dataUrl: canvas.toDataURL("image/png"),
+      width,
+      height,
+      favourite: favourites.has(p.id),
+      builtin: true,
+      group: "Stairs",
+      ppc: STAIRS_PPC,
+      stairs: { ...p.spec },
+    };
+  });
 }
 
 function readFavourites(): Set<string> {
@@ -98,11 +128,18 @@ export class Library {
   }
 
   private async loadBuiltin(): Promise<void> {
+    const favourites = readFavourites();
+    try {
+      this.builtin = stairsAssets(favourites);
+    } catch {
+      this.builtin = []; // the stairs just are not offered
+    }
+    this.onChange("list");
     try {
       const base = new URL("stamps/", document.baseURI).href;
       const response = await fetch(new URL("manifest.json", base));
       if (!response.ok) return;
-      this.builtin = builtinAssets(await response.json(), base, readFavourites());
+      this.builtin = [...this.builtin, ...builtinAssets(await response.json(), base, favourites)];
     } catch {
       return; // the site still works with only the user's own pictures
     }
