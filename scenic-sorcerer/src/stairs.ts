@@ -104,30 +104,45 @@ export function drawStairs(
     const height = spec.dir === "down" ? (n === 1 ? 0.5 : i / (n - 1)) : n === 1 ? 0.5 : 1 - i / (n - 1);
     ctx.fillStyle = fill;
     ctx.fillRect(left, y, width, step + 0.5);
-    const tone = (height - 0.5) * 0.55;
+    const tone = (height - 0.5) * 0.85;
     ctx.fillStyle = tone > 0 ? `rgba(255, 255, 255, ${tone})` : `rgba(0, 0, 0, ${-tone})`;
     ctx.fillRect(left, y, width, step + 0.5);
 
-    // The riser casts a shadow onto the step below it, whichever way the stairs climb.
-    const lowEdgeIsBottom = spec.dir !== "down";
-    const edgeY = lowEdgeIsBottom ? y + step : y;
-    const shade = ctx.createLinearGradient(0, edgeY, 0, edgeY + (lowEdgeIsBottom ? -1 : 1) * step * 0.45);
-    shade.addColorStop(0, "rgba(10, 6, 2, 0.42)");
-    shade.addColorStop(1, "rgba(10, 6, 2, 0)");
-    ctx.fillStyle = shade;
-    ctx.fillRect(left, lowEdgeIsBottom ? y + step * 0.55 : y, width, step * 0.45);
+    // The higher end is the top for stairs going up, the bottom for stairs going down. Each step is in the shadow of the
+    // higher step next to it, so the shade falls from that edge across the tread.
+    const highIsTop = spec.dir !== "down";
+    const hasHigherNeighbour = highIsTop ? i > 0 : i < n - 1;
+    if (hasHigherNeighbour) {
+      const edge = highIsTop ? y : y + step;
+      const shade = ctx.createLinearGradient(0, edge, 0, edge + (highIsTop ? 1 : -1) * step * 0.7);
+      shade.addColorStop(0, "rgba(8, 5, 2, 0.6)");
+      shade.addColorStop(1, "rgba(8, 5, 2, 0)");
+      ctx.fillStyle = shade;
+      ctx.fillRect(left, highIsTop ? y : y + step * 0.3, width, step * 0.7);
+    }
 
-    // A bright lip on the nosing and a dark line along the joint.
-    ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
-    ctx.fillRect(left, lowEdgeIsBottom ? y : y + step - line, width, line);
-    ctx.fillStyle = "rgba(15, 10, 5, 0.55)";
-    ctx.fillRect(left, y + step - line / 2, width, line);
+    // The nosing, where the tread turns down to the next step: a bright lip, then the dark joint under it.
+    const nosing = highIsTop ? y + step : y;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.fillRect(left, highIsTop ? nosing - line * 1.8 : nosing, width, line * 1.8);
+    ctx.fillStyle = "rgba(15, 10, 5, 0.7)";
+    ctx.fillRect(left, nosing - line / 2, width, line);
   }
 
   // Side walls.
-  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.38)";
   ctx.fillRect(left, top, rail, length);
   ctx.fillRect(left + width - rail, top, rail, length);
+  const inner = ctx.createLinearGradient(left + rail, 0, left + rail + rail * 1.5, 0);
+  inner.addColorStop(0, "rgba(0, 0, 0, 0.3)");
+  inner.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = inner;
+  ctx.fillRect(left + rail, top, rail * 1.5, length);
+  const innerRight = ctx.createLinearGradient(left + width - rail, 0, left + width - rail * 2.5, 0);
+  innerRight.addColorStop(0, "rgba(0, 0, 0, 0.3)");
+  innerRight.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = innerRight;
+  ctx.fillRect(left + width - rail * 2.5, top, rail * 1.5, length);
   ctx.restore();
 
   ctx.save();
@@ -176,7 +191,7 @@ function drawSpiral(ctx: CanvasRenderingContext2D, spec: StairsSpec, radius: num
     wedge();
     ctx.fillStyle = fill;
     ctx.fill();
-    const tone = (height - 0.5) * 0.55;
+    const tone = (height - 0.5) * 0.85;
     ctx.fillStyle = tone > 0 ? `rgba(255, 255, 255, ${tone})` : `rgba(0, 0, 0, ${-tone})`;
     ctx.fill();
 
@@ -186,8 +201,8 @@ function drawSpiral(ctx: CanvasRenderingContext2D, spec: StairsSpec, radius: num
     ctx.clip();
     const shadeAt = spec.dir === "down" ? a0 : a1;
     ctx.lineCap = "butt";
-    ctx.strokeStyle = "rgba(10, 6, 2, 0.22)";
-    ctx.lineWidth = Math.max(2, radius * sweep * 0.3);
+    ctx.strokeStyle = "rgba(8, 5, 2, 0.4)";
+    ctx.lineWidth = Math.max(2, radius * sweep * 0.55);
     ctx.beginPath();
     radial(shadeAt, pillar, radius);
     ctx.stroke();
@@ -195,15 +210,31 @@ function drawSpiral(ctx: CanvasRenderingContext2D, spec: StairsSpec, radius: num
 
     // A bright lip on the near edge and a dark joint along the far one.
     ctx.lineWidth = line;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
     ctx.beginPath();
     radial(a0, pillar, radius);
     ctx.stroke();
-    ctx.strokeStyle = "rgba(15, 10, 5, 0.55)";
+    ctx.strokeStyle = "rgba(15, 10, 5, 0.7)";
     ctx.beginPath();
     radial(a1, pillar, radius);
     ctx.stroke();
   }
+
+  // The wall round the edge shades the treads beside it, and the post casts a shadow across the ones near it.
+  const wall = ctx.createRadialGradient(0, 0, radius * 0.78, 0, 0, radius);
+  wall.addColorStop(0, "rgba(0, 0, 0, 0)");
+  wall.addColorStop(1, "rgba(0, 0, 0, 0.4)");
+  ctx.fillStyle = wall;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+  const cast = ctx.createRadialGradient(pillar * 0.35, pillar * 0.45, pillar * 0.8, pillar * 0.35, pillar * 0.45, pillar * 2.4);
+  cast.addColorStop(0, "rgba(0, 0, 0, 0.45)");
+  cast.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = cast;
+  ctx.beginPath();
+  ctx.arc(pillar * 0.35, pillar * 0.45, pillar * 2.4, 0, Math.PI * 2);
+  ctx.fill();
 
   // The post in the middle.
   const post = ctx.createRadialGradient(-pillar * 0.3, -pillar * 0.3, pillar * 0.1, 0, 0, pillar);
