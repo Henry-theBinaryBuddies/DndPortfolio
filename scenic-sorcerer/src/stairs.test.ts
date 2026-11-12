@@ -21,6 +21,21 @@ describe("stairs descriptions", () => {
     expect(parseStairs("stairs")).toBeNull();
   });
 
+  it("reads spirals, and the way they wind", () => {
+    expect(parseStairs({ steps: 12, material: "stone", dir: "up", shape: "spiral" })).toEqual({ steps: 12, material: "stone", dir: "up", shape: "spiral" });
+    expect(parseStairs({ steps: 12, material: "stone", dir: "up", shape: "spiral", turn: "ccw" })).toEqual({ steps: 12, material: "stone", dir: "up", shape: "spiral", turn: "ccw" });
+    // A wind direction means nothing for straight stairs, and an unknown shape is straight.
+    expect(parseStairs({ steps: 8, material: "stone", dir: "up", turn: "ccw" })).toEqual({ steps: 8, material: "stone", dir: "up" });
+    expect(parseStairs({ steps: 8, material: "stone", dir: "up", shape: "helix" })).toEqual({ steps: 8, material: "stone", dir: "up" });
+  });
+
+  it("includes spiral presets that are round", () => {
+    const spirals = STAIRS_PRESETS.filter((p) => p.spec.shape === "spiral");
+    expect(spirals.length).toBeGreaterThanOrEqual(3);
+    for (const p of spirals) expect(p.widthCells).toBe(p.lengthCells);
+    expect(spirals.some((p) => p.spec.turn === "ccw")).toBe(true);
+  });
+
   it("offers presets that are all valid and have different ids", () => {
     expect(new Set(STAIRS_PRESETS.map((p) => p.id)).size).toBe(STAIRS_PRESETS.length);
     for (const p of STAIRS_PRESETS) {

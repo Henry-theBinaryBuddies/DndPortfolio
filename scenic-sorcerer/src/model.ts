@@ -99,6 +99,10 @@ export interface StairsSpec {
   steps: number;
   material: FloorId;
   dir: "up" | "down" | "none";
+  /** "spiral" winds round a central pillar. Left out for straight stairs. */
+  shape?: "spiral";
+  /** Which way a spiral winds along its arrow: clockwise (the default) or counter-clockwise. */
+  turn?: "cw" | "ccw";
 }
 
 /** An imported picture in the stamp library. */

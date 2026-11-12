@@ -23,9 +23,10 @@ size they were started at; paywalls and price rises; AI art; and editors that ne
   their true size on the grid. You can
   also add pictures of your own (PNG, JPG, WebP, GIF or SVG), kept in the browser's IndexedDB. Stamps can be scattered,
   then moved, turned, resized and flipped; your own pictures can also be tinted and given a shadow.
-- **Stairs:** twelve ready-made staircases in the stamp list (stone, wood, metal, rock, moss, ice, snow, dirt; narrow, wide,
-  up or down) that the editor draws itself in the floor materials, so they look like the floors and stay sharp at any
-  size. Select one to change its number of steps, width, length, material and arrow. They move, turn, resize, flip,
+- **Stairs:** seventeen ready-made staircases in the stamp list (stone, wood, metal, rock, moss, ice, snow, dirt; narrow,
+  wide, up or down), including five spirals that wind round a pillar, that the editor draws itself in the floor materials,
+  so they look like the floors and stay sharp at any size. Select one to change its number of steps, material and arrow,
+  and its width and length (or, for a spiral, its size and which way it winds). They move, turn, resize, flip,
   copy and save like any stamp.
 - **Text** with preset looks (room name, region, sea, small note), fonts, colour, halo and letter spacing.
 - **GM notes** on their own layer: room numbers that count up by themselves, traps, secret doors and notes. Switch the

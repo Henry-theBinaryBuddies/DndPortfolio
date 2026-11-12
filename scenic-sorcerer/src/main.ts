@@ -197,6 +197,9 @@ const stairsWidth = el<HTMLInputElement>("stairs-width");
 const stairsLength = el<HTMLInputElement>("stairs-length");
 const stairsMaterial = el<HTMLSelectElement>("stairs-material");
 const stairsDir = el<HTMLSelectElement>("stairs-dir");
+const stairsTurn = el<HTMLSelectElement>("stairs-turn");
+const stairsBox = el("stairs-box");
+const stairsTurnRow = el("stairs-turn-row");
 const clearTintButton = el<HTMLButtonElement>("btn-clear-tint");
 const removeAssetButton = el<HTMLButtonElement>("btn-remove-asset");
 const assetGrid = el("asset-grid");
@@ -652,6 +655,10 @@ function syncControls(): void {
     stairsLength.value = String(stamp.height / d.grid.cellPx);
     stairsMaterial.value = stamp.stairs.material;
     stairsDir.value = stamp.stairs.dir;
+    stairsTurn.value = stamp.stairs.turn ?? "cw";
+    // A spiral is always round, so it has one size instead of a width and a length.
+    stairsBox.hidden = stamp.stairs.shape === "spiral";
+    stairsTurnRow.hidden = stamp.stairs.shape !== "spiral";
   }
   stampScatterInput.checked = scatter;
   scatterRow.hidden = Boolean(stamp);
@@ -853,6 +860,9 @@ onSlide(stairsWidth, (value, done) => editSelectedStamp((s) => (s.stairs ? { ...
 onSlide(stairsLength, (value, done) => editSelectedStamp((s) => (s.stairs ? { ...s, height: value * history.present.grid.cellPx } : s), done));
 stairsMaterial.addEventListener("change", () => {
   editSelectedStamp((s) => (s.stairs ? { ...s, stairs: { ...s.stairs, material: stairsMaterial.value as FloorId } } : s), true);
+});
+stairsTurn.addEventListener("change", () => {
+  editSelectedStamp((s) => (s.stairs ? { ...s, stairs: { ...s.stairs, turn: stairsTurn.value === "ccw" ? "ccw" : "cw" } } : s), true);
 });
 stairsDir.addEventListener("change", () => {
   editSelectedStamp((s) => (s.stairs ? { ...s, stairs: { ...s.stairs, dir: stairsDir.value as "up" | "down" | "none" } } : s), true);

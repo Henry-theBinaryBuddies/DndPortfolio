@@ -98,11 +98,19 @@
             <label class="slider">Steps <output id="stairs-steps-out"></output>
               <input id="stairs-steps" type="range" min="2" max="24" step="1" />
             </label>
-            <label class="slider">Width <output id="stairs-width-out"></output>
-              <input id="stairs-width" type="range" min="0.5" max="8" step="0.25" />
-            </label>
-            <label class="slider">Length <output id="stairs-length-out"></output>
-              <input id="stairs-length" type="range" min="0.5" max="12" step="0.25" />
+            <div id="stairs-box">
+              <label class="slider">Width <output id="stairs-width-out"></output>
+                <input id="stairs-width" type="range" min="0.5" max="8" step="0.25" />
+              </label>
+              <label class="slider">Length <output id="stairs-length-out"></output>
+                <input id="stairs-length" type="range" min="0.5" max="12" step="0.25" />
+              </label>
+            </div>
+            <label class="field" id="stairs-turn-row">Winds
+              <select id="stairs-turn" class="input">
+                <option value="cw">Clockwise</option>
+                <option value="ccw">Counter-clockwise</option>
+              </select>
             </label>
             <label class="field">Material
               <select id="stairs-material" class="input"></select>
@@ -114,7 +122,7 @@
                 <option value="none">No arrow</option>
               </select>
             </label>
-            <p class="note">The arrow points to the top of the picture; turn the stairs to point it where you want.</p>
+            <p class="note">The arrow shows the way to go. For straight stairs it points to the top of the picture; turn the stairs to point it where you want.</p>
           </div>
           <label class="check"><input id="stamp-shadow" type="checkbox" /> Shadow</label>
           <label class="check" id="scatter-row" title="Drag to drop many at once, each a little different">
