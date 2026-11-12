@@ -22,6 +22,14 @@ export const FLOORS = [
   { id: "dirt", label: "Dirt", color: "#8a6b4a" },
   { id: "grass", label: "Grass", color: "#6f9a4d" },
   { id: "water", label: "Water", color: "#5b9bc4" },
+  { id: "snow", label: "Snow", color: "#e4ecf1" },
+  { id: "ice", label: "Ice", color: "#a6d6e6" },
+  { id: "moss", label: "Mossy", color: "#6e8559" },
+  { id: "rock", label: "Rocky", color: "#7a7064" },
+  { id: "forest", label: "Forest", color: "#46603a" },
+  { id: "magic", label: "Magical", color: "#5a3f94" },
+  { id: "lava", label: "Lava", color: "#c4400f" },
+  { id: "metal", label: "Metal", color: "#7f8c96" },
   { id: "plain", label: "Plain", color: "#e2d6ba" },
 ] as const;
 export type FloorId = (typeof FLOORS)[number]["id"];

@@ -222,7 +222,7 @@ describe("saving rooms", () => {
     raw.rooms.push({ id: "bad", points: [{ x: 0, y: 0 }, { x: 1, y: "two" }, { x: 5, y: 5 }], floor: "stone", walls: true });
     raw.rooms.push({ id: "flat", points: [{ x: 0, y: 0 }, { x: 5, y: 0 }], floor: "stone", walls: true });
     raw.rooms.push("nonsense");
-    raw.rooms[0].floor = "lava";
+    raw.rooms[0].floor = "obsidian";
     raw.openings.push({ id: "x", kind: "portal", a: { x: 0, y: 0 }, b: { x: 1, y: 1 } });
     raw.openings.push({ id: "y", kind: "door", a: { x: 0, y: null }, b: { x: 1, y: 1 } });
     const opened = parse(JSON.stringify(raw));

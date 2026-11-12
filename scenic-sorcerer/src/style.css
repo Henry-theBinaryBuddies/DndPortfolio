@@ -389,6 +389,50 @@ input:focus-visible {
 .note a {
   color: var(--accent);
 }
+.menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+}
+.menu button:hover,
+.menu button:focus-visible {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.menu hr {
+  margin: 4px 2px;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.keys dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 6px 0 14px;
+  font-size: 13px;
+}
+.keys dt {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.keys dd {
+  margin: 0;
+  color: var(--muted);
+}
 select.search {
   cursor: pointer;
   color: var(--text);

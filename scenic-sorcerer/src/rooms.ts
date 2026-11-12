@@ -136,7 +136,7 @@ function nearOutline(room: Room, p: Point): boolean {
 }
 
 /** A door or window is on a room when both its ends sit on the room's outline. */
-function isOnRoom(room: Room, o: Opening): boolean {
+export function isOnRoom(room: Room, o: Opening): boolean {
   return nearOutline(room, o.a) && nearOutline(room, o.b);
 }
 

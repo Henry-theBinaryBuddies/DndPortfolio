@@ -15,7 +15,8 @@ size they were started at; paywalls and price rises; AI art; and editors that ne
   dots to reshape it, or its square handles to stretch it (hold Shift to keep proportions). Double-click an edge to add a
   dot, or a dot to remove it. Walls can be switched off per room, so a pond is just floor.
 - **Doors and windows** snap onto walls, including curved ones, and travel with their room.
-- **Floors and paint:** six floor textures painted by code, and a brush that paints them freehand.
+- **Floors and paint:** thirteen floor textures painted by code (stone, wood, dirt, grass, water, snow, ice, mossy, rocky,
+  forest, magical, lava, metal), plus a plain colour, and a brush that paints them freehand.
 - **Stamps:** 676 painted props that come with the site, in 14 kinds (furniture, containers, tavern and kitchen, dungeon
   and crypt, nature, camp and town, weapons and armour, alchemy and magic, books and scrolls, market and trade, farm,
   water and boats, hazards and terrain, decor and lighting), browsable by kind, searchable and favourite-able, placed at
@@ -29,6 +30,11 @@ size they were started at; paywalls and price rises; AI art; and editors that ne
   through, and rooms without walls stop nothing.
 - **Levels:** several floors in one map, with the level below shown faintly for lining rooms up.
 - **Layers** to show, hide and lock each kind of thing, and unlimited undo and redo.
+- **Copy and paste:** Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+D (duplicate); hold Alt and drag to drag a copy. Right-click a thing
+  for a menu to bring it forward, move it up or down a layer, send it to the back, copy, duplicate, flip or delete it;
+  right-click empty space to paste there.
+- **Keyboard shortcuts** for every tool, nudging with the arrows, turning (Q and E), flipping (F), reordering ([ and ]),
+  zoom, and more. Press ? or choose Keys at the top for the list.
 - **Export:** a picture (PNG, JPG or WebP, up to 8192 pixels on the longest side), a Universal VTT file (`.dd2vtt`) and a
   Foundry scene (`.json`), for any level.
 

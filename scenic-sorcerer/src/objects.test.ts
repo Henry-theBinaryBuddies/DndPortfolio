@@ -174,7 +174,7 @@ describe("saving paint, stamps and layers", () => {
     const raw = JSON.parse(serialize(sample(), [picture]));
     raw.strokes.push({ id: "x", texture: "grass", size: -4, points: [{ x: 0, y: 0 }] });
     raw.strokes.push({ id: "y", texture: "grass", size: 10, points: [] });
-    raw.strokes.push({ id: "z", texture: "lava", size: 10, opacity: 7, points: [{ x: 1, y: 1 }] });
+    raw.strokes.push({ id: "z", texture: "obsidian", size: 10, opacity: 7, points: [{ x: 1, y: 1 }] });
     raw.stamps.push({ id: "bad", assetId: "tree", x: 0, y: 0, width: 0, height: 5 });
     raw.stamps.push({ id: "bad2", x: 0, y: 0, width: 5, height: 5 });
     raw.stamps[0].tint = "red; background:url(x)";

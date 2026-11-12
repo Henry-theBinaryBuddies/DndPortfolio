@@ -39,6 +39,8 @@ import {
   addMarker,
   addStamps,
   addStroke,
+  clipCentre,
+  copyItem,
   filterAssets,
   itemKind,
   labelAt,
@@ -49,6 +51,7 @@ import {
   makeStamp,
   markerAt,
   moveItem,
+  pasteClip,
   removeById,
   renumberKeys,
   reorder,
@@ -62,7 +65,9 @@ import {
   updateMarker,
   updateStamp,
   usedAssetIds,
+  type Clip,
   type ItemKind,
+  type Order,
 } from "./objects";
 import { lightIconRadius, markerRadius, measureLabel, render } from "./render";
 import {
@@ -244,7 +249,7 @@ type Drag =
   | { kind: "room"; shape: DraftShape; start: Point }
   | { kind: "vertex"; roomId: string; index: number; base: MapDoc }
   | { kind: "scale"; roomId: string; index: number; base: MapDoc }
-  | { kind: "move"; id: string; item: ItemKind; startScreen: Point; startMap: Point; base: MapDoc; moved: boolean }
+  | { kind: "move"; id: string; item: ItemKind; startScreen: Point; startMap: Point; base: MapDoc; moved: boolean; copyOf?: string }
   | { kind: "brush"; stroke: Stroke }
   | { kind: "scatter"; base: MapDoc; asset: Asset; placed: Stamp[]; last: Point };
 
@@ -260,6 +265,8 @@ let selectedId: string | null = null;
 let cursor: Point | null = null; // screen position over the canvas
 let drag: Drag | null = null;
 let liveDoc: MapDoc | null = null; // the map mid-drag, before it becomes an undo step
+let clip: Clip | null = null; // the last thing copied, ready to paste
+let pasteCount = 0; // pastes of it with no pointer over the map, so each lands a step further along
 let shape: Point[] = []; // corners of the shape room being drawn
 let spaceDown = false;
 let drawQueued = false;
@@ -406,6 +413,168 @@ document.addEventListener("visibilitychange", () => {
 function deleteSelected(): void {
   if (selectedId) commit(removeById(history.present, selectedId));
 }
+
+// ---- copy, paste, order and the right-click menu -----------------------
+
+const helpDialog = el<HTMLDialogElement>("help-dialog");
+const contextMenu = el("context-menu");
+let menuId: string | null = null; // the thing the menu was opened on
+let menuPoint: Point | null = null; // where it was opened, in map pixels
+
+/** A copy of an item sitting exactly on it, and the map that has it. Null for doors, windows and missing things. */
+function copyAt(d: MapDoc, id: string): { doc: MapDoc; id: string } | null {
+  const item = copyItem(d, id);
+  const kind = itemKind(d, id);
+  if (!item || !kind || kind === "opening" || !layerOpen(KIND_LAYER[kind])) return null;
+  return pasteClip(d, item, newId, clipCentre(item));
+}
+
+function copySelected(): void {
+  const item = selectedId ? copyItem(history.present, selectedId) : null;
+  if (!item) return;
+  clip = item;
+  pasteCount = 0;
+  showMessage("Copied. Press Ctrl+V to paste.");
+}
+
+/** Paste at the pointer if it is over the map, otherwise a step along from where the copy was. */
+function pasteHere(at?: Point): void {
+  if (!clip) {
+    showMessage("Nothing copied yet. Select something and press Ctrl+C.");
+    return;
+  }
+  if (!layerOpen(KIND_LAYER[clip.kind])) {
+    const label = LAYERS.find((l) => l.id === KIND_LAYER[clip!.kind])!.label;
+    showMessage(`The ${label} layer is hidden or locked. Change it under Layers to paste here.`);
+    return;
+  }
+  const d = history.present;
+  const home = clipCentre(clip);
+  let to: Point;
+  if (at) {
+    to = stampSnap(d.grid, at, snapMode);
+  } else if (cursor) {
+    to = stampSnap(d.grid, screenToMap(view, cursor), snapMode);
+  } else {
+    pasteCount += 1;
+    to = { x: home.x + d.grid.cellPx * pasteCount, y: home.y + d.grid.cellPx * pasteCount };
+  }
+  const pasted = pasteClip(d, clip, newId, to);
+  if (!pasted) {
+    showMessage("The map is full of those, so nothing was pasted.");
+    return;
+  }
+  if (tool !== "select") setTool("select");
+  commit(pasted.doc);
+  selectedId = pasted.id;
+  syncControls();
+  draw();
+}
+
+function duplicateSelected(): void {
+  const copy = selectedId ? copyAt(history.present, selectedId) : null;
+  const item = selectedId ? copyItem(history.present, selectedId) : null;
+  if (!copy || !item) return;
+  const cell = history.present.grid.cellPx;
+  const home = clipCentre(item);
+  const placed = pasteClip(history.present, item, newId, { x: home.x + cell, y: home.y + cell });
+  if (!placed) return;
+  commit(placed.doc);
+  selectedId = placed.id;
+  syncControls();
+  draw();
+}
+
+function reorderSelected(order: Order): void {
+  if (selectedId) commit(reorder(history.present, selectedId, order));
+}
+
+function turnSelected(degrees: number): void {
+  if (!selectedId) return;
+  const radians = (degrees * Math.PI) / 180;
+  const kind = itemKind(history.present, selectedId);
+  if (kind === "stamp") commit(updateStamp(history.present, selectedId, (s) => ({ ...s, rotation: s.rotation + radians })));
+  else if (kind === "label") commit(updateLabel(history.present, selectedId, (l) => ({ ...l, rotation: l.rotation + radians })));
+}
+
+function flipSelected(): void {
+  if (selectedId && itemKind(history.present, selectedId) === "stamp") {
+    commit(updateStamp(history.present, selectedId, (s) => ({ ...s, flip: !s.flip })));
+  }
+}
+
+function closeContextMenu(): void {
+  contextMenu.hidden = true;
+  menuId = null;
+  menuPoint = null;
+}
+
+function openContextMenu(event: MouseEvent): void {
+  const screen = eventPoint(event);
+  const mapPoint = screenToMap(view, screen);
+  const hit = pick(mapPoint);
+  if (hit) {
+    if (tool !== "select") setTool("select");
+    selectedId = hit.id;
+    syncControls();
+    draw();
+  }
+  const kind = hit ? hit.kind : null;
+  menuId = hit?.id ?? null;
+  menuPoint = mapPoint;
+  const orderable = kind === "stamp" || kind === "stroke" || kind === "room" || kind === "label";
+  for (const button of contextMenu.querySelectorAll<HTMLButtonElement>("button")) {
+    const act = button.dataset.act!;
+    button.hidden =
+      act === "paste" ? hit !== null || clip === null
+      : ["front", "up", "down", "back"].includes(act) ? !orderable
+      : act === "flip" ? kind !== "stamp"
+      : act === "copy" || act === "duplicate" ? !kind || kind === "opening"
+      : act === "delete" ? !kind
+      : false;
+  }
+  for (const rule of contextMenu.querySelectorAll<HTMLElement>("hr")) rule.hidden = !hit;
+  if ([...contextMenu.querySelectorAll("button")].every((b) => b.hidden)) return;
+  contextMenu.hidden = false;
+  const box = contextMenu.getBoundingClientRect();
+  contextMenu.style.left = `${Math.max(4, Math.min(event.clientX, window.innerWidth - box.width - 4))}px`;
+  contextMenu.style.top = `${Math.max(4, Math.min(event.clientY, window.innerHeight - box.height - 4))}px`;
+  (contextMenu.querySelector("button:not([hidden])") as HTMLButtonElement | null)?.focus();
+}
+
+canvas.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+  if (drag) return;
+  openContextMenu(event);
+});
+
+contextMenu.addEventListener("click", (event) => {
+  const act = (event.target as HTMLElement).closest("button")?.dataset.act;
+  const id = menuId;
+  const at = menuPoint;
+  closeContextMenu();
+  canvas.focus();
+  if (!act) return;
+  if (act === "paste") {
+    if (at) pasteHere(at);
+    return;
+  }
+  if (!id) return;
+  selectedId = id;
+  if (act === "front" || act === "up" || act === "down" || act === "back") reorderSelected(act);
+  else if (act === "copy") copySelected();
+  else if (act === "duplicate") duplicateSelected();
+  else if (act === "flip") flipSelected();
+  else if (act === "delete") deleteSelected();
+});
+
+window.addEventListener("pointerdown", (event) => {
+  if (!contextMenu.hidden && !contextMenu.contains(event.target as Node)) closeContextMenu();
+});
+el("btn-help").addEventListener("click", () => helpDialog.showModal());
+window.addEventListener("blur", closeContextMenu);
+window.addEventListener("resize", closeContextMenu);
+canvas.addEventListener("wheel", closeContextMenu, { passive: true });
 
 function layerOpen(layer: LayerId): boolean {
   const state = history.present.layers[layer];
@@ -1182,7 +1351,19 @@ canvas.addEventListener("pointerdown", (event) => {
     const hit = pick(mapPoint);
     selectedId = hit?.id ?? null;
     if (hit && hit.kind !== "opening") {
-      drag = { kind: "move", id: hit.id, item: hit.kind, startScreen: screen, startMap: mapPoint, base: d, moved: false };
+      // Holding Alt drags a copy and leaves the original where it was.
+      const copy = event.altKey ? copyAt(d, hit.id) : null;
+      if (copy) selectedId = copy.id;
+      drag = {
+        kind: "move",
+        id: copy?.id ?? hit.id,
+        item: hit.kind,
+        startScreen: screen,
+        startMap: mapPoint,
+        base: copy?.doc ?? d,
+        moved: false,
+        ...(copy ? { copyOf: hit.id } : {}),
+      };
     } else if (!hit) {
       startPan();
     }
@@ -1328,6 +1509,8 @@ function endDrag(event: PointerEvent): void {
     if (live && live !== finished.base) commit(live);
   } else if (finished?.kind === "move" && released) {
     if (live && live !== finished.base) commit(live);
+    else if (finished.copyOf) selectedId = finished.copyOf; // an Alt+click that did not move makes no copy
+    syncControls();
   } else if (finished?.kind === "brush" && released) {
     commit(addStroke(history.present, finished.stroke));
   } else if (finished?.kind === "scatter" && released) {
@@ -1410,14 +1593,49 @@ window.addEventListener("keydown", (event) => {
   } else if (mod && (key === "y" || (key === "z" && event.shiftKey))) {
     event.preventDefault();
     redo();
+  } else if (mod && key === "c") {
+    event.preventDefault();
+    copySelected();
+  } else if (mod && key === "x") {
+    event.preventDefault();
+    copySelected();
+    deleteSelected();
+  } else if (mod && key === "v") {
+    event.preventDefault();
+    pasteHere();
+  } else if (mod && key === "d") {
+    event.preventDefault();
+    duplicateSelected();
   } else if (mod || event.altKey) {
     return;
+  } else if (key === "?" || key === "f1") {
+    event.preventDefault();
+    helpDialog.showModal();
+  } else if (event.code === "BracketLeft" || event.code === "BracketRight") {
+    const up = event.code === "BracketRight";
+    reorderSelected(event.shiftKey ? (up ? "front" : "back") : up ? "up" : "down");
+  } else if (key.startsWith("arrow") && selectedId && (target === canvas || target === document.body)) {
+    event.preventDefault();
+    const step = history.present.grid.cellPx * (event.shiftKey ? 1 : 0.5);
+    const dx = key === "arrowleft" ? -step : key === "arrowright" ? step : 0;
+    const dy = key === "arrowup" ? -step : key === "arrowdown" ? step : 0;
+    if (itemKind(history.present, selectedId) !== "opening") commit(moveItem(history.present, selectedId, dx, dy));
+  } else if (key === "q" || key === "e") {
+    turnSelected((key === "e" ? 1 : -1) * (event.shiftKey ? 5 : 15));
+  } else if (key === "f") {
+    flipSelected();
+  } else if (key === "+" || key === "=") {
+    zoomFromCentre(1.25);
+  } else if (key === "-" || key === "_") {
+    zoomFromCentre(0.8);
   } else if (key === "0") {
     fitView();
     draw();
   } else if (key === " " && (target === canvas || target === document.body)) {
     event.preventDefault();
     spaceDown = true;
+  } else if (key === "escape" && !contextMenu.hidden) {
+    closeContextMenu();
   } else if (key === "escape") {
     const wasDrawing = shape.length > 0 || drag !== null;
     cancelDrawing();

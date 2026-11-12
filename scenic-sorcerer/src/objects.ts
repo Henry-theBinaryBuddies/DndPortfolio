@@ -1,8 +1,8 @@
 // Paint strokes, stamps and the stamp library. Pure logic: every edit returns a new MapDoc.
 
 import { snap } from "./grid";
-import type { Asset, Grid, Label, LabelStyle, Light, MapDoc, Marker, MarkerKind, Point, SnapMode, Stamp, Stroke } from "./model";
-import { closestOnSegment, distance, moveRoom, removeItem } from "./rooms";
+import { LIMITS, type Asset, type Grid, type Label, type LabelStyle, type Light, type MapDoc, type Marker, type MarkerKind, type Opening, type Point, type Room, type SnapMode, type Stamp, type Stroke } from "./model";
+import { boundsOf, closestOnSegment, distance, isOnRoom, moveRoom, removeItem } from "./rooms";
 
 export type ItemKind = "room" | "opening" | "stamp" | "stroke" | "label" | "marker" | "light";
 
@@ -279,12 +279,17 @@ export function removeById(doc: MapDoc, id: string): MapDoc {
 }
 
 /** Put a stamp, paint stroke or room above or below the others on its layer. */
-export function reorder(doc: MapDoc, id: string, to: "front" | "back"): MapDoc {
+export type Order = "front" | "back" | "up" | "down";
+
+export function reorder(doc: MapDoc, id: string, to: Order): MapDoc {
+  // "up" and "down" move one place among items of the same kind; "front" and "back" move all the way.
   const move = <T extends { id: string }>(items: T[]): T[] => {
-    const item = items.find((i) => i.id === id)!;
-    const rest = items.filter((i) => i !== item);
-    const already = to === "front" ? items[items.length - 1] === item : items[0] === item;
-    return already ? items : to === "front" ? [...rest, item] : [item, ...rest];
+    const from = items.findIndex((i) => i.id === id);
+    const target = to === "front" ? items.length - 1 : to === "back" ? 0 : to === "up" ? Math.min(from + 1, items.length - 1) : Math.max(from - 1, 0);
+    if (from < 0 || target === from) return items;
+    const rest = items.filter((_, i) => i !== from);
+    rest.splice(target, 0, items[from]);
+    return rest;
   };
   switch (itemKind(doc, id)) {
     case "stamp": {
@@ -305,6 +310,95 @@ export function reorder(doc: MapDoc, id: string, to: "front" | "back"): MapDoc {
     }
     default:
       return doc;
+  }
+}
+
+// ---- copy and paste ---------------------------------------------------
+
+/** A copy of one item, kept apart from the map so it can be pasted later, even after the original is gone. */
+export type Clip =
+  | { kind: "stamp"; item: Stamp }
+  | { kind: "label"; item: Label }
+  | { kind: "marker"; item: Marker }
+  | { kind: "light"; item: Light }
+  | { kind: "stroke"; item: Stroke }
+  | { kind: "room"; item: Room; openings: Opening[] };
+
+/** Copy an item (a room takes its doors and windows along). Doors and windows alone cannot be copied. */
+export function copyItem(doc: MapDoc, id: string): Clip | null {
+  switch (itemKind(doc, id)) {
+    case "stamp":
+      return { kind: "stamp", item: doc.stamps.find((s) => s.id === id)! };
+    case "label":
+      return { kind: "label", item: doc.labels.find((l) => l.id === id)! };
+    case "marker":
+      return { kind: "marker", item: doc.markers.find((m) => m.id === id)! };
+    case "light":
+      return { kind: "light", item: doc.lights.find((l) => l.id === id)! };
+    case "stroke":
+      return { kind: "stroke", item: doc.strokes.find((s) => s.id === id)! };
+    case "room": {
+      const room = doc.rooms.find((r) => r.id === id)!;
+      return { kind: "room", item: room, openings: doc.openings.filter((o) => isOnRoom(room, o)) };
+    }
+    default:
+      return null;
+  }
+}
+
+/** The middle of a copied item, which is the point that lands on the paste position. */
+export function clipCentre(clip: Clip): Point {
+  switch (clip.kind) {
+    case "stroke":
+    case "room": {
+      const b = boundsOf(clip.item.points);
+      return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 };
+    }
+    default:
+      return { x: clip.item.x, y: clip.item.y };
+  }
+}
+
+/**
+ * Put a copy on the map with its middle at `to`. Returns the new map and the id of the copy,
+ * or null when the map is already full of that kind of thing.
+ * Every call makes new ids, so pasting twice gives two separate copies.
+ */
+export function pasteClip(doc: MapDoc, clip: Clip, newId: () => string, to: Point): { doc: MapDoc; id: string } | null {
+  const from = clipCentre(clip);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const id = newId();
+  const shift = (p: Point): Point => ({ x: p.x + dx, y: p.y + dy });
+  switch (clip.kind) {
+    case "stamp":
+      if (doc.stamps.length >= LIMITS.maxStamps) return null;
+      return { doc: { ...doc, stamps: [...doc.stamps, { ...clip.item, id, x: clip.item.x + dx, y: clip.item.y + dy }] }, id };
+    case "label":
+      if (doc.labels.length >= LIMITS.maxLabels) return null;
+      return { doc: { ...doc, labels: [...doc.labels, { ...clip.item, id, x: clip.item.x + dx, y: clip.item.y + dy }] }, id };
+    case "marker":
+      if (doc.markers.length >= LIMITS.maxMarkers) return null;
+      return { doc: { ...doc, markers: [...doc.markers, { ...clip.item, id, x: clip.item.x + dx, y: clip.item.y + dy }] }, id };
+    case "light":
+      if (doc.lights.length >= LIMITS.maxLights) return null;
+      return { doc: { ...doc, lights: [...doc.lights, { ...clip.item, id, x: clip.item.x + dx, y: clip.item.y + dy }] }, id };
+    case "stroke":
+      if (doc.strokes.length >= LIMITS.maxStrokes) return null;
+      return { doc: { ...doc, strokes: [...doc.strokes, { ...clip.item, id, points: clip.item.points.map(shift) }] }, id };
+    case "room": {
+      if (doc.rooms.length >= LIMITS.maxRooms) return null;
+      const room: Room = {
+        ...clip.item,
+        id,
+        points: clip.item.points.map(shift),
+        ...(clip.item.ellipse
+          ? { ellipse: { x0: clip.item.ellipse.x0 + dx, y0: clip.item.ellipse.y0 + dy, x1: clip.item.ellipse.x1 + dx, y1: clip.item.ellipse.y1 + dy } }
+          : {}),
+      };
+      const openings = clip.openings.map((o) => ({ ...o, id: newId(), a: shift(o.a), b: shift(o.b) }));
+      return { doc: { ...doc, rooms: [...doc.rooms, room], openings: [...doc.openings, ...openings] }, id };
+    }
   }
 }
 

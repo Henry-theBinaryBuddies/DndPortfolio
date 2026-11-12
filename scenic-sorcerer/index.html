@@ -20,6 +20,9 @@
         <button id="btn-undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
         <button id="btn-redo" type="button" title="Redo (Ctrl+Y)">Redo</button>
       </div>
+      <div class="group">
+        <button id="btn-help" type="button" title="Keyboard shortcuts (?)">Keys</button>
+      </div>
       <span id="save-status" class="status" role="status"></span>
       <input id="file-input" type="file" accept=".json,application/json" hidden />
       <input id="asset-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden />
@@ -209,6 +212,72 @@
         </div>
       </aside>
     </main>
+
+    <div id="context-menu" class="menu" role="menu" aria-label="Actions" hidden>
+      <button type="button" role="menuitem" data-act="front">Bring to front</button>
+      <button type="button" role="menuitem" data-act="up">Move up a layer</button>
+      <button type="button" role="menuitem" data-act="down">Move down a layer</button>
+      <button type="button" role="menuitem" data-act="back">Send to back</button>
+      <hr />
+      <button type="button" role="menuitem" data-act="copy">Copy</button>
+      <button type="button" role="menuitem" data-act="duplicate">Duplicate</button>
+      <button type="button" role="menuitem" data-act="flip">Flip</button>
+      <button type="button" role="menuitem" data-act="paste">Paste here</button>
+      <hr />
+      <button type="button" role="menuitem" data-act="delete">Delete</button>
+    </div>
+
+    <dialog id="help-dialog" class="dialog" aria-labelledby="help-title">
+      <form method="dialog" class="dialog-body">
+        <h2 id="help-title">Keyboard shortcuts</h2>
+        <div class="keys">
+          <h3>Tools</h3>
+          <dl>
+            <dt>V</dt><dd>Select</dd>
+            <dt>R</dt><dd>Rectangle room</dd>
+            <dt>C</dt><dd>Circle room</dd>
+            <dt>3</dt><dd>Triangle room</dd>
+            <dt>P</dt><dd>Free shape</dd>
+            <dt>D</dt><dd>Door</dd>
+            <dt>W</dt><dd>Window</dd>
+            <dt>B</dt><dd>Brush</dd>
+            <dt>S</dt><dd>Stamp</dd>
+            <dt>L</dt><dd>Light</dd>
+            <dt>T</dt><dd>Text</dd>
+            <dt>G</dt><dd>GM notes</dd>
+          </dl>
+          <h3>Editing</h3>
+          <dl>
+            <dt>Ctrl+Z</dt><dd>Undo</dd>
+            <dt>Ctrl+Y</dt><dd>Redo (also Ctrl+Shift+Z)</dd>
+            <dt>Ctrl+C</dt><dd>Copy the selected thing</dd>
+            <dt>Ctrl+X</dt><dd>Cut</dd>
+            <dt>Ctrl+V</dt><dd>Paste at the pointer</dd>
+            <dt>Ctrl+D</dt><dd>Duplicate</dd>
+            <dt>Alt + drag</dt><dd>Drag a copy of a thing</dd>
+            <dt>Delete</dt><dd>Delete the selected thing</dd>
+            <dt>Arrows</dt><dd>Nudge half a cell (Shift: a whole cell)</dd>
+            <dt>Q / E</dt><dd>Turn a stamp or text 15° (Shift: 5°)</dd>
+            <dt>F</dt><dd>Flip a stamp</dd>
+            <dt>[ / ]</dt><dd>Move down / up a layer</dd>
+            <dt>Shift+[ / ]</dt><dd>Send to back / bring to front</dd>
+            <dt>Right-click</dt><dd>Menu: order, copy, flip, delete</dd>
+          </dl>
+          <h3>Map</h3>
+          <dl>
+            <dt>Ctrl+S</dt><dd>Save to a file</dd>
+            <dt>Ctrl+O</dt><dd>Open a file</dd>
+            <dt>+ / -</dt><dd>Zoom in / out</dd>
+            <dt>0</dt><dd>Fit the map to the window</dd>
+            <dt>Space + drag</dt><dd>Pan (or middle mouse button)</dd>
+            <dt>Escape</dt><dd>Cancel, or deselect</dd>
+            <dt>Enter</dt><dd>Finish a free shape</dd>
+            <dt>?</dt><dd>Show this list</dd>
+          </dl>
+        </div>
+        <div class="row"><button type="submit" class="wide">Close</button></div>
+      </form>
+    </dialog>
 
     <dialog id="export-dialog" class="dialog" aria-labelledby="export-title">
       <form method="dialog" class="dialog-body">
