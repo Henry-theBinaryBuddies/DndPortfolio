@@ -16,8 +16,10 @@ size they were started at; paywalls and price rises; AI art; and editors that ne
   dot, or a dot to remove it. Walls can be switched off per room, so a pond is just floor.
 - **Doors and windows** snap onto walls, including curved ones, and travel with their room.
 - **Floors and paint:** six floor textures painted by code, and a brush that paints them freehand.
-- **Stamps:** 143 painted props that come with the site (furniture, containers, tavern and kitchen, dungeon and crypt,
-  nature, camp and town), browsable by kind, searchable and favourite-able, placed at their true size on the grid. You can
+- **Stamps:** 676 painted props that come with the site, in 14 kinds (furniture, containers, tavern and kitchen, dungeon
+  and crypt, nature, camp and town, weapons and armour, alchemy and magic, books and scrolls, market and trade, farm,
+  water and boats, hazards and terrain, decor and lighting), browsable by kind, searchable and favourite-able, placed at
+  their true size on the grid. You can
   also add pictures of your own (PNG, JPG, WebP, GIF or SVG), kept in the browser's IndexedDB. Stamps can be scattered,
   then moved, turned, resized and flipped; your own pictures can also be tinted and given a shadow.
 - **Text** with preset looks (room name, region, sea, small note), fonts, colour, halo and letter spacing.
@@ -88,8 +90,8 @@ computer. The bundled stamps are not packed in; they come from the site. Maps fr
 - **Universal VTT is made for square grids.** On a hex map, use the Foundry scene.
 - **Bundled stamps are not tinted or given an extra shadow,** because the artist's licence does not allow editing the art
   and the shadows are already painted in. They were only shrunk and re-saved as WebP.
-- **Stamp art is a small slice** of what the artist offers (143 of 800 props, top-down only, no terrain tiles). More can be
-  added by picking them from the original bundle and extending the manifest.
+- **Stamp art is most of the bundle, not all of it:** 676 of 800 props. Left out are repetitive pieces (pipes, cogs, sails,
+  cliff faces) and the extra copies of near-identical variants. Props only, no terrain tiles.
 - **Not built yet:** regional, town and hex-crawl modes, the dungeon, land and town generators, print PDF, boolean shape
   editing, a building and roof tool, prefabs, elevation, and map furniture (compass, scale bar, frame).
 
@@ -100,7 +102,7 @@ The bundled stamps are by [Tom Cartos](https://www.tomcartos.com/), from his Ope
 sold or paywalled, not used with AI-generated content or NFTs, and not edited. The site credits him in the stamp panel.
 Do not remove the credit, `public/stamps/CREDITS.txt`, or the licence link.
 
-The stamps live in `public/stamps/`: one WebP per prop (200 pixels per grid square, about 4 MB in all) and
+The stamps live in `public/stamps/`: one WebP per prop (200 pixels per grid square, about 18 MB in all) and
 `manifest.json`. The 563 MB of original pictures are not in the repository (`scenic-sorcerer/artpack/` is ignored).
 `npm run check:stamps` checks that every manifest entry has its picture and that the credit file is present.
 

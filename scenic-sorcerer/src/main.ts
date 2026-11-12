@@ -101,7 +101,7 @@ const SNAP_KEY = "scenic-sorcerer.snap";
 const AUTOSAVE_DELAY_MS = 400;
 const CLICK_SLOP_PX = 4; // screen pixels the pointer may move and still count as a click
 const CLOSE_SHAPE_PX = 12; // how near the first corner a click must be to finish a shape room
-const MAX_SHOWN_ASSETS = 400;
+const MAX_SHOWN_ASSETS = 800;
 const MINE = "__mine__"; // the "My pictures" choice in the stamp kinds list
 
 const HINTS: Record<Tool, string> = {
