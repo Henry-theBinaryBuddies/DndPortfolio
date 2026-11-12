@@ -386,6 +386,13 @@ input:focus-visible {
 .note:empty {
   display: none;
 }
+.note a {
+  color: var(--accent);
+}
+select.search {
+  cursor: pointer;
+  color: var(--text);
+}
 .tint {
   display: flex;
   align-items: center;

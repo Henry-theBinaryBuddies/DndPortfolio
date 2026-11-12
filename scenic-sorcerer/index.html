@@ -69,12 +69,14 @@
         </section>
 
         <section id="library-section" hidden>
-          <h2>Your stamps</h2>
+          <h2>Stamps</h2>
           <button id="btn-import" type="button" class="wide">Add pictures…</button>
           <input id="asset-search" type="search" class="search" placeholder="Search stamps" aria-label="Search stamps" />
+          <select id="asset-group" class="search" aria-label="Kind of stamp"></select>
           <label class="check"><input id="asset-favourites" type="checkbox" /> Favourites only</label>
           <div id="asset-grid" class="asset-grid" role="listbox" aria-label="Stamps"></div>
           <p id="asset-note" class="note"></p>
+          <p class="note" id="asset-credit" hidden>Bundled stamps by <a href="https://www.tomcartos.com/" target="_blank" rel="noopener">Tom Cartos</a>, used under his <a href="https://www.tomcartos.com/toms-open-map-license" target="_blank" rel="noopener">Open Map License</a>.</p>
           <div id="asset-actions" class="row" hidden>
             <button id="btn-favourite" type="button"></button>
             <button id="btn-remove-asset" type="button" title="Take this picture out of your stamps">Remove</button>
@@ -95,7 +97,7 @@
           </label>
           <div id="stamp-extras" class="row" hidden>
             <button id="btn-flip" type="button">Flip</button>
-            <label class="tint">Tint <input id="stamp-tint" type="color" /></label>
+            <label class="tint" id="stamp-tint-label">Tint <input id="stamp-tint" type="color" /></label>
             <button id="btn-clear-tint" type="button">No tint</button>
           </div>
         </section>

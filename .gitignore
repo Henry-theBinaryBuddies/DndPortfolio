@@ -15,3 +15,6 @@ secrets/
 
 
 __pycache__/
+
+# Source art for the bundled stamps (hundreds of MB; only the shrunk copies in public/stamps are committed)
+scenic-sorcerer/artpack/

@@ -10,8 +10,68 @@ const IMAGE_TYPES = /^image\/(png|jpeg|webp|gif|svg\+xml)$/;
 
 export type Drawable = HTMLImageElement | HTMLCanvasElement;
 
+const FAVOURITES_KEY = "scenic-sorcerer-favourite-stamps";
+
+interface ManifestEntry {
+  id: string;
+  name: string;
+  group: string;
+  file: string;
+  width: number;
+  height: number;
+  ppc: number;
+}
+
+/** Where to load a stamp's picture from: the bundled file, or the copy kept in the browser. */
+export function assetSource(asset: Asset): string {
+  return asset.url ?? asset.dataUrl;
+}
+
+/** Turn the bundled stamps' manifest into library entries. Entries that do not look right are skipped. */
+export function builtinAssets(manifest: unknown, baseUrl: string, favourites: Set<string>): Asset[] {
+  if (!Array.isArray(manifest)) return [];
+  const assets: Asset[] = [];
+  for (const item of manifest as Partial<ManifestEntry>[]) {
+    if (!item || typeof item.id !== "string" || typeof item.name !== "string" || typeof item.file !== "string") continue;
+    if (!/^[a-z0-9-]+\.webp$/.test(item.file) || !(item.width! > 0) || !(item.height! > 0) || !(item.ppc! > 0)) continue;
+    assets.push({
+      id: item.id,
+      name: item.name,
+      dataUrl: "",
+      url: new URL(item.file, baseUrl).href,
+      width: item.width!,
+      height: item.height!,
+      favourite: favourites.has(item.id),
+      builtin: true,
+      group: typeof item.group === "string" ? item.group : undefined,
+      ppc: item.ppc,
+    });
+  }
+  return assets;
+}
+
+function readFavourites(): Set<string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FAVOURITES_KEY) ?? "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeFavourites(ids: string[]): void {
+  try {
+    localStorage.setItem(FAVOURITES_KEY, JSON.stringify(ids));
+  } catch {
+    // The favourites just will not be remembered.
+  }
+}
+
 export class Library {
+  /** The pictures the user imported. */
   assets: Asset[] = [];
+  /** The stamps that come with the site. */
+  builtin: Asset[] = [];
   /** False when the browser would not give us storage; the library then lasts only until the tab closes. */
   persistent = true;
   private db: IDBDatabase | null = null;
@@ -29,10 +89,28 @@ export class Library {
       this.persistent = false;
     }
     this.onChange("list");
+    await this.loadBuiltin();
+  }
+
+  /** Every stamp on offer: the bundled ones, then the user's own. */
+  get all(): Asset[] {
+    return [...this.builtin, ...this.assets];
+  }
+
+  private async loadBuiltin(): Promise<void> {
+    try {
+      const base = new URL("stamps/", document.baseURI).href;
+      const response = await fetch(new URL("manifest.json", base));
+      if (!response.ok) return;
+      this.builtin = builtinAssets(await response.json(), base, readFavourites());
+    } catch {
+      return; // the site still works with only the user's own pictures
+    }
+    this.onChange("list");
   }
 
   get(id: string): Asset | undefined {
-    return this.assets.find((a) => a.id === id);
+    return this.assets.find((a) => a.id === id) ?? this.builtin.find((a) => a.id === id);
   }
 
   /** Add pictures, skipping any already in the library. Returns the ones now present, new or not. */
@@ -53,6 +131,7 @@ export class Library {
   }
 
   async remove(id: string): Promise<void> {
+    if (this.builtin.some((a) => a.id === id)) return; // the bundled stamps stay
     this.assets = this.assets.filter((a) => a.id !== id);
     this.images.delete(id);
     await this.write((store) => store.delete(id));
@@ -63,7 +142,8 @@ export class Library {
     const asset = this.get(id);
     if (!asset) return;
     asset.favourite = favourite;
-    await this.write((store) => store.put(asset));
+    if (asset.builtin) writeFavourites(this.builtin.filter((a) => a.favourite).map((a) => a.id));
+    else await this.write((store) => store.put(asset));
     this.onChange("list");
   }
 
@@ -97,7 +177,7 @@ export class Library {
         resolve();
       };
       img.onerror = () => resolve(); // a broken picture is drawn as an empty box, as on screen
-      img.src = asset.dataUrl;
+      img.src = assetSource(asset);
     });
   }
 
@@ -127,7 +207,7 @@ export class Library {
       this.onChange("image");
     };
     img.onerror = () => this.images.set(assetId, "broken");
-    img.src = asset.dataUrl;
+    img.src = assetSource(asset);
     return null;
   }
 

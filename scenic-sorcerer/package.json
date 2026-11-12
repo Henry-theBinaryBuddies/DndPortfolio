@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:stamps": "node tools/check-stamps.mjs"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

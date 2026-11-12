@@ -1,5 +1,5 @@
 import "./style.css";
-import { Library } from "./assets";
+import { Library, assetSource } from "./assets";
 import { cellAt, mapSize, snap } from "./grid";
 import { History } from "./history";
 import { addLevel, levelDoc, removeLevel, renameLevel, switchLevel } from "./levels";
@@ -101,7 +101,8 @@ const SNAP_KEY = "scenic-sorcerer.snap";
 const AUTOSAVE_DELAY_MS = 400;
 const CLICK_SLOP_PX = 4; // screen pixels the pointer may move and still count as a click
 const CLOSE_SHAPE_PX = 12; // how near the first corner a click must be to finish a shape room
-const MAX_SHOWN_ASSETS = 150;
+const MAX_SHOWN_ASSETS = 400;
+const MINE = "__mine__"; // the "My pictures" choice in the stamp kinds list
 
 const HINTS: Record<Tool, string> = {
   select: "Click to select, drag to move. A room's dots reshape it; its squares stretch it.",
@@ -181,6 +182,11 @@ const brushOpacityInput = el<HTMLInputElement>("brush-opacity");
 const librarySection = el("library-section");
 const assetSearch = el<HTMLInputElement>("asset-search");
 const assetFavourites = el<HTMLInputElement>("asset-favourites");
+const assetGroup = el<HTMLSelectElement>("asset-group");
+const assetCredit = el("asset-credit");
+const stampTintLabel = el("stamp-tint-label");
+const clearTintButton = el<HTMLButtonElement>("btn-clear-tint");
+const removeAssetButton = el<HTMLButtonElement>("btn-remove-asset");
 const assetGrid = el("asset-grid");
 const assetNote = el("asset-note");
 const assetActions = el("asset-actions");
@@ -459,10 +465,17 @@ function syncControls(): void {
   stampSizeInput.value = String(stamp ? stampLongest(stamp) / d.grid.cellPx : stampSize);
   stampRotationInput.value = String(stamp ? Math.round((stamp.rotation * 180) / Math.PI) : stampRotation);
   stampShadowInput.checked = stamp ? stamp.shadow : stampShadow;
+  // Bundled art already has its shadow painted in, so the extra one is not offered for it.
+  const bundledArt = stamp ? library.get(stamp.assetId)?.builtin : assetId ? library.get(assetId)?.builtin : false;
+  stampShadowInput.closest("label")!.hidden = Boolean(bundledArt);
   stampScatterInput.checked = scatter;
   scatterRow.hidden = Boolean(stamp);
   stampExtras.hidden = !stamp;
   stampTintInput.value = stamp?.tint ?? "#ffffff";
+  // The bundled art's licence does not allow editing it, so those stamps are not tinted.
+  const tintable = !(stamp && library.get(stamp.assetId)?.builtin);
+  stampTintLabel.hidden = !tintable;
+  clearTintButton.hidden = !tintable;
 
   const label = selectedLabel();
   const style = label ?? labelStyle;
@@ -876,7 +889,18 @@ el("btn-zoom-out").addEventListener("click", () => zoomFromCentre(0.8));
 // ---- stamp library ----------------------------------------------------
 
 function renderLibrary(): void {
-  const matches = filterAssets(library.assets, assetSearch.value, assetFavourites.checked);
+  const groups = [...new Set(library.all.map((a) => a.group).filter((g): g is string => Boolean(g)))];
+  const wanted = assetGroup.value;
+  assetGroup.replaceChildren(
+    new Option("All stamps", ""),
+    ...groups.map((g) => new Option(g, g)),
+    ...(library.assets.length > 0 && groups.length > 0 ? [new Option("My pictures", MINE)] : []),
+  );
+  assetGroup.value = [...assetGroup.options].some((o) => o.value === wanted) ? wanted : "";
+  assetGroup.hidden = groups.length === 0;
+  assetCredit.hidden = library.builtin.length === 0;
+  const pool = assetGroup.value === MINE ? library.assets : library.all;
+  const matches = filterAssets(pool, assetSearch.value, assetFavourites.checked, assetGroup.value === MINE ? "" : assetGroup.value);
   if (assetId && !library.get(assetId)) assetId = null;
   assetGrid.replaceChildren(
     ...matches.slice(0, MAX_SHOWN_ASSETS).map((asset) => {
@@ -888,7 +912,7 @@ function renderLibrary(): void {
       button.title = asset.name;
       button.classList.toggle("favourite", asset.favourite);
       const img = document.createElement("img");
-      img.src = asset.dataUrl;
+      img.src = assetSource(asset);
       img.alt = "";
       img.loading = "lazy";
       const label = document.createElement("span");
@@ -899,7 +923,7 @@ function renderLibrary(): void {
   );
 
   let note = "";
-  if (library.assets.length === 0) {
+  if (library.all.length === 0) {
     note = "No stamps yet. Add pictures from your computer, or drag them onto the map. PNG pictures with a see-through background work best.";
   } else if (matches.length === 0) {
     note = "No stamps match.";
@@ -912,17 +936,26 @@ function renderLibrary(): void {
   const chosen = assetId ? library.get(assetId) : undefined;
   assetActions.hidden = !chosen;
   favouriteButton.textContent = chosen?.favourite ? "Unfavourite" : "★ Favourite";
+  removeAssetButton.hidden = Boolean(chosen?.builtin);
 }
 
 assetGrid.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest("button");
   if (!button?.dataset.id) return;
   assetId = button.dataset.id;
+  const chosen = library.get(assetId);
+  if (chosen?.ppc) {
+    // Bundled art knows its real size on the grid, so a new stamp starts at that size.
+    const natural = Math.max(chosen.width, chosen.height) / chosen.ppc;
+    stampSize = Math.min(10, Math.max(0.25, Math.round(natural * 4) / 4));
+    syncControls();
+  }
   renderLibrary();
   draw();
 });
 assetSearch.addEventListener("input", renderLibrary);
 assetFavourites.addEventListener("change", renderLibrary);
+assetGroup.addEventListener("change", renderLibrary);
 el("btn-import").addEventListener("click", () => assetInput.click());
 favouriteButton.addEventListener("click", () => {
   const asset = assetId ? library.get(assetId) : undefined;
@@ -975,7 +1008,8 @@ window.addEventListener("drop", (event) => {
 function saveToFile(): void {
   const d = history.present;
   // Pack the pictures the map uses into the file, so it opens on another computer.
-  const pictures = [...usedAssetIds(d)].map((id) => library.get(id)).filter((a): a is Asset => Boolean(a));
+  // Bundled stamps are not packed in: they come from the site, so the file stays small.
+  const pictures = [...usedAssetIds(d)].map((id) => library.get(id)).filter((a): a is Asset => Boolean(a) && !a!.builtin);
   const url = URL.createObjectURL(new Blob([serialize(d, pictures)], { type: "application/json" }));
   const link = document.createElement("a");
   link.href = url;
@@ -1073,7 +1107,7 @@ function stampUnder(screen: Point): Stamp | null {
   const grid = history.present.grid;
   const mapPoint = screenToMap(view, screen);
   const centre = scatter ? mapPoint : stampSnap(grid, mapPoint, snapMode);
-  return makeStamp(newId(), asset, centre, stampSize * grid.cellPx, (stampRotation * Math.PI) / 180, stampShadow);
+  return makeStamp(newId(), asset, centre, stampSize * grid.cellPx, (stampRotation * Math.PI) / 180, stampShadow && !asset.builtin);
 }
 
 /** The GM note a click at this screen point would place. */
@@ -1087,7 +1121,7 @@ function scatteredStamp(asset: Asset, p: Point): Stamp {
   const longest = stampSize * history.present.grid.cellPx;
   const jitter = () => (Math.random() - 0.5) * longest * 0.4;
   const centre = { x: p.x + jitter(), y: p.y + jitter() };
-  return makeStamp(newId(), asset, centre, longest * (0.8 + Math.random() * 0.4), Math.random() * Math.PI * 2, stampShadow);
+  return makeStamp(newId(), asset, centre, longest * (0.8 + Math.random() * 0.4), Math.random() * Math.PI * 2, stampShadow && !asset.builtin);
 }
 
 /** The topmost selectable thing under a map point, skipping hidden and locked layers. */

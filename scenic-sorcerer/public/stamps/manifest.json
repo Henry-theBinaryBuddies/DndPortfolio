@@ -1,0 +1,1289 @@
+[
+ {
+  "id": "tc-dining-table-prefab-05",
+  "name": "Dining Table 05",
+  "group": "Furniture",
+  "file": "tc-dining-table-prefab-05.webp",
+  "width": 800,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-dining-table-prefab-06",
+  "name": "Dining Table 06",
+  "group": "Furniture",
+  "file": "tc-dining-table-prefab-06.webp",
+  "width": 800,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-dark-wooden-table-01",
+  "name": "Dark Wooden Table 01",
+  "group": "Furniture",
+  "file": "tc-dark-wooden-table-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-dark-wooden-table-02",
+  "name": "Dark Wooden Table 02",
+  "group": "Furniture",
+  "file": "tc-dark-wooden-table-02.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-carved-wooden-table",
+  "name": "Carved Wooden Table",
+  "group": "Furniture",
+  "file": "tc-carved-wooden-table.webp",
+  "width": 600,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-wooden-table-large-01",
+  "name": "Old Wooden Table Large 01",
+  "group": "Furniture",
+  "file": "tc-old-wooden-table-large-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-saloon-table-01",
+  "name": "Saloon Table 01",
+  "group": "Furniture",
+  "file": "tc-saloon-table-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-saloon-table-round-01",
+  "name": "Saloon Table Round 01",
+  "group": "Furniture",
+  "file": "tc-saloon-table-round-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-reading-table-01",
+  "name": "Reading Table 01",
+  "group": "Furniture",
+  "file": "tc-reading-table-01.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-chair-wooden-simple-03",
+  "name": "Chair Wooden Simple 03",
+  "group": "Furniture",
+  "file": "tc-chair-wooden-simple-03.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-luxury-chair-01-green",
+  "name": "Luxury Chair 01 Green",
+  "group": "Furniture",
+  "file": "tc-luxury-chair-01-green.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-gothic-armchair-black",
+  "name": "Gothic Armchair Black",
+  "group": "Furniture",
+  "file": "tc-gothic-armchair-black.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-armchair-small-01-red",
+  "name": "Armchair Small 01 Red",
+  "group": "Furniture",
+  "file": "tc-armchair-small-01-red.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-castle-throne-green",
+  "name": "Castle Throne Green",
+  "group": "Furniture",
+  "file": "tc-castle-throne-green.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-saloon-chair",
+  "name": "Saloon Chair",
+  "group": "Furniture",
+  "file": "tc-saloon-chair.webp",
+  "width": 100,
+  "height": 100,
+  "ppc": 200
+ },
+ {
+  "id": "tc-saloon-barstool",
+  "name": "Saloon Barstool",
+  "group": "Furniture",
+  "file": "tc-saloon-barstool.webp",
+  "width": 100,
+  "height": 100,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-rocking-chair",
+  "name": "Old Rocking Chair",
+  "group": "Furniture",
+  "file": "tc-old-rocking-chair.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-wooden-bench-01",
+  "name": "Old Wooden Bench 01",
+  "group": "Furniture",
+  "file": "tc-old-wooden-bench-01.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-cushion-bench-red",
+  "name": "Cushion Bench Red",
+  "group": "Furniture",
+  "file": "tc-cushion-bench-red.webp",
+  "width": 600,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-pew-bench",
+  "name": "Pew Bench",
+  "group": "Furniture",
+  "file": "tc-pew-bench.webp",
+  "width": 600,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-couch-ornate-01-red",
+  "name": "Couch Ornate 01 Red",
+  "group": "Furniture",
+  "file": "tc-couch-ornate-01-red.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-luxury-couch-green",
+  "name": "Luxury Couch Green",
+  "group": "Furniture",
+  "file": "tc-luxury-couch-green.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-homestead-double-bed-red",
+  "name": "Homestead Double Bed Red",
+  "group": "Furniture",
+  "file": "tc-homestead-double-bed-red.webp",
+  "width": 200,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-homestead-single-bed-white",
+  "name": "Homestead Single Bed White",
+  "group": "Furniture",
+  "file": "tc-homestead-single-bed-white.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-simple-wooden-bed-prefab-01",
+  "name": "Simple Wooden Bed 01",
+  "group": "Furniture",
+  "file": "tc-simple-wooden-bed-prefab-01.webp",
+  "width": 200,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-bed-gothic-red",
+  "name": "Bed Gothic Red",
+  "group": "Furniture",
+  "file": "tc-bed-gothic-red.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-bedroll-brown-01",
+  "name": "Bedroll Brown 01",
+  "group": "Furniture",
+  "file": "tc-bedroll-brown-01.webp",
+  "width": 200,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-prison-bed-01",
+  "name": "Prison Bed 01",
+  "group": "Furniture",
+  "file": "tc-prison-bed-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-wardrobe-01",
+  "name": "Wardrobe 01",
+  "group": "Furniture",
+  "file": "tc-wardrobe-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-bookshelf-01",
+  "name": "Old Bookshelf 01",
+  "group": "Furniture",
+  "file": "tc-old-bookshelf-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-library-bookcase-prefab-07",
+  "name": "Library Bookcase 07",
+  "group": "Furniture",
+  "file": "tc-library-bookcase-prefab-07.webp",
+  "width": 200,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-wooden-desk",
+  "name": "Old Wooden Desk",
+  "group": "Furniture",
+  "file": "tc-old-wooden-desk.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-gothic-carpet-red",
+  "name": "Gothic Carpet Red",
+  "group": "Furniture",
+  "file": "tc-gothic-carpet-red.webp",
+  "width": 600,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-mirror-standing-simple",
+  "name": "Mirror Standing Simple",
+  "group": "Furniture",
+  "file": "tc-mirror-standing-simple.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-grandfather-clock",
+  "name": "Grandfather Clock",
+  "group": "Furniture",
+  "file": "tc-grandfather-clock.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-ale-barrel-02",
+  "name": "Ale Barrel 02",
+  "group": "Containers",
+  "file": "tc-ale-barrel-02.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-barrel-apple-top",
+  "name": "Barrel Apple Top",
+  "group": "Containers",
+  "file": "tc-barrel-apple-top.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-barrel-water-top",
+  "name": "Barrel Water Top",
+  "group": "Containers",
+  "file": "tc-barrel-water-top.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-tavern-beer-barrels-prefab-01",
+  "name": "Tavern Beer Barrels 01",
+  "group": "Containers",
+  "file": "tc-tavern-beer-barrels-prefab-01.webp",
+  "width": 600,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-wooden-crate-01",
+  "name": "Old Wooden Crate 01",
+  "group": "Containers",
+  "file": "tc-old-wooden-crate-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-wooden-crate-03",
+  "name": "Old Wooden Crate 03",
+  "group": "Containers",
+  "file": "tc-old-wooden-crate-03.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-broken-wooden-crate-01",
+  "name": "Broken Wooden Crate 01",
+  "group": "Containers",
+  "file": "tc-broken-wooden-crate-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-crates-and-netting",
+  "name": "Crates & Netting",
+  "group": "Containers",
+  "file": "tc-crates-and-netting.webp",
+  "width": 600,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-treasure-chest-01-closed",
+  "name": "Treasure Chest 01 Closed",
+  "group": "Containers",
+  "file": "tc-treasure-chest-01-closed.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-treasure-chest-01-open",
+  "name": "Treasure Chest 01 Open",
+  "group": "Containers",
+  "file": "tc-treasure-chest-01-open.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-treasure-chest-01-full",
+  "name": "Treasure Chest 01 Full",
+  "group": "Containers",
+  "file": "tc-treasure-chest-01-full.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-chest-01",
+  "name": "Chest 01",
+  "group": "Containers",
+  "file": "tc-chest-01.webp",
+  "width": 167,
+  "height": 117,
+  "ppc": 200
+ },
+ {
+  "id": "tc-travellers-chest-02",
+  "name": "Travellers Chest 02",
+  "group": "Containers",
+  "file": "tc-travellers-chest-02.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-dark-wooden-chest",
+  "name": "Dark Wooden Chest",
+  "group": "Containers",
+  "file": "tc-dark-wooden-chest.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-basket-01",
+  "name": "Basket 01",
+  "group": "Containers",
+  "file": "tc-basket-01.webp",
+  "width": 113,
+  "height": 114,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-sack-white-01",
+  "name": "Old Sack White 01",
+  "group": "Containers",
+  "file": "tc-old-sack-white-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-pot-ceramic-01",
+  "name": "Pot Ceramic 01",
+  "group": "Containers",
+  "file": "tc-pot-ceramic-01.webp",
+  "width": 108,
+  "height": 84,
+  "ppc": 200
+ },
+ {
+  "id": "tc-urn-broken-brown-03",
+  "name": "Urn Broken Brown 03",
+  "group": "Containers",
+  "file": "tc-urn-broken-brown-03.webp",
+  "width": 133,
+  "height": 133,
+  "ppc": 200
+ },
+ {
+  "id": "tc-tavern-bar-prefab-02",
+  "name": "Tavern Bar 02",
+  "group": "Tavern and kitchen",
+  "file": "tc-tavern-bar-prefab-02.webp",
+  "width": 800,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-light-wood-tavern-bar-prefab-02",
+  "name": "Light Wood Tavern Bar 02",
+  "group": "Tavern and kitchen",
+  "file": "tc-light-wood-tavern-bar-prefab-02.webp",
+  "width": 1000,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-tavern-shelf-prefab-01",
+  "name": "Tavern Shelf 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-tavern-shelf-prefab-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-iron-pot-01",
+  "name": "Iron Pot 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-iron-pot-01.webp",
+  "width": 75,
+  "height": 81,
+  "ppc": 200
+ },
+ {
+  "id": "tc-cauldron",
+  "name": "Cauldron",
+  "group": "Tavern and kitchen",
+  "file": "tc-cauldron.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-range-stove-01",
+  "name": "Range Stove 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-range-stove-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-stone-fireplace-01",
+  "name": "Stone Fireplace 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-stone-fireplace-01.webp",
+  "width": 600,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-kitchen-fireplace-prefab-02",
+  "name": "Kitchen Fireplace 02",
+  "group": "Tavern and kitchen",
+  "file": "tc-kitchen-fireplace-prefab-02.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-campfire-01",
+  "name": "Campfire 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-campfire-01.webp",
+  "width": 175,
+  "height": 190,
+  "ppc": 200
+ },
+ {
+  "id": "tc-firebowl-logs",
+  "name": "Firebowl Logs",
+  "group": "Tavern and kitchen",
+  "file": "tc-firebowl-logs.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-iron-brazier-open",
+  "name": "Iron Brazier Open",
+  "group": "Tavern and kitchen",
+  "file": "tc-iron-brazier-open.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-tankard",
+  "name": "Tankard",
+  "group": "Tavern and kitchen",
+  "file": "tc-tankard.webp",
+  "width": 50,
+  "height": 50,
+  "ppc": 200
+ },
+ {
+  "id": "tc-bowl-wood-01",
+  "name": "Bowl Wood 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-bowl-wood-01.webp",
+  "width": 67,
+  "height": 67,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plate-wood-01",
+  "name": "Plate Wood 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-plate-wood-01.webp",
+  "width": 67,
+  "height": 67,
+  "ppc": 200
+ },
+ {
+  "id": "tc-candle-group-01",
+  "name": "Candle Group 01",
+  "group": "Tavern and kitchen",
+  "file": "tc-candle-group-01.webp",
+  "width": 59,
+  "height": 70,
+  "ppc": 200
+ },
+ {
+  "id": "tc-standing-candelabra-bronze",
+  "name": "Standing Candelabra Bronze",
+  "group": "Tavern and kitchen",
+  "file": "tc-standing-candelabra-bronze.webp",
+  "width": 100,
+  "height": 100,
+  "ppc": 200
+ },
+ {
+  "id": "tc-coffin-wooden-01",
+  "name": "Coffin Wooden 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-coffin-wooden-01.webp",
+  "width": 200,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-cemetery-headstone-old-01",
+  "name": "Cemetery Headstone Old 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-cemetery-headstone-old-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-cemetery-tomb-lid-old-01",
+  "name": "Cemetery Tomb Lid Old 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-cemetery-tomb-lid-old-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-skeleton-01",
+  "name": "Skeleton 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-skeleton-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-skull-01",
+  "name": "Skull 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-skull-01.webp",
+  "width": 100,
+  "height": 100,
+  "ppc": 200
+ },
+ {
+  "id": "tc-statue-torch-bearer-stone",
+  "name": "Statue Torch Bearer",
+  "group": "Dungeon and crypt",
+  "file": "tc-statue-torch-bearer-stone.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-mage-statue-stone",
+  "name": "Mage Statue",
+  "group": "Dungeon and crypt",
+  "file": "tc-mage-statue-stone.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-acolyte-statue-stone",
+  "name": "Acolyte Statue",
+  "group": "Dungeon and crypt",
+  "file": "tc-acolyte-statue-stone.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-templar-striding-statue-stone",
+  "name": "Templar Striding Statue",
+  "group": "Dungeon and crypt",
+  "file": "tc-templar-striding-statue-stone.webp",
+  "width": 400,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-trap-spiked-pillar",
+  "name": "Trap Spiked Pillar",
+  "group": "Dungeon and crypt",
+  "file": "tc-trap-spiked-pillar.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-trap-spike-pit",
+  "name": "Trap Spike Pit",
+  "group": "Dungeon and crypt",
+  "file": "tc-trap-spike-pit.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-trap-pungee-pit-wood",
+  "name": "Trap Pungee Pit Wood",
+  "group": "Dungeon and crypt",
+  "file": "tc-trap-pungee-pit-wood.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-torturers-rack",
+  "name": "Torturers Rack",
+  "group": "Dungeon and crypt",
+  "file": "tc-torturers-rack.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-torturers-iron-maiden",
+  "name": "Torturers Iron Maiden",
+  "group": "Dungeon and crypt",
+  "file": "tc-torturers-iron-maiden.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-cage-01",
+  "name": "Cage 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-cage-01.webp",
+  "width": 371,
+  "height": 375,
+  "ppc": 200
+ },
+ {
+  "id": "tc-mounted-manacles",
+  "name": "Mounted Manacles",
+  "group": "Dungeon and crypt",
+  "file": "tc-mounted-manacles.webp",
+  "width": 100,
+  "height": 67,
+  "ppc": 200
+ },
+ {
+  "id": "tc-arcane-circle-01",
+  "name": "Arcane Circle 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-arcane-circle-01.webp",
+  "width": 600,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-arcane-circle-04",
+  "name": "Arcane Circle 04",
+  "group": "Dungeon and crypt",
+  "file": "tc-arcane-circle-04.webp",
+  "width": 600,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-portal-01",
+  "name": "Portal 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-portal-01.webp",
+  "width": 360,
+  "height": 361,
+  "ppc": 200
+ },
+ {
+  "id": "tc-blood-splatter-01",
+  "name": "Blood Splatter 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-blood-splatter-01.webp",
+  "width": 213,
+  "height": 279,
+  "ppc": 200
+ },
+ {
+  "id": "tc-rubble-brick-pile-01",
+  "name": "Rubble Brick Pile 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-rubble-brick-pile-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-pressure-plate",
+  "name": "Pressure Plate",
+  "group": "Dungeon and crypt",
+  "file": "tc-pressure-plate.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-gallows-01",
+  "name": "Gallows 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-gallows-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-stone-bed-01",
+  "name": "Stone Bed 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-stone-bed-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-table-stone-01",
+  "name": "Table Stone 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-table-stone-01.webp",
+  "width": 200,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-metal-grate",
+  "name": "Metal Grate",
+  "group": "Dungeon and crypt",
+  "file": "tc-metal-grate.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-trapdoor-hatch-wood",
+  "name": "Trapdoor Hatch Wood",
+  "group": "Dungeon and crypt",
+  "file": "tc-trapdoor-hatch-wood.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-fountain-01",
+  "name": "Fountain 01",
+  "group": "Dungeon and crypt",
+  "file": "tc-fountain-01.webp",
+  "width": 800,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-oak-large",
+  "name": "Plant Tree Oak Large",
+  "group": "Nature",
+  "file": "tc-plant-tree-oak-large.webp",
+  "width": 800,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-oak-1",
+  "name": "Plant Tree Oak 1",
+  "group": "Nature",
+  "file": "tc-plant-tree-oak-1.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-oak-5",
+  "name": "Plant Tree Oak 5",
+  "group": "Nature",
+  "file": "tc-plant-tree-oak-5.webp",
+  "width": 600,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-maple-large",
+  "name": "Plant Tree Maple Large",
+  "group": "Nature",
+  "file": "tc-plant-tree-maple-large.webp",
+  "width": 800,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-maple-1",
+  "name": "Plant Tree Maple 1",
+  "group": "Nature",
+  "file": "tc-plant-tree-maple-1.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-maple-autumn-large",
+  "name": "Plant Tree Maple Autumn Large",
+  "group": "Nature",
+  "file": "tc-plant-tree-maple-autumn-large.webp",
+  "width": 800,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-oak-autumn-2",
+  "name": "Plant Tree Oak Autumn 2",
+  "group": "Nature",
+  "file": "tc-plant-tree-oak-autumn-2.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-ash-2",
+  "name": "Plant Tree Ash 2",
+  "group": "Nature",
+  "file": "tc-plant-tree-ash-2.webp",
+  "width": 800,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-weeping-tree-02",
+  "name": "Weeping Tree 02",
+  "group": "Nature",
+  "file": "tc-weeping-tree-02.webp",
+  "width": 800,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-creepy-dead-tree-small-01",
+  "name": "Creepy Dead Tree Small 01",
+  "group": "Nature",
+  "file": "tc-creepy-dead-tree-small-01.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-plant-tree-log-dark-1",
+  "name": "Plant Tree Log Dark 1",
+  "group": "Nature",
+  "file": "tc-plant-tree-log-dark-1.webp",
+  "width": 800,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-tree-trunk-01",
+  "name": "Tree Trunk 01",
+  "group": "Nature",
+  "file": "tc-tree-trunk-01.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-mushroom-conifer-tuft-brown-02",
+  "name": "Mushroom Conifer Tuft Brown 02",
+  "group": "Nature",
+  "file": "tc-mushroom-conifer-tuft-brown-02.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-fey-plant-asplenium-green-01",
+  "name": "Fey Plant Asplenium Green 01",
+  "group": "Nature",
+  "file": "tc-fey-plant-asplenium-green-01.webp",
+  "width": 400,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-house-plant-01",
+  "name": "House Plant 01",
+  "group": "Nature",
+  "file": "tc-house-plant-01.webp",
+  "width": 103,
+  "height": 77,
+  "ppc": 200
+ },
+ {
+  "id": "tc-log-pile-01",
+  "name": "Log Pile 01",
+  "group": "Nature",
+  "file": "tc-log-pile-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-uncut-logs-pile-02",
+  "name": "Uncut Logs Pile 02",
+  "group": "Nature",
+  "file": "tc-uncut-logs-pile-02.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-water-pool-01",
+  "name": "Water Pool 01",
+  "group": "Nature",
+  "file": "tc-water-pool-01.webp",
+  "width": 1677,
+  "height": 978,
+  "ppc": 200
+ },
+ {
+  "id": "tc-water-pool-02",
+  "name": "Water Pool 02",
+  "group": "Nature",
+  "file": "tc-water-pool-02.webp",
+  "width": 815,
+  "height": 711,
+  "ppc": 200
+ },
+ {
+  "id": "tc-lava-pool-01",
+  "name": "Lava Pool 01",
+  "group": "Nature",
+  "file": "tc-lava-pool-01.webp",
+  "width": 1847,
+  "height": 1095,
+  "ppc": 200
+ },
+ {
+  "id": "tc-chasm-01",
+  "name": "Chasm 01",
+  "group": "Nature",
+  "file": "tc-chasm-01.webp",
+  "width": 5003,
+  "height": 727,
+  "ppc": 200
+ },
+ {
+  "id": "tc-bandit-tent-beige-01",
+  "name": "Bandit Tent Beige 01",
+  "group": "Camp and town",
+  "file": "tc-bandit-tent-beige-01.webp",
+  "width": 600,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-warcamp-tent-tiny-canopy-white",
+  "name": "Warcamp Tent Tiny Canopy White",
+  "group": "Camp and town",
+  "file": "tc-warcamp-tent-tiny-canopy-white.webp",
+  "width": 1000,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-teepee-patched",
+  "name": "Teepee Patched",
+  "group": "Camp and town",
+  "file": "tc-teepee-patched.webp",
+  "width": 600,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-yurt-03",
+  "name": "Yurt 03",
+  "group": "Camp and town",
+  "file": "tc-yurt-03.webp",
+  "width": 800,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-market-stall-cover-medium-red",
+  "name": "Market Stall Cover Medium Red",
+  "group": "Camp and town",
+  "file": "tc-market-stall-cover-medium-red.webp",
+  "width": 600,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-market-stall-table-01",
+  "name": "Market Stall Table 01",
+  "group": "Camp and town",
+  "file": "tc-market-stall-table-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-open-wagon-01",
+  "name": "Open Wagon 01",
+  "group": "Camp and town",
+  "file": "tc-open-wagon-01.webp",
+  "width": 400,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-wagon-large-covered-beige",
+  "name": "Wagon Large Covered Beige",
+  "group": "Camp and town",
+  "file": "tc-wagon-large-covered-beige.webp",
+  "width": 400,
+  "height": 800,
+  "ppc": 200
+ },
+ {
+  "id": "tc-cart-small-01",
+  "name": "Cart Small 01",
+  "group": "Camp and town",
+  "file": "tc-cart-small-01.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-vardo-wagon-01-wooden",
+  "name": "Vardo Wagon 01 Wooden",
+  "group": "Camp and town",
+  "file": "tc-vardo-wagon-01-wooden.webp",
+  "width": 400,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-well",
+  "name": "Well",
+  "group": "Camp and town",
+  "file": "tc-well.webp",
+  "width": 600,
+  "height": 600,
+  "ppc": 200
+ },
+ {
+  "id": "tc-old-well-covered",
+  "name": "Old Well Covered",
+  "group": "Camp and town",
+  "file": "tc-old-well-covered.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-water-trough",
+  "name": "Water Trough",
+  "group": "Camp and town",
+  "file": "tc-water-trough.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-signpost-01",
+  "name": "Signpost 01",
+  "group": "Camp and town",
+  "file": "tc-signpost-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-lampost",
+  "name": "Lamp post",
+  "group": "Camp and town",
+  "file": "tc-lampost.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-street-lantern-03",
+  "name": "Street Lantern 03",
+  "group": "Camp and town",
+  "file": "tc-street-lantern-03.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-wooden-walkway-04",
+  "name": "Wooden Walkway 04",
+  "group": "Camp and town",
+  "file": "tc-wooden-walkway-04.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-rowing-boat-01",
+  "name": "Rowing Boat 01",
+  "group": "Camp and town",
+  "file": "tc-rowing-boat-01.webp",
+  "width": 200,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-scarecrow",
+  "name": "Scarecrow",
+  "group": "Camp and town",
+  "file": "tc-scarecrow.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-hay-feeder",
+  "name": "Hay Feeder",
+  "group": "Camp and town",
+  "file": "tc-hay-feeder.webp",
+  "width": 800,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-barrow-02",
+  "name": "Barrow 02",
+  "group": "Camp and town",
+  "file": "tc-barrow-02.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-anvil-02",
+  "name": "Anvil 02",
+  "group": "Camp and town",
+  "file": "tc-anvil-02.webp",
+  "width": 400,
+  "height": 200,
+  "ppc": 200
+ },
+ {
+  "id": "tc-forge01lit",
+  "name": "Forge, lit",
+  "group": "Camp and town",
+  "file": "tc-forge01lit.webp",
+  "width": 600,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-smiths-table-01",
+  "name": "Smiths Table 01",
+  "group": "Camp and town",
+  "file": "tc-smiths-table-01.webp",
+  "width": 200,
+  "height": 400,
+  "ppc": 200
+ },
+ {
+  "id": "tc-weapon-stand-single-swords-01",
+  "name": "Weapon Stand Single Swords 01",
+  "group": "Camp and town",
+  "file": "tc-weapon-stand-single-swords-01.webp",
+  "width": 200,
+  "height": 200,
+  "ppc": 200
+ }
+]

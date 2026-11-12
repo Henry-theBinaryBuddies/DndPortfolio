@@ -316,11 +316,12 @@ export function assetName(fileName: string): string {
   return base.slice(0, 60) || "Untitled";
 }
 
-/** Library entries matching every word of the search, favourites first, then by name. */
-export function filterAssets(assets: Asset[], query: string, favouritesOnly: boolean): Asset[] {
+/** Library entries matching every word of the search (in the name or group), favourites first, then by name. A group limits it to that group. */
+export function filterAssets(assets: Asset[], query: string, favouritesOnly: boolean, group = ""): Asset[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   return assets
-    .filter((a) => (!favouritesOnly || a.favourite) && words.every((w) => a.name.toLowerCase().includes(w)))
+    .filter((a) => (!favouritesOnly || a.favourite) && (!group || a.group === group))
+    .filter((a) => words.every((w) => `${a.name} ${a.group ?? ""}`.toLowerCase().includes(w)))
     .sort((a, b) => Number(b.favourite) - Number(a.favourite) || a.name.localeCompare(b.name));
 }
 

@@ -92,6 +92,12 @@ export interface Asset {
   width: number;
   height: number;
   favourite: boolean;
+  /** Bundled stamps only: where the picture is served from. They are not kept in browser storage or in saved maps. */
+  url?: string;
+  builtin?: boolean;
+  group?: string;
+  /** Pixels per grid cell in the source art, so a stamp can be placed at its natural size. */
+  ppc?: number;
 }
 
 export const FONTS = [

@@ -16,8 +16,10 @@ size they were started at; paywalls and price rises; AI art; and editors that ne
   dot, or a dot to remove it. Walls can be switched off per room, so a pond is just floor.
 - **Doors and windows** snap onto walls, including curved ones, and travel with their room.
 - **Floors and paint:** six floor textures painted by code, and a brush that paints them freehand.
-- **Stamps:** pictures you add yourself (PNG, JPG, WebP, GIF or SVG). They are kept in the browser's IndexedDB, can be
-  scattered, then moved, turned, resized, flipped, tinted and given a shadow.
+- **Stamps:** 143 painted props that come with the site (furniture, containers, tavern and kitchen, dungeon and crypt,
+  nature, camp and town), browsable by kind, searchable and favourite-able, placed at their true size on the grid. You can
+  also add pictures of your own (PNG, JPG, WebP, GIF or SVG), kept in the browser's IndexedDB. Stamps can be scattered,
+  then moved, turned, resized and flipped; your own pictures can also be tinted and given a shadow.
 - **Text** with preset looks (room name, region, sea, small note), fonts, colour, halo and letter spacing.
 - **GM notes** on their own layer: room numbers that count up by themselves, traps, secret doors and notes. Switch the
   layer off to see what players will see.
@@ -68,11 +70,11 @@ Everything is in `src/`. The pure logic has no screen in it, so it is tested on 
 | `exporters.ts` | Picture sizes, and the Universal VTT and Foundry files. |
 | `storage.ts` | Saving and loading, with care for damaged files. |
 | `render.ts`, `textures.ts` | Drawing the map, and the floor textures. |
-| `assets.ts` | The stamp library in IndexedDB. |
+| `assets.ts` | The stamp library: the bundled stamps, and the user's own pictures in IndexedDB. |
 | `main.ts`, `exportFlow.ts` | The interface. |
 
-A saved map is a `.scenic.json` file: the map as text, with the pictures its stamps use packed inside, so it opens on any
-computer. Maps from earlier versions still open. Damaged parts of a file are skipped, not trusted.
+A saved map is a `.scenic.json` file: the map as text, with the user's own pictures packed inside, so it opens on any
+computer. The bundled stamps are not packed in; they come from the site. Maps from earlier versions still open. Damaged parts of a file are skipped, not trusted.
 
 ## Known limits
 
@@ -84,9 +86,23 @@ computer. Maps from earlier versions still open. Damaged parts of a file are ski
 - **Doors always stop light,** because there is no open or closed state yet.
 - **Text is one line,** and cannot yet follow a curve.
 - **Universal VTT is made for square grids.** On a hex map, use the Foundry scene.
-- **No bundled art.** The stamp library starts empty; add your own pictures.
+- **Bundled stamps are not tinted or given an extra shadow,** because the artist's licence does not allow editing the art
+  and the shadows are already painted in. They were only shrunk and re-saved as WebP.
+- **Stamp art is a small slice** of what the artist offers (143 of 800 props, top-down only, no terrain tiles). More can be
+  added by picking them from the original bundle and extending the manifest.
 - **Not built yet:** regional, town and hex-crawl modes, the dungeon, land and town generators, print PDF, boolean shape
   editing, a building and roof tool, prefabs, elevation, and map furniture (compass, scale bar, frame).
+
+## Stamp art and credit
+
+The bundled stamps are by [Tom Cartos](https://www.tomcartos.com/), from his Open License Asset Bundle, used under
+[Tom's Open Map License](https://www.tomcartos.com/toms-open-map-license): free to use in free map-making software, never
+sold or paywalled, not used with AI-generated content or NFTs, and not edited. The site credits him in the stamp panel.
+Do not remove the credit, `public/stamps/CREDITS.txt`, or the licence link.
+
+The stamps live in `public/stamps/`: one WebP per prop (200 pixels per grid square, about 4 MB in all) and
+`manifest.json`. The 563 MB of original pictures are not in the repository (`scenic-sorcerer/artpack/` is ignored).
+`npm run check:stamps` checks that every manifest entry has its picture and that the credit file is present.
 
 ## Putting it online
 
