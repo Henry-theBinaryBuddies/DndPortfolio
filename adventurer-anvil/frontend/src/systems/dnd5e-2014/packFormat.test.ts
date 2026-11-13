@@ -9,6 +9,7 @@ const dnd: SystemModule = {
   version: 1,
   title: "D&D 5e (2014)",
   packSchema,
+  summary: [],
   initialChoices: () => ({}),
   evaluate: () => ({ steps: [], derived: {}, lists: {}, issues: [], unused: [] }),
   migrate: (doc) => doc,

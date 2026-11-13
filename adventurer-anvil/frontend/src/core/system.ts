@@ -14,12 +14,23 @@ export interface PackSchema {
   validate(pack: PackFile, required: IndexedPack[]): string[];
 }
 
+/**
+ * What the always-visible summary shows, in order. The system supplies it, so the app shell draws a summary
+ * without knowing any game: tiles (big numbers), rows (label and value) or a list.
+ */
+export type SummaryGroup =
+  | { kind: "tiles"; label: string; items: { key: string; short: string }[] }
+  | { kind: "rows"; label: string; items: { key: string; format?: "signed" | "feet" }[] }
+  | { kind: "list"; label: string; list: string };
+
 export interface SystemModule {
   id: string;
   /** The version of this system's character data; `migrate` brings older files up to it. */
   version: number;
   title: string;
   packSchema: PackSchema;
+  /** The summary's layout. */
+  summary: SummaryGroup[];
   /** Choices a new character starts with. */
   initialChoices(): Record<ChoiceKey, ChoiceValue>;
   /** Pure: reads the file and the content, returns the whole picture, changes nothing. */

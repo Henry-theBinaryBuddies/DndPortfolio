@@ -25,6 +25,27 @@ export const dnd5e2014: SystemModule = {
   version: 1,
   title: "D&D 5e (2014 rules)",
   packSchema,
+  summary: [
+    {
+      kind: "tiles",
+      label: "Ability scores",
+      items: [
+        { key: "ability.str", short: "Str" }, { key: "ability.dex", short: "Dex" }, { key: "ability.con", short: "Con" },
+        { key: "ability.int", short: "Int" }, { key: "ability.wis", short: "Wis" }, { key: "ability.cha", short: "Cha" },
+      ],
+    },
+    {
+      kind: "rows",
+      label: "At a glance",
+      items: [
+        { key: "ac" }, { key: "speed.walk", format: "feet" }, { key: "initiative", format: "signed" },
+        { key: "passive.perception" }, { key: "proficiency-bonus", format: "signed" },
+      ],
+    },
+    { kind: "list", label: "Senses", list: "senses" },
+    { kind: "list", label: "Languages", list: "languages" },
+    { kind: "list", label: "Resistances", list: "resistances" },
+  ],
   initialChoices: () => ({}),
   evaluate,
   migrate: (doc) => doc,

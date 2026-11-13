@@ -33,6 +33,8 @@ export interface Option {
   description?: string;
   /** Shown but not pickable, with the reason (the DM override can still unlock it). */
   unavailable?: string;
+  /** Short facts shown as chips on the option, most important first. */
+  tags?: string[];
 }
 
 /** A slot for "assign" and "allocate": e.g. one stat. */

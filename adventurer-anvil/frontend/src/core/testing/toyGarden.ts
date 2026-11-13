@@ -41,6 +41,10 @@ export const toyGarden: SystemModule = {
         .filter((name) => name !== "plants")
         .map((name) => `collections.${name}: the garden has only "plants".`),
   },
+  summary: [
+    { kind: "tiles", label: "Growth", items: [{ key: "sun", short: "Sun" }, { key: "water", short: "Water" }] },
+    { kind: "list", label: "Companions", list: "companions" },
+  ],
   initialChoices: () => ({}),
   migrate: (doc) => ({ ...doc, system: { ...doc.system, version: 1 } }),
 

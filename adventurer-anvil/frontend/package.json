@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:browser": "playwright test",
     "schema": "vitest run -u src/systems/dnd5e-2014/schema.test.ts",
     "import:srd": "tsx ../tools/import-srd.ts"
   },
@@ -17,6 +18,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

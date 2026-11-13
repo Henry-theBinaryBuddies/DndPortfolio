@@ -1,11 +1,30 @@
 // The Race step: pick a race, then a subrace if the loaded packs have any for it. Both become sources,
 // and their choice effects open further choices on this step.
-import type { ContentIndex } from "../../../core";
+import type { ContentEntry, ContentIndex, Option } from "../../../core";
 import { fullRef, picksOf, type Context, type Source } from "../engine/context";
+import { describeEffects } from "../engine/describe";
 import { expandSource } from "../engine/expand";
 import type { Effect } from "../packFormat";
 
 export const RACE_STEP = { id: "race", label: "Race" };
+
+/** An option card for a race or subrace: its name, one line, the full text, and chips for what it gives. */
+function optionFor(entry: ContentEntry & { ref: string }): Option {
+  const tags = describeEffects((entry.effects ?? []) as Effect[]);
+  if (typeof entry.size === "string") {
+    // Size goes just after the speed chip ("30 ft", "Medium").
+    const speedAt = tags.findIndex((t) => /^\d+ ft$/.test(t));
+    const size = entry.size.charAt(0).toUpperCase() + entry.size.slice(1);
+    tags.splice(speedAt >= 0 ? speedAt + 1 : tags.length, 0, size);
+  }
+  return {
+    value: entry.ref,
+    name: entry.name,
+    summary: typeof entry.summary === "string" ? entry.summary : undefined,
+    description: typeof entry.description === "string" ? entry.description : undefined,
+    tags,
+  };
+}
 
 /** Subraces in the loaded packs that belong to a race. */
 export function subracesOf(content: ContentIndex, raceRef: string) {
@@ -18,7 +37,7 @@ export function raceStep(ctx: Context): void {
   ctx.open.push({
     spec: {
       key: "race", step: "race", label: "Choose a race", kind: "pick-one", required: true,
-      options: ctx.content.list("races").map((r) => ({ value: r.ref, name: r.name, summary: r.summary as string | undefined })),
+      options: ctx.content.list("races").map(optionFor),
     },
     picks: racePicks,
     collection: "races",
@@ -36,7 +55,7 @@ export function raceStep(ctx: Context): void {
     ctx.open.push({
       spec: {
         key, step: "race", label: `Choose a subrace of ${race.name}`, source: race.name, kind: "pick-one", required: true,
-        options: subraces.map((s) => ({ value: s.ref, name: s.name, summary: s.summary as string | undefined })),
+        options: subraces.map(optionFor),
       },
       picks,
       collection: "subraces",

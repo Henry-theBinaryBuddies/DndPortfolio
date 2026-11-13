@@ -133,3 +133,17 @@ describe("real SRD races through the engine", () => {
     expect(brave?.description).toBe("You have advantage on saving throws against being frightened.");
   });
 });
+
+describe("option cards for SRD races", () => {
+  const card = (name: string) => view({}).steps[0].choices[0].options!.find((o) => o.name === name)!;
+
+  it("lead with the main bonus, then speed and size", () => {
+    expect(card("Tiefling").tags?.slice(0, 4)).toEqual(["+2 Cha", "+1 Int", "30 ft", "Medium"]);
+    expect(card("Human").tags?.slice(0, 3)).toEqual(["+1 all", "30 ft", "Medium"]);
+    expect(card("Half-Elf").tags?.slice(0, 4)).toEqual(["+2 Cha", "+1 to 2 of your choice", "30 ft", "Medium"]);
+  });
+
+  it("carry the full SRD text behind Read more", () => {
+    expect(card("Dwarf").description).toMatch(/^Age\. Dwarves mature at the same rate as humans/);
+  });
+});

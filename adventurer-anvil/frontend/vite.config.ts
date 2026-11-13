@@ -9,4 +9,6 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 5205, strictPort: true },
   preview: { port: 5206, strictPort: true },
+  // The browser tests in e2e/ are Playwright's (npm run test:browser), not Vitest's.
+  test: { exclude: ["e2e/**", "node_modules/**"] },
 });
