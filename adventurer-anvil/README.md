@@ -2,9 +2,11 @@
 
 A D&D character creator in the spirit of Roll20's Charactermancer: guided steps, legal choices, a finished sheet. The first rules system is 2014 5e with SRD 5.1 content; the core is built so other systems can be added as modules.
 
-**Status (12 Nov 2026):** Milestone 1, step 6 of 9. Done: the system-agnostic core (characters, choices, overrides, dice,
-content packs), the 2014 pack format with its JSON Schema, the 2014 rules engine (Race and Abilities steps), and SRD 5.1's
-races, subraces and languages as the built-in pack. No screens yet. See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for
+**Status (13 Nov 2026):** Milestone 1, step 7 of 9 (the builder's screens, one step at a time). Done: the
+system-agnostic core (characters, choices, overrides, dice, content packs), the 2014 pack format with its JSON Schema,
+the 2014 rules engine, SRD 5.1's races, subraces and languages as the built-in pack, and the first screens: the Race step,
+the Abilities step (standard array, point buy, rolling with a roll log), a live summary, Review and Licences. Nothing is
+saved yet (step 8). `npm run test:browser` runs the browser and accessibility tests. See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for
 what it will do, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it is put together, and [`LICENSES.md`](LICENSES.md).
 
 ## Run it

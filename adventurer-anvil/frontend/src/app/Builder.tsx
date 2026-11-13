@@ -1,7 +1,7 @@
 // The builder: header, step list, the current step (or Review or Licences), the summary, and the footer.
 // It asks the core for the whole picture on every change and calculates nothing itself.
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { createContentIndex, viewCharacter, type SystemModule } from "../core";
+import { createContentIndex, rollSet, rollSets, viewCharacter, type ChoiceSpec, type SystemModule } from "../core";
 import { ChoiceView, choiceDomId } from "./choices";
 import type { LoadedPack } from "./packs";
 import { Licences, Review } from "./pages";
@@ -26,6 +26,13 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
   const at = order.findIndex((p) => p.kind === page.kind && (p.kind !== "step" || (page.kind === "step" && p.id === page.id)));
   const pageName = (p: Page) => (p.kind === "step" ? stepLabel(p.id) : p.kind === "review" ? "Review" : "Licences");
 
+  // Dice are rolled here, in the click, and the results logged: never inside the reducer, which React may run twice.
+  const roll = (spec: ChoiceSpec) => {
+    if (!spec.dice) return;
+    const rolls = rollSet({ expression: spec.dice, times: spec.times ?? 1, for: spec.key, now: new Date().toISOString(), newId: () => crypto.randomUUID() });
+    dispatch({ type: "rolls", rolls });
+  };
+
   const goTo = (step: string, key?: string) => {
     focusTarget.current = key ? choiceDomId(key) : null;
     setPage(step === "review" ? { kind: "review" } : { kind: "step", id: step });
@@ -48,7 +55,7 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
   for (const step of view.steps) {
     for (const spec of step.choices) {
       const empty = spec.options !== undefined && spec.options.length === 0;
-      if (spec.required && doc.choices[spec.key] === undefined && !empty) {
+      if (spec.required && !(spec.answered ?? doc.choices[spec.key] !== undefined) && !empty) {
         todo.push({ label: spec.label, step: step.id, stepLabel: step.label, key: spec.key });
       }
     }
@@ -117,6 +124,9 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
                   value={doc.choices[spec.key]}
                   issues={view.issues.filter((i) => i.key === spec.key && !i.id.startsWith("no-options:"))}
                   onChange={(value) => dispatch({ type: "set", key: spec.key, value })}
+                  derived={view.derived}
+                  rollSets={spec.kind === "roll" ? rollSets(doc, spec.key) : []}
+                  onRoll={roll}
                 />
               ))}
             </>

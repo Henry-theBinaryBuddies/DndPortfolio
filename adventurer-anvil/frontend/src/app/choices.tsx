@@ -1,13 +1,19 @@
 // Generic choice controls, one per choice kind. They know nothing about any game: they draw a ChoiceSpec and
 // report what was picked.
 import { useId } from "react";
-import type { ChoiceSpec, ChoiceValue, Option, ResolvedIssue } from "../core";
+import type { ChoiceSpec, ChoiceValue, Derived, Option, ResolvedIssue, RollRecord } from "../core";
+import { Allocate, Assign, Roll } from "./slots";
 
-interface ChoiceProps {
+export interface ChoiceProps {
   spec: ChoiceSpec;
   value: ChoiceValue | undefined;
   issues: ResolvedIssue[];
   onChange: (value: ChoiceValue) => void;
+  /** For slots that show the derived value they feed. */
+  derived: Record<string, Derived>;
+  /** For roll choices: the sets rolled so far, oldest first, and how to roll another. */
+  rollSets: RollRecord[][];
+  onRoll: (spec: ChoiceSpec) => void;
 }
 
 /** The DOM id of a choice, so "needs attention" links can jump to it. */
@@ -16,17 +22,42 @@ export const choiceDomId = (key: string) => `choice-${key}`;
 export function ChoiceView(props: ChoiceProps) {
   switch (props.spec.kind) {
     case "pick-one":
-      return <PickOne {...props} />;
+      return props.spec.presentation === "segmented" ? <Segmented {...props} /> : <PickOne {...props} />;
     case "pick-many":
       return <PickMany {...props} />;
+    case "assign":
+      return <Assign {...props} />;
+    case "allocate":
+      return <Allocate {...props} />;
+    case "roll":
+      return <Roll {...props} />;
     default:
       return (
         <section className="choice" id={choiceDomId(props.spec.key)} tabIndex={-1}>
           <h2>{props.spec.label}</h2>
-          <p className="notice" style={{ marginTop: 8 }}>This step's screen comes next.</p>
+          <p className="notice" style={{ marginTop: 8 }}>This kind of choice has no screen yet.</p>
         </section>
       );
   }
+}
+
+/** A short pick-one list drawn as a switch (e.g. the ability score method). Still radio buttons underneath. */
+function Segmented({ spec, value, issues, onChange }: ChoiceProps) {
+  const name = useId();
+  return (
+    <fieldset className="choice" id={choiceDomId(spec.key)} tabIndex={-1}>
+      <legend>{spec.label}</legend>
+      <div className="segmented">
+        {(spec.options ?? []).map((option) => (
+          <label key={String(option.value)} className={option.value === value ? "on" : undefined}>
+            <input type="radio" name={name} checked={option.value === value} onChange={() => onChange(option.value)} />
+            {option.name}
+          </label>
+        ))}
+      </div>
+      <Issues issues={issues} />
+    </fieldset>
+  );
 }
 
 function Meta({ spec, picked }: { spec: ChoiceSpec; picked: number }) {
@@ -37,7 +68,7 @@ function Meta({ spec, picked }: { spec: ChoiceSpec; picked: number }) {
   return parts.length ? <p className="meta">{parts.join(" · ")}</p> : null;
 }
 
-function Issues({ issues }: { issues: ResolvedIssue[] }) {
+export function Issues({ issues }: { issues: ResolvedIssue[] }) {
   return (
     <>
       {issues.map((issue) => (

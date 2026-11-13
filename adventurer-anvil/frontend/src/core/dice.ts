@@ -83,6 +83,25 @@ export function rollDice(expression: string, random: () => number = Math.random)
   return { expression, dice, kept, total };
 }
 
+/**
+ * Rolls an expression `times` times as one set, for a choice, ready to log (see addRolls in character.ts).
+ * `newId` makes unique ids (crypto.randomUUID in the app; a counter in tests).
+ */
+export function rollSet(args: {
+  expression: string;
+  times: number;
+  for: string;
+  now: string;
+  newId: () => string;
+  random?: () => number;
+}): { id: string; expression: string; dice: number[]; kept: number[]; total: number; for: string; set: string; at: string }[] {
+  const set = args.newId();
+  return Array.from({ length: args.times }, () => {
+    const result = rollDice(args.expression, args.random);
+    return { id: args.newId(), ...result, for: args.for, set, at: args.now };
+  });
+}
+
 /** The dice that count, in the order they were rolled. */
 function keepDice(rolled: number[], keep: { which: "highest" | "lowest"; n: number }): number[] {
   const order = rolled.map((value, index) => ({ value, index }));

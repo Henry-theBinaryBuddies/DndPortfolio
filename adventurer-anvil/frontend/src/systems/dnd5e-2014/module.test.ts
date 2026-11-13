@@ -5,6 +5,7 @@ import {
   type CharacterDocument, type ChoiceValue,
 } from "../../core";
 import { dnd5e2014 } from "./module";
+import { pointBuy, standardArray } from "./testing/abilities";
 import sample from "./testing/elf-sample.pack.json";
 
 const T = "2026-11-12T10:00:00.000Z";
@@ -29,7 +30,7 @@ const names = (v: ReturnType<typeof view>, list: string) => (v.lists[list] ?? []
 const highElf = {
   race: "sample-srd:elf",
   "race.sample-srd:elf.subrace": "sample-srd:high-elf",
-  "abilities.scores": STANDARD,
+  ...standardArray(STANDARD),
 };
 
 describe("a new character", () => {
@@ -96,7 +97,7 @@ describe("the worked example: a High Elf with the standard array", () => {
 });
 
 describe("fixed-list choices: the Half-Elf", () => {
-  const halfElf = { race: "sample-srd:half-elf", "abilities.scores": STANDARD };
+  const halfElf = { race: "sample-srd:half-elf", ...standardArray(STANDARD) };
 
   it("offers abilities except Charisma, and every skill", () => {
     const v = view(halfElf);
@@ -148,13 +149,14 @@ describe("rule problems and rulings", () => {
   });
 
   it("warns about a score above 20", () => {
-    const v = view({ ...highElf, "abilities.scores": { ...STANDARD, dex: 20 } });
+    const v = view({ ...highElf, ...pointBuy({ ...STANDARD, dex: 20 }) });
     expect(value(v, "ability.dex")).toBe(22);
     expect(v.issues.find((i) => i.id === "score-above-20:dex")?.severity).toBe("warning");
   });
 
   it("refuses scores that are not six whole numbers from 1 to 30", () => {
-    expect(view({ "abilities.scores": { str: 8 } }).issues.map((i) => i.id)).toContain("bad-scores");
+    expect(view(standardArray({ str: 8.5 })).issues.map((i) => i.id)).toContain("bad-scores");
+    expect(view(standardArray({ strength: 8 })).issues.map((i) => i.id)).toContain("bad-scores");
   });
 });
 

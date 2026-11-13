@@ -85,7 +85,7 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
   for (const ability of ABILITIES) {
     if (scores[ability] > 20) {
       ctx.issues.push({
-        id: `score-above-20:${ability}`, severity: "warning", step: "abilities", key: "abilities.scores", overridable: true,
+        id: `score-above-20:${ability}`, severity: "warning", step: "abilities", overridable: true,
         message: `${ABILITY_NAMES[ability]} is ${scores[ability]}; scores normally top out at 20.`,
       });
     }
@@ -96,10 +96,11 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
 export function stepReports(ctx: Context): StepReport[] {
   return ctx.steps.map(({ id, label }) => {
     const choices = ctx.open.filter((c) => c.spec.step === id);
+    const answered = (c: (typeof choices)[number]) => c.answered ?? c.picks.length > 0;
     const done = choices.every(
-      (c) => !c.spec.required || (c.answered ?? c.picks.length > 0) || (c.spec.options !== undefined && c.spec.options.length === 0),
+      (c) => !c.spec.required || answered(c) || (c.spec.options !== undefined && c.spec.options.length === 0),
     );
-    return { id, label, status: done ? "done" : "todo", choices: choices.map((c) => c.spec) };
+    return { id, label, status: done ? "done" : "todo", choices: choices.map((c) => ({ ...c.spec, answered: answered(c) })) };
   });
 }
 

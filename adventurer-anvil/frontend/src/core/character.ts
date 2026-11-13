@@ -25,6 +25,8 @@ export interface RollRecord {
   total: number;
   /** The choice the roll was made for. */
   for: ChoiceKey;
+  /** Rolls made together (e.g. six for ability scores) share a set id. */
+  set?: string;
   at: string;
 }
 
@@ -102,4 +104,19 @@ export function removeOverride(doc: CharacterDocument, issueId: string, now: str
 
 export function addRoll(doc: CharacterDocument, roll: RollRecord, now: string): CharacterDocument {
   return { ...doc, rolls: [...doc.rolls, roll], updatedAt: now };
+}
+
+export function addRolls(doc: CharacterDocument, rolls: RollRecord[], now: string): CharacterDocument {
+  return { ...doc, rolls: [...doc.rolls, ...rolls], updatedAt: now };
+}
+
+/** The roll sets made for a choice, oldest first: each a list of rolls sharing a set id. */
+export function rollSets(doc: CharacterDocument, key: ChoiceKey): RollRecord[][] {
+  const sets = new Map<string, RollRecord[]>();
+  for (const roll of doc.rolls) {
+    if (roll.for !== key) continue;
+    const id = roll.set ?? roll.id;
+    sets.set(id, [...(sets.get(id) ?? []), roll]);
+  }
+  return [...sets.values()];
 }

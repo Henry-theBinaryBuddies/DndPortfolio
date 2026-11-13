@@ -133,3 +133,33 @@ blockquote { margin: 8px 0 0; padding: 8px 12px; border-left: 2px solid var(--ed
   .cards { grid-template-columns: minmax(0, 1fr); }
   .foot { padding-bottom: 70px; }
 }
+
+/* ---- Slot choices (assign, allocate, roll) and the segmented switch ---- */
+.choice-title { font-size: 17px; margin-bottom: 4px; }
+.segmented { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--edge-strong); border-radius: var(--radius); overflow: hidden; }
+.segmented label { position: relative; padding: 6px 14px; cursor: pointer; border-right: 1px solid var(--edge-strong); font-size: 15px; }
+.segmented label:last-child { border-right: none; }
+.segmented label.on { background: var(--panel-raised); color: var(--ink-bright); box-shadow: inset 0 -2px 0 var(--ember); }
+.segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.segmented label:has(input:focus-visible) { outline: 2px solid var(--ember); outline-offset: -2px; }
+table.slots { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.slots th, table.slots td { padding: 6px 8px; text-align: left; border-bottom: 1px dotted var(--edge); }
+table.slots thead th { font-weight: normal; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); border-bottom: 1px solid var(--edge); }
+table.slots tbody th { font-weight: normal; }
+select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--edge-strong); border-radius: var(--radius); padding: 4px 8px; min-width: 7.5em; }
+.final { color: var(--ink-bright); }
+.stepper { white-space: nowrap; }
+.stepper .final { display: inline-block; min-width: 2ch; text-align: center; margin: 0 6px; }
+.button.small { padding: 1px 9px; }
+.button:disabled { opacity: 0.4; cursor: not-allowed; }
+.roll-set { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 12px; font-size: 14px; }
+.die { display: inline-block; min-width: 22px; text-align: center; border: 1px solid var(--edge-strong); border-radius: 4px; margin-right: 3px; font-size: 13px; }
+.die.dropped { color: var(--ink-dim); text-decoration: line-through; border-style: dashed; }
+
+@media (max-width: 760px) {
+  table.slots thead { display: none; }
+  table.slots tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 0; border-bottom: 1px dotted var(--edge); }
+  table.slots th, table.slots td { border-bottom: none; padding: 0; }
+  table.slots td:nth-of-type(1) { grid-column: 1 / -1; }
+  table.slots select { width: 100%; }
+}

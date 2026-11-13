@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createContentIndex, newCharacterDocument, readPack, setChoice, viewCharacter, type ChoiceValue } from "../../core";
 import { dnd5e2014 } from "./module";
+import { pointBuy, standardArray } from "./testing/abilities";
 import { buildSrdPack } from "../../../../tools/srd/build";
 import { LANGUAGES, RACES, SUBRACES } from "../../../../data/srd-5.1/check-table";
 
@@ -51,7 +52,7 @@ describe("the SRD 5.1 pack", () => {
 describe("each race matches the check table", () => {
   for (const [id, facts] of Object.entries(RACES)) {
     it(facts.name, () => {
-      const v = view({ race: `srd-5.1:${id}`, "abilities.scores": TENS });
+      const v = view({ race: `srd-5.1:${id}`, ...pointBuy(TENS) });
       expect(content.get("races", `srd-5.1:${id}`)?.size).toBe(facts.size);
       for (const ability of ["str", "dex", "con", "int", "wis", "cha"]) {
         expect(v.derived[`ability.${ability}`].value, ability).toBe(10 + (facts.bonuses[ability] ?? 0));
@@ -71,8 +72,8 @@ describe("each race matches the check table", () => {
 describe("each subrace matches the check table", () => {
   for (const [id, facts] of Object.entries(SUBRACES)) {
     it(facts.name, () => {
-      const race = view({ race: `srd-5.1:${facts.race}`, "abilities.scores": TENS });
-      const sub = view({ race: `srd-5.1:${facts.race}`, [`race.srd-5.1:${facts.race}.subrace`]: `srd-5.1:${id}`, "abilities.scores": TENS });
+      const race = view({ race: `srd-5.1:${facts.race}`, ...pointBuy(TENS) });
+      const sub = view({ race: `srd-5.1:${facts.race}`, [`race.srd-5.1:${facts.race}.subrace`]: `srd-5.1:${id}`, ...pointBuy(TENS) });
       for (const ability of ["str", "dex", "con", "int", "wis", "cha"]) {
         const added = Number(sub.derived[`ability.${ability}`].value) - Number(race.derived[`ability.${ability}`].value);
         expect(added, ability).toBe(facts.bonuses[ability] ?? 0);
@@ -95,7 +96,7 @@ describe("real SRD races through the engine", () => {
   const STANDARD = { str: 8, dex: 14, con: 13, int: 15, wis: 12, cha: 10 };
 
   it("a Hill Dwarf: Con and Wis bonuses, 25 ft, poison resistance, dwarven weapons, Toughness as text for now", () => {
-    const v = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", "abilities.scores": STANDARD });
+    const v = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", ...standardArray(STANDARD) });
     expect(v.derived["ability.con"].breakdown).toEqual([{ label: "Base", amount: 13 }, { label: "Dwarf", amount: 2 }]);
     expect(v.derived["ability.wis"].breakdown).toEqual([{ label: "Base", amount: 12 }, { label: "Hill Dwarf", amount: 1 }]);
     expect(v.derived["speed.walk"].value).toBe(25);
@@ -107,7 +108,7 @@ describe("real SRD races through the engine", () => {
     const choice = view({ race: "srd-5.1:dragonborn" }).steps[0].choices.find((c) => c.key === "race.srd-5.1:dragonborn.ancestry")!;
     expect(choice.options?.map((o) => o.name)).toEqual(["Acid", "Cold", "Fire", "Lightning", "Poison"]);
 
-    const v = view({ race: "srd-5.1:dragonborn", "race.srd-5.1:dragonborn.ancestry": "fire", "abilities.scores": STANDARD });
+    const v = view({ race: "srd-5.1:dragonborn", "race.srd-5.1:dragonborn.ancestry": "fire", ...standardArray(STANDARD) });
     expect(v.lists.resistances).toEqual([{ name: "Fire", source: "Dragonborn" }]);
     expect(v.lists.resources).toEqual([{ name: "Breath Weapon", source: "Dragonborn", detail: "1 per short rest" }]);
     const effects = content.get("races", "srd-5.1:dragonborn")?.effects as { name?: string; description?: string }[];
@@ -117,13 +118,13 @@ describe("real SRD races through the engine", () => {
   });
 
   it("a Human: +1 to every score and a choice of one extra language", () => {
-    const v = view({ race: "srd-5.1:human", "race.srd-5.1:human.language": "srd-5.1:dwarvish", "abilities.scores": STANDARD });
+    const v = view({ race: "srd-5.1:human", "race.srd-5.1:human.language": "srd-5.1:dwarvish", ...standardArray(STANDARD) });
     expect(["str", "dex", "con", "int", "wis", "cha"].map((a) => v.derived[`ability.${a}`].value)).toEqual([9, 15, 14, 16, 13, 11]);
     expect(names(v, "languages")).toEqual(["Common", "Dwarvish"]);
   });
 
   it("a Half-Orc: Intimidation proficiency from Menacing, and Relentless Endurance per long rest", () => {
-    const v = view({ race: "srd-5.1:half-orc", "abilities.scores": STANDARD });
+    const v = view({ race: "srd-5.1:half-orc", ...standardArray(STANDARD) });
     expect(v.derived["skill.intimidation"].breakdown).toEqual([{ label: "Charisma", amount: 0 }, { label: "Proficient (Half-Orc)", amount: 2 }]);
     expect(v.lists.resources).toEqual([{ name: "Relentless Endurance", source: "Half-Orc", detail: "1 per long rest" }]);
   });

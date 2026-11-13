@@ -41,6 +41,10 @@ export interface Option {
 export interface Slot {
   id: string;
   name: string;
+  /** A derived value this slot feeds, shown beside it with its breakdown (e.g. the final score). */
+  derived?: string;
+  /** A second derived value shown in brackets after it (e.g. the modifier). */
+  derivedNote?: string;
 }
 
 export interface ChoiceSpec {
@@ -54,15 +58,20 @@ export interface ChoiceSpec {
   options?: Option[];
   /** pick-many: how many to pick. */
   count?: { min: number; max: number };
-  /** number: the allowed range. */
+  /** number: the allowed range; allocate: the lowest and highest value a slot may take. */
   range?: { min: number; max: number };
   /** assign and allocate: the slots to fill. */
   slots?: Slot[];
-  /** assign: the values to place, one per slot. */
+  /** assign: the values to place, one per slot (values may repeat, e.g. two rolled 12s). */
   values?: number[];
   /** allocate: the budget, and the cost of each value a slot may take. */
   budget?: { total: number; cost: Record<string, number> };
-  /** roll: the dice expression, e.g. "4d6kh3" (see dice.ts). */
+  /** roll: the dice expression, e.g. "4d6kh3" (see dice.ts), and how many times to roll it as one set. */
   dice?: string;
+  times?: number;
+  /** pick-one: "segmented" draws a short list of options as a switch rather than cards. */
+  presentation?: "segmented";
   required: boolean;
+  /** Set by the system: whether this choice is fully answered (e.g. all six slots filled, not just one). */
+  answered?: boolean;
 }
