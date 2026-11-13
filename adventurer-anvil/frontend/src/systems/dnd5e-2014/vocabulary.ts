@@ -51,6 +51,20 @@ export const PROFICIENCY_KINDS = ["skill", "saving-throw", "weapon", "armor", "t
 
 export const RECHARGE = ["short", "long", "dawn"] as const;
 
+/** Fixed lists a choice can pick from (see the choice effect's from.list), and the effect each pick fills in. */
+export const CHOICE_LISTS = {
+  abilities: "ability-bonus",
+  skills: "proficiency",
+  "damage-types": "resistance",
+} as const;
+export type ChoiceList = keyof typeof CHOICE_LISTS;
+
+export function choiceListValues(list: ChoiceList): readonly string[] {
+  if (list === "abilities") return ABILITIES;
+  if (list === "skills") return SKILL_IDS;
+  return DAMAGE_TYPES;
+}
+
 /** Every collection a 2014 pack may hold. Formats for the rest arrive with the steps that use them. */
 export const COLLECTIONS = [
   "races", "subraces", "classes", "subclasses", "backgrounds", "feats", "spells", "items", "languages",

@@ -111,6 +111,7 @@ export const toyGarden: SystemModule = {
 
     const offered = new Set(allChoices.map((c) => c.key));
     const unused = Object.keys(doc.choices).filter((key) => !offered.has(key));
-    return { steps, derived, issues, unused };
+    const lists = { companions: plant ? [{ name: `Pot: ${String(doc.choices[`plant.${plantRef}.pot`] ?? "none")}`, source: plant.name }] : [] };
+    return { steps, derived, lists, issues, unused };
   },
 };

@@ -36,6 +36,26 @@
             "family": ["Amakiir", "Amastacia", "Galanodel"]
           }
         }
+      },
+      {
+        "id": "half-elf",
+        "name": "Half-Elf",
+        "size": "medium",
+        "summary": "Human and elf heritage, at home in both worlds.",
+        "effects": [
+          { "type": "ability-bonus", "ability": "cha", "amount": 2 },
+          { "type": "choice", "id": "abilities", "label": "+1 to two abilities of your choice", "pick": 2,
+            "from": { "list": "abilities", "except": ["cha"] }, "each": { "type": "ability-bonus", "amount": 1 } },
+          { "type": "speed", "walk": 30 },
+          { "type": "sense", "sense": "darkvision", "range": 60 },
+          { "type": "feature", "name": "Fey Ancestry", "summary": "Advantage on saving throws against being charmed, and magic can't put you to sleep." },
+          { "type": "choice", "id": "skills", "label": "Skill Versatility: two skills of your choice", "pick": 2,
+            "from": { "list": "skills" }, "each": { "type": "proficiency", "kind": "skill" } },
+          { "type": "language", "id": "common" },
+          { "type": "language", "id": "elvish" },
+          { "type": "choice", "id": "language", "label": "Choose one extra language", "pick": 1,
+            "from": { "collection": "languages" } }
+        ]
       }
     ],
     "subraces": [

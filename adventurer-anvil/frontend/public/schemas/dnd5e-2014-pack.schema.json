@@ -325,40 +325,127 @@
                           "maximum": 9007199254740991
                         },
                         "from": {
-                          "type": "object",
-                          "properties": {
-                            "collection": {
-                              "type": "string",
-                              "enum": [
-                                "races",
-                                "subraces",
-                                "classes",
-                                "subclasses",
-                                "backgrounds",
-                                "feats",
-                                "spells",
-                                "items",
-                                "languages"
-                              ]
-                            },
-                            "where": {
+                          "anyOf": [
+                            {
                               "type": "object",
-                              "propertyNames": {
-                                "type": "string"
+                              "properties": {
+                                "collection": {
+                                  "type": "string",
+                                  "enum": [
+                                    "races",
+                                    "subraces",
+                                    "classes",
+                                    "subclasses",
+                                    "backgrounds",
+                                    "feats",
+                                    "spells",
+                                    "items",
+                                    "languages"
+                                  ]
+                                },
+                                "where": {
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {
+                                    "type": [
+                                      "string",
+                                      "number",
+                                      "boolean"
+                                    ]
+                                  }
+                                }
                               },
-                              "additionalProperties": {
-                                "type": [
-                                  "string",
-                                  "number",
-                                  "boolean"
-                                ]
-                              }
+                              "required": [
+                                "collection"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "list": {
+                                  "type": "string",
+                                  "enum": [
+                                    "abilities",
+                                    "skills",
+                                    "damage-types"
+                                  ]
+                                },
+                                "only": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "except": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "list"
+                              ],
+                              "additionalProperties": false
                             }
-                          },
-                          "required": [
-                            "collection"
-                          ],
-                          "additionalProperties": false
+                          ]
+                        },
+                        "each": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "ability-bonus"
+                                },
+                                "amount": {
+                                  "type": "integer",
+                                  "minimum": -10,
+                                  "maximum": 10
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "amount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "proficiency"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "const": "skill"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "resistance"
+                                }
+                              },
+                              "required": [
+                                "type"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -772,40 +859,127 @@
                           "maximum": 9007199254740991
                         },
                         "from": {
-                          "type": "object",
-                          "properties": {
-                            "collection": {
-                              "type": "string",
-                              "enum": [
-                                "races",
-                                "subraces",
-                                "classes",
-                                "subclasses",
-                                "backgrounds",
-                                "feats",
-                                "spells",
-                                "items",
-                                "languages"
-                              ]
-                            },
-                            "where": {
+                          "anyOf": [
+                            {
                               "type": "object",
-                              "propertyNames": {
-                                "type": "string"
+                              "properties": {
+                                "collection": {
+                                  "type": "string",
+                                  "enum": [
+                                    "races",
+                                    "subraces",
+                                    "classes",
+                                    "subclasses",
+                                    "backgrounds",
+                                    "feats",
+                                    "spells",
+                                    "items",
+                                    "languages"
+                                  ]
+                                },
+                                "where": {
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {
+                                    "type": [
+                                      "string",
+                                      "number",
+                                      "boolean"
+                                    ]
+                                  }
+                                }
                               },
-                              "additionalProperties": {
-                                "type": [
-                                  "string",
-                                  "number",
-                                  "boolean"
-                                ]
-                              }
+                              "required": [
+                                "collection"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "list": {
+                                  "type": "string",
+                                  "enum": [
+                                    "abilities",
+                                    "skills",
+                                    "damage-types"
+                                  ]
+                                },
+                                "only": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "except": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "list"
+                              ],
+                              "additionalProperties": false
                             }
-                          },
-                          "required": [
-                            "collection"
-                          ],
-                          "additionalProperties": false
+                          ]
+                        },
+                        "each": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "ability-bonus"
+                                },
+                                "amount": {
+                                  "type": "integer",
+                                  "minimum": -10,
+                                  "maximum": 10
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "amount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "proficiency"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "const": "skill"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "resistance"
+                                }
+                              },
+                              "required": [
+                                "type"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
                         }
                       },
                       "required": [

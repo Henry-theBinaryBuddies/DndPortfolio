@@ -5,8 +5,8 @@ import { z } from "zod";
 import type { IndexedPack, PackFile, PackSchema } from "../../core";
 import { PACK_FORMAT, PACK_FORMAT_VERSION } from "../../core";
 import {
-  ABILITIES, COLLECTIONS, DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS, RECHARGE, SENSES, SIZES, SKILL_IDS,
-  type Collection,
+  ABILITIES, CHOICE_LISTS, choiceListValues, COLLECTIONS, DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS, RECHARGE, SENSES, SIZES,
+  SKILL_IDS, type ChoiceList, type Collection,
 } from "./vocabulary";
 
 export const SYSTEM_ID = "dnd5e-2014";
@@ -35,16 +35,33 @@ const proficiency = z.strictObject({ type: z.literal("proficiency"), kind: z.enu
 const language = z.strictObject({ type: z.literal("language"), id: ref });
 const resistance = z.strictObject({ type: z.literal("resistance"), damage: z.enum(DAMAGE_TYPES) });
 const grant = z.strictObject({ type: z.literal("grant"), collection: z.enum(COLLECTIONS), id: ref });
+/** Pick entries from a collection; each pick is granted (a language known, a cantrip known...). */
+const collectionChoiceFrom = z.strictObject({
+  collection: z.enum(COLLECTIONS),
+  /** Only entries whose fields match: a list field matches if it contains the value. */
+  where: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+});
+/** Pick from one of the module's fixed lists; `each` says what every pick gives. */
+const listChoiceFrom = z.strictObject({
+  list: z.enum(Object.keys(CHOICE_LISTS) as [ChoiceList, ...ChoiceList[]]),
+  only: z.array(z.string()).optional(),
+  except: z.array(z.string()).optional(),
+});
+/** An effect with one field left blank, which each pick fills in (the ability, the skill, the damage type). */
+export const eachSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("ability-bonus"), amount: z.int().min(-10).max(10) }),
+  z.strictObject({ type: z.literal("proficiency"), kind: z.literal("skill") }),
+  z.strictObject({ type: z.literal("resistance") }),
+]);
+export type EachTemplate = z.infer<typeof eachSchema>;
+
 const choice = z.strictObject({
   type: z.literal("choice"),
   id,
   label: z.string().min(1),
   pick: z.int().positive(),
-  from: z.strictObject({
-    collection: z.enum(COLLECTIONS),
-    /** Only entries whose fields match: a list field matches if it contains the value. */
-    where: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
-  }),
+  from: z.union([collectionChoiceFrom, listChoiceFrom]),
+  each: eachSchema.optional(),
 });
 const resource = z.strictObject({
   type: z.literal("resource"), id, name: z.string().min(1).optional(), uses: z.int().positive(), recharge: z.enum(RECHARGE),
@@ -203,6 +220,19 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
       if (effect.type === "grant") resolves(effect.id, effect.collection, at);
       if (effect.type === "proficiency" && effect.kind === "skill" && !SKILL_IDS.includes(effect.id as (typeof SKILL_IDS)[number])) {
         errors.push(`${at}: no skill "${effect.id}".`);
+      }
+      if (effect.type === "choice") {
+        if ("list" in effect.from) {
+          const expected = CHOICE_LISTS[effect.from.list];
+          if (!effect.each) errors.push(`${at}: a choice from the list "${effect.from.list}" needs "each" (a ${expected} effect).`);
+          else if (effect.each.type !== expected) errors.push(`${at}.each: picks from "${effect.from.list}" fill in a ${expected} effect, not ${effect.each.type}.`);
+          const values = choiceListValues(effect.from.list);
+          for (const v of [...(effect.from.only ?? []), ...(effect.from.except ?? [])]) {
+            if (!values.includes(v)) errors.push(`${at}.from: "${v}" is not in the list "${effect.from.list}".`);
+          }
+        } else if (effect.each) {
+          errors.push(`${at}.each: only choices from a fixed list use "each"; picks from a collection are granted.`);
+        }
       }
     });
 

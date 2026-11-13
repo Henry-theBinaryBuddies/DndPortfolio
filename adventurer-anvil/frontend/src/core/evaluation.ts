@@ -41,9 +41,18 @@ export interface Issue {
   overridable: boolean;
 }
 
+/** A named thing in a list (a language, a sense, a feature...), with where it came from. */
+export interface ListItem {
+  name: string;
+  source: string;
+  detail?: string;
+}
+
 export interface Evaluation {
   steps: StepReport[];
   derived: Record<string, Derived>;
+  /** Lists of named things, by list name, e.g. "languages". */
+  lists: Record<string, ListItem[]>;
   issues: Issue[];
   /** Choices still in the file that no open choice uses any more (e.g. after switching an earlier pick). */
   unused: ChoiceKey[];

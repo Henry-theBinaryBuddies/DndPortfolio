@@ -10,7 +10,7 @@ const dnd: SystemModule = {
   title: "D&D 5e (2014)",
   packSchema,
   initialChoices: () => ({}),
-  evaluate: () => ({ steps: [], derived: {}, issues: [], unused: [] }),
+  evaluate: () => ({ steps: [], derived: {}, lists: {}, issues: [], unused: [] }),
   migrate: (doc) => doc,
 };
 
@@ -76,6 +76,22 @@ describe("2014 pack format", () => {
       .toEqual([expect.stringMatching(/^collections\.monsters: not a 2014 collection/)]);
     expect(errorsFor(variant((p) => (p.collections.classes = [{ id: "fighter", name: "Fighter" }]))))
       .toEqual(["collections.classes: the format for classes arrives in a later step."]);
+  });
+
+  it("checks fixed-list choices: each is required, must match the list, and only/except must be in it", () => {
+    // races[1] is the Half-Elf; effects[1] its "+1 to two abilities" choice.
+    expect(errorsFor(variant((p) => delete p.collections.races[1].effects[1].each))).toEqual([
+      'collections.races[1].effects[1]: a choice from the list "abilities" needs "each" (a ability-bonus effect).',
+    ]);
+    expect(errorsFor(variant((p) => (p.collections.races[1].effects[1].each = { type: "resistance" })))).toEqual([
+      'collections.races[1].effects[1].each: picks from "abilities" fill in a ability-bonus effect, not resistance.',
+    ]);
+    expect(errorsFor(variant((p) => (p.collections.races[1].effects[1].from.except = ["charisma"])))).toEqual([
+      'collections.races[1].effects[1].from: "charisma" is not in the list "abilities".',
+    ]);
+    expect(errorsFor(variant((p) => (p.collections.subraces[0].effects[6].each = { type: "resistance" })))).toEqual([
+      'collections.subraces[0].effects[6].each: only choices from a fixed list use "each"; picks from a collection are granted.',
+    ]);
   });
 
   it("checks the wrapper and the system", () => {

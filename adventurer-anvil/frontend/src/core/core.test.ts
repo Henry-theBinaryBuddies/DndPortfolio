@@ -136,6 +136,11 @@ describe("a second system (the toy garden) through the core", () => {
     expect(viewCharacter(toyGarden, clearChoices(doc, view.unused, T1), toyGardenContent).unused).toEqual([]);
   });
 
+  it("passes a system's lists through", () => {
+    const doc = setChoice(fresh(), "plant", "garden-basics:fern", T1);
+    expect(viewCharacter(toyGarden, doc, toyGardenContent).lists).toEqual({ companions: [{ name: "Pot: none", source: "Fern" }] });
+  });
+
   it("lists rulings whose problem has gone away", () => {
     const doc = addOverride(fresh(), "too-much-water:garden-basics:cactus", "old ruling", T1);
     expect(viewCharacter(toyGarden, doc, toyGardenContent).staleOverrides).toEqual(["too-much-water:garden-basics:cactus"]);
