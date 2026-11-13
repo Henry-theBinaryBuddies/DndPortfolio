@@ -35,7 +35,12 @@ export const toyGarden: SystemModule = {
   id: "toy-garden",
   version: 1,
   title: "Garden (test game)",
-  packSchema: { validate: (pack) => (pack && typeof pack === "object" ? [] : ["A pack must be an object."]) },
+  packSchema: {
+    validate: (pack) =>
+      Object.keys(pack.collections)
+        .filter((name) => name !== "plants")
+        .map((name) => `collections.${name}: the garden has only "plants".`),
+  },
   initialChoices: () => ({}),
   migrate: (doc) => ({ ...doc, system: { ...doc.system, version: 1 } }),
 

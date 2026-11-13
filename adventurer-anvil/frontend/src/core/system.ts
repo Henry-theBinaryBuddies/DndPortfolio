@@ -1,15 +1,17 @@
 // The contract every system module meets, and the one function the app shell calls to see a character.
 import type { CharacterDocument } from "./character";
 import type { ChoiceKey, ChoiceValue } from "./choices";
-import type { ContentIndex } from "./content";
+import type { ContentIndex, IndexedPack } from "./content";
+import type { PackFile } from "./pack";
 import type { Evaluation, Issue, StepView } from "./evaluation";
 
 /**
- * Checks a pack's data for this system and lists what is wrong (empty when it is valid).
- * A placeholder shape: the pack format and how it is checked are designed in Milestone 1, step 4.
+ * Checks a pack's contents for this system and lists what is wrong (empty when it is valid).
+ * Called by readPack (pack.ts) after the wrapper is checked; `required` are the loaded packs this one
+ * names in `requires`, so references into them can be followed.
  */
 export interface PackSchema {
-  validate(pack: unknown): string[];
+  validate(pack: PackFile, required: IndexedPack[]): string[];
 }
 
 export interface SystemModule {

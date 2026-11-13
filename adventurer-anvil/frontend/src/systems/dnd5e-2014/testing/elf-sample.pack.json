@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../public/schemas/dnd5e-2014-pack.schema.json",
+  "format": "adventurer-anvil-pack",
+  "formatVersion": 1,
+  "id": "sample-srd",
+  "version": "0.1.0",
+  "system": "dnd5e-2014",
+  "title": "Sample: Elf and High Elf (tests only)",
+  "attribution": "This work includes material taken from the System Reference Document 5.1 (\"SRD 5.1\") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
+  "requires": [],
+  "collections": {
+    "races": [
+      {
+        "id": "elf",
+        "name": "Elf",
+        "size": "medium",
+        "summary": "Graceful, long-lived and keen of sense.",
+        "effects": [
+          { "type": "ability-bonus", "ability": "dex", "amount": 2 },
+          { "type": "speed", "walk": 30 },
+          { "type": "sense", "sense": "darkvision", "range": 60 },
+          { "type": "proficiency", "kind": "skill", "id": "perception" },
+          { "type": "feature", "name": "Fey Ancestry", "summary": "Advantage on saving throws against being charmed, and magic can't put you to sleep." },
+          { "type": "feature", "name": "Trance", "summary": "Meditate 4 hours instead of sleeping 8." },
+          { "type": "language", "id": "common" },
+          { "type": "language", "id": "elvish" }
+        ],
+        "suggestions": {
+          "ageAdult": 100,
+          "ageMax": 750,
+          "height": "4'6\" + 2d10 in.",
+          "weight": "90 + (2d4 × height roll) lb.",
+          "names": {
+            "male": ["Adran", "Aelar", "Aramil"],
+            "female": ["Adrie", "Althaea", "Anastrianna"],
+            "family": ["Amakiir", "Amastacia", "Galanodel"]
+          }
+        }
+      }
+    ],
+    "subraces": [
+      {
+        "id": "high-elf",
+        "name": "High Elf",
+        "race": "elf",
+        "summary": "Keen mind and a touch of wizardry.",
+        "effects": [
+          { "type": "ability-bonus", "ability": "int", "amount": 1 },
+          { "type": "proficiency", "kind": "weapon", "id": "longsword" },
+          { "type": "proficiency", "kind": "weapon", "id": "shortsword" },
+          { "type": "proficiency", "kind": "weapon", "id": "shortbow" },
+          { "type": "proficiency", "kind": "weapon", "id": "longbow" },
+          { "type": "choice", "id": "cantrip", "label": "Choose a wizard cantrip", "pick": 1,
+            "from": { "collection": "spells", "where": { "classes": "wizard", "level": 0 } } },
+          { "type": "choice", "id": "language", "label": "Choose one extra language", "pick": 1,
+            "from": { "collection": "languages" } }
+        ]
+      }
+    ],
+    "languages": [
+      { "id": "common", "name": "Common", "script": "Common" },
+      { "id": "dwarvish", "name": "Dwarvish", "script": "Dwarvish" },
+      { "id": "elvish", "name": "Elvish", "script": "Elvish" },
+      { "id": "draconic", "name": "Draconic", "script": "Draconic", "exotic": true }
+    ]
+  }
+}
