@@ -25,7 +25,7 @@ export function raceStep(ctx: Context): void {
   });
 
   const raceRef = racePicks[0];
-  const race = raceRef ? ctx.content.get(raceRef) : undefined;
+  const race = raceRef ? ctx.content.get("races", raceRef) : undefined;
   if (!raceRef || !race) return;
 
   const subraces = subracesOf(ctx.content, raceRef);

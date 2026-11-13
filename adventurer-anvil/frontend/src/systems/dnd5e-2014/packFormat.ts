@@ -27,9 +27,10 @@ export const sourceSchema = z.strictObject({
 // ---- Effects: typed statements the rules module knows how to apply ----
 
 const abilityBonus = z.strictObject({ type: z.literal("ability-bonus"), ability: z.enum(ABILITIES), amount: z.int().min(-10).max(10) });
+const feet = z.int().min(0).optional();
 const speed = z
-  .strictObject({ type: z.literal("speed"), ...Object.fromEntries(MOVEMENT.map((m) => [m, z.int().min(0).optional()])) })
-  .refine((e) => MOVEMENT.some((m) => (e as Record<string, unknown>)[m] !== undefined), "give at least one speed (walk, fly, ...)");
+  .strictObject({ type: z.literal("speed"), walk: feet, fly: feet, swim: feet, climb: feet, burrow: feet })
+  .refine((e) => MOVEMENT.some((m) => e[m] !== undefined), "give at least one speed (walk, fly, ...)");
 const sense = z.strictObject({ type: z.literal("sense"), sense: z.enum(SENSES), range: z.int().positive() });
 const proficiency = z.strictObject({ type: z.literal("proficiency"), kind: z.enum(PROFICIENCY_KINDS), id });
 const language = z.strictObject({ type: z.literal("language"), id: ref });

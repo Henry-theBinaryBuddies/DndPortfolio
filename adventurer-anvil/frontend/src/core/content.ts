@@ -21,9 +21,12 @@ export interface ContentEntry {
   [field: string]: unknown;
 }
 
-/** Read-only lookup over every loaded pack, grouped into collections (the system decides their names). */
+/**
+ * Read-only lookup over every loaded pack, grouped into collections (the system decides their names).
+ * A reference is unique only within its collection: a pack may have an entry "x" in two collections.
+ */
 export interface ContentIndex {
-  get(ref: ContentRef): (ContentEntry & { ref: ContentRef; pack: string }) | undefined;
+  get(collection: string, ref: ContentRef): (ContentEntry & { ref: ContentRef; pack: string }) | undefined;
   list(collection: string): (ContentEntry & { ref: ContentRef; pack: string })[];
   /** Packs present, as id and version. */
   packs(): { id: string; version: string }[];
@@ -35,6 +38,8 @@ export interface IndexedPack {
   collections: Record<string, ContentEntry[]>;
 }
 
+const key = (collection: string, ref: ContentRef) => `${collection}\u0000${ref}`;
+
 /** Builds a ContentIndex from packs already read and checked. */
 export function createContentIndex(packs: IndexedPack[]): ContentIndex {
   const byRef = new Map<ContentRef, ContentEntry & { ref: ContentRef; pack: string }>();
@@ -44,14 +49,14 @@ export function createContentIndex(packs: IndexedPack[]): ContentIndex {
       const list = byCollection.get(collection) ?? [];
       for (const entry of entries) {
         const indexed = { ...entry, ref: contentRef(pack.id, entry.id), pack: pack.id };
-        byRef.set(indexed.ref, indexed);
+        byRef.set(key(collection, indexed.ref), indexed);
         list.push(indexed);
       }
       byCollection.set(collection, list);
     }
   }
   return {
-    get: (ref) => byRef.get(ref),
+    get: (collection, ref) => byRef.get(key(collection, ref)),
     list: (collection) => byCollection.get(collection) ?? [],
     packs: () => packs.map((p) => ({ id: p.id, version: p.version })),
   };

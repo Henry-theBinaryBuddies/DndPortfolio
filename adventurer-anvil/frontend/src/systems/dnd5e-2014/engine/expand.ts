@@ -56,7 +56,7 @@ function applyEffect(ctx: Context, source: Source, effect: Effect, choice: strin
 
 /** Grants an entry. A missing one is skipped here; the check stage reports it. */
 function grant(ctx: Context, source: Source, collection: Collection, ref: string, from: Origin, depth: number): void {
-  const entry = ctx.content.get(ref);
+  const entry = ctx.content.get(collection, ref);
   if (!entry) return;
   if (collection === "languages") ctx.tally.languages.push({ ref, name: entry.name, from });
   else ctx.tally.grants.push({ collection, ref, name: entry.name, from });

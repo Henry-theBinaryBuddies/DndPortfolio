@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "schema": "vitest run -u src/systems/dnd5e-2014/schema.test.ts"
+    "schema": "vitest run -u src/systems/dnd5e-2014/schema.test.ts",
+    "import:srd": "tsx ../tools/import-srd.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -20,6 +21,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"

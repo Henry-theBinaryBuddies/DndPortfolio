@@ -67,10 +67,20 @@ describe("content", () => {
       toyGardenPack,
       { id: "more", version: "0.1", collections: { plants: [{ id: "fern", name: "Tree fern" }] } },
     ]);
-    expect(index.get("garden-basics:fern")?.name).toBe("Fern");
-    expect(index.get("more:fern")?.name).toBe("Tree fern");
+    expect(index.get("plants", "garden-basics:fern")?.name).toBe("Fern");
+    expect(index.get("plants", "more:fern")?.name).toBe("Tree fern");
     expect(index.list("plants").map((p) => p.ref)).toEqual(["garden-basics:cactus", "garden-basics:fern", "more:fern"]);
     expect(index.list("nothing")).toEqual([]);
+  });
+
+  it("keeps entries with the same id in different collections apart", () => {
+    // SRD 5.1 has both a race and a language called "halfling".
+    const index = createContentIndex([
+      { id: "p", version: "1", collections: { kinds: [{ id: "halfling", name: "Halfling (kind)" }], tongues: [{ id: "halfling", name: "Halfling (tongue)" }] } },
+    ]);
+    expect(index.get("kinds", "p:halfling")?.name).toBe("Halfling (kind)");
+    expect(index.get("tongues", "p:halfling")?.name).toBe("Halfling (tongue)");
+    expect(index.get("nothing", "p:halfling")).toBeUndefined();
   });
 });
 

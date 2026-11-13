@@ -60,7 +60,7 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
       for (const pick of new Set(picks)) {
         const option = options.find((o) => o.value === pick);
         if (!option) {
-          const missing = choice.collection !== undefined && !ctx.content.get(pick);
+          const missing = choice.collection !== undefined && !ctx.content.get(choice.collection, pick);
           ctx.issues.push(
             missing
               ? {

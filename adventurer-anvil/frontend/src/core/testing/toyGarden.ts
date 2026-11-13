@@ -46,7 +46,7 @@ export const toyGarden: SystemModule = {
 
   evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation {
     const plantRef = typeof doc.choices["plant"] === "string" ? (doc.choices["plant"] as string) : undefined;
-    const plant = plantRef ? (content.get(plantRef) as unknown as Plant | undefined) : undefined;
+    const plant = plantRef ? (content.get("plants", plantRef) as unknown as Plant | undefined) : undefined;
 
     const seedChoices: ChoiceSpec[] = [
       {
