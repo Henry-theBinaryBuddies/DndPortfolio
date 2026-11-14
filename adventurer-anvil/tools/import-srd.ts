@@ -24,6 +24,7 @@ const raw: RawSrd = {
   levels: read("5e-SRD-Levels.json"),
   proficiencies: read("5e-SRD-Proficiencies.json"),
   backgrounds: read("5e-SRD-Backgrounds.json"),
+  equipment: read("5e-SRD-Equipment.json"),
 };
 
 const result = buildSrdPack(raw);
@@ -38,7 +39,7 @@ writeFileSync(join(ROOT, "data/srd-5.1/IMPORT-REPORT.md"), report(result));
 const c = result.pack.collections;
 console.log(
   `Imported ${c.races.length} races, ${c.subraces.length} subraces, ${c.classes.length} classes, ${c.subclasses.length} subclasses, ` +
-    `${c.backgrounds.length} background, ${c.languages.length} languages; ${result.corrections.length} corrections.`,
+    `${c.backgrounds.length} background, ${c.items.length} items, ${c.languages.length} languages; ${result.corrections.length} corrections.`,
 );
 
 function report({ pack, traits, features, corrections }: BuildResult): string {
@@ -55,9 +56,14 @@ Written by \`tools/import-srd.ts\` (\`npm run import:srd\`); do not edit by hand
 Imported: **${c.races.length} races** (${c.races.map((r) => r.name).join(", ")}), **${c.subraces.length} subraces**
 (${c.subraces.map((r) => r.name).join(", ")}), **${c.classes.length} classes** (${c.classes.map((r) => r.name).join(", ")}),
 **${c.subclasses.length} subclasses** (${c.subclasses.map((r) => r.name).join(", ")}), **${c.backgrounds.length} background**
-(${c.backgrounds.map((r) => r.name).join(", ")}: its skills, languages, feature and characteristics; equipment arrives with the
-Equipment step) and **${c.languages.length} languages**.
-The pack passes the app's own check (\`readPack\`). Feats, spells and items join as each gets its pack format.
+(${c.backgrounds.map((r) => r.name).join(", ")}: its skills, languages, feature, characteristics and equipment),
+**${c.items.length} items** (every mundane item: weapons, armour, gear, tools, mounts and vehicles; magic items come later) and
+**${c.languages.length} languages**. Every class and background has its starting equipment.
+The pack passes the app's own check (\`readPack\`). Feats and spells join as each gets its pack format.
+
+SRD 5.1 has no starting-wealth table (the rules text, checked at the same commit, starts its Equipment section with
+coins), so no class carries \`startingWealth\`: with starting gold, the player enters the gold their DM gives them. A
+private pack can add the dice.
 
 ## How the ${traits.length} racial traits were brought in
 

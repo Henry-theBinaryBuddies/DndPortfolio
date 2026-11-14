@@ -2,13 +2,14 @@
 
 A D&D character creator in the spirit of Roll20's Charactermancer: guided steps, legal choices, a finished sheet. The first rules system is 2014 5e with SRD 5.1 content; the core is built so other systems can be added as modules.
 
-**Status (13 Nov 2026):** Milestone 1, step 7 of 9 (the builder's screens, one step at a time). Done: the
+**Status (14 Nov 2026):** Milestone 1, step 7 of 9 (the builder's screens, one step at a time). Done: the
 system-agnostic core (characters, choices, overrides, dice, content packs), the 2014 pack format with its JSON Schema,
-the 2014 rules engine, SRD 5.1's races, subraces, classes, subclasses, the Acolyte background and languages as the built-in pack, and the first
+the 2014 rules engine, SRD 5.1's races, subraces, classes, subclasses, the Acolyte background, languages and mundane items as the built-in pack, and the first
 screens: the Race step, the Abilities step (standard array, point buy, rolling with a roll log), the Class step (level 1:
 the class, its skills and level-1 choices, the subclass where it comes at level 1, hit points, Armor Class and what the
 class gives), the Background step (its skills and choices, a swap for any skill given twice, and personality
-written freely with the background's tables as suggestions), a live summary, Review and Licences. Nothing is saved yet (step 8). `npm run test:browser` runs the browser and accessibility tests. See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for
+written freely with the background's tables as suggestions), the Equipment step (the class and background packages, or
+starting gold and a shop; what you wear, with Armor Class, attacks, money and weight worked out), a live summary, Review and Licences. Nothing is saved yet (step 8). `npm run test:browser` runs the browser and accessibility tests. See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for
 what it will do, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it is put together, and [`LICENSES.md`](LICENSES.md).
 
 ## Run it

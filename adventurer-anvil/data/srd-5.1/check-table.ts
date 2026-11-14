@@ -95,11 +95,39 @@ export interface BackgroundFacts {
   feature: string;
   /** How many entries in each characteristics table (d8, d6, d6, d6). */
   tables: { traits: number; ideals: number; bonds: number; flaws: number };
+  kit: KitFacts;
 }
 
 export const BACKGROUNDS: Record<string, BackgroundFacts> = {
   acolyte: {
     name: "Acolyte", skills: ["Insight", "Religion"], languages: 2, feature: "Shelter of the Faithful",
     tables: { traits: 8, ideals: 6, bonds: 6, flaws: 6 },
+    // A holy symbol, a prayer book or prayer wheel, 5 sticks of incense, vestments, common clothes, a pouch with 15 gp.
+    kit: { items: { vestments: 1, "clothes-common": 1, pouch: 1 }, named: ["Sticks of incense × 5"], any: ["a holy symbol"], choices: 1, gold: "15 gp" },
   },
+};
+
+/** A class's or background's starting equipment: fixed items by item id and count, things named only, "any" lines, how many lettered choices, and gold. */
+export interface KitFacts {
+  items: Record<string, number>;
+  named?: string[];
+  any?: string[];
+  choices: number;
+  gold?: string;
+}
+
+/** Each class's starting equipment ("You start with the following equipment, in addition to the equipment granted by your background"). */
+export const KITS: Record<string, KitFacts> = {
+  barbarian: { items: { "explorers-pack": 1, javelin: 4 }, choices: 2 },
+  bard: { items: { "leather-armor": 1, dagger: 1 }, choices: 3 },
+  cleric: { items: { shield: 1 }, any: ["a holy symbol"], choices: 4 },
+  druid: { items: { "leather-armor": 1, "explorers-pack": 1 }, any: ["a druidic focus"], choices: 2 },
+  fighter: { items: {}, choices: 4 },
+  monk: { items: { dart: 10 }, choices: 2 },
+  paladin: { items: { "chain-mail": 1 }, any: ["a holy symbol"], choices: 3 },
+  ranger: { items: { longbow: 1, quiver: 1, arrow: 20 }, choices: 3 },
+  rogue: { items: { "leather-armor": 1, dagger: 2, "thieves-tools": 1 }, choices: 3 },
+  sorcerer: { items: { dagger: 2 }, choices: 3 },
+  warlock: { items: { "leather-armor": 1, dagger: 2 }, any: ["a simple weapon"], choices: 3 },
+  wizard: { items: { spellbook: 1 }, choices: 3 },
 };

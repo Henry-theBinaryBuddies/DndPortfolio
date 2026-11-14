@@ -1,13 +1,18 @@
 # SRD 5.1 import report
 
-Written by `tools/import-srd.ts` (`npm run import:srd`); do not edit by hand. Pack version 0.3.0.
+Written by `tools/import-srd.ts` (`npm run import:srd`); do not edit by hand. Pack version 0.4.0.
 
 Imported: **9 races** (Dwarf, Elf, Halfling, Human, Dragonborn, Gnome, Half-Elf, Half-Orc, Tiefling), **4 subraces**
 (Hill Dwarf, High Elf, Lightfoot Halfling, Rock Gnome), **12 classes** (Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard),
 **12 subclasses** (Berserker, Lore, Life, Land, Champion, Open Hand, Devotion, Hunter, Thief, Draconic, Fiend, Evocation), **1 background**
-(Acolyte: its skills, languages, feature and characteristics; equipment arrives with the
-Equipment step) and **16 languages**.
-The pack passes the app's own check (`readPack`). Feats, spells and items join as each gets its pack format.
+(Acolyte: its skills, languages, feature, characteristics and equipment),
+**237 items** (every mundane item: weapons, armour, gear, tools, mounts and vehicles; magic items come later) and
+**16 languages**. Every class and background has its starting equipment.
+The pack passes the app's own check (`readPack`). Feats and spells join as each gets its pack format.
+
+SRD 5.1 has no starting-wealth table (the rules text, checked at the same commit, starts its Equipment section with
+coins), so no class carries `startingWealth`: with starting gold, the player enters the gold their DM gives them. A
+private pack can add the dice.
 
 ## How the 38 racial traits were brought in
 
@@ -119,13 +124,16 @@ Divine Domain (Cleric), Druidic (Druid), Martial Arts (Monk), Sneak Attack (Rogu
 275 features, of which 7 at level 1 (Spellcasting: Bard, Spellcasting: Cleric, Domain Spells, Spellcasting: Druid, Spellcasting: Sorcerer, Pact Magic, Spellcasting: Wizard): spellcasting
 arrives with the Spells step, and features above level 1 are typed when levelling up arrives.
 
-## Corrections (3)
+## Corrections (6)
 
 Each is in `data/srd-5.1/corrections.ts`, with its reason.
 
 - **high-elf-cantrip**: Typo in the community file ("form" for "from").
 - **brave**: Typo in the community file ("saving throw" for "saving throws").
 - **relentless-endurance**: A sentence starting in lower case in the community file.
+- **rogue (equipment)**: The Rogue's "(a) a shortbow and quiver of 20 arrows" has no quiver in the community file; it is added.
+- **ranger (equipment)**: The Ranger's "a longbow and a quiver of 20 arrows" has no quiver in the community file; it is added.
+- **acolyte (equipment)**: The Acolyte's equipment in the community file has only the holy symbol, common clothes, the pouch and 15 gp. The SRD also gives a prayer book or prayer wheel, 5 sticks of incense and vestments. Vestments are an SRD item; the others are not, so they are added by name, without weights.
 
 ## Not in SRD 5.1, so not shipped
 

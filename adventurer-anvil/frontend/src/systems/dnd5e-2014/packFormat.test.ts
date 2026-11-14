@@ -95,6 +95,25 @@ describe("2014 pack format", () => {
     ]);
   });
 
+  it("checks items and starting equipment: references resolve, choice ids are unique, prices and dice read", () => {
+    const fighter = (p: any) => p.collections.classes[0];
+    expect(errorsFor(variant((p) => { fighter(p).startingEquipment.choices[0].options[0].items[0].item = "chain-shirt"; }))).toEqual([
+      'collections.classes[0].startingEquipment.choices[0].options[0].items[0].item: no items entry "chain-shirt" in this pack.',
+    ]);
+    expect(errorsFor(variant((p) => { fighter(p).startingEquipment.choices[1].id = "items"; }))).toEqual([
+      'collections.classes[0].startingEquipment.choices[1]: the choice id "items" is kept for the fixed items\' picks.',
+    ]);
+    expect(errorsFor(variant((p) => { p.collections.items.at(-1).contents[0].item = "bedroll"; }))).toEqual([
+      'collections.items[12].contents[0].item: no items entry "bedroll" in this pack.',
+    ]);
+    expect(errorsFor(variant((p) => { fighter(p).startingWealth = "5d4 x 10"; }))).toEqual([
+      'collections.classes[0].startingWealth: dice and an optional multiplier, e.g. "5d4x10" (in gold pieces)',
+    ]);
+    expect(errorsFor(variant((p) => { p.collections.items[0].cost.unit = "gold"; }))).toEqual([
+      'collections.items[0].cost.unit: Invalid option: expected one of "cp"|"sp"|"ep"|"gp"|"pp"',
+    ]);
+  });
+
   it("checks the wrapper and the system", () => {
     expect(errorsFor(variant((p) => (p.system = "kids-on-bikes")))).toEqual([
       'system: this pack is for "kids-on-bikes", not "dnd5e-2014".',

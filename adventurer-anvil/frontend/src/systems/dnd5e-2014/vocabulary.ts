@@ -46,10 +46,22 @@ export const SENSES = ["darkvision", "blindsight", "tremorsense", "truesight"] a
 
 export const MOVEMENT = ["walk", "fly", "swim", "climb", "burrow"] as const;
 
-/** What a proficiency effect can grant. Weapon, armour and tool ids will be checked against items once that collection exists. */
+/** What a proficiency effect can grant. Armour ids are light, medium, heavy and shield; weapon ids are simple, martial or an item id ("longsword"); tool ids are item ids. */
 export const PROFICIENCY_KINDS = ["skill", "saving-throw", "weapon", "armor", "tool"] as const;
 
 export const RECHARGE = ["short", "long", "dawn"] as const;
+
+/** Coins, smallest first, and how many copper pieces each is worth. */
+export const COINS = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 } as const;
+export type Coin = keyof typeof COINS;
+export const COIN_UNITS = Object.keys(COINS) as [Coin, ...Coin[]];
+
+/** Weapon properties. "monk" is not a property in the book: the community files use it to mark monk weapons. */
+export const WEAPON_PROPERTIES = [
+  "ammunition", "finesse", "heavy", "light", "loading", "reach", "special", "thrown", "two-handed", "versatile", "monk",
+] as const;
+
+export const ARMOR_CLASSES = ["light", "medium", "heavy", "shield"] as const;
 
 /** Fixed lists a choice can pick from (see the choice effect's from.list), and the effect each pick fills in. */
 export const CHOICE_LISTS = {

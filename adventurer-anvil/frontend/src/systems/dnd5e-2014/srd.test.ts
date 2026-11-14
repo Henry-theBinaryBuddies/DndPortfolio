@@ -8,7 +8,8 @@ import { createContentIndex, newCharacterDocument, readPack, setChoice, viewChar
 import { dnd5e2014 } from "./module";
 import { pointBuy, standardArray } from "./testing/abilities";
 import { buildSrdPack } from "../../../../tools/srd/build";
-import { BACKGROUNDS, CLASSES, LANGUAGES, RACES, SUBRACES } from "../../../../data/srd-5.1/check-table";
+import { BACKGROUNDS, CLASSES, KITS, LANGUAGES, RACES, SUBRACES, type KitFacts } from "../../../../data/srd-5.1/check-table";
+import type { EquipmentLine, StartingEquipment } from "./packFormat";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const json = (path: string) => JSON.parse(readFileSync(join(ROOT, path), "utf8"));
@@ -27,6 +28,20 @@ const names = (v: ReturnType<typeof view>, list: string, detail?: string) =>
   (v.lists[list] ?? []).filter((i) => detail === undefined || i.detail === detail).map((i) => i.name);
 const TENS = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
 
+/** A package as the check table puts it. */
+function kitFacts(kit: StartingEquipment): KitFacts {
+  const lines: EquipmentLine[] = kit.items ?? [];
+  const items: Record<string, number> = {};
+  for (const l of lines) if ("item" in l) items[l.item] = (items[l.item] ?? 0) + (l.qty ?? 1);
+  const named = lines.flatMap((l) => ("name" in l ? [l.qty && l.qty > 1 ? `${l.name} × ${l.qty}` : l.name] : []));
+  const any = lines.flatMap((l) => ("any" in l ? [l.label] : []));
+  return {
+    items, ...(named.length ? { named } : {}), ...(any.length ? { any } : {}), choices: kit.choices?.length ?? 0,
+    ...(kit.gold ? { gold: `${kit.gold.amount} ${kit.gold.unit}` } : {}),
+  };
+}
+const entry = (collection: string, id: string) => (committed.collections[collection] as { id: string; startingEquipment?: StartingEquipment }[]).find((e) => e.id === id)!;
+
 describe("the SRD 5.1 pack", () => {
   it("is exactly what the importer makes from the pinned files (run npm run import:srd if not)", () => {
     const raw = {
@@ -40,6 +55,7 @@ describe("the SRD 5.1 pack", () => {
       levels: json("data/srd-5.1/raw/5e-SRD-Levels.json"),
       proficiencies: json("data/srd-5.1/raw/5e-SRD-Proficiencies.json"),
       backgrounds: json("data/srd-5.1/raw/5e-SRD-Backgrounds.json"),
+      equipment: json("data/srd-5.1/raw/5e-SRD-Equipment.json"),
     };
     expect(JSON.parse(JSON.stringify(buildSrdPack(raw).pack))).toEqual(committed);
   });
@@ -241,6 +257,7 @@ describe("each background matches the check table", () => {
       const bond = step.choices.find((c) => c.key === "background.bond")!;
       const flaw = step.choices.find((c) => c.key === "background.flaw")!;
       expect([traits, ideal, bond, flaw].map((c) => c.suggestions?.length)).toEqual([facts.tables.traits, facts.tables.ideals, facts.tables.bonds, facts.tables.flaws]);
+      expect(kitFacts(entry("backgrounds", id).startingEquipment!)).toEqual(facts.kit);
     });
   }
 
@@ -255,5 +272,61 @@ describe("each background matches the check table", () => {
     const replace = v.steps.find((s) => s.id === "background")!.choices.find((c) => c.key === "background.replace.insight")!;
     expect(replace.label).toBe("Acolyte gives Insight, which you already have from Half-Elf: choose another skill");
     expect(v.issues.filter((i) => i.key === "race.srd-5.1:half-elf.skills")).toEqual([]);
+  });
+});
+
+describe("each class's starting equipment matches the check table", () => {
+  for (const [id, facts] of Object.entries(KITS)) {
+    it(id, () => expect(kitFacts(entry("classes", id).startingEquipment!)).toEqual(facts));
+  }
+
+  it("every 'any' line, in every class and background, has items to pick from", () => {
+    const kits = [...committed.collections.classes, ...committed.collections.backgrounds].map((e: { startingEquipment: StartingEquipment }) => e.startingEquipment);
+    const lines = kits.flatMap((k: StartingEquipment) => [...(k.items ?? []), ...(k.choices ?? []).flatMap((c) => c.options.flatMap((o) => o.items))]);
+    const items = committed.collections.items as { categories: string[] }[];
+    for (const l of lines.filter((l: EquipmentLine) => "any" in l) as Extract<EquipmentLine, { any: unknown }>[]) {
+      expect(items.filter((i) => l.any.categories.every((c) => i.categories.includes(c))).length, l.label).toBeGreaterThan(0);
+    }
+  });
+
+  it("no class has starting-wealth dice: SRD 5.1 has no such table", () => {
+    expect(committed.collections.classes.filter((c: { startingWealth?: string }) => c.startingWealth)).toEqual([]);
+  });
+});
+
+describe("real SRD equipment through the engine", () => {
+  const C = "equipment.class.srd-5.1:fighter";
+  const A = "equipment.background.srd-5.1:acolyte";
+  const fighterAcolyte = {
+    race: "srd-5.1:human", "race.srd-5.1:human.language": "srd-5.1:elvish", ...standardArray({ str: 15, dex: 13, con: 14, int: 8, wis: 12, cha: 10 }),
+    "class.class": "srd-5.1:fighter", background: "srd-5.1:acolyte", "equipment.method": "packages",
+    [`${C}.chain-mail-or-leather-armor`]: "a",
+    [`${C}.martial-weapons-and-shield-or-martial-weapons`]: "a", [`${C}.martial-weapons-and-shield-or-martial-weapons.a.0`]: "srd-5.1:longsword",
+    [`${C}.crossbow-light-or-handaxe`]: "a", [`${C}.dungeoneers-pack-or-explorers-pack`]: "b",
+    [`${A}.items.0`]: "srd-5.1:amulet", [`${A}.prayer-book-or-prayer-wheel`]: "a",
+    "equipment.armor": "srd-5.1:chain-mail", "equipment.shield": "shield",
+  };
+
+  it("a Fighter Acolyte in chain mail with a shield and a longsword", () => {
+    const v = view(fighterAcolyte);
+    expect(v.steps.find((s) => s.id === "equipment")?.status).toBe("done");
+    expect(v.derived.ac).toMatchObject({ value: 18, breakdown: [{ label: "Chain Mail", amount: 16 }, { label: "Shield", amount: 2 }] });
+    // Human Str 16 (+3), proficient with martial weapons; the light crossbow uses Dex 14 (+2).
+    expect(v.derived["attack.srd-5.1:longsword"].value).toBe("+5 to hit, 1d8+3 slashing (1d10+3 two-handed)");
+    expect(v.derived["attack.srd-5.1:crossbow-light"].value).toBe("+4 to hit, 1d8+2 piercing");
+    expect(v.derived.coins).toMatchObject({ value: 1500 });
+    const inventory = names(v, "inventory");
+    for (const thing of ["Chain Mail", "Shield", "Longsword", "Crossbow, light", "Crossbow bolt × 20", "Backpack", "Torch × 10", "Amulet", "Prayer book", "Sticks of incense × 5", "Vestments"]) {
+      expect(inventory).toContain(thing);
+    }
+    expect(v.issues.filter((i) => i.step === "equipment")).toEqual([]);
+  });
+
+  it("starting gold: SRD classes have no wealth dice, so the DM's amount is entered, and the whole SRD is for sale", () => {
+    const v = view({ "class.class": "srd-5.1:wizard", "equipment.method": "gold", "equipment.gold": 80, "equipment.shop": { "srd-5.1:quarterstaff": 1, "srd-5.1:spellbook": 1 } });
+    const step = v.steps.find((s) => s.id === "equipment")!;
+    expect(step.choices.find((c) => c.key === "equipment.gold")?.kind).toBe("number");
+    expect(step.choices.find((c) => c.key === "equipment.shop")?.options?.length).toBe(230); // every item with a price
+    expect(v.derived.coins.value).toBe(8000 - 20 - 5000);
   });
 });

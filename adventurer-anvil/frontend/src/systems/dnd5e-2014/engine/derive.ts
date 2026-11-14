@@ -72,17 +72,7 @@ export function derive(tally: Tally, base: Record<Ability, number>): DerivedResu
     breakdown: [{ label: "Base", amount: 10 }, { label: "Perception", amount: perception }],
   };
   derived["initiative"] = { value: modifier(scores.dex), label: "Initiative", breakdown: [{ label: "Dexterity", amount: modifier(scores.dex) }] };
-  // Armor Class. Armour arrives with equipment; until then unarmoured: the best of 10 + Dex and any other formula
-  // (Unarmored Defense), plus bonuses that apply without armour.
-  const formulas = [{ base: 10, abilities: ["dex"] as Ability[], from: { name: "Unarmored" } }, ...tally.acFormulas];
-  const acOptions = formulas.map((f) => {
-    const breakdown: BreakdownLine[] = [{ label: f.from.name === "Unarmored" ? "Unarmored" : `${f.from.name} (unarmoured)`, amount: f.base }];
-    for (const a of f.abilities) breakdown.push({ label: ABILITY_NAMES[a], amount: modifier(scores[a]) });
-    return breakdown;
-  });
-  const ac = acOptions.reduce((best, b) => (sum(b) > sum(best) ? b : best));
-  for (const bonus of tally.acBonuses) if (bonus.while !== "armored") ac.push({ label: bonus.from.name, amount: bonus.amount });
-  derived["ac"] = { value: sum(ac), label: "Armor Class", breakdown: ac };
+  derived["ac"] = armorClass(tally, scores);
 
   // Hit points and hit dice, once there is a class. Level 1: the first class's whole hit die, plus Con, plus any
   // per-level bonus. (Later levels, rolled or averaged, arrive with levelling up.)
@@ -102,14 +92,88 @@ export function derive(tally: Tally, base: Record<Ability, number>): DerivedResu
     };
   }
 
-  // Speeds: the fastest given for each kind of movement (a subrace's 35 ft beats its race's 30 ft).
+  // Speeds: the fastest given for each kind of movement (a subrace's 35 ft beats its race's 30 ft). Heavy armour
+  // without the Strength it needs costs 10 feet.
+  const heavy = tally.worn.armor?.armor.strength;
+  const slowed = heavy !== undefined && scores.str < heavy ? tally.worn.armor!.name : undefined;
   for (const mode of ["walk", "fly", "swim", "climb", "burrow"] as const) {
     const best = tally.speeds.filter((s) => s.mode === mode).sort((a, b) => b.value - a.value)[0];
-    if (best) derived[`speed.${mode}`] = { value: best.value, label: `${capital(mode)} speed`, breakdown: [{ label: best.from.name, amount: best.value }] };
+    if (!best) continue;
+    const breakdown: BreakdownLine[] = [{ label: best.from.name, amount: best.value }];
+    if (slowed) breakdown.push({ label: `${slowed} (Strength ${scores.str}, needs ${heavy})`, amount: -10 });
+    derived[`speed.${mode}`] = { value: Math.max(0, sum(breakdown)), label: `${capital(mode)} speed`, breakdown };
+  }
+
+  // Attacks: one per weapon carried. Melee weapons use Strength, ranged ones Dexterity, finesse ones the better.
+  for (const w of tally.weapons) {
+    const { weapon } = w;
+    const ability: Ability =
+      weapon.properties.includes("finesse") ? (modifier(scores.dex) > modifier(scores.str) ? "dex" : "str")
+      : weapon.range === "ranged" ? "dex" : "str";
+    const mod = modifier(scores[ability]);
+    const breakdown: BreakdownLine[] = [{ label: ABILITY_NAMES[ability], amount: mod }];
+    const localId = w.ref.slice(w.ref.indexOf(":") + 1);
+    const by = tally.proficiencies.find((p) => p.kind === "weapon" && !p.replaced && (p.id === weapon.class || p.id === localId))?.from.name;
+    if (by) breakdown.push({ label: `Proficient (${by})`, amount: prof });
+    const bonus = sum(breakdown);
+    const damage = (dice: string) => (/^\d+$/.test(dice) ? String(Math.max(0, Number(dice) + mod)) : `${dice}${mod > 0 ? `+${mod}` : mod < 0 ? `−${-mod}` : ""}`);
+    const hit = weapon.damage
+      ? `${damage(weapon.damage.dice)} ${weapon.damage.type}${weapon.versatile ? ` (${damage(weapon.versatile)} two-handed)` : ""}`
+      : "no damage (special)";
+    derived[`attack.${w.ref}`] = { value: `${bonus >= 0 ? "+" : "−"}${Math.abs(bonus)} to hit, ${hit}`, label: w.name, breakdown };
+  }
+
+  // What's carried, against the carrying capacity (Strength × 15 lb).
+  const byName = new Map<string, number>();
+  for (const i of tally.items) if (i.weight > 0) byName.set(i.name, (byName.get(i.name) ?? 0) + i.weight * i.qty);
+  const weights: BreakdownLine[] = [...byName].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, lb]) => ({ label: name, amount: round2(lb) }));
+  const capacity = scores.str * 15;
+  if (tally.items.length) derived["weight"] = {
+    value: round2(sum(weights)),
+    label: `Weight carried (of ${capacity} lb)`,
+    breakdown: weights.length ? weights : [{ label: "Nothing carried", amount: 0 }],
+  };
+  derived["carrying-capacity"] = { value: capacity, label: "Carrying capacity", breakdown: [{ label: `Strength ${scores.str} × 15`, amount: capacity }] };
+  if (tally.coins.length) {
+    const coins = tally.coins.map((c) => ({ label: c.label, amount: c.cp }));
+    derived["coins"] = { value: sum(coins), label: "Money", breakdown: coins };
   }
 
   const usesOf = (u: number | AbilityUses) => (typeof u === "number" ? u : Math.max(u.min ?? 0, modifier(scores[u.ability]) + (u.add ?? 0)));
   return { derived, lists: buildLists(tally, usesOf), scores };
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Armor Class: worn armour's (its base, plus as much Dexterity as it allows); without armour, the best of 10 + Dex
+ * and any other formula (Unarmored Defense; a monk's only without a shield). Then a shield, then bonuses that apply
+ * while armoured or unarmoured (a shield isn't armour).
+ */
+function armorClass(tally: Tally, scores: Record<Ability, number>): Derived {
+  const { armor, shield } = tally.worn;
+  let ac: BreakdownLine[];
+  if (armor) {
+    const dex = modifier(scores.dex);
+    ac = [{ label: armor.name, amount: armor.armor.base }];
+    const d = armor.armor.dex;
+    if (d === "full") ac.push({ label: ABILITY_NAMES.dex, amount: dex });
+    else if (d !== "none") ac.push({ label: `${ABILITY_NAMES.dex} (max ${d.max})`, amount: Math.min(dex, d.max) });
+  } else {
+    const formulas = [{ base: 10, abilities: ["dex"] as Ability[], shield: true as boolean | undefined, from: { name: "Unarmored" } }, ...tally.acFormulas]
+      .filter((f) => !shield || f.shield !== false);
+    const options = formulas.map((f) => {
+      const breakdown: BreakdownLine[] = [{ label: f.from.name === "Unarmored" ? "Unarmored" : `${f.from.name} (unarmoured)`, amount: f.base }];
+      for (const a of f.abilities) breakdown.push({ label: ABILITY_NAMES[a], amount: modifier(scores[a]) });
+      return breakdown;
+    });
+    ac = options.reduce((best, b) => (sum(b) > sum(best) ? b : best));
+  }
+  if (shield) ac.push({ label: shield.name, amount: shield.bonus });
+  for (const bonus of tally.acBonuses) {
+    if (bonus.while === undefined || (bonus.while === "armored") === Boolean(armor)) ac.push({ label: bonus.from.name, amount: bonus.amount });
+  }
+  return { value: sum(ac), label: "Armor Class", breakdown: ac };
 }
 
 const ARMOR_NAMES: Record<string, string> = { light: "Light armor", medium: "Medium armor", heavy: "Heavy armor", shield: "Shields" };
@@ -178,6 +242,16 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number): 
     for (const r of resources) if (!named.has(r.id)) add(`gains.${step}`, { name: r.name, source: r.from.name, detail: per(r) }, false);
   }
   for (const g of tally.grants) add(g.collection, { name: g.name, source: g.from.name });
+
+  // The inventory: the same thing from the same place (and pack) is one line.
+  const inventory = new Map<string, ListItem & { qty: number; base: string }>();
+  for (const i of tally.items) {
+    const key = `${i.ref ?? i.name}|${i.in ?? ""}|${i.from.name}`;
+    const line = inventory.get(key) ?? { name: "", base: i.name, qty: 0, source: i.from.name, detail: i.in ? `in ${i.in}` : undefined };
+    line.qty += i.qty;
+    inventory.set(key, line);
+  }
+  for (const { base, qty, ...line } of inventory.values()) add("inventory", { ...line, name: qty > 1 ? `${base} × ${qty}` : base }, false);
   return lists;
 }
 

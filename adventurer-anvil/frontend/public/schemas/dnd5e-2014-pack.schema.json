@@ -6148,6 +6148,247 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "startingEquipment": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "item": {
+                              "type": "string",
+                              "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            },
+                            "qty": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "item"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "any": {
+                              "type": "object",
+                              "properties": {
+                                "categories": {
+                                  "minItems": 1,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "categories"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "qty": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "any",
+                            "label"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "qty": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "weight": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "choices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "options": {
+                          "minItems": 2,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              },
+                              "items": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "item": {
+                                          "type": "string",
+                                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                        },
+                                        "qty": {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "item"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "any": {
+                                          "type": "object",
+                                          "properties": {
+                                            "categories": {
+                                              "minItems": 1,
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "categories"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "qty": {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": [
+                                        "any",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "qty": {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "weight": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "items"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "label",
+                        "options"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "gold": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "unit": {
+                        "type": "string",
+                        "enum": [
+                          "cp",
+                          "sp",
+                          "ep",
+                          "gp",
+                          "pp"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "unit"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "startingWealth": {
+                "type": "string",
+                "pattern": "^\\d+d\\d+(?:x\\d+)?$"
               }
             },
             "required": [
@@ -8659,12 +8900,505 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              "startingEquipment": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "item": {
+                              "type": "string",
+                              "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            },
+                            "qty": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "item"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "any": {
+                              "type": "object",
+                              "properties": {
+                                "categories": {
+                                  "minItems": 1,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "categories"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "qty": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "any",
+                            "label"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "qty": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "weight": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "choices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "options": {
+                          "minItems": 2,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              },
+                              "items": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "item": {
+                                          "type": "string",
+                                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                        },
+                                        "qty": {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "item"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "any": {
+                                          "type": "object",
+                                          "properties": {
+                                            "categories": {
+                                              "minItems": 1,
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "categories"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "qty": {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": [
+                                        "any",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "qty": {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "weight": {
+                                          "type": "number",
+                                          "minimum": 0
+                                        }
+                                      },
+                                      "required": [
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "items"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "label",
+                        "options"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "gold": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "unit": {
+                        "type": "string",
+                        "enum": [
+                          "cp",
+                          "sp",
+                          "ep",
+                          "gp",
+                          "pp"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "unit"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "required": [
               "id",
               "name",
               "effects"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "book": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "page": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "book"
+                ],
+                "additionalProperties": false
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                }
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "cp",
+                      "sp",
+                      "ep",
+                      "gp",
+                      "pp"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "unit"
+                ],
+                "additionalProperties": false
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0
+              },
+              "bundle": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 9007199254740991
+              },
+              "weapon": {
+                "type": "object",
+                "properties": {
+                  "class": {
+                    "type": "string",
+                    "enum": [
+                      "simple",
+                      "martial"
+                    ]
+                  },
+                  "range": {
+                    "type": "string",
+                    "enum": [
+                      "melee",
+                      "ranged"
+                    ]
+                  },
+                  "damage": {
+                    "type": "object",
+                    "properties": {
+                      "dice": {
+                        "type": "string",
+                        "pattern": "^(?:\\d+d\\d+|\\d+)$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "acid",
+                          "bludgeoning",
+                          "cold",
+                          "fire",
+                          "force",
+                          "lightning",
+                          "necrotic",
+                          "piercing",
+                          "poison",
+                          "psychic",
+                          "radiant",
+                          "slashing",
+                          "thunder"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "dice",
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "versatile": {
+                    "type": "string",
+                    "pattern": "^(?:\\d+d\\d+|\\d+)$"
+                  },
+                  "properties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "ammunition",
+                        "finesse",
+                        "heavy",
+                        "light",
+                        "loading",
+                        "reach",
+                        "special",
+                        "thrown",
+                        "two-handed",
+                        "versatile",
+                        "monk"
+                      ]
+                    }
+                  },
+                  "normal": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "long": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "class",
+                  "range",
+                  "properties"
+                ],
+                "additionalProperties": false
+              },
+              "armor": {
+                "type": "object",
+                "properties": {
+                  "class": {
+                    "type": "string",
+                    "enum": [
+                      "light",
+                      "medium",
+                      "heavy",
+                      "shield"
+                    ]
+                  },
+                  "base": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30
+                  },
+                  "dex": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "full"
+                      },
+                      {
+                        "type": "string",
+                        "const": "none"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "max": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "max"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "strength": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 30
+                  },
+                  "stealthDisadvantage": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "class",
+                  "base",
+                  "dex"
+                ],
+                "additionalProperties": false
+              },
+              "contents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "type": "string",
+                      "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    },
+                    "qty": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "qty"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
             ],
             "additionalProperties": false
           }

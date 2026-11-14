@@ -1,5 +1,6 @@
 // Dice notation shared across games: "4d6kh3" (four six-sided dice, keep the highest three), "2d10+3", "1d8-1",
-// "3d6kl1" (keep the lowest one), and terms added together: "1d4+1d6+2".
+// "3d6kl1" (keep the lowest one), terms added together: "1d4+1d6+2", and a multiplier on the whole: "5d4x10"
+// (starting wealth: roll 5d4, times 10).
 
 export interface DiceTerm {
   kind: "dice";
@@ -15,7 +16,13 @@ export interface ConstantTerm {
   value: number;
 }
 
-export type Term = DiceTerm | ConstantTerm;
+/** Multiplies the total of everything before it; only ever last. */
+export interface MultiplyTerm {
+  kind: "multiply";
+  value: number;
+}
+
+export type Term = DiceTerm | ConstantTerm | MultiplyTerm;
 
 export interface RollResult {
   expression: string;
@@ -31,8 +38,10 @@ const MAX_SIDES = 1000;
 export function parseDice(expression: string): Term[] {
   // Spaces are allowed only around + and -: "1d6 2" is a typo, not a 62-sided die.
   if (/\w\s+\w/.test(expression)) throw new Error(`Cannot read the dice expression "${expression}".`);
-  const text = expression.replace(/\s+/g, "").toLowerCase();
-  if (!text) throw new Error("Empty dice expression.");
+  const whole = expression.replace(/\s+/g, "").toLowerCase();
+  if (!whole) throw new Error("Empty dice expression.");
+  const times = /^(.+?)[x×*](\d+)$/.exec(whole);
+  const text = times ? times[1] : whole;
   const termPattern = /([+-]?)(?:(\d*)d(\d+)(?:k([hl])(\d+))?|(\d+))/y;
   const terms: Term[] = [];
   let at = 0;
@@ -58,6 +67,11 @@ export function parseDice(expression: string): Term[] {
     }
     at = termPattern.lastIndex;
   }
+  if (times) {
+    const value = Number(times[2]);
+    if (value < 1 || value > 10000) throw new Error(`Multiply by 1 to 10000, please ("${expression}").`);
+    terms.push({ kind: "multiply", value });
+  }
   return terms;
 }
 
@@ -70,6 +84,10 @@ export function rollDice(expression: string, random: () => number = Math.random)
   const kept: number[] = [];
   let total = 0;
   for (const term of parseDice(expression)) {
+    if (term.kind === "multiply") {
+      total *= term.value;
+      continue;
+    }
     if (term.kind === "constant") {
       total += term.sign * term.value;
       continue;

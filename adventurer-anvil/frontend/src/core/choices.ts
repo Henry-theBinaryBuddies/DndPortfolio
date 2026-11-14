@@ -21,7 +21,8 @@ export type ChoiceKind =
   | "long-text" // paragraphs
   | "assign" // put given values into slots (e.g. a fixed set of scores into stats)
   | "allocate" // spend a budget across slots, with a cost per value
-  | "roll"; // dice whose result is logged
+  | "roll" // dice whose result is logged
+  | "quantities"; // how many of each option, within an optional budget (a shop)
 
 export interface Option {
   /** The value stored when this option is picked: usually a content reference "pack:entry". */
@@ -54,6 +55,8 @@ export interface ChoiceSpec {
   label: string;
   /** Why this choice exists, e.g. the trait or level that grants it. */
   source?: string;
+  /** A sentence of help shown under the label. */
+  hint?: string;
   kind: ChoiceKind;
   options?: Option[];
   /** pick-many: how many to pick. */
@@ -64,8 +67,12 @@ export interface ChoiceSpec {
   slots?: Slot[];
   /** assign: the values to place, one per slot (values may repeat, e.g. two rolled 12s). */
   values?: number[];
-  /** allocate: the budget, and the cost of each value a slot may take. */
-  budget?: { total: number; cost: Record<string, number> };
+  /**
+   * allocate: the budget, and the cost of each value a slot may take.
+   * quantities: the money to spend and each option's price, by option value; `format` says how to show amounts
+   * ("coins": amounts are in the smallest coin, shown as e.g. "14 gp 5 sp").
+   */
+  budget?: { total: number; cost: Record<string, number>; format?: "coins" };
   /** roll: the dice expression, e.g. "4d6kh3" (see dice.ts), and how many times to roll it as one set. */
   dice?: string;
   times?: number;

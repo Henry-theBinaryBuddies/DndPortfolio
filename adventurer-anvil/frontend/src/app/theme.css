@@ -160,6 +160,16 @@ select { font: inherit; color: var(--ink); background: var(--panel); border: 1px
 .stepper { white-space: nowrap; }
 .stepper .final { display: inline-block; min-width: 2ch; text-align: center; margin: 0 6px; }
 .button.small { padding: 1px 9px; }
+.number-input { max-width: 12em; }
+.shop { list-style: none; margin: 6px 0 10px; padding: 0; }
+.shop li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px 12px; padding: 5px 0; border-bottom: 1px solid var(--edge); font-size: 15px; }
+.shop-tags { font-size: 13px; text-align: right; }
+.shop-search-label { display: block; margin-top: 6px; }
+@media (max-width: 760px) {
+  .shop li { grid-template-columns: minmax(0, 1fr) auto; }
+  .shop-tags { grid-column: 1; grid-row: 2; text-align: left; }
+  .shop .stepper { grid-column: 2; grid-row: 1 / span 2; }
+}
 .button:disabled { opacity: 0.4; cursor: not-allowed; }
 .roll-set { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 12px; font-size: 14px; }
 .die { display: inline-block; min-width: 22px; text-align: center; border: 1px solid var(--edge-strong); border-radius: 4px; margin-right: 3px; font-size: 13px; }

@@ -1,6 +1,6 @@
 // The always-visible summary, drawn from the system's layout. Any number opens its breakdown.
 import { useState } from "react";
-import type { CharacterView, SummaryGroup } from "../core";
+import type { CharacterView, SummaryGroup, ValueFormat } from "../core";
 import { breakdownText, formatValue } from "./format";
 
 export interface TodoItem {
@@ -21,14 +21,15 @@ export function Summary({ layout, view, todo, onGoTo }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const toggle = (key: string) => setOpen(open === key ? null : key);
 
-  const breakdownFor = (keys: string[]) => {
+  const breakdownFor = (keys: string[], formats: Record<string, ValueFormat | undefined> = {}) => {
     if (!open || !keys.includes(open)) return null;
     const d = view.derived[open];
     if (!d) return null;
+    const format = formats[open];
     return (
       <p className="breakdown" id={`breakdown-${open}`}>
-        <span className="dim">{d.label} {String(d.value)} = </span>
-        {breakdownText(d.breakdown)}
+        <span className="dim">{d.label} {formatValue(d.value, format === "signed" ? undefined : format)} = </span>
+        {breakdownText(d.breakdown, format)}
       </p>
     );
   };
@@ -66,11 +67,17 @@ export function Summary({ layout, view, todo, onGoTo }: Props) {
           );
         }
         if (group.kind === "rows") {
-          const keys = group.items.map((i) => i.key);
+          const prefix = group.prefix;
+          const extra = prefix ? Object.keys(view.derived).filter((k) => k.startsWith(prefix.key)).map((key) => ({ key, format: prefix.format })) : [];
+          const items = [...group.items, ...extra].filter((i) => view.derived[i.key]);
+          if (items.length === 0) return null;
+          const keys = items.map((i) => i.key);
+          const formats = Object.fromEntries(items.map((i) => [i.key, i.format]));
           return (
             <section key={group.label} className="group" aria-label={group.label}>
+              {prefix && <h3 className="label">{group.label}</h3>}
               <div className="rows">
-                {group.items.map((item) => {
+                {items.map((item) => {
                   const d = view.derived[item.key];
                   if (!d) return null;
                   return (
@@ -88,7 +95,7 @@ export function Summary({ layout, view, todo, onGoTo }: Props) {
                   );
                 })}
               </div>
-              {breakdownFor(keys)}
+              {breakdownFor(keys, formats)}
             </section>
           );
         }

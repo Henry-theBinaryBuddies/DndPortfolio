@@ -65,6 +65,7 @@ export interface RawLanguage {
 
 export interface RawSrd extends RawSrdClasses {
   backgrounds: RawBackground[];
+  equipment: RawEquipment[];
   races: RawRace[];
   subraces: RawSubrace[];
   traits: RawTrait[];
@@ -88,7 +89,7 @@ export interface RawChoice {
   from: { option_set_type?: string; options: RawOption[] };
 }
 
-export interface RawClass {
+export interface RawClass extends RawStartingEquipment {
   index: string;
   name: string;
   hit_die: number;
@@ -155,7 +156,8 @@ export interface RawSrdClasses {
 
 // ---- Backgrounds (5e-SRD-Backgrounds) ----
 
-export interface RawBackground {
+export interface RawBackground extends RawStartingEquipment {
+  starting_gold?: { quantity: number; unit: "cp" | "sp" | "gp" };
   index: string;
   name: string;
   starting_proficiencies: RawRef[];
@@ -165,4 +167,49 @@ export interface RawBackground {
   ideals: { from: { options: { desc: string; alignments: RawRef[] }[] } };
   bonds: { from: { options: { string: string }[] } };
   flaws: { from: { options: { string: string }[] } };
+}
+
+// ---- Equipment (5e-SRD-Equipment, -Equipment-Categories) and starting equipment ----
+
+export interface RawEquipment {
+  index: string;
+  name: string;
+  equipment_categories: RawRef[];
+  cost?: { quantity: number; unit: "cp" | "sp" | "gp" };
+  weight?: number;
+  /** Sold in a bundle of this many (arrows, 20). */
+  quantity?: number;
+  desc?: string[];
+  special?: string[];
+  weapon_category?: "Simple" | "Martial";
+  weapon_range?: "Melee" | "Ranged";
+  damage?: { damage_dice: string; damage_type: RawRef };
+  two_handed_damage?: { damage_dice: string; damage_type: RawRef };
+  range?: { normal: number; long?: number };
+  throw_range?: { normal: number; long?: number };
+  properties?: RawRef[];
+  armor_category?: "Light" | "Medium" | "Heavy" | "Shield";
+  armor_class?: { base: number; dex_bonus: boolean; max_bonus?: number };
+  str_minimum?: number;
+  stealth_disadvantage?: boolean;
+  contents?: { item: RawRef; quantity: number }[];
+}
+
+/** An option in a starting-equipment choice. */
+export type RawEquipmentOption =
+  | { option_type: "counted_reference"; count: number; of: RawRef }
+  | { option_type: "multiple"; items: RawEquipmentOption[] }
+  | { option_type: "choice"; choice: RawEquipmentChoice };
+
+export interface RawEquipmentChoice {
+  desc?: string;
+  choose: number;
+  from:
+    | { option_set_type: "options_array"; options: RawEquipmentOption[] }
+    | { option_set_type: "equipment_category"; equipment_category: RawRef };
+}
+
+export interface RawStartingEquipment {
+  starting_equipment: { equipment: RawRef; quantity: number }[];
+  starting_equipment_options: RawEquipmentChoice[];
 }

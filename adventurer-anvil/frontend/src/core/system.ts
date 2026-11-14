@@ -16,11 +16,15 @@ export interface PackSchema {
 
 /**
  * What the always-visible summary shows, in order. The system supplies it, so the app shell draws a summary
- * without knowing any game: tiles (big numbers), rows (label and value) or a list.
+ * without knowing any game: tiles (big numbers), rows (label and value) or a list. Rows may add every derived
+ * value whose key starts with `prefix.key` (one per attack, say), after the named ones.
  */
+/** How a number is shown: "+3", "30 ft", "14 gp 5 sp" (a number of copper pieces), "81 lb". */
+export type ValueFormat = "signed" | "feet" | "coins" | "pounds";
+
 export type SummaryGroup =
   | { kind: "tiles"; label: string; items: { key: string; short: string }[] }
-  | { kind: "rows"; label: string; items: { key: string; format?: "signed" | "feet" }[] }
+  | { kind: "rows"; label: string; items: { key: string; format?: ValueFormat }[]; prefix?: { key: string; format?: ValueFormat } }
   | { kind: "list"; label: string; list: string };
 
 export interface SystemModule {

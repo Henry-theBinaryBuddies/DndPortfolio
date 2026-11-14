@@ -3,6 +3,7 @@
 // the rest are kept as text until the step that uses them (levelling up, spells).
 import type { Class, Effect, Subclass } from "../../frontend/src/systems/dnd5e-2014/packFormat";
 import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
+import { kitFrom } from "./items";
 import type { RawChoice, RawClass, RawFeature, RawLevel, RawOption, RawRef, RawSrdClasses } from "./raw";
 
 /** What a written-in option can give: any effect but a choice. */
@@ -302,6 +303,7 @@ export function buildClasses(raw: RawSrdClasses) {
       ...(subclass ? { subclass: { name: subclass.subclass_flavor, level: Math.min(...subLevels.map((l) => l.level)) } } : {}),
       columns: columnsFrom(levels, "class_specific"),
       levels: levelsFrom(levels, c.name, c.index),
+      startingEquipment: kitFrom(c),
     };
   });
 

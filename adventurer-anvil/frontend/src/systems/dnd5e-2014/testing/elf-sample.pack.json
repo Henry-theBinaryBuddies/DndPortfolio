@@ -5,7 +5,7 @@
   "id": "sample-srd",
   "version": "0.1.0",
   "system": "dnd5e-2014",
-  "title": "Sample: Elf, High Elf, Fighter, Rogue and Sentry (tests only)",
+  "title": "Sample: Elf, High Elf, Fighter, Rogue, Sentry and some items (tests only)",
   "attribution": "This work includes material taken from the System Reference Document 5.1 (\"SRD 5.1\") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
   "requires": [],
   "collections": {
@@ -105,6 +105,18 @@
           "requires": { "any": [{ "ability": "str", "min": 13 }, { "ability": "dex", "min": 13 }] },
           "proficiencies": [{ "type": "proficiency", "kind": "armor", "id": "light" }]
         },
+        "startingEquipment": {
+          "items": [{ "item": "explorers-pack" }],
+          "choices": [
+            { "id": "armor", "label": "(a) chain mail or (b) leather armor, longbow and 20 arrows", "options": [
+              { "id": "a", "items": [{ "item": "chain-mail" }] },
+              { "id": "b", "items": [{ "item": "leather-armor" }, { "item": "longbow" }, { "item": "arrow", "qty": 20 }] }] },
+            { "id": "weapon", "label": "(a) a martial weapon and a shield or (b) two martial weapons", "options": [
+              { "id": "a", "items": [{ "any": { "categories": ["martial-weapons"] }, "label": "a martial weapon" }, { "item": "shield" }] },
+              { "id": "b", "items": [{ "any": { "categories": ["martial-weapons"] }, "qty": 2, "label": "a martial weapon" }] }] }
+          ]
+        },
+        "startingWealth": "5d4x10",
         "subclass": { "name": "Martial Archetype", "level": 3 },
         "columns": [{ "id": "action-surges", "name": "Action Surge", "values": { "2": 1, "17": 2 } }],
         "levels": [
@@ -174,6 +186,7 @@
           "requires": { "all": [{ "ability": "dex", "min": 13 }] },
           "proficiencies": [{ "type": "proficiency", "kind": "armor", "id": "light" }]
         },
+        "startingEquipment": { "items": [{ "item": "leather-armor" }, { "item": "dagger", "qty": 2 }, { "item": "rapier" }] },
         "subclass": { "name": "Roguish Archetype", "level": 3 },
         "columns": [{ "id": "sneak-attack", "name": "Sneak Attack", "values": { "1": "1d6", "3": "2d6" } }],
         "levels": [
@@ -222,8 +235,34 @@
           "ideals": [{ "text": "Duty. The wall stands because I stand.", "alignment": "Lawful" }],
           "bonds": ["The town I guarded is my family."],
           "flaws": ["I trust no stranger."]
-        }
+        },
+        "startingEquipment": { "items": [{ "name": "Watch horn" }, { "item": "dagger" }], "gold": { "amount": 10, "unit": "gp" } }
       }
+    ],
+    "items": [
+      { "id": "chain-mail", "name": "Chain Mail", "categories": ["armor", "heavy-armor"], "cost": { "amount": 75, "unit": "gp" }, "weight": 55,
+        "armor": { "class": "heavy", "base": 16, "dex": "none", "strength": 13, "stealthDisadvantage": true } },
+      { "id": "scale-mail", "name": "Scale Mail", "categories": ["armor", "medium-armor"], "cost": { "amount": 50, "unit": "gp" }, "weight": 45,
+        "armor": { "class": "medium", "base": 14, "dex": { "max": 2 }, "stealthDisadvantage": true } },
+      { "id": "leather-armor", "name": "Leather Armor", "categories": ["armor", "light-armor"], "cost": { "amount": 10, "unit": "gp" }, "weight": 10,
+        "armor": { "class": "light", "base": 11, "dex": "full" } },
+      { "id": "shield", "name": "Shield", "categories": ["armor", "shields"], "cost": { "amount": 10, "unit": "gp" }, "weight": 6,
+        "armor": { "class": "shield", "base": 2, "dex": "none" } },
+      { "id": "longsword", "name": "Longsword", "categories": ["weapon", "martial-weapons", "melee-weapons"], "cost": { "amount": 15, "unit": "gp" }, "weight": 3,
+        "weapon": { "class": "martial", "range": "melee", "damage": { "dice": "1d8", "type": "slashing" }, "versatile": "1d10", "properties": ["versatile"] } },
+      { "id": "rapier", "name": "Rapier", "categories": ["weapon", "martial-weapons", "melee-weapons"], "cost": { "amount": 25, "unit": "gp" }, "weight": 2,
+        "weapon": { "class": "martial", "range": "melee", "damage": { "dice": "1d8", "type": "piercing" }, "properties": ["finesse"] } },
+      { "id": "net", "name": "Net", "categories": ["weapon", "martial-weapons", "ranged-weapons"], "cost": { "amount": 1, "unit": "gp" }, "weight": 3,
+        "weapon": { "class": "martial", "range": "ranged", "properties": ["special", "thrown"], "normal": 5, "long": 15 } },
+      { "id": "dagger", "name": "Dagger", "categories": ["weapon", "simple-weapons", "melee-weapons"], "cost": { "amount": 2, "unit": "gp" }, "weight": 1,
+        "weapon": { "class": "simple", "range": "melee", "damage": { "dice": "1d4", "type": "piercing" }, "properties": ["finesse", "light", "thrown"], "normal": 20, "long": 60 } },
+      { "id": "longbow", "name": "Longbow", "categories": ["weapon", "martial-weapons", "ranged-weapons"], "cost": { "amount": 50, "unit": "gp" }, "weight": 2,
+        "weapon": { "class": "martial", "range": "ranged", "damage": { "dice": "1d8", "type": "piercing" }, "properties": ["ammunition", "heavy", "two-handed"], "normal": 150, "long": 600 } },
+      { "id": "arrow", "name": "Arrow", "categories": ["adventuring-gear", "ammunition"], "cost": { "amount": 1, "unit": "gp" }, "weight": 1, "bundle": 20 },
+      { "id": "backpack", "name": "Backpack", "categories": ["adventuring-gear"], "cost": { "amount": 2, "unit": "gp" }, "weight": 5 },
+      { "id": "torch", "name": "Torch", "categories": ["adventuring-gear"], "cost": { "amount": 1, "unit": "cp" }, "weight": 1 },
+      { "id": "explorers-pack", "name": "Explorer's Pack", "categories": ["adventuring-gear", "equipment-packs"], "cost": { "amount": 10, "unit": "gp" },
+        "contents": [{ "item": "backpack", "qty": 1 }, { "item": "torch", "qty": 10 }] }
     ],
     "languages": [
       { "id": "common", "name": "Common", "script": "Common" },

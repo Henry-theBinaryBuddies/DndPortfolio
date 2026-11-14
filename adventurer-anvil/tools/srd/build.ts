@@ -3,7 +3,8 @@
 import type { PackFile } from "../../frontend/src/core";
 import type { Effect, Language, Race, Subrace } from "../../frontend/src/systems/dnd5e-2014/packFormat";
 import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
-import { TEXT_CORRECTIONS } from "../../data/srd-5.1/corrections";
+import { KIT_CORRECTIONS, TEXT_CORRECTIONS } from "../../data/srd-5.1/corrections";
+import { buildItems } from "./items";
 import { buildBackgrounds } from "./backgrounds";
 import { buildClasses, type FeatureNote } from "./classes";
 import type { RawLanguage, RawRace, RawSrd, RawSubrace, RawTrait } from "./raw";
@@ -13,7 +14,7 @@ export const SRD_ATTRIBUTION =
   "available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative " +
   "Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.";
 
-export const PACK_VERSION = "0.3.0";
+export const PACK_VERSION = "0.4.0";
 
 /** How each trait was brought in, for the import report. */
 export type How = "calculated" | "calculated, with text" | "text" | "text for now" | "folded in";
@@ -185,6 +186,15 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
   });
 
   const { classes, subclasses, notes: features } = buildClasses(raw);
+  const backgrounds = buildBackgrounds(raw.backgrounds);
+  for (const k of KIT_CORRECTIONS) {
+    const entry = (k.collection === "classes" ? classes : backgrounds).find((e) => e.id === k.id);
+    if (!entry?.startingEquipment) throw new Error(`Kit correction for ${k.collection} "${k.id}": no such entry with equipment. Update corrections.ts.`);
+    const fixed = k.fix(entry.startingEquipment);
+    if (JSON.stringify(fixed) === JSON.stringify(entry.startingEquipment)) throw new Error(`Kit correction for "${k.id}" changes nothing: the source may be fixed. Update corrections.ts.`);
+    entry.startingEquipment = fixed;
+    corrections.push({ trait: `${k.id} (equipment)`, reason: k.reason });
+  }
 
   const pack: PackFile = {
     $schema: "../schemas/dnd5e-2014-pack.schema.json",
@@ -201,7 +211,8 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
       subraces: raw.subraces.map(subrace),
       classes,
       subclasses,
-      backgrounds: buildBackgrounds(raw.backgrounds),
+      backgrounds,
+      items: buildItems(raw.equipment),
       languages: raw.languages.map(language),
     },
   };

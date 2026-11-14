@@ -34,9 +34,9 @@ const highElf = {
 };
 
 describe("a new character", () => {
-  it("has Race, Abilities, Class and Background steps to do, with 10s until scores are set", () => {
+  it("has Race, Abilities, Class, Background and Equipment steps to do, with 10s until scores are set", () => {
     const v = view({});
-    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["race", "todo"], ["abilities", "todo"], ["class", "todo"], ["background", "todo"]]);
+    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["race", "todo"], ["abilities", "todo"], ["class", "todo"], ["background", "todo"], ["equipment", "todo"]]);
     expect(v.steps[0].choices[0].options?.map((o) => o.name)).toEqual(["Elf", "Half-Elf"]);
     expect(value(v, "ability.str")).toBe(10);
     expect(value(v, "ac")).toBe(10);

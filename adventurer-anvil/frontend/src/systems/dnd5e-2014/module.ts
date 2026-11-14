@@ -8,6 +8,7 @@ import { packSchema, SYSTEM_ID } from "./packFormat";
 import { abilitiesStep } from "./steps/abilities";
 import { backgroundStep } from "./steps/background";
 import { classStep } from "./steps/class";
+import { checkEquipment, equipmentStep } from "./steps/equipment";
 import { replaceDuplicateSkills } from "./engine/duplicates";
 import { raceStep } from "./steps/race";
 
@@ -18,12 +19,14 @@ export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluat
   const base = abilitiesStep(ctx);
   classStep(ctx);
   backgroundStep(ctx);
+  equipmentStep(ctx);
   // Any skill given twice by fixed effects is swapped for another of the character's choice.
   replaceDuplicateSkills(ctx);
   // ④
   const { derived, lists, scores } = derive(ctx.tally, base);
   // ⑤
   check(ctx, scores);
+  checkEquipment(ctx, scores);
   return { steps: stepReports(ctx), derived, lists, issues: ctx.issues, unused: unusedChoices(ctx) };
 }
 
@@ -47,8 +50,10 @@ export const dnd5e2014: SystemModule = {
       items: [
         { key: "hp" }, { key: "ac" }, { key: "hit-dice" }, { key: "speed.walk", format: "feet" }, { key: "initiative", format: "signed" },
         { key: "passive.perception" }, { key: "proficiency-bonus", format: "signed" },
+        { key: "coins", format: "coins" }, { key: "weight", format: "pounds" },
       ],
     },
+    { kind: "rows", label: "Attacks", items: [], prefix: { key: "attack." } },
     { kind: "list", label: "Saving throws", list: "saving-throws" },
     { kind: "list", label: "Skills", list: "skills" },
     { kind: "list", label: "Armour, weapons and tools", list: "other-proficiencies" },
@@ -59,6 +64,7 @@ export const dnd5e2014: SystemModule = {
   stepLists: {
     class: [{ label: "What you get at level 1", list: "gains.class" }],
     background: [{ label: "What you get", list: "gains.background" }],
+    equipment: [{ label: "Inventory", list: "inventory" }],
   },
   initialChoices: () => ({}),
   evaluate,

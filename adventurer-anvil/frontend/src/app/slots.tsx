@@ -148,6 +148,9 @@ export function Allocate({ spec, value, issues, onChange, derived }: ChoiceProps
   );
 }
 
+/** The multiplier on a whole roll ("5d4x10" → 10), shown after the dice. */
+const times = (expression: string) => /[x×*](\d+)$/.exec(expression)?.[1];
+
 function RollSet({ set }: { set: RollRecord[] }) {
   return (
     <ul className="roll-set">
@@ -163,6 +166,7 @@ function RollSet({ set }: { set: RollRecord[] }) {
               return <span key={i} className={`die${kept ? "" : " dropped"}`}>{d}</span>;
             })}
             <span className="sr-only">{roll.dice.length - roll.kept.length ? `, lowest dropped,` : ""}</span>
+            {times(roll.expression) && <> × {times(roll.expression)}</>}
             {" = "}<span className="final">{roll.total}</span>
           </li>
         );

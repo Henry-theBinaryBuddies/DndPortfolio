@@ -5,8 +5,8 @@ import { z } from "zod";
 import type { IndexedPack, PackFile, PackSchema } from "../../core";
 import { PACK_FORMAT, PACK_FORMAT_VERSION } from "../../core";
 import {
-  ABILITIES, CHOICE_LISTS, choiceListValues, COLLECTIONS, DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS, RECHARGE, SENSES, SIZES,
-  SKILL_IDS, type ChoiceList, type Collection,
+  ABILITIES, ARMOR_CLASSES, CHOICE_LISTS, choiceListValues, COIN_UNITS, COLLECTIONS, DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS,
+  RECHARGE, SENSES, SIZES, SKILL_IDS, WEAPON_PROPERTIES, type ChoiceList, type Collection,
 } from "./vocabulary";
 
 export const SYSTEM_ID = "dnd5e-2014";
@@ -196,6 +196,10 @@ export const classSchema = z.strictObject({
   subclass: z.strictObject({ name: z.string().min(1), level }).optional(),
   columns: columnsSchema.optional(),
   levels: levelsSchema,
+  /** What a character who takes this class first starts with (see startingEquipmentSchema below). */
+  startingEquipment: z.lazy(() => startingEquipmentSchema).optional(),
+  /** Gold to buy equipment with instead, e.g. "5d4x10". Not in SRD 5.1. */
+  startingWealth: z.lazy(() => wealthDice).optional(),
 });
 
 export const subclassSchema = z.strictObject({ ...entryBase, class: ref, columns: columnsSchema.optional(), levels: levelsSchema });
@@ -208,7 +212,89 @@ const characteristicsSchema = z.strictObject({
   flaws: z.array(z.string().min(1)).optional(),
 });
 
-export const backgroundSchema = z.strictObject({ ...entryBase, effects: z.array(effectSchema), characteristics: characteristicsSchema.optional() });
+// ---- Items and starting equipment ----
+
+export const coinsSchema = z.strictObject({ amount: z.number().positive(), unit: z.enum(COIN_UNITS) });
+const damageDice = z.string().regex(/^(?:\d+d\d+|\d+)$/, 'dice such as "1d8", or a flat number such as "1"');
+
+export const itemSchema = z.strictObject({
+  ...entryBase,
+  /** What kinds of item it is, e.g. ["weapon", "martial-weapons", "melee-weapons"]: starting equipment picks "any" item by these. */
+  categories: z.array(id).optional(),
+  cost: coinsSchema.optional(),
+  /** In pounds, for the whole bundle if it is sold in one. */
+  weight: z.number().min(0).optional(),
+  /** Sold in bundles (arrows, 20 to a purchase): cost and weight are for the bundle. */
+  bundle: z.int().min(2).optional(),
+  weapon: z
+    .strictObject({
+      class: z.enum(["simple", "martial"]),
+      range: z.enum(["melee", "ranged"]),
+      damage: z.strictObject({ dice: damageDice, type: z.enum(DAMAGE_TYPES) }).optional(),
+      /** Damage when used with two hands. */
+      versatile: damageDice.optional(),
+      properties: z.array(z.enum(WEAPON_PROPERTIES)),
+      /** Range in feet: normal and long (thrown and ranged weapons). */
+      normal: z.int().positive().optional(),
+      long: z.int().positive().optional(),
+    })
+    .optional(),
+  armor: z
+    .strictObject({
+      class: z.enum(ARMOR_CLASSES),
+      /** Armour Class it gives (a shield's is the bonus, 2). */
+      base: z.int().min(0).max(30),
+      /** How much of the Dexterity modifier counts: all of it, none, or up to a maximum. */
+      dex: z.union([z.literal("full"), z.literal("none"), z.strictObject({ max: z.int().min(0) })]),
+      /** Strength needed; below it, speed drops by 10 feet. */
+      strength: z.int().min(1).max(30).optional(),
+      stealthDisadvantage: z.boolean().optional(),
+    })
+    .optional(),
+  /** An equipment pack's contents: opened into the inventory. */
+  contents: z.array(z.strictObject({ item: ref, qty: z.int().positive() })).optional(),
+});
+export type Item = z.infer<typeof itemSchema>;
+
+/** One line of starting equipment: an item, any item of some categories (picked by the player), or a thing named only here. */
+const equipmentLine = z.union([
+  z.strictObject({ item: ref, qty: z.int().positive().optional() }),
+  z.strictObject({
+    any: z.strictObject({ categories: z.array(id).min(1) }),
+    /** How many to pick (each picked separately, so two of the same is fine). */
+    qty: z.int().positive().optional(),
+    /** How the book puts it, e.g. "a martial weapon". */
+    label: z.string().min(1),
+  }),
+  z.strictObject({ name: z.string().min(1), qty: z.int().positive().optional(), weight: z.number().min(0).optional() }),
+]);
+export type EquipmentLine = z.infer<typeof equipmentLine>;
+
+export const startingEquipmentSchema = z.strictObject({
+  items: z.array(equipmentLine).optional(),
+  /** "(a) chain mail or (b) leather armor, longbow and 20 arrows": one option is taken. */
+  choices: z
+    .array(
+      z.strictObject({
+        id,
+        label: z.string().min(1),
+        options: z.array(z.strictObject({ id, items: z.array(equipmentLine).min(1) })).min(2),
+      }),
+    )
+    .optional(),
+  gold: coinsSchema.optional(),
+});
+export type StartingEquipment = z.infer<typeof startingEquipmentSchema>;
+
+/** Starting wealth instead of equipment: dice times a number of gold pieces, e.g. "5d4x10". */
+const wealthDice = z.string().regex(/^\d+d\d+(?:x\d+)?$/, 'dice and an optional multiplier, e.g. "5d4x10" (in gold pieces)');
+
+export const backgroundSchema = z.strictObject({
+  ...entryBase,
+  effects: z.array(effectSchema),
+  characteristics: characteristicsSchema.optional(),
+  startingEquipment: startingEquipmentSchema.optional(),
+});
 
 export type Race = z.infer<typeof raceSchema>;
 export type Background = z.infer<typeof backgroundSchema>;
@@ -216,6 +302,7 @@ export type Class = z.infer<typeof classSchema>;
 export type Subclass = z.infer<typeof subclassSchema>;
 export type Subrace = z.infer<typeof subraceSchema>;
 export type Language = z.infer<typeof languageSchema>;
+export type ClassStartingEquipment = NonNullable<Class["startingEquipment"]>;
 
 /** Collections whose format exists so far. The others are named in vocabulary.ts and arrive with later steps. */
 export const COLLECTION_SCHEMAS = {
@@ -224,6 +311,7 @@ export const COLLECTION_SCHEMAS = {
   classes: classSchema,
   subclasses: subclassSchema,
   backgrounds: backgroundSchema,
+  items: itemSchema,
   languages: languageSchema,
 } satisfies Partial<Record<Collection, z.ZodType>>;
 
@@ -387,12 +475,44 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
     });
   };
 
+  /** Starting equipment: its items resolve, and its choices' ids (which name choice keys) are unique. */
+  const checkKit = (kit: StartingEquipment | undefined, where: string) => {
+    if (!kit) return;
+    const lines = (list: EquipmentLine[], at: string) =>
+      list.forEach((line, i) => {
+        if ("item" in line) resolves(line.item, "items", `${at}[${i}].item`);
+      });
+    lines(kit.items ?? [], `${where}.items`);
+    const seen = new Set<string>();
+    kit.choices?.forEach((c, i) => {
+      if (seen.has(c.id)) errors.push(`${where}.choices[${i}]: the id "${c.id}" is used twice.`);
+      if (c.id === "items") errors.push(`${where}.choices[${i}]: the choice id "items" is kept for the fixed items' picks.`);
+      seen.add(c.id);
+      const ids = new Set<string>();
+      c.options.forEach((o, j) => {
+        if (ids.has(o.id)) errors.push(`${where}.choices[${i}].options[${j}]: the id "${o.id}" is used twice.`);
+        ids.add(o.id);
+        lines(o.items, `${where}.choices[${i}].options[${j}].items`);
+      });
+    });
+  };
+
+  const items = (pack.collections.items ?? []) as Item[];
+  items.forEach((item, i) => {
+    const at = `collections.items[${i}]`;
+    item.contents?.forEach((c, j) => resolves(c.item, "items", `${at}.contents[${j}].item`));
+    if (item.weapon && item.armor) errors.push(`${at}: an item is a weapon or armour, not both.`);
+  });
+
   const races = (pack.collections.races ?? []) as Race[];
   const subraces = (pack.collections.subraces ?? []) as Subrace[];
   const classes = (pack.collections.classes ?? []) as Class[];
   const subclasses = (pack.collections.subclasses ?? []) as Subclass[];
   const backgrounds = (pack.collections.backgrounds ?? []) as Background[];
-  backgrounds.forEach((bg, i) => checkEffects(bg.effects, `collections.backgrounds[${i}].effects`));
+  backgrounds.forEach((bg, i) => {
+    checkEffects(bg.effects, `collections.backgrounds[${i}].effects`);
+    checkKit(bg.startingEquipment, `collections.backgrounds[${i}].startingEquipment`);
+  });
   races.forEach((race, i) => checkEffects(race.effects, `collections.races[${i}].effects`));
   subraces.forEach((sub, i) => {
     resolves(sub.race, "races", `collections.subraces[${i}].race`);
@@ -402,6 +522,7 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
   classes.forEach((cls, i) => {
     const at = `collections.classes[${i}]`;
     checkLeveled(cls, at, columnIds(cls), [[cls.proficiencies, `${at}.proficiencies`], [cls.multiclass.proficiencies, `${at}.multiclass.proficiencies`]]);
+    checkKit(cls.startingEquipment, `${at}.startingEquipment`);
   });
   subclasses.forEach((sub, i) => {
     const at = `collections.subclasses[${i}]`;

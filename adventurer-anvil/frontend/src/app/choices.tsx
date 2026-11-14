@@ -1,7 +1,8 @@
 // Generic choice controls, one per choice kind. They know nothing about any game: they draw a ChoiceSpec and
 // report what was picked.
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { ChoiceSpec, ChoiceValue, Derived, ListItem, Option, ResolvedIssue, RollRecord } from "../core";
+import { coinsText } from "./format";
 import { Allocate, Assign, Roll } from "./slots";
 
 export interface ChoiceProps {
@@ -34,6 +35,10 @@ export function ChoiceView(props: ChoiceProps) {
     case "text":
     case "long-text":
       return <TextChoice {...props} />;
+    case "number":
+      return <NumberChoice {...props} />;
+    case "quantities":
+      return <Quantities {...props} />;
     default:
       return (
         <section className="choice" id={choiceDomId(props.spec.key)} tabIndex={-1}>
@@ -50,6 +55,7 @@ function Segmented({ spec, value, issues, onChange }: ChoiceProps) {
   return (
     <fieldset className="choice" id={choiceDomId(spec.key)} tabIndex={-1}>
       <legend>{spec.label}</legend>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
       <div className="segmented">
         {(spec.options ?? []).map((option) => (
           <label key={String(option.value)} className={option.value === value ? "on" : undefined}>
@@ -68,7 +74,12 @@ function Meta({ spec, picked }: { spec: ChoiceSpec; picked: number }) {
   if (spec.source) parts.push(`From ${spec.source}`);
   if (spec.kind === "pick-many" && spec.count) parts.push(`${picked} of ${spec.count.max} chosen`);
   else if (spec.required && picked === 0) parts.push("To do");
-  return parts.length ? <p className="meta">{parts.join(" · ")}</p> : null;
+  return (
+    <>
+      {parts.length > 0 && <p className="meta">{parts.join(" · ")}</p>}
+      {spec.hint && <p className="meta">{spec.hint}</p>}
+    </>
+  );
 }
 
 export function Issues({ issues }: { issues: ResolvedIssue[] }) {
@@ -255,6 +266,120 @@ function TextChoice({ spec, value, issues, onChange }: ChoiceProps) {
             </ul>
           </details>
         </>
+      )}
+      <Issues issues={issues} />
+    </section>
+  );
+}
+
+/** A number in a range (e.g. the gold a DM gives). An empty box stores null: not answered yet. */
+function NumberChoice({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  return (
+    <section className="choice" id={id} tabIndex={-1}>
+      <label htmlFor={`${id}-input`} className="choice-title">{spec.label}</label>
+      {spec.hint && <p className="meta" id={`${id}-hint`}>{spec.hint}</p>}
+      <input
+        id={`${id}-input`}
+        className="text-input number-input"
+        type="number"
+        inputMode="decimal"
+        min={spec.range?.min}
+        max={spec.range?.max}
+        step="any"
+        aria-describedby={spec.hint ? `${id}-hint` : undefined}
+        value={typeof value === "number" ? value : ""}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      />
+      <Issues issues={issues} />
+    </section>
+  );
+}
+
+/** Stored quantities: option value → a whole number above 0. */
+function asCounts(value: ChoiceValue | undefined): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter((e): e is [string, number] => Number.isInteger(e[1]) && (e[1] as number) > 0));
+}
+
+const SHOWN = 40;
+
+/**
+ * How many of each option, within a budget: a shop. What's bought is listed first; the rest is found by searching
+ * or browsing. Buying what can't be afforded is blocked here (the file may still say otherwise, and a DM can allow it).
+ */
+function Quantities({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  const [query, setQuery] = useState("");
+  const options = spec.options ?? [];
+  const counts = asCounts(value);
+  const budget = spec.budget;
+  const show = (n: number) => (budget?.format === "coins" ? coinsText(n) : String(n));
+  const cost = (o: Option) => budget?.cost[String(o.value)] ?? 0;
+  const spent = options.reduce((total, o) => total + cost(o) * (counts[String(o.value)] ?? 0), 0);
+  const left = (budget?.total ?? 0) - spent;
+  const set = (v: string, n: number) => {
+    const next = { ...counts };
+    if (n > 0) next[v] = n;
+    else delete next[v];
+    onChange(next);
+  };
+  const q = query.trim().toLowerCase();
+  const matches = q ? options.filter((o) => o.name.toLowerCase().includes(q) || o.tags?.some((t) => t.toLowerCase().includes(q))) : [];
+  const bought = options.filter((o) => counts[String(o.value)]);
+
+  const row = (o: Option) => {
+    const v = String(o.value);
+    const n = counts[v] ?? 0;
+    const tooDear = budget !== undefined && cost(o) > left;
+    return (
+      <li key={v}>
+        <span className="shop-name">{o.name}</span>
+        <span className="dim shop-tags">{o.tags?.join(" · ")}</span>
+        <span className="stepper">
+          <button type="button" className="button small" disabled={n === 0} onClick={() => set(v, n - 1)}>
+            −<span className="sr-only"> remove one {o.name}</span>
+          </button>
+          <span className="final">{n}<span className="sr-only"> bought</span></span>
+          <button type="button" className="button small" disabled={tooDear} onClick={() => set(v, n + 1)}>
+            +<span className="sr-only"> buy one {o.name}{tooDear ? " (not enough money)" : ""}</span>
+          </button>
+        </span>
+      </li>
+    );
+  };
+
+  return (
+    <section className="choice" id={id} tabIndex={-1} aria-labelledby={`${id}-label`}>
+      <h2 id={`${id}-label`} className="choice-title">{spec.label}</h2>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
+      {budget && (
+        <p className="meta" aria-live="polite">
+          Spent {show(spent)} of {show(budget.total)} · {left >= 0 ? `${show(left)} left` : <span className="attention">{show(-left)} over</span>}
+        </p>
+      )}
+      {bought.length > 0 && (
+        <>
+          <h3 className="label">Bought</h3>
+          <ul className="shop">{bought.map(row)}</ul>
+        </>
+      )}
+      <label htmlFor={`${id}-search`} className="label shop-search-label">Search {options.length} items</label>
+      <input id={`${id}-search`} className="text-input" type="search" value={query} placeholder="e.g. sword, armor, pack" onChange={(e) => setQuery(e.target.value)} />
+      {q &&
+        (matches.length ? (
+          <>
+            <ul className="shop">{matches.slice(0, SHOWN).map(row)}</ul>
+            {matches.length > SHOWN && <p className="dim">Showing {SHOWN} of {matches.length}: type more to narrow it down.</p>}
+          </>
+        ) : (
+          <p className="notice">Nothing matches “{query}”.</p>
+        ))}
+      {!q && (
+        <details className="more">
+          <summary>Browse all {options.length} items</summary>
+          <ul className="shop">{options.map(row)}</ul>
+        </details>
       )}
       <Issues issues={issues} />
     </section>

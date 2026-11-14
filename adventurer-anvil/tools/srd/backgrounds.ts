@@ -1,5 +1,5 @@
 // Turns the 5e-bits SRD 5.1 backgrounds (only the Acolyte) into the 2014 format. Pure: data in, entries out.
-// Starting equipment waits for the Equipment step.
+import { kitFrom } from "./items";
 import type { Background, Effect } from "../../frontend/src/systems/dnd5e-2014/packFormat";
 import type { RawBackground, RawRef } from "./raw";
 
@@ -40,6 +40,7 @@ export function buildBackgrounds(raw: RawBackground[]): Background[] {
         bonds: b.bonds.from.options.map((o) => o.string),
         flaws: b.flaws.from.options.map((o) => o.string),
       },
+      startingEquipment: kitFrom(b, b.starting_gold),
     };
   });
 }

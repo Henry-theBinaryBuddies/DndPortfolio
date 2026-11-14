@@ -38,6 +38,12 @@ describe("dice", () => {
     expect(rollDice("1d8-1", faces(8, 1)).total).toBe(0);
   });
 
+  it("multiplies the whole total (starting wealth: 5d4 × 10)", () => {
+    expect(rollDice("5d4x10", faces(4, 1, 2, 3, 4, 4))).toEqual({ expression: "5d4x10", dice: [1, 2, 3, 4, 4], kept: [1, 2, 3, 4, 4], total: 140 });
+    expect(parseDice("2d4×5").at(-1)).toEqual({ kind: "multiply", value: 5 });
+    expect(() => parseDice("x10")).toThrow();
+  });
+
   it("only ever rolls faces that exist", () => {
     for (let i = 0; i < 2000; i++) {
       const { dice } = rollDice("1d6");

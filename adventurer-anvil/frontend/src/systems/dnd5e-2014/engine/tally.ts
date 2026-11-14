@@ -2,6 +2,7 @@
 import type { ChoiceKey } from "../../../core";
 import type { Ability, Collection } from "../vocabulary";
 import type { DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS, RECHARGE, SENSES } from "../vocabulary";
+import type { Item } from "../packFormat";
 
 /** Where an entry came from: the source's name ("Elf"), its step, and the choice key if it was picked. */
 export interface Origin {
@@ -33,12 +34,23 @@ export interface Tally {
   hitPoints: { perLevel: number; from: Origin }[];
   /** Class levels, the first class first. */
   classes: { ref: string; name: string; hitDie: number; level: number }[];
+  /**
+   * What the character carries. `ref` is missing for things named only in starting equipment ("vestments");
+   * `weight` is per item (a bundle's weight already shared out); `in` names the pack it came in.
+   */
+  items: { ref?: string; name: string; qty: number; weight: number; from: Origin; in?: string }[];
+  /** Money in copper pieces: what was given or rolled, and what was spent (negative). */
+  coins: { cp: number; label: string }[];
+  /** What is worn: body armour and a shield. */
+  worn: { armor?: { ref: string; name: string; armor: NonNullable<Item["armor"]> }; shield?: { ref: string; name: string; bonus: number } };
+  /** Weapons carried, once each, for the attack list. */
+  weapons: { ref: string; name: string; weapon: NonNullable<Item["weapon"]> }[];
 }
 
 export function emptyTally(): Tally {
   return {
     abilityBonuses: [], speeds: [], senses: [], proficiencies: [], expertise: [], languages: [], resistances: [], grants: [],
-    resources: [], features: [], acFormulas: [], acBonuses: [], hitPoints: [], classes: [],
+    resources: [], features: [], acFormulas: [], acBonuses: [], hitPoints: [], classes: [], items: [], coins: [], worn: {}, weapons: [],
   };
 }
 
