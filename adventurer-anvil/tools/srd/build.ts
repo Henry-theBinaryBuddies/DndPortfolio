@@ -4,6 +4,8 @@ import type { PackFile } from "../../frontend/src/core";
 import type { Effect, Language, Race, Subrace } from "../../frontend/src/systems/dnd5e-2014/packFormat";
 import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
 import { TEXT_CORRECTIONS } from "../../data/srd-5.1/corrections";
+import { buildBackgrounds } from "./backgrounds";
+import { buildClasses, type FeatureNote } from "./classes";
 import type { RawLanguage, RawRace, RawSrd, RawSubrace, RawTrait } from "./raw";
 
 export const SRD_ATTRIBUTION =
@@ -11,7 +13,7 @@ export const SRD_ATTRIBUTION =
   "available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative " +
   "Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.";
 
-export const PACK_VERSION = "0.1.0";
+export const PACK_VERSION = "0.3.0";
 
 /** How each trait was brought in, for the import report. */
 export type How = "calculated" | "calculated, with text" | "text" | "text for now" | "folded in";
@@ -25,6 +27,7 @@ export interface TraitNote {
 export interface BuildResult {
   pack: PackFile;
   traits: TraitNote[];
+  features: FeatureNote[];
   corrections: { trait: string; reason: string }[];
 }
 
@@ -122,8 +125,8 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
         note(t, "text for now", "The choice of artisan's tools becomes a real choice once items exist.");
         return [feature(t, text)];
       case "dwarven-toughness":
-        note(t, "text for now", "+1 hit point per level is added once classes give hit points.");
-        return [feature(t, text)];
+        note(t, "calculated, with text", "+1 hit point per level.");
+        return [{ type: "hit-points", perLevel: 1 }, feature(t, text)];
       case "infernal-legacy":
         note(t, "text for now", "The spells it grants are added once spells exist.");
         return [feature(t, text)];
@@ -181,6 +184,8 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
     ...(l.desc ? { description: l.desc } : {}),
   });
 
+  const { classes, subclasses, notes: features } = buildClasses(raw);
+
   const pack: PackFile = {
     $schema: "../schemas/dnd5e-2014-pack.schema.json",
     format: "adventurer-anvil-pack",
@@ -194,11 +199,14 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
     collections: {
       races: raw.races.map(race),
       subraces: raw.subraces.map(subrace),
+      classes,
+      subclasses,
+      backgrounds: buildBackgrounds(raw.backgrounds),
       languages: raw.languages.map(language),
     },
   };
 
   const unused = raw.traits.filter((t) => !notes.has(t.index)).map((t) => t.index);
   if (unused.length) throw new Error(`Traits not used by any race or subrace: ${unused.join(", ")}`);
-  return { pack, traits: [...notes.values()], corrections };
+  return { pack, traits: [...notes.values()], features, corrections };
 }

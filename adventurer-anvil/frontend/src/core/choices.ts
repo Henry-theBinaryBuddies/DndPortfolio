@@ -69,6 +69,8 @@ export interface ChoiceSpec {
   /** roll: the dice expression, e.g. "4d6kh3" (see dice.ts), and how many times to roll it as one set. */
   dice?: string;
   times?: number;
+  /** text and long-text: ready-made lines to pick from or roll for; the text stays the person's to edit. */
+  suggestions?: { text: string; note?: string }[];
   /** pick-one: "segmented" draws a short list of options as a switch rather than cards. */
   presentation?: "segmented";
   required: boolean;

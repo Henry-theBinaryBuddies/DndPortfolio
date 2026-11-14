@@ -40,7 +40,7 @@ describe("2014 pack format", () => {
   it("names the place and the problem for a misspelled effect type", () => {
     const data = variant((p) => (p.collections.races[0].effects[2].type = "darkvison"));
     expect(errorsFor(data)).toEqual([
-      'collections.races[0].effects[2]: unknown effect type "darkvison" (known: ability-bonus, speed, sense, proficiency, language, resistance, grant, choice, resource, feature)',
+      'collections.races[0].effects[2]: unknown effect type "darkvison" (known: ability-bonus, speed, sense, proficiency, language, resistance, grant, armor-class, armor-class-bonus, hit-points, expertise, choice, resource, feature)',
     ]);
   });
 
@@ -75,8 +75,8 @@ describe("2014 pack format", () => {
   it("refuses collections that are not 2014 ones, and ones whose format is not written yet", () => {
     expect(errorsFor(variant((p) => (p.collections.monsters = []))))
       .toEqual([expect.stringMatching(/^collections\.monsters: not a 2014 collection/)]);
-    expect(errorsFor(variant((p) => (p.collections.classes = [{ id: "fighter", name: "Fighter" }]))))
-      .toEqual(["collections.classes: the format for classes arrives in a later step."]);
+    expect(errorsFor(variant((p) => (p.collections.feats = [{ id: "alert", name: "Alert" }]))))
+      .toEqual(["collections.feats: the format for feats arrives in a later step."]);
   });
 
   it("checks fixed-list choices: each is required, must match the list, and only/except must be in it", () => {
@@ -91,7 +91,7 @@ describe("2014 pack format", () => {
       'collections.races[1].effects[1].from: "charisma" is not in the list "abilities".',
     ]);
     expect(errorsFor(variant((p) => (p.collections.subraces[0].effects[6].each = { type: "resistance" })))).toEqual([
-      'collections.subraces[0].effects[6].each: only choices from a fixed list use "each"; picks from a collection are granted.',
+      'collections.subraces[0].effects[6].each: only choices from a fixed list or from your proficiencies use "each"; picks from a collection are granted.',
     ]);
   });
 

@@ -1,7 +1,7 @@
 // Generic choice controls, one per choice kind. They know nothing about any game: they draw a ChoiceSpec and
 // report what was picked.
 import { useId } from "react";
-import type { ChoiceSpec, ChoiceValue, Derived, Option, ResolvedIssue, RollRecord } from "../core";
+import type { ChoiceSpec, ChoiceValue, Derived, ListItem, Option, ResolvedIssue, RollRecord } from "../core";
 import { Allocate, Assign, Roll } from "./slots";
 
 export interface ChoiceProps {
@@ -31,6 +31,9 @@ export function ChoiceView(props: ChoiceProps) {
       return <Allocate {...props} />;
     case "roll":
       return <Roll {...props} />;
+    case "text":
+    case "long-text":
+      return <TextChoice {...props} />;
     default:
       return (
         <section className="choice" id={choiceDomId(props.spec.key)} tabIndex={-1}>
@@ -181,5 +184,79 @@ function PickMany({ spec, value, issues, onChange }: ChoiceProps) {
       )}
       <Issues issues={issues} />
     </fieldset>
+  );
+}
+
+/** A read-only list on a step's page (what the chosen class gives), each item's full text behind "Read more". */
+export function StepList({ label, items }: { label: string; items: ListItem[] }) {
+  const id = useId();
+  if (!items.length) return null;
+  return (
+    <section className="choice" aria-labelledby={id}>
+      <h2 id={id} className="choice-title">{label}</h2>
+      <ul className="gains">
+        {items.map((item, i) => (
+          <li key={`${item.source}:${item.name}:${i}`}>
+            <span className="gain-name">{item.name}</span>
+            <span className="dim">{[item.detail, item.source].filter(Boolean).map((t) => ` · ${t}`).join("")}</span>
+            {item.description && (
+              <details className="more">
+                <summary>Read more<span className="sr-only"> about {item.name}</span></summary>
+                <p>{item.description}</p>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Free text, with the system's suggestions to pick from or draw at random. Where several lines are wanted
+ * (count.max > 1) a suggestion is added as a new line; otherwise it replaces the text. Nothing goes in the
+ * roll log: suggestions are a writing aid, not a game roll.
+ */
+function TextChoice({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  const text = typeof value === "string" ? value : "";
+  const suggestions = spec.suggestions ?? [];
+  const lines = (spec.count?.max ?? 1) > 1;
+  const use = (t: string) => onChange(lines && text.trim() ? `${text.trimEnd()}\n${t}` : t);
+  const suggest = () => {
+    const unused = suggestions.filter((s) => !text.includes(s.text));
+    const pool = unused.length ? unused : suggestions;
+    use(pool[Math.floor(Math.random() * pool.length)].text);
+  };
+  return (
+    <section className="choice" id={id} tabIndex={-1}>
+      <label htmlFor={`${id}-input`} className="choice-title">{spec.label}</label>
+      {spec.source && <p className="meta">Suggestions from {spec.source}</p>}
+      {spec.kind === "long-text" ? (
+        <textarea id={`${id}-input`} className="text-input" rows={lines ? 3 : 2} value={text} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <input id={`${id}-input`} className="text-input" value={text} onChange={(e) => onChange(e.target.value)} />
+      )}
+      {suggestions.length > 0 && (
+        <>
+          <button type="button" className="button small" onClick={suggest}>
+            Suggest<span className="sr-only"> {spec.label.toLowerCase()}</span>
+          </button>
+          <details className="more">
+            <summary>All suggestions ({suggestions.length})<span className="sr-only"> for {spec.label.toLowerCase()}</span></summary>
+            <ul className="suggestions">
+              {suggestions.map((s) => (
+                <li key={s.text}>
+                  <button type="button" className="link" onClick={() => use(s.text)}>
+                    {s.text}{s.note && <span className="dim"> ({s.note})</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </>
+      )}
+      <Issues issues={issues} />
+    </section>
   );
 }

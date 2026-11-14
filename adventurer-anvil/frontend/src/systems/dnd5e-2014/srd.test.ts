@@ -8,7 +8,7 @@ import { createContentIndex, newCharacterDocument, readPack, setChoice, viewChar
 import { dnd5e2014 } from "./module";
 import { pointBuy, standardArray } from "./testing/abilities";
 import { buildSrdPack } from "../../../../tools/srd/build";
-import { LANGUAGES, RACES, SUBRACES } from "../../../../data/srd-5.1/check-table";
+import { BACKGROUNDS, CLASSES, LANGUAGES, RACES, SUBRACES } from "../../../../data/srd-5.1/check-table";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const json = (path: string) => JSON.parse(readFileSync(join(ROOT, path), "utf8"));
@@ -34,6 +34,12 @@ describe("the SRD 5.1 pack", () => {
       subraces: json("data/srd-5.1/raw/5e-SRD-Subraces.json"),
       traits: json("data/srd-5.1/raw/5e-SRD-Traits.json"),
       languages: json("data/srd-5.1/raw/5e-SRD-Languages.json"),
+      classes: json("data/srd-5.1/raw/5e-SRD-Classes.json"),
+      subclasses: json("data/srd-5.1/raw/5e-SRD-Subclasses.json"),
+      features: json("data/srd-5.1/raw/5e-SRD-Features.json"),
+      levels: json("data/srd-5.1/raw/5e-SRD-Levels.json"),
+      proficiencies: json("data/srd-5.1/raw/5e-SRD-Proficiencies.json"),
+      backgrounds: json("data/srd-5.1/raw/5e-SRD-Backgrounds.json"),
     };
     expect(JSON.parse(JSON.stringify(buildSrdPack(raw).pack))).toEqual(committed);
   });
@@ -95,7 +101,7 @@ describe("each subrace matches the check table", () => {
 describe("real SRD races through the engine", () => {
   const STANDARD = { str: 8, dex: 14, con: 13, int: 15, wis: 12, cha: 10 };
 
-  it("a Hill Dwarf: Con and Wis bonuses, 25 ft, poison resistance, dwarven weapons, Toughness as text for now", () => {
+  it("a Hill Dwarf: Con and Wis bonuses, 25 ft, poison resistance, dwarven weapons, Dwarven Toughness", () => {
     const v = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", ...standardArray(STANDARD) });
     expect(v.derived["ability.con"].breakdown).toEqual([{ label: "Base", amount: 13 }, { label: "Dwarf", amount: 2 }]);
     expect(v.derived["ability.wis"].breakdown).toEqual([{ label: "Base", amount: 12 }, { label: "Hill Dwarf", amount: 1 }]);
@@ -146,5 +152,108 @@ describe("option cards for SRD races", () => {
 
   it("carry the full SRD text behind Read more", () => {
     expect(card("Dwarf").description).toMatch(/^Age\. Dwarves mature at the same rate as humans/);
+  });
+});
+
+describe("each class matches the check table", () => {
+  for (const [id, facts] of Object.entries(CLASSES)) {
+    it(facts.name, () => {
+      const ref = `srd-5.1:${id}`;
+      const v = view({ race: "srd-5.1:human", ...pointBuy(TENS), "class.class": ref });
+      const step = v.steps.find((s) => s.id === "class")!;
+      expect(v.derived["hit-dice"].value).toBe(`1d${facts.hitDie}`);
+      expect(v.derived.hp.value).toBe(facts.hitDie); // Con 11 with the human's +1: modifier 0
+      expect(names(v, "saving-throws")).toEqual(facts.saves);
+      const skills = step.choices.find((c) => c.key === `class.${ref}.skills`)!;
+      expect([skills.count?.min, skills.options?.length]).toEqual(facts.skills);
+      const cls = content.get("classes", ref) as unknown as { subclass: { name: string; level: number } };
+      expect(cls.subclass).toEqual(facts.subclass);
+      // The subclass choice is on this step only when the subclass comes at level 1.
+      expect(step.choices.some((c) => c.key === `class.${ref}.subclass`)).toBe(facts.subclass.level === 1);
+      const gained = (v.lists["gains.class"] ?? []).filter((g) => g.source === facts.name).map((g) => g.name.replace(/[:(].*$/, "").trim());
+      for (const f of facts.level1) expect(gained, f).toContain(f);
+    });
+  }
+
+  it("every class has its one SRD subclass", () => {
+    expect(content.list("subclasses").map((s) => `${s.name} (${String(s.class)})`)).toEqual([
+      "Berserker (barbarian)", "Lore (bard)", "Life (cleric)", "Land (druid)", "Champion (fighter)", "Open Hand (monk)",
+      "Devotion (paladin)", "Hunter (ranger)", "Thief (rogue)", "Draconic (sorcerer)", "Fiend (warlock)", "Evocation (wizard)",
+    ]);
+  });
+});
+
+describe("real SRD classes through the engine", () => {
+  const STANDARD = { str: 15, dex: 14, con: 13, int: 8, wis: 12, cha: 10 };
+
+  it("a Hill Dwarf Barbarian: d12 + Con + Dwarven Toughness, Unarmored Defense, two rages", () => {
+    const v = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", ...standardArray(STANDARD), "class.class": "srd-5.1:barbarian" });
+    expect(v.derived.hp.breakdown).toEqual([
+      { label: "Barbarian hit die (d12, highest at level 1)", amount: 12 }, { label: "Constitution", amount: 2 }, { label: "Hill Dwarf", amount: 1 },
+    ]);
+    expect(v.derived.ac.breakdown).toEqual([{ label: "Barbarian (unarmoured)", amount: 10 }, { label: "Dexterity", amount: 2 }, { label: "Constitution", amount: 2 }]);
+    expect(v.lists["gains.class"].find((g) => g.name === "Rage")?.detail).toBe("2 per long rest");
+  });
+
+  it("a Monk: AC 10 + Dex + Wis, and a choice of artisan's tools or an instrument", () => {
+    const v = view({ race: "srd-5.1:human", ...standardArray({ str: 8, dex: 15, con: 13, int: 10, wis: 14, cha: 12 }), "class.class": "srd-5.1:monk" });
+    expect(v.derived.ac.value).toBe(10 + 3 + 2);
+    const tools = v.steps.find((s) => s.id === "class")!.choices.find((c) => c.key === "class.srd-5.1:monk.tools")!;
+    expect(tools.options).toHaveLength(29);
+    expect(tools.options?.map((o) => o.name)).toContain("Lute");
+  });
+
+  it("a Draconic Sorcerer: the origin at level 1, +1 HP per level, AC 13 + Dex, and Draconic", () => {
+    const base = { race: "srd-5.1:human", "race.srd-5.1:human.language": "srd-5.1:elvish", ...standardArray(STANDARD), "class.class": "srd-5.1:sorcerer" };
+    const origin = view(base).steps.find((s) => s.id === "class")!.choices.find((c) => c.key === "class.srd-5.1:sorcerer.subclass")!;
+    expect(origin.label).toBe("Choose your Sorcerous Origin");
+    const v = view({ ...base, "class.srd-5.1:sorcerer.subclass": "srd-5.1:draconic", "class.srd-5.1:draconic.dragon-ancestor": "red-fire-damage" });
+    expect(v.derived.hp.value).toBe(6 + 2 + 1); // d6, Con 14 (+2), Draconic Resilience
+    expect(v.derived.ac.value).toBe(13 + 2);
+    expect(names(v, "languages")).toEqual(["Common", "Elvish", "Draconic"]);
+  });
+
+  it("a Life Cleric gets heavy armour; a Bard's inspiration counts Charisma", () => {
+    const cleric = view({ race: "srd-5.1:human", ...standardArray(STANDARD), "class.class": "srd-5.1:cleric", "class.srd-5.1:cleric.subclass": "srd-5.1:life" });
+    expect(names(cleric, "other-proficiencies")).toContain("Heavy armor");
+    const bard = view({ race: "srd-5.1:half-elf", ...standardArray(STANDARD), "class.class": "srd-5.1:bard" });
+    expect(bard.lists["gains.class"].find((g) => g.name === "Bardic Inspiration (d6)")?.detail).toBe("1 per long rest"); // Cha 12: +1
+  });
+
+  it("a Rogue's expertise can go to thieves' tools", () => {
+    const v = view({ race: "srd-5.1:human", ...standardArray(STANDARD), "class.class": "srd-5.1:rogue" });
+    const expertise = v.steps.find((s) => s.id === "class")!.choices.find((c) => c.key === "class.srd-5.1:rogue.expertise-1")!;
+    expect(expertise.options?.map((o) => o.value)).toEqual(["tool:thieves-tools"]);
+  });
+});
+
+describe("each background matches the check table", () => {
+  for (const [id, facts] of Object.entries(BACKGROUNDS)) {
+    it(facts.name, () => {
+      const ref = `srd-5.1:${id}`;
+      const v = view({ race: "srd-5.1:human", ...pointBuy(TENS), background: ref });
+      const step = v.steps.find((s) => s.id === "background")!;
+      expect(names(v, "proficiencies", "skill")).toEqual(facts.skills);
+      expect(step.choices.find((c) => c.key === `background.${ref}.languages`)?.count?.min).toBe(facts.languages);
+      expect((v.lists["gains.background"] ?? []).map((g) => g.name)).toEqual([facts.feature]);
+      const traits = step.choices.find((c) => c.key === "background.traits")!;
+      const ideal = step.choices.find((c) => c.key === "background.ideal")!;
+      const bond = step.choices.find((c) => c.key === "background.bond")!;
+      const flaw = step.choices.find((c) => c.key === "background.flaw")!;
+      expect([traits, ideal, bond, flaw].map((c) => c.suggestions?.length)).toEqual([facts.tables.traits, facts.tables.ideals, facts.tables.bonds, facts.tables.flaws]);
+    });
+  }
+
+  it("the Acolyte's ideals carry the SRD's one-word alignments", () => {
+    const v = view({ background: "srd-5.1:acolyte" });
+    const ideal = v.steps.find((s) => s.id === "background")!.choices.find((c) => c.key === "background.ideal")!;
+    expect(ideal.suggestions?.map((s) => s.note)).toEqual(["Lawful", "Good", "Chaotic", "Lawful", "Lawful", "Any"]);
+  });
+
+  it("a Half-Elf who chose Insight, then the Acolyte: the Acolyte's Insight is swapped for another skill", () => {
+    const v = view({ race: "srd-5.1:half-elf", "race.srd-5.1:half-elf.skills": ["insight", "stealth"], background: "srd-5.1:acolyte" });
+    const replace = v.steps.find((s) => s.id === "background")!.choices.find((c) => c.key === "background.replace.insight")!;
+    expect(replace.label).toBe("Acolyte gives Insight, which you already have from Half-Elf: choose another skill");
+    expect(v.issues.filter((i) => i.key === "race.srd-5.1:half-elf.skills")).toEqual([]);
   });
 });

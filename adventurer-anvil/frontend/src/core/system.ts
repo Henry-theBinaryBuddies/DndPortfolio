@@ -31,6 +31,8 @@ export interface SystemModule {
   packSchema: PackSchema;
   /** The summary's layout. */
   summary: SummaryGroup[];
+  /** Lists shown on a step's own page, after its choices (e.g. what the chosen class gives), by step id. */
+  stepLists?: Record<string, { label: string; list: string }[]>;
   /** Choices a new character starts with. */
   initialChoices(): Record<ChoiceKey, ChoiceValue>;
   /** Pure: reads the file and the content, returns the whole picture, changes nothing. */

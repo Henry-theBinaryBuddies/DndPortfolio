@@ -3,6 +3,7 @@
 import type { ChoiceKey, Option, StepReport } from "../../../core";
 import { ABILITIES, ABILITY_NAMES, type Ability } from "../vocabulary";
 import type { Context, OpenChoice } from "./context";
+import { listName } from "./expand";
 
 /** For one open choice: option value → the source that already gives it (from anywhere but this choice). */
 function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; from: string }> {
@@ -13,11 +14,15 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
 
   if ("list" in effect.from) {
     if (effect.from.list === "skills") {
-      for (const p of ctx.tally.proficiencies) if (p.kind === "skill" && notThis(p.from)) map.set(p.id, { verb: "Already proficient", from: p.from.name });
+      for (const p of ctx.tally.proficiencies) if (p.kind === "skill" && notThis(p.from) && !p.replaced) map.set(p.id, { verb: "Already proficient", from: p.from.name });
     } else if (effect.from.list === "damage-types") {
       for (const r of ctx.tally.resistances) if (notThis(r.from)) map.set(r.damage, { verb: "Already resistant", from: r.from.name });
     }
     // Ability bonuses stack with others, so no ability is ever "already owned".
+  } else if ("proficient" in effect.from) {
+    for (const e of ctx.tally.expertise) if (notThis(e.from)) map.set(`${e.kind}:${e.id}`, { verb: "Already expert", from: e.from.name });
+  } else if ("options" in effect.from) {
+    // Written-in options (a fighting style) are only ever given by their own choice.
   } else if (effect.from.collection === "languages") {
     for (const l of ctx.tally.languages) if (notThis(l.from)) map.set(l.ref, { verb: "Already known", from: l.from.name });
   } else {
@@ -27,7 +32,26 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
   return map;
 }
 
+/** The options of a pick among your proficiencies: every matching one you have, from anywhere but this choice. */
+function proficientOptions(ctx: Context, choice: OpenChoice): Option[] {
+  const wanted = choice.proficient ?? [];
+  const seen = new Set<string>();
+  const options: Option[] = [];
+  for (const p of ctx.tally.proficiencies) {
+    if (p.kind !== "skill" && p.kind !== "tool") continue;
+    const value = `${p.kind}:${p.id}`;
+    if (seen.has(value) || !(wanted.includes(p.kind) || wanted.includes(value))) continue;
+    seen.add(value);
+    const name = p.kind === "skill" ? listName("skills", p.id) : p.id.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    options.push({ value, name, summary: `Proficient (${p.from.name})` });
+  }
+  return options.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function check(ctx: Context, scores: Record<Ability, number>): void {
+  for (const choice of ctx.open) {
+    if (choice.proficient) choice.spec.options = proficientOptions(ctx, choice);
+  }
   for (const choice of ctx.open) {
     const { spec, picks } = choice;
     const have = owned(ctx, choice);

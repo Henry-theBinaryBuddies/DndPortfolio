@@ -15,6 +15,9 @@ export interface Source {
   /** Its pack, so plain ids in its effects ("elvish") resolve to "pack:elvish". */
   pack: string;
   effects: Effect[];
+  /** For a class or subclass: its level, and its table's values at that level (resources may count from them). */
+  classLevel?: number;
+  columns?: Record<string, number | string>;
 }
 
 /** A choice on screen, with what has been picked so far. */
@@ -26,6 +29,8 @@ export interface OpenChoice {
   collection?: Collection;
   /** The effect that opened it, when it came from a pack. */
   effect?: Extract<Effect, { type: "choice" }>;
+  /** For picks among your proficiencies: which ones ("skill", "tool:thieves-tools"). The options are filled in by the check stage, once every proficiency is known. */
+  proficient?: string[];
   /** For steps that store something other than picks (e.g. ability scores): is it answered? */
   answered?: boolean;
 }

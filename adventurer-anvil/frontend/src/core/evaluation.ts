@@ -46,6 +46,8 @@ export interface ListItem {
   name: string;
   source: string;
   detail?: string;
+  /** Longer text, shown on request. */
+  description?: string;
 }
 
 export interface Evaluation {

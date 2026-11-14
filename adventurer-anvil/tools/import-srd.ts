@@ -18,6 +18,12 @@ const raw: RawSrd = {
   subraces: read("5e-SRD-Subraces.json"),
   traits: read("5e-SRD-Traits.json"),
   languages: read("5e-SRD-Languages.json"),
+  classes: read("5e-SRD-Classes.json"),
+  subclasses: read("5e-SRD-Subclasses.json"),
+  features: read("5e-SRD-Features.json"),
+  levels: read("5e-SRD-Levels.json"),
+  proficiencies: read("5e-SRD-Proficiencies.json"),
+  backgrounds: read("5e-SRD-Backgrounds.json"),
 };
 
 const result = buildSrdPack(raw);
@@ -30,19 +36,28 @@ if (!checked.ok) {
 writeFileSync(join(ROOT, "frontend/public/packs/srd-5.1.pack.json"), JSON.stringify(result.pack, null, 2) + "\n");
 writeFileSync(join(ROOT, "data/srd-5.1/IMPORT-REPORT.md"), report(result));
 const c = result.pack.collections;
-console.log(`Imported ${c.races.length} races, ${c.subraces.length} subraces, ${c.languages.length} languages; ${result.corrections.length} corrections.`);
+console.log(
+  `Imported ${c.races.length} races, ${c.subraces.length} subraces, ${c.classes.length} classes, ${c.subclasses.length} subclasses, ` +
+    `${c.backgrounds.length} background, ${c.languages.length} languages; ${result.corrections.length} corrections.`,
+);
 
-function report({ pack, traits, corrections }: BuildResult): string {
+function report({ pack, traits, features, corrections }: BuildResult): string {
   const c = pack.collections;
   const by = (how: string) => traits.filter((t) => t.how === how);
+  const fby = (how: string) => features.filter((f) => f.how === how);
+  const frows = (list: typeof features) => list.map((f) => `| ${f.className} | ${f.level} | ${f.name} | ${f.note ?? ""} |`).join("\n");
+  const level1 = (how: string) => fby(how).filter((f) => f.level === 1);
   const rows = (list: typeof traits) => list.map((t) => `| ${t.name} | ${t.note ?? ""} |`).join("\n");
   return `# SRD 5.1 import report
 
 Written by \`tools/import-srd.ts\` (\`npm run import:srd\`); do not edit by hand. Pack version ${pack.version}.
 
 Imported: **${c.races.length} races** (${c.races.map((r) => r.name).join(", ")}), **${c.subraces.length} subraces**
-(${c.subraces.map((r) => r.name).join(", ")}) and **${c.languages.length} languages**. The pack passes the app's own check (\`readPack\`).
-Classes, backgrounds, feats, spells and items join as each gets its pack format.
+(${c.subraces.map((r) => r.name).join(", ")}), **${c.classes.length} classes** (${c.classes.map((r) => r.name).join(", ")}),
+**${c.subclasses.length} subclasses** (${c.subclasses.map((r) => r.name).join(", ")}), **${c.backgrounds.length} background**
+(${c.backgrounds.map((r) => r.name).join(", ")}: its skills, languages, feature and characteristics; equipment arrives with the
+Equipment step) and **${c.languages.length} languages**.
+The pack passes the app's own check (\`readPack\`). Feats, spells and items join as each gets its pack format.
 
 ## How the ${traits.length} racial traits were brought in
 
@@ -73,6 +88,32 @@ ${by("text").map((t) => t.name).join(", ")}.
 | Trait | Note |
 |---|---|
 ${rows(by("folded in"))}
+
+## How the ${features.length} class and subclass features were brought in
+
+Every feature from level 1 to 20 is in the pack. The level-1 ones that need calculating are typed; the rest are kept
+as their SRD text until the step that uses them (levelling up, spells).
+
+### Calculated (${fby("calculated").length + fby("calculated, with text").length})
+
+| Class | Level | Feature | Note |
+|---|---|---|---|
+${frows([...fby("calculated"), ...fby("calculated, with text")])}
+
+### Choices (${fby("choice").length}; ${fby("choice").filter((f) => f.level === 1).length} at level 1)
+
+| Class | Level | Feature | Note |
+|---|---|---|---|
+${frows(fby("choice"))}
+
+### Level 1, described: nothing to calculate (${level1("text").length})
+
+${level1("text").map((f) => `${f.name} (${f.className})`).join(", ")}.
+
+### Kept as text for now (${fby("text for now").length})
+
+${fby("text for now").length} features, of which ${level1("text for now").length} at level 1 (${level1("text for now").map((f) => f.name).join(", ")}): spellcasting
+arrives with the Spells step, and features above level 1 are typed when levelling up arrives.
 
 ## Corrections (${corrections.length})
 

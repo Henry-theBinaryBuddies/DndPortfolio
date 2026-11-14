@@ -34,9 +34,9 @@ const highElf = {
 };
 
 describe("a new character", () => {
-  it("has a Race step and an Abilities step to do, with 10s until scores are set", () => {
+  it("has Race, Abilities, Class and Background steps to do, with 10s until scores are set", () => {
     const v = view({});
-    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["race", "todo"], ["abilities", "todo"]]);
+    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["race", "todo"], ["abilities", "todo"], ["class", "todo"], ["background", "todo"]]);
     expect(v.steps[0].choices[0].options?.map((o) => o.name)).toEqual(["Elf", "Half-Elf"]);
     expect(value(v, "ability.str")).toBe(10);
     expect(value(v, "ac")).toBe(10);
@@ -91,7 +91,7 @@ describe("the worked example: a High Elf with the standard array", () => {
     // The sample pack has no spells (their format arrives in a later step).
     expect(v.issues.map((i) => i.id)).toContain("no-options:race.sample-srd:high-elf.cantrip");
     const done = view({ ...highElf, "race.sample-srd:high-elf.language": "sample-srd:draconic" });
-    expect(done.steps.map((s) => s.status)).toEqual(["done", "done"]);
+    expect(done.steps.slice(0, 2).map((s) => s.status)).toEqual(["done", "done"]);
     expect(names(done, "languages")).toEqual(["Common", "Elvish", "Draconic"]);
   });
 });

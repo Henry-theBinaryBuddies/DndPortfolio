@@ -28,10 +28,15 @@ export function describeEffects(effects: Effect[]): string[] {
   }
   for (const e of effects) if (e.type === "resistance") tags.push(`${capital(e.damage)} resistance`);
   for (const e of effects) {
+    if (e.type === "armor-class") tags.push(`AC ${[String(e.base), ...e.abilities.map((a) => SHORT[a])].join(" + ")} unarmoured`);
+    if (e.type === "armor-class-bonus") tags.push(`${signed(e.amount)} AC${e.while === "armored" ? " in armour" : e.while === "unarmored" ? " unarmoured" : ""}`);
+    if (e.type === "hit-points") tags.push(`${signed(e.perLevel)} HP per level`);
+  }
+  for (const e of effects) {
     if (e.type !== "choice") continue;
     if ("list" in e.from && e.from.list === "skills") tags.push(`${e.pick} skills of your choice`);
     else if ("list" in e.from && e.from.list === "damage-types") tags.push("Damage resistance of your choice");
-    else if ("collection" in e.from && e.from.collection === "languages") tags.push(`+${e.pick} language`);
+    else if ("collection" in e.from && e.from.collection === "languages") tags.push(`+${e.pick} language${e.pick > 1 ? "s" : ""}`);
     else if ("collection" in e.from && e.from.collection === "spells") tags.push("A cantrip");
   }
   for (const e of effects) if (e.type === "feature") tags.push(e.name);

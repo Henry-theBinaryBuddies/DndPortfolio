@@ -6,6 +6,9 @@ import { newContext } from "./engine/context";
 import { derive } from "./engine/derive";
 import { packSchema, SYSTEM_ID } from "./packFormat";
 import { abilitiesStep } from "./steps/abilities";
+import { backgroundStep } from "./steps/background";
+import { classStep } from "./steps/class";
+import { replaceDuplicateSkills } from "./engine/duplicates";
 import { raceStep } from "./steps/race";
 
 export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation {
@@ -13,6 +16,10 @@ export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluat
   // ① + ② Each step collects its sources and expands their effects into the tally (③).
   raceStep(ctx);
   const base = abilitiesStep(ctx);
+  classStep(ctx);
+  backgroundStep(ctx);
+  // Any skill given twice by fixed effects is swapped for another of the character's choice.
+  replaceDuplicateSkills(ctx);
   // ④
   const { derived, lists, scores } = derive(ctx.tally, base);
   // ⑤
@@ -38,14 +45,21 @@ export const dnd5e2014: SystemModule = {
       kind: "rows",
       label: "At a glance",
       items: [
-        { key: "ac" }, { key: "speed.walk", format: "feet" }, { key: "initiative", format: "signed" },
+        { key: "hp" }, { key: "ac" }, { key: "hit-dice" }, { key: "speed.walk", format: "feet" }, { key: "initiative", format: "signed" },
         { key: "passive.perception" }, { key: "proficiency-bonus", format: "signed" },
       ],
     },
+    { kind: "list", label: "Saving throws", list: "saving-throws" },
+    { kind: "list", label: "Skills", list: "skills" },
+    { kind: "list", label: "Armour, weapons and tools", list: "other-proficiencies" },
     { kind: "list", label: "Senses", list: "senses" },
     { kind: "list", label: "Languages", list: "languages" },
     { kind: "list", label: "Resistances", list: "resistances" },
   ],
+  stepLists: {
+    class: [{ label: "What you get at level 1", list: "gains.class" }],
+    background: [{ label: "What you get", list: "gains.background" }],
+  },
   initialChoices: () => ({}),
   evaluate,
   migrate: (doc) => doc,

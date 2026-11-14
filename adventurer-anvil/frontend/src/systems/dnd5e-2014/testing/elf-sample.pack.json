@@ -5,7 +5,7 @@
   "id": "sample-srd",
   "version": "0.1.0",
   "system": "dnd5e-2014",
-  "title": "Sample: Elf and High Elf (tests only)",
+  "title": "Sample: Elf, High Elf, Fighter, Rogue and Sentry (tests only)",
   "attribution": "This work includes material taken from the System Reference Document 5.1 (\"SRD 5.1\") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
   "requires": [],
   "collections": {
@@ -75,6 +75,154 @@
           { "type": "choice", "id": "language", "label": "Choose one extra language", "pick": 1,
             "from": { "collection": "languages" } }
         ]
+      }
+    ],
+    "classes": [
+      {
+        "id": "fighter",
+        "name": "Fighter",
+        "summary": "A master of weapons and armour.",
+        "hitDie": 10,
+        "proficiencies": [
+          { "type": "proficiency", "kind": "saving-throw", "id": "str" },
+          { "type": "proficiency", "kind": "saving-throw", "id": "con" },
+          { "type": "proficiency", "kind": "armor", "id": "light" },
+          { "type": "proficiency", "kind": "armor", "id": "medium" },
+          { "type": "proficiency", "kind": "armor", "id": "heavy" },
+          { "type": "proficiency", "kind": "armor", "id": "shield" },
+          { "type": "proficiency", "kind": "weapon", "id": "simple" },
+          { "type": "proficiency", "kind": "weapon", "id": "martial" },
+          {
+            "type": "choice",
+            "id": "skills",
+            "label": "Choose two skills",
+            "pick": 2,
+            "from": { "list": "skills", "only": ["acrobatics", "athletics", "history", "insight", "perception", "survival"] },
+            "each": { "type": "proficiency", "kind": "skill" }
+          }
+        ],
+        "multiclass": {
+          "requires": { "any": [{ "ability": "str", "min": 13 }, { "ability": "dex", "min": 13 }] },
+          "proficiencies": [{ "type": "proficiency", "kind": "armor", "id": "light" }]
+        },
+        "subclass": { "name": "Martial Archetype", "level": 3 },
+        "columns": [{ "id": "action-surges", "name": "Action Surge", "values": { "2": 1, "17": 2 } }],
+        "levels": [
+          {
+            "level": 1,
+            "effects": [
+              {
+                "type": "choice",
+                "id": "fighting-style",
+                "label": "Choose a fighting style",
+                "pick": 1,
+                "from": {
+                  "options": [
+                    {
+                      "id": "defense",
+                      "name": "Defense",
+                      "summary": "+1 AC while wearing armour.",
+                      "effects": [{ "type": "armor-class-bonus", "amount": 1, "while": "armored" }]
+                    },
+                    { "id": "dueling", "name": "Dueling", "summary": "+2 damage with a one-handed melee weapon.", "effects": [] }
+                  ]
+                }
+              },
+              { "type": "resource", "id": "second-wind", "name": "Second Wind", "uses": 1, "recharge": "short" },
+              {
+                "type": "feature",
+                "name": "Second Wind",
+                "summary": "Bonus action: regain 1d10 + your fighter level in hit points."
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "effects": [
+              {
+                "type": "resource",
+                "id": "action-surge",
+                "name": "Action Surge",
+                "uses": { "column": "action-surges" },
+                "recharge": "short"
+              },
+              { "type": "feature", "name": "Action Surge", "summary": "Take one additional action." }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rogue",
+        "name": "Rogue",
+        "summary": "A sneak and a specialist.",
+        "hitDie": 8,
+        "proficiencies": [
+          { "type": "proficiency", "kind": "saving-throw", "id": "dex" },
+          { "type": "proficiency", "kind": "saving-throw", "id": "int" },
+          { "type": "proficiency", "kind": "armor", "id": "light" },
+          { "type": "proficiency", "kind": "tool", "id": "thieves-tools" },
+          {
+            "type": "choice",
+            "id": "skills",
+            "label": "Choose four skills",
+            "pick": 4,
+            "from": { "list": "skills", "only": ["acrobatics", "athletics", "deception", "insight", "perception", "stealth"] },
+            "each": { "type": "proficiency", "kind": "skill" }
+          }
+        ],
+        "multiclass": {
+          "requires": { "all": [{ "ability": "dex", "min": 13 }] },
+          "proficiencies": [{ "type": "proficiency", "kind": "armor", "id": "light" }]
+        },
+        "subclass": { "name": "Roguish Archetype", "level": 3 },
+        "columns": [{ "id": "sneak-attack", "name": "Sneak Attack", "values": { "1": "1d6", "3": "2d6" } }],
+        "levels": [
+          {
+            "level": 1,
+            "effects": [
+              {
+                "type": "choice",
+                "id": "expertise",
+                "label": "Expertise: choose two of your proficiencies",
+                "pick": 2,
+                "from": { "proficient": ["skill", "tool:thieves-tools"] },
+                "each": { "type": "expertise" }
+              },
+              {
+                "type": "feature",
+                "name": "Sneak Attack",
+                "summary": "Extra damage once a turn, with advantage or an ally nearby."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "subclasses": [
+      {
+        "id": "champion",
+        "name": "Champion",
+        "class": "fighter",
+        "levels": [{ "level": 3, "effects": [{ "type": "feature", "name": "Improved Critical", "summary": "Critical hits on 19 or 20." }] }]
+      }
+    ],
+    "backgrounds": [
+      {
+        "id": "sentry",
+        "name": "Sentry",
+        "summary": "A test background: years on the walls, watching.",
+        "effects": [
+          { "type": "proficiency", "kind": "skill", "id": "perception" },
+          { "type": "proficiency", "kind": "skill", "id": "athletics" },
+          { "type": "choice", "id": "languages", "label": "Choose one language", "pick": 1, "from": { "collection": "languages" } },
+          { "type": "feature", "name": "Watchword", "summary": "Guards everywhere let you pass with a word." }
+        ],
+        "characteristics": {
+          "traits": ["I never sit with my back to a door.", "I count everything.", "I speak only when I must."],
+          "ideals": [{ "text": "Duty. The wall stands because I stand.", "alignment": "Lawful" }],
+          "bonds": ["The town I guarded is my family."],
+          "flaws": ["I trust no stranger."]
+        }
       }
     ],
     "languages": [

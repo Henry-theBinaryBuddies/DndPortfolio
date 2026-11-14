@@ -2,7 +2,7 @@
 // It asks the core for the whole picture on every change and calculates nothing itself.
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { createContentIndex, rollSet, rollSets, viewCharacter, type ChoiceSpec, type SystemModule } from "../core";
-import { ChoiceView, choiceDomId } from "./choices";
+import { ChoiceView, choiceDomId, StepList } from "./choices";
 import type { LoadedPack } from "./packs";
 import { Licences, Review } from "./pages";
 import { freshCharacter, reducer } from "./state";
@@ -128,6 +128,9 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
                   rollSets={spec.kind === "roll" ? rollSets(doc, spec.key) : []}
                   onRoll={roll}
                 />
+              ))}
+              {(system.stepLists?.[step.id] ?? []).map((l) => (
+                <StepList key={l.list} label={l.label} items={view.lists[l.list] ?? []} />
               ))}
             </>
           )}

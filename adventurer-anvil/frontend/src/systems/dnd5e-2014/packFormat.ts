@@ -36,6 +36,24 @@ const proficiency = z.strictObject({ type: z.literal("proficiency"), kind: z.enu
 const language = z.strictObject({ type: z.literal("language"), id: ref });
 const resistance = z.strictObject({ type: z.literal("resistance"), damage: z.enum(DAMAGE_TYPES) });
 const grant = z.strictObject({ type: z.literal("grant"), collection: z.enum(COLLECTIONS), id: ref });
+/** Another way to work out Armor Class without armour (Unarmored Defense): base + the abilities' modifiers. The best one counts. */
+const armorClass = z.strictObject({
+  type: z.literal("armor-class"),
+  base: z.int().min(0).max(30),
+  abilities: z.array(z.enum(ABILITIES)).max(3),
+  /** False if a shield is not allowed with it (a monk's). */
+  shield: z.boolean().optional(),
+});
+/** A flat bonus to Armor Class, perhaps only while armoured (the Defense fighting style) or unarmoured. */
+const armorClassBonus = z.strictObject({
+  type: z.literal("armor-class-bonus"),
+  amount: z.int().min(-10).max(10),
+  while: z.enum(["armored", "unarmored"]).optional(),
+});
+/** Extra hit points for every character level (Dwarven Toughness, Draconic Resilience). */
+const hitPoints = z.strictObject({ type: z.literal("hit-points"), perLevel: z.int().min(-5).max(10) });
+/** Double the proficiency bonus for a skill or tool you are proficient in. */
+const expertise = z.strictObject({ type: z.literal("expertise"), kind: z.enum(["skill", "tool"]), id });
 /** Pick entries from a collection; each pick is granted (a language known, a cantrip known...). */
 const collectionChoiceFrom = z.strictObject({
   collection: z.enum(COLLECTIONS),
@@ -49,23 +67,29 @@ const listChoiceFrom = z.strictObject({
   except: z.array(z.string()).optional(),
 });
 /** An effect with one field left blank, which each pick fills in (the ability, the skill, the damage type). */
+/** Pick from proficiencies the character already has: "skill" (any skill), "tool:thieves-tools" (that tool). */
+const proficientChoiceFrom = z.strictObject({
+  proficient: z
+    .array(z.string().regex(/^(skill|tool)(:[a-z0-9]+(-[a-z0-9]+)*)?$/, '"skill", "tool", or one by id, e.g. "tool:thieves-tools"'))
+    .min(1),
+});
 export const eachSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("ability-bonus"), amount: z.int().min(-10).max(10) }),
   z.strictObject({ type: z.literal("proficiency"), kind: z.literal("skill") }),
   z.strictObject({ type: z.literal("resistance") }),
+  z.strictObject({ type: z.literal("expertise") }),
 ]);
 export type EachTemplate = z.infer<typeof eachSchema>;
 
-const choice = z.strictObject({
-  type: z.literal("choice"),
-  id,
-  label: z.string().min(1),
-  pick: z.int().positive(),
-  from: z.union([collectionChoiceFrom, listChoiceFrom]),
-  each: eachSchema.optional(),
-});
+/** How many uses a resource has: a number, a class table column, an ability modifier (plus add, at least min), or so many per class level. */
+const uses = z.union([
+  z.int().min(0),
+  z.strictObject({ column: id }),
+  z.strictObject({ ability: z.enum(ABILITIES), add: z.int().optional(), min: z.int().min(0).optional() }),
+  z.strictObject({ perLevel: z.int().positive() }),
+]);
 const resource = z.strictObject({
-  type: z.literal("resource"), id, name: z.string().min(1).optional(), uses: z.int().positive(), recharge: z.enum(RECHARGE),
+  type: z.literal("resource"), id, name: z.string().min(1).optional(), uses, recharge: z.enum(RECHARGE),
 });
 const feature = z.strictObject({
   type: z.literal("feature"),
@@ -75,14 +99,39 @@ const feature = z.strictObject({
   source: sourceSchema.optional(),
 });
 
+const SIMPLE_EFFECTS = [
+  abilityBonus, speed, sense, proficiency, language, resistance, grant, armorClass, armorClassBonus, hitPoints, expertise, resource, feature,
+] as const;
+/** Every effect but a choice: what an option written into a choice can give. */
+const simpleEffectSchema = z.discriminatedUnion("type", [...SIMPLE_EFFECTS]);
+
+/** An option written into the choice itself (a fighting style), with what it gives. */
+const inlineOption = z.strictObject({
+  id,
+  name: z.string().min(1),
+  summary: z.string().optional(),
+  description: z.string().optional(),
+  effects: z.array(simpleEffectSchema),
+});
+const optionsChoiceFrom = z.strictObject({ options: z.array(inlineOption).min(1) });
+
+const choice = z.strictObject({
+  type: z.literal("choice"),
+  id,
+  label: z.string().min(1),
+  pick: z.int().positive(),
+  from: z.union([collectionChoiceFrom, listChoiceFrom, optionsChoiceFrom, proficientChoiceFrom]),
+  each: eachSchema.optional(),
+});
+
 export const EFFECT_TYPES = [
-  "ability-bonus", "speed", "sense", "proficiency", "language", "resistance", "grant", "choice", "resource", "feature",
+  "ability-bonus", "speed", "sense", "proficiency", "language", "resistance", "grant", "armor-class", "armor-class-bonus",
+  "hit-points", "expertise", "choice", "resource", "feature",
 ] as const;
 
-export const effectSchema = z.discriminatedUnion("type", [
-  abilityBonus, speed, sense, proficiency, language, resistance, grant, choice, resource, feature,
-]);
+export const effectSchema = z.discriminatedUnion("type", [...SIMPLE_EFFECTS, choice]);
 export type Effect = z.infer<typeof effectSchema>;
+export type ChoiceEffect = Extract<Effect, { type: "choice" }>;
 
 // ---- Entries ----
 
@@ -117,7 +166,54 @@ export const subraceSchema = z.strictObject({ ...entryBase, race: ref, effects: 
 
 export const languageSchema = z.strictObject({ ...entryBase, exotic: z.boolean().optional(), script: z.string().optional() });
 
+const level = z.int().min(1).max(20);
+/** Each level's effects, in order: what a character gets on reaching that level in the class. */
+const levelsSchema = z.array(z.strictObject({ level, effects: z.array(effectSchema) }));
+/** A column of the class table (Rage count, Sneak Attack dice). Values are given at the levels they change and last until the next. */
+const columnsSchema = z.array(
+  z.strictObject({
+    id,
+    name: z.string().min(1),
+    values: z.record(z.string().regex(/^(?:[1-9]|1\d|20)$/, "a level from 1 to 20"), z.union([z.number(), z.string().min(1)])),
+  }),
+);
+const prerequisite = z.strictObject({ ability: z.enum(ABILITIES), min: z.int().min(1).max(30) });
+
+export const classSchema = z.strictObject({
+  ...entryBase,
+  hitDie: z.literal([6, 8, 10, 12], { error: "a hit die of 6, 8, 10 or 12" }),
+  /** What taking this class first gives: saving throws, armour, weapons, tools, skills. */
+  proficiencies: z.array(effectSchema),
+  multiclass: z.strictObject({
+    /** Scores needed to take (or leave for) another class: every one of `all`, or at least one of `any`. */
+    requires: z
+      .strictObject({ all: z.array(prerequisite).min(1).optional(), any: z.array(prerequisite).min(1).optional() })
+      .refine((r) => r.all || r.any, 'give "all" or "any"'),
+    /** The smaller set of proficiencies for taking this class later. */
+    proficiencies: z.array(effectSchema),
+  }),
+  /** What its subclasses are called and the level they are chosen at. */
+  subclass: z.strictObject({ name: z.string().min(1), level }).optional(),
+  columns: columnsSchema.optional(),
+  levels: levelsSchema,
+});
+
+export const subclassSchema = z.strictObject({ ...entryBase, class: ref, columns: columnsSchema.optional(), levels: levelsSchema });
+
+/** Suggestions for a character's personality, from a background's tables: each list is rolled or picked from. */
+const characteristicsSchema = z.strictObject({
+  traits: z.array(z.string().min(1)).optional(),
+  ideals: z.array(z.strictObject({ text: z.string().min(1), alignment: z.string().min(1).optional() })).optional(),
+  bonds: z.array(z.string().min(1)).optional(),
+  flaws: z.array(z.string().min(1)).optional(),
+});
+
+export const backgroundSchema = z.strictObject({ ...entryBase, effects: z.array(effectSchema), characteristics: characteristicsSchema.optional() });
+
 export type Race = z.infer<typeof raceSchema>;
+export type Background = z.infer<typeof backgroundSchema>;
+export type Class = z.infer<typeof classSchema>;
+export type Subclass = z.infer<typeof subclassSchema>;
 export type Subrace = z.infer<typeof subraceSchema>;
 export type Language = z.infer<typeof languageSchema>;
 
@@ -125,6 +221,9 @@ export type Language = z.infer<typeof languageSchema>;
 export const COLLECTION_SCHEMAS = {
   races: raceSchema,
   subraces: subraceSchema,
+  classes: classSchema,
+  subclasses: subclassSchema,
+  backgrounds: backgroundSchema,
   languages: languageSchema,
 } satisfies Partial<Record<Collection, z.ZodType>>;
 
@@ -195,6 +294,8 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
     });
   }
 
+  const isSkill = (s: string) => SKILL_IDS.includes(s as (typeof SKILL_IDS)[number]);
+
   // References: local ids resolve in this pack; pack:id in a required pack.
   const resolves = (target: string, collection: string, where: string) => {
     const colon = target.indexOf(":");
@@ -214,35 +315,103 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
     }
   };
 
-  const checkEffects = (effects: Effect[], where: string) =>
+  /** `columns`: the class table columns a resource may count from (undefined outside classes and subclasses). */
+  const checkEffects = (effects: Effect[], where: string, columns?: Set<string>) =>
     effects.forEach((effect, i) => {
-      const at = `${where}.effects[${i}]`;
+      const at = `${where}[${i}]`;
       if (effect.type === "language") resolves(effect.id, "languages", at);
       if (effect.type === "grant") resolves(effect.id, effect.collection, at);
-      if (effect.type === "proficiency" && effect.kind === "skill" && !SKILL_IDS.includes(effect.id as (typeof SKILL_IDS)[number])) {
+      if ((effect.type === "proficiency" || effect.type === "expertise") && effect.kind === "skill" && !isSkill(effect.id)) {
         errors.push(`${at}: no skill "${effect.id}".`);
       }
-      if (effect.type === "choice") {
-        if ("list" in effect.from) {
-          const expected = CHOICE_LISTS[effect.from.list];
-          if (!effect.each) errors.push(`${at}: a choice from the list "${effect.from.list}" needs "each" (a ${expected} effect).`);
-          else if (effect.each.type !== expected) errors.push(`${at}.each: picks from "${effect.from.list}" fill in a ${expected} effect, not ${effect.each.type}.`);
-          const values = choiceListValues(effect.from.list);
-          for (const v of [...(effect.from.only ?? []), ...(effect.from.except ?? [])]) {
-            if (!values.includes(v)) errors.push(`${at}.from: "${v}" is not in the list "${effect.from.list}".`);
-          }
-        } else if (effect.each) {
-          errors.push(`${at}.each: only choices from a fixed list use "each"; picks from a collection are granted.`);
+      if (effect.type === "resource" && typeof effect.uses === "object" && ("column" in effect.uses || "perLevel" in effect.uses)) {
+        if (!columns) errors.push(`${at}.uses: only classes and subclasses have levels and table columns to count from.`);
+        else if ("column" in effect.uses && !columns.has(effect.uses.column)) errors.push(`${at}.uses: no column "${effect.uses.column}" in the class table.`);
+      }
+      if (effect.type !== "choice") return;
+      const from = effect.from;
+      if ("list" in from) {
+        const expected = CHOICE_LISTS[from.list];
+        if (!effect.each) errors.push(`${at}: a choice from the list "${from.list}" needs "each" (a ${expected} effect).`);
+        else if (effect.each.type !== expected) errors.push(`${at}.each: picks from "${from.list}" fill in a ${expected} effect, not ${effect.each.type}.`);
+        const values = choiceListValues(from.list);
+        for (const v of [...(from.only ?? []), ...(from.except ?? [])]) {
+          if (!values.includes(v)) errors.push(`${at}.from: "${v}" is not in the list "${from.list}".`);
         }
+      } else if ("proficient" in from) {
+        if (effect.each?.type !== "expertise") errors.push(`${at}.each: picks from your proficiencies fill in an expertise effect: give "each": { "type": "expertise" }.`);
+        for (const p of from.proficient) {
+          const [kind, pid] = p.split(":");
+          if (kind === "skill" && pid && !isSkill(pid)) errors.push(`${at}.from: no skill "${pid}".`);
+        }
+      } else if (effect.each) {
+        errors.push(`${at}.each: only choices from a fixed list or from your proficiencies use "each"; ${"options" in from ? "options carry their own effects" : "picks from a collection are granted"}.`);
+      }
+      if ("options" in from) {
+        const seen = new Set<string>();
+        from.options.forEach((o, j) => {
+          if (seen.has(o.id)) errors.push(`${at}.from.options[${j}]: the id "${o.id}" is used twice.`);
+          seen.add(o.id);
+          checkEffects(o.effects as Effect[], `${at}.from.options[${j}].effects`, columns);
+        });
       }
     });
 
+  /** Levels in rising order; choice ids unique within the entry (they name its choice keys); column ids unique. */
+  const checkLeveled = (
+    entry: { levels: { level: number; effects: Effect[] }[]; columns?: { id: string }[] },
+    where: string,
+    columns: Set<string>,
+    more: [Effect[], string][] = [],
+  ) => {
+    entry.levels.forEach((l, i) => {
+      if (i > 0 && l.level <= entry.levels[i - 1].level) {
+        errors.push(`${where}.levels[${i}]: levels must rise (level ${l.level} comes after level ${entry.levels[i - 1].level}).`);
+      }
+    });
+    const ids = new Map<string, string>();
+    const lists: [Effect[], string][] = [...more, ...entry.levels.map((l, i): [Effect[], string] => [l.effects, `${where}.levels[${i}].effects`])];
+    for (const [effects, at] of lists) {
+      checkEffects(effects, at, columns);
+      effects.forEach((e, i) => {
+        if (e.type !== "choice") return;
+        if (e.id === "subclass") errors.push(`${at}[${i}]: the choice id "subclass" is kept for choosing the subclass.`);
+        else if (ids.has(e.id)) errors.push(`${at}[${i}]: the choice id "${e.id}" is also used at ${ids.get(e.id)}.`);
+        ids.set(e.id, `${at}[${i}]`);
+      });
+    }
+    const seen = new Set<string>();
+    entry.columns?.forEach((c, i) => {
+      if (seen.has(c.id)) errors.push(`${where}.columns[${i}]: the id "${c.id}" is used twice.`);
+      seen.add(c.id);
+    });
+  };
+
   const races = (pack.collections.races ?? []) as Race[];
   const subraces = (pack.collections.subraces ?? []) as Subrace[];
-  races.forEach((race, i) => checkEffects(race.effects, `collections.races[${i}]`));
+  const classes = (pack.collections.classes ?? []) as Class[];
+  const subclasses = (pack.collections.subclasses ?? []) as Subclass[];
+  const backgrounds = (pack.collections.backgrounds ?? []) as Background[];
+  backgrounds.forEach((bg, i) => checkEffects(bg.effects, `collections.backgrounds[${i}].effects`));
+  races.forEach((race, i) => checkEffects(race.effects, `collections.races[${i}].effects`));
   subraces.forEach((sub, i) => {
     resolves(sub.race, "races", `collections.subraces[${i}].race`);
-    checkEffects(sub.effects, `collections.subraces[${i}]`);
+    checkEffects(sub.effects, `collections.subraces[${i}].effects`);
+  });
+  const columnIds = (entry: { columns?: { id: string }[] }) => new Set((entry.columns ?? []).map((c) => c.id));
+  classes.forEach((cls, i) => {
+    const at = `collections.classes[${i}]`;
+    checkLeveled(cls, at, columnIds(cls), [[cls.proficiencies, `${at}.proficiencies`], [cls.multiclass.proficiencies, `${at}.multiclass.proficiencies`]]);
+  });
+  subclasses.forEach((sub, i) => {
+    const at = `collections.subclasses[${i}]`;
+    resolves(sub.class, "classes", `${at}.class`);
+    // A subclass may count from its own columns or its class's. (A class in another pack: its columns are checked when the character is built.)
+    const parent = sub.class.includes(":")
+      ? (required.find((p) => p.id === sub.class.split(":")[0])?.collections.classes ?? []).find((c) => c.id === sub.class.split(":")[1])
+      : classes.find((c) => c.id === sub.class);
+    const columns = new Set([...columnIds(sub), ...columnIds((parent ?? {}) as { columns?: { id: string }[] })]);
+    checkLeveled(sub, at, columns);
   });
 
   return errors;
