@@ -1,0 +1,352 @@
+{
+  "$schema": "../../../../public/schemas/dnd5e-2014-pack.schema.json",
+  "format": "adventurer-anvil-pack",
+  "formatVersion": 1,
+  "id": "sample-srd",
+  "version": "0.1.0",
+  "system": "dnd5e-2014",
+  "title": "Sample: Elf, High Elf, Fighter, Rogue, Wizard, Cleric, Sentry, items and spells (tests only)",
+  "attribution": "This work includes material taken from the System Reference Document 5.1 (\"SRD 5.1\") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
+  "requires": [],
+  "collections": {
+    "races": [
+      {
+        "id": "elf",
+        "name": "Elf",
+        "size": "medium",
+        "summary": "Graceful, long-lived and keen of sense.",
+        "effects": [
+          { "type": "ability-bonus", "ability": "dex", "amount": 2 },
+          { "type": "speed", "walk": 30 },
+          { "type": "sense", "sense": "darkvision", "range": 60 },
+          { "type": "proficiency", "kind": "skill", "id": "perception" },
+          { "type": "feature", "name": "Fey Ancestry", "summary": "Advantage on saving throws against being charmed, and magic can't put you to sleep." },
+          { "type": "feature", "name": "Trance", "summary": "Meditate 4 hours instead of sleeping 8." },
+          { "type": "language", "id": "common" },
+          { "type": "language", "id": "elvish" }
+        ],
+        "suggestions": {
+          "ageAdult": 100,
+          "ageMax": 750,
+          "height": "4'6\" + 2d10 in.",
+          "weight": "90 + (2d4 × height roll) lb.",
+          "names": {
+            "male": ["Adran", "Aelar", "Aramil"],
+            "female": ["Adrie", "Althaea", "Anastrianna"],
+            "family": ["Amakiir", "Amastacia", "Galanodel"]
+          }
+        }
+      },
+      {
+        "id": "half-elf",
+        "name": "Half-Elf",
+        "size": "medium",
+        "summary": "Human and elf heritage, at home in both worlds.",
+        "effects": [
+          { "type": "ability-bonus", "ability": "cha", "amount": 2 },
+          { "type": "choice", "id": "abilities", "label": "+1 to two abilities of your choice", "pick": 2,
+            "from": { "list": "abilities", "except": ["cha"] }, "each": { "type": "ability-bonus", "amount": 1 } },
+          { "type": "speed", "walk": 30 },
+          { "type": "sense", "sense": "darkvision", "range": 60 },
+          { "type": "feature", "name": "Fey Ancestry", "summary": "Advantage on saving throws against being charmed, and magic can't put you to sleep." },
+          { "type": "choice", "id": "skills", "label": "Skill Versatility: two skills of your choice", "pick": 2,
+            "from": { "list": "skills" }, "each": { "type": "proficiency", "kind": "skill" } },
+          { "type": "language", "id": "common" },
+          { "type": "language", "id": "elvish" },
+          { "type": "choice", "id": "language", "label": "Choose one extra language", "pick": 1,
+            "from": { "collection": "languages" } }
+        ]
+      }
+    ],
+    "subraces": [
+      {
+        "id": "high-elf",
+        "name": "High Elf",
+        "race": "elf",
+        "summary": "Keen mind and a touch of wizardry.",
+        "effects": [
+          { "type": "ability-bonus", "ability": "int", "amount": 1 },
+          { "type": "proficiency", "kind": "weapon", "id": "longsword" },
+          { "type": "proficiency", "kind": "weapon", "id": "shortsword" },
+          { "type": "proficiency", "kind": "weapon", "id": "shortbow" },
+          { "type": "proficiency", "kind": "weapon", "id": "longbow" },
+          { "type": "choice", "id": "cantrip", "label": "Choose a wizard cantrip", "pick": 1,
+            "from": { "collection": "spells", "where": { "classes": "wizard", "level": 0 } } },
+          { "type": "choice", "id": "language", "label": "Choose one extra language", "pick": 1,
+            "from": { "collection": "languages" } }
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "id": "fighter",
+        "name": "Fighter",
+        "summary": "A master of weapons and armour.",
+        "hitDie": 10,
+        "proficiencies": [
+          { "type": "proficiency", "kind": "saving-throw", "id": "str" },
+          { "type": "proficiency", "kind": "saving-throw", "id": "con" },
+          { "type": "proficiency", "kind": "armor", "id": "light" },
+          { "type": "proficiency", "kind": "armor", "id": "medium" },
+          { "type": "proficiency", "kind": "armor", "id": "heavy" },
+          { "type": "proficiency", "kind": "armor", "id": "shield" },
+          { "type": "proficiency", "kind": "weapon", "id": "simple" },
+          { "type": "proficiency", "kind": "weapon", "id": "martial" },
+          {
+            "type": "choice",
+            "id": "skills",
+            "label": "Choose two skills",
+            "pick": 2,
+            "from": { "list": "skills", "only": ["acrobatics", "athletics", "history", "insight", "perception", "survival"] },
+            "each": { "type": "proficiency", "kind": "skill" }
+          }
+        ],
+        "multiclass": {
+          "requires": { "any": [{ "ability": "str", "min": 13 }, { "ability": "dex", "min": 13 }] },
+          "proficiencies": [{ "type": "proficiency", "kind": "armor", "id": "light" }]
+        },
+        "startingEquipment": {
+          "items": [{ "item": "explorers-pack" }],
+          "choices": [
+            { "id": "armor", "label": "(a) chain mail or (b) leather armor, longbow and 20 arrows", "options": [
+              { "id": "a", "items": [{ "item": "chain-mail" }] },
+              { "id": "b", "items": [{ "item": "leather-armor" }, { "item": "longbow" }, { "item": "arrow", "qty": 20 }] }] },
+            { "id": "weapon", "label": "(a) a martial weapon and a shield or (b) two martial weapons", "options": [
+              { "id": "a", "items": [{ "any": { "categories": ["martial-weapons"] }, "label": "a martial weapon" }, { "item": "shield" }] },
+              { "id": "b", "items": [{ "any": { "categories": ["martial-weapons"] }, "qty": 2, "label": "a martial weapon" }] }] }
+          ]
+        },
+        "startingWealth": "5d4x10",
+        "subclass": { "name": "Martial Archetype", "level": 3 },
+        "columns": [{ "id": "action-surges", "name": "Action Surge", "values": { "2": 1, "17": 2 } }],
+        "levels": [
+          {
+            "level": 1,
+            "effects": [
+              {
+                "type": "choice",
+                "id": "fighting-style",
+                "label": "Choose a fighting style",
+                "pick": 1,
+                "from": {
+                  "options": [
+                    {
+                      "id": "defense",
+                      "name": "Defense",
+                      "summary": "+1 AC while wearing armour.",
+                      "effects": [{ "type": "armor-class-bonus", "amount": 1, "while": "armored" }]
+                    },
+                    { "id": "dueling", "name": "Dueling", "summary": "+2 damage with a one-handed melee weapon.", "effects": [] }
+                  ]
+                }
+              },
+              { "type": "resource", "id": "second-wind", "name": "Second Wind", "uses": 1, "recharge": "short" },
+              {
+                "type": "feature",
+                "name": "Second Wind",
+                "summary": "Bonus action: regain 1d10 + your fighter level in hit points."
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "effects": [
+              {
+                "type": "resource",
+                "id": "action-surge",
+                "name": "Action Surge",
+                "uses": { "column": "action-surges" },
+                "recharge": "short"
+              },
+              { "type": "feature", "name": "Action Surge", "summary": "Take one additional action." }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rogue",
+        "name": "Rogue",
+        "summary": "A sneak and a specialist.",
+        "hitDie": 8,
+        "proficiencies": [
+          { "type": "proficiency", "kind": "saving-throw", "id": "dex" },
+          { "type": "proficiency", "kind": "saving-throw", "id": "int" },
+          { "type": "proficiency", "kind": "armor", "id": "light" },
+          { "type": "proficiency", "kind": "tool", "id": "thieves-tools" },
+          {
+            "type": "choice",
+            "id": "skills",
+            "label": "Choose four skills",
+            "pick": 4,
+            "from": { "list": "skills", "only": ["acrobatics", "athletics", "deception", "insight", "perception", "stealth"] },
+            "each": { "type": "proficiency", "kind": "skill" }
+          }
+        ],
+        "multiclass": {
+          "requires": { "all": [{ "ability": "dex", "min": 13 }] },
+          "proficiencies": [{ "type": "proficiency", "kind": "armor", "id": "light" }]
+        },
+        "startingEquipment": { "items": [{ "item": "leather-armor" }, { "item": "dagger", "qty": 2 }, { "item": "rapier" }] },
+        "subclass": { "name": "Roguish Archetype", "level": 3 },
+        "columns": [{ "id": "sneak-attack", "name": "Sneak Attack", "values": { "1": "1d6", "3": "2d6" } }],
+        "levels": [
+          {
+            "level": 1,
+            "effects": [
+              {
+                "type": "choice",
+                "id": "expertise",
+                "label": "Expertise: choose two of your proficiencies",
+                "pick": 2,
+                "from": { "proficient": ["skill", "tool:thieves-tools"] },
+                "each": { "type": "expertise" }
+              },
+              {
+                "type": "feature",
+                "name": "Sneak Attack",
+                "summary": "Extra damage once a turn, with advantage or an ally nearby."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "wizard",
+        "name": "Wizard",
+        "hitDie": 6,
+        "proficiencies": [{ "type": "proficiency", "kind": "saving-throw", "id": "int" }, { "type": "proficiency", "kind": "saving-throw", "id": "wis" }],
+        "multiclass": { "requires": { "all": [{ "ability": "int", "min": 13 }] }, "proficiencies": [] },
+        "columns": [
+          { "id": "cantrips-known", "name": "Cantrips Known", "values": { "1": 3, "4": 4 } },
+          { "id": "slots-1", "name": "1st", "values": { "1": 2, "2": 3 } },
+          { "id": "slots-2", "name": "2nd", "values": { "1": 0, "3": 2 } }
+        ],
+        "spellcasting": { "ability": "int", "level": 1, "kind": "spellbook", "cantrips": "cantrips-known", "slots": { "1": "slots-1", "2": "slots-2" },
+          "prepare": "level", "spellbook": { "start": 6, "perLevel": 2 }, "ritual": true, "focus": ["arcane-foci"] },
+        "levels": [{ "level": 1, "effects": [{ "type": "feature", "name": "Arcane Recovery", "summary": "Recover some slots on a short rest." }] }]
+      },
+      {
+        "id": "cleric",
+        "name": "Cleric",
+        "hitDie": 8,
+        "proficiencies": [{ "type": "proficiency", "kind": "saving-throw", "id": "wis" }, { "type": "proficiency", "kind": "saving-throw", "id": "cha" }],
+        "multiclass": { "requires": { "all": [{ "ability": "wis", "min": 13 }] }, "proficiencies": [] },
+        "subclass": { "name": "Divine Domain", "level": 1 },
+        "columns": [
+          { "id": "cantrips-known", "name": "Cantrips Known", "values": { "1": 3 } },
+          { "id": "slots-1", "name": "1st", "values": { "1": 2 } }
+        ],
+        "spellcasting": { "ability": "wis", "level": 1, "kind": "prepared", "cantrips": "cantrips-known", "slots": { "1": "slots-1" },
+          "prepare": "level", "ritual": true, "focus": ["holy-symbols"] },
+        "levels": []
+      },
+      {
+        "id": "paladin",
+        "name": "Paladin",
+        "hitDie": 10,
+        "proficiencies": [],
+        "multiclass": { "requires": { "all": [{ "ability": "str", "min": 13 }, { "ability": "cha", "min": 13 }] }, "proficiencies": [] },
+        "columns": [{ "id": "slots-1", "name": "1st", "values": { "1": 0, "2": 2 } }],
+        "spellcasting": { "ability": "cha", "level": 2, "kind": "prepared", "slots": { "1": "slots-1" }, "prepare": "half-level" },
+        "levels": []
+      }
+    ],
+    "subclasses": [
+      {
+        "id": "life",
+        "name": "Life Domain",
+        "class": "cleric",
+        "levels": [{ "level": 1, "effects": [{ "type": "spell", "id": "bless", "always": true }, { "type": "spell", "id": "cure-wounds", "always": true }] }]
+      },
+      {
+        "id": "champion",
+        "name": "Champion",
+        "class": "fighter",
+        "levels": [{ "level": 3, "effects": [{ "type": "feature", "name": "Improved Critical", "summary": "Critical hits on 19 or 20." }] }]
+      }
+    ],
+    "spells": [
+      { "id": "fire-bolt", "name": "Fire Bolt", "level": 0, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "120 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "A mote of fire: 1d10 fire damage." },
+      { "id": "light", "name": "Light", "level": 0, "school": "evocation", "classes": ["wizard", "cleric"], "castingTime": "1 action", "range": "Touch",
+        "components": { "verbal": true, "material": "a firefly or phosphorescent moss" }, "duration": "1 hour", "description": "An object sheds light." },
+      { "id": "prestidigitation", "name": "Prestidigitation", "level": 0, "school": "transmutation", "classes": ["wizard"], "castingTime": "1 action", "range": "10 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Up to 1 hour", "description": "A minor magical trick." },
+      { "id": "sacred-flame", "name": "Sacred Flame", "level": 0, "school": "evocation", "classes": ["cleric"], "castingTime": "1 action", "range": "60 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "Radiance descends: 1d8 radiant damage." },
+      { "id": "thaumaturgy", "name": "Thaumaturgy", "level": 0, "school": "transmutation", "classes": ["cleric"], "castingTime": "1 action", "range": "30 feet",
+        "components": { "verbal": true }, "duration": "Up to 1 minute", "description": "A minor wonder." },
+      { "id": "magic-missile", "name": "Magic Missile", "level": 1, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "120 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "Three darts of force.", "higherLevels": "One more dart per slot level above 1st." },
+      { "id": "shield", "name": "Shield", "level": 1, "school": "abjuration", "classes": ["wizard"], "castingTime": "1 reaction", "range": "Self",
+        "components": { "verbal": true, "somatic": true }, "duration": "1 round", "description": "+5 AC until your next turn." },
+      { "id": "detect-magic", "name": "Detect Magic", "level": 1, "school": "divination", "classes": ["wizard", "cleric"], "castingTime": "1 action", "range": "Self",
+        "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": true, "description": "Sense magic nearby." },
+      { "id": "burning-hands", "name": "Burning Hands", "level": 1, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "Self (15-foot cone)",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "A sheet of flame." },
+      { "id": "sleep", "name": "Sleep", "level": 1, "school": "enchantment", "classes": ["wizard"], "castingTime": "1 action", "range": "90 feet",
+        "components": { "verbal": true, "somatic": true, "material": "a pinch of fine sand" }, "duration": "1 minute", "description": "Creatures fall asleep." },
+      { "id": "comprehend-languages", "name": "Comprehend Languages", "level": 1, "school": "divination", "classes": ["wizard"], "castingTime": "1 action", "range": "Self",
+        "components": { "verbal": true, "somatic": true }, "duration": "1 hour", "ritual": true, "description": "Understand any language." },
+      { "id": "bless", "name": "Bless", "level": 1, "school": "enchantment", "classes": ["cleric"], "castingTime": "1 action", "range": "30 feet",
+        "components": { "verbal": true, "somatic": true, "material": "a sprinkling of holy water" }, "duration": "Concentration, up to 1 minute", "concentration": true, "description": "Up to three creatures add 1d4." },
+      { "id": "cure-wounds", "name": "Cure Wounds", "level": 1, "school": "evocation", "classes": ["cleric"], "castingTime": "1 action", "range": "Touch",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "Heal 1d8 + your modifier." },
+      { "id": "guiding-bolt", "name": "Guiding Bolt", "level": 1, "school": "evocation", "classes": ["cleric"], "castingTime": "1 action", "range": "120 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "1 round", "description": "4d6 radiant damage." },
+      { "id": "shatter", "name": "Shatter", "level": 2, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "60 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "A ringing noise: 3d8 thunder." }
+    ],
+    "backgrounds": [
+      {
+        "id": "sentry",
+        "name": "Sentry",
+        "summary": "A test background: years on the walls, watching.",
+        "effects": [
+          { "type": "proficiency", "kind": "skill", "id": "perception" },
+          { "type": "proficiency", "kind": "skill", "id": "athletics" },
+          { "type": "choice", "id": "languages", "label": "Choose one language", "pick": 1, "from": { "collection": "languages" } },
+          { "type": "feature", "name": "Watchword", "summary": "Guards everywhere let you pass with a word." }
+        ],
+        "characteristics": {
+          "traits": ["I never sit with my back to a door.", "I count everything.", "I speak only when I must."],
+          "ideals": [{ "text": "Duty. The wall stands because I stand.", "alignment": "Lawful" }],
+          "bonds": ["The town I guarded is my family."],
+          "flaws": ["I trust no stranger."]
+        },
+        "startingEquipment": { "items": [{ "name": "Watch horn" }, { "item": "dagger" }], "gold": { "amount": 10, "unit": "gp" } }
+      }
+    ],
+    "items": [
+      { "id": "chain-mail", "name": "Chain Mail", "categories": ["armor", "heavy-armor"], "cost": { "amount": 75, "unit": "gp" }, "weight": 55,
+        "armor": { "class": "heavy", "base": 16, "dex": "none", "strength": 13, "stealthDisadvantage": true } },
+      { "id": "scale-mail", "name": "Scale Mail", "categories": ["armor", "medium-armor"], "cost": { "amount": 50, "unit": "gp" }, "weight": 45,
+        "armor": { "class": "medium", "base": 14, "dex": { "max": 2 }, "stealthDisadvantage": true } },
+      { "id": "leather-armor", "name": "Leather Armor", "categories": ["armor", "light-armor"], "cost": { "amount": 10, "unit": "gp" }, "weight": 10,
+        "armor": { "class": "light", "base": 11, "dex": "full" } },
+      { "id": "shield", "name": "Shield", "categories": ["armor", "shields"], "cost": { "amount": 10, "unit": "gp" }, "weight": 6,
+        "armor": { "class": "shield", "base": 2, "dex": "none" } },
+      { "id": "longsword", "name": "Longsword", "categories": ["weapon", "martial-weapons", "melee-weapons"], "cost": { "amount": 15, "unit": "gp" }, "weight": 3,
+        "weapon": { "class": "martial", "range": "melee", "damage": { "dice": "1d8", "type": "slashing" }, "versatile": "1d10", "properties": ["versatile"] } },
+      { "id": "rapier", "name": "Rapier", "categories": ["weapon", "martial-weapons", "melee-weapons"], "cost": { "amount": 25, "unit": "gp" }, "weight": 2,
+        "weapon": { "class": "martial", "range": "melee", "damage": { "dice": "1d8", "type": "piercing" }, "properties": ["finesse"] } },
+      { "id": "net", "name": "Net", "categories": ["weapon", "martial-weapons", "ranged-weapons"], "cost": { "amount": 1, "unit": "gp" }, "weight": 3,
+        "weapon": { "class": "martial", "range": "ranged", "properties": ["special", "thrown"], "normal": 5, "long": 15 } },
+      { "id": "dagger", "name": "Dagger", "categories": ["weapon", "simple-weapons", "melee-weapons"], "cost": { "amount": 2, "unit": "gp" }, "weight": 1,
+        "weapon": { "class": "simple", "range": "melee", "damage": { "dice": "1d4", "type": "piercing" }, "properties": ["finesse", "light", "thrown"], "normal": 20, "long": 60 } },
+      { "id": "longbow", "name": "Longbow", "categories": ["weapon", "martial-weapons", "ranged-weapons"], "cost": { "amount": 50, "unit": "gp" }, "weight": 2,
+        "weapon": { "class": "martial", "range": "ranged", "damage": { "dice": "1d8", "type": "piercing" }, "properties": ["ammunition", "heavy", "two-handed"], "normal": 150, "long": 600 } },
+      { "id": "arrow", "name": "Arrow", "categories": ["adventuring-gear", "ammunition"], "cost": { "amount": 1, "unit": "gp" }, "weight": 1, "bundle": 20 },
+      { "id": "backpack", "name": "Backpack", "categories": ["adventuring-gear"], "cost": { "amount": 2, "unit": "gp" }, "weight": 5 },
+      { "id": "torch", "name": "Torch", "categories": ["adventuring-gear"], "cost": { "amount": 1, "unit": "cp" }, "weight": 1 },
+      { "id": "explorers-pack", "name": "Explorer's Pack", "categories": ["adventuring-gear", "equipment-packs"], "cost": { "amount": 10, "unit": "gp" },
+        "contents": [{ "item": "backpack", "qty": 1 }, { "item": "torch", "qty": 10 }] }
+    ],
+    "languages": [
+      { "id": "common", "name": "Common", "script": "Common" },
+      { "id": "dwarvish", "name": "Dwarvish", "script": "Dwarvish" },
+      { "id": "elvish", "name": "Elvish", "script": "Elvish" },
+      { "id": "draconic", "name": "Draconic", "script": "Draconic", "exotic": true }
+    ]
+  }
+}

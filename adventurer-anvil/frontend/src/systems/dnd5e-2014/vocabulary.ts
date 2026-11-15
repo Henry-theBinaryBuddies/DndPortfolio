@@ -1,0 +1,90 @@
+// The fixed vocabulary of the 2014 rules: things no book adds more of. Content (races, spells, ...) is in packs.
+
+export const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"] as const;
+export type Ability = (typeof ABILITIES)[number];
+
+export const ABILITY_NAMES: Record<Ability, string> = {
+  str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma",
+};
+
+export const SKILLS = {
+  acrobatics: { name: "Acrobatics", ability: "dex" },
+  "animal-handling": { name: "Animal Handling", ability: "wis" },
+  arcana: { name: "Arcana", ability: "int" },
+  athletics: { name: "Athletics", ability: "str" },
+  deception: { name: "Deception", ability: "cha" },
+  history: { name: "History", ability: "int" },
+  insight: { name: "Insight", ability: "wis" },
+  intimidation: { name: "Intimidation", ability: "cha" },
+  investigation: { name: "Investigation", ability: "int" },
+  medicine: { name: "Medicine", ability: "wis" },
+  nature: { name: "Nature", ability: "int" },
+  perception: { name: "Perception", ability: "wis" },
+  performance: { name: "Performance", ability: "cha" },
+  persuasion: { name: "Persuasion", ability: "cha" },
+  religion: { name: "Religion", ability: "int" },
+  "sleight-of-hand": { name: "Sleight of Hand", ability: "dex" },
+  stealth: { name: "Stealth", ability: "dex" },
+  survival: { name: "Survival", ability: "wis" },
+} as const satisfies Record<string, { name: string; ability: Ability }>;
+export type Skill = keyof typeof SKILLS;
+export const SKILL_IDS = Object.keys(SKILLS) as [Skill, ...Skill[]];
+
+export const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"] as const;
+
+export const DAMAGE_TYPES = [
+  "acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic",
+  "piercing", "poison", "psychic", "radiant", "slashing", "thunder",
+] as const;
+
+export const CONDITIONS = [
+  "blinded", "charmed", "deafened", "exhaustion", "frightened", "grappled", "incapacitated", "invisible",
+  "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned", "unconscious",
+] as const;
+
+export const SENSES = ["darkvision", "blindsight", "tremorsense", "truesight"] as const;
+
+export const MOVEMENT = ["walk", "fly", "swim", "climb", "burrow"] as const;
+
+/** What a proficiency effect can grant. Armour ids are light, medium, heavy and shield; weapon ids are simple, martial or an item id ("longsword"); tool ids are item ids. */
+export const PROFICIENCY_KINDS = ["skill", "saving-throw", "weapon", "armor", "tool"] as const;
+
+export const RECHARGE = ["short", "long", "dawn"] as const;
+
+/** Coins, smallest first, and how many copper pieces each is worth. */
+export const COINS = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 } as const;
+export type Coin = keyof typeof COINS;
+export const COIN_UNITS = Object.keys(COINS) as [Coin, ...Coin[]];
+
+/** Weapon properties. "monk" is not a property in the book: the community files use it to mark monk weapons. */
+export const WEAPON_PROPERTIES = [
+  "ammunition", "finesse", "heavy", "light", "loading", "reach", "special", "thrown", "two-handed", "versatile", "monk",
+] as const;
+
+/** The eight schools of magic. */
+export const SCHOOLS = ["abjuration", "conjuration", "divination", "enchantment", "evocation", "illusion", "necromancy", "transmutation"] as const;
+
+/** How a class gets its spells: a fixed number known; the whole list, prepared daily; a spellbook to prepare from; or a warlock's pact. */
+export const CASTING_KINDS = ["known", "prepared", "spellbook", "pact"] as const;
+
+export const ARMOR_CLASSES = ["light", "medium", "heavy", "shield"] as const;
+
+/** Fixed lists a choice can pick from (see the choice effect's from.list), and the effect each pick fills in. */
+export const CHOICE_LISTS = {
+  abilities: "ability-bonus",
+  skills: "proficiency",
+  "damage-types": "resistance",
+} as const;
+export type ChoiceList = keyof typeof CHOICE_LISTS;
+
+export function choiceListValues(list: ChoiceList): readonly string[] {
+  if (list === "abilities") return ABILITIES;
+  if (list === "skills") return SKILL_IDS;
+  return DAMAGE_TYPES;
+}
+
+/** Every collection a 2014 pack may hold. Formats for the rest arrive with the steps that use them. */
+export const COLLECTIONS = [
+  "races", "subraces", "classes", "subclasses", "backgrounds", "feats", "spells", "items", "languages",
+] as const;
+export type Collection = (typeof COLLECTIONS)[number];
