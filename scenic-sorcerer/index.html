@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scenic Sorcerer</title>
+    <meta name="description" content="A free map maker for tabletop role-playing games. Square and hex grids, no account needed." />
+  </head>
+  <body>
+    <header class="topbar">
+      <span class="brand">Scenic Sorcerer</span>
+      <input id="map-name" class="name" type="text" maxlength="80" aria-label="Map name" />
+      <div class="group">
+        <button id="btn-new" type="button" title="Start a new map">New</button>
+        <button id="btn-open" type="button" title="Open a saved map (Ctrl+O)">Open</button>
+        <button id="btn-save" type="button" title="Save this map to a file (Ctrl+S)">Save</button>
+        <button id="btn-export" type="button" title="Make a picture of the map, or files for a virtual tabletop">Export</button>
+      </div>
+      <div class="group">
+        <button id="btn-undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="btn-redo" type="button" title="Redo (Ctrl+Y)">Redo</button>
+      </div>
+      <div class="group">
+        <button id="btn-help" type="button" title="Keyboard shortcuts (?)">Keys</button>
+      </div>
+      <span id="save-status" class="status" role="status"></span>
+      <input id="file-input" type="file" accept=".json,application/json" hidden />
+      <input id="asset-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden />
+    </header>
+
+    <main class="workspace">
+      <nav class="tools" role="radiogroup" aria-label="Tools" id="tools">
+        <button type="button" role="radio" data-value="select" title="Select, move and delete things (V)">Select</button>
+        <button type="button" role="radio" data-value="room" title="Draw a rectangular room (R)">Rectangle</button>
+        <button type="button" role="radio" data-value="circle" title="Draw a round room: drag out from the middle. Stretch it into an oval afterwards (C)">Circle</button>
+        <button type="button" role="radio" data-value="triangle" title="Draw a triangular room: drag along the base. Reshape it afterwards (3)">Triangle</button>
+        <button type="button" role="radio" data-value="polygon" title="Draw a room of any shape, corner by corner (P)">Free shape</button>
+        <button type="button" role="radio" data-value="door" title="Add a door to a wall (D)">Door</button>
+        <button type="button" role="radio" data-value="window" title="Add a window to a wall (W)">Window</button>
+        <button type="button" role="radio" data-value="brush" title="Paint ground textures (B)">Brush</button>
+        <button type="button" role="radio" data-value="stamp" title="Place pictures such as furniture and trees (S)">Stamp</button>
+        <button type="button" role="radio" data-value="light" title="Place a torch, lantern or other light (L)">Light</button>
+        <button type="button" role="radio" data-value="text" title="Add a piece of text, such as a room name (T)">Text</button>
+        <button type="button" role="radio" data-value="gm" title="GM notes: room numbers, traps and secrets that players should not see (G)">GM notes</button>
+      </nav>
+
+      <div id="stage" class="stage">
+        <canvas id="canvas" aria-label="Map" tabindex="0"></canvas>
+        <div class="zoom">
+          <button id="btn-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">&minus;</button>
+          <button id="btn-fit" type="button" title="Show the whole map (0)"><span id="zoom-label">100%</span></button>
+          <button id="btn-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+        </div>
+        <p id="message" class="message" role="alert" hidden></p>
+        <div id="drop-hint" class="drop-hint" hidden>Drop pictures to add them to your stamps</div>
+      </div>
+
+      <aside class="panel" aria-label="Settings">
+        <section id="floor-section">
+          <h2 id="floor-title">Floor</h2>
+          <div class="swatches" role="radiogroup" aria-labelledby="floor-title" id="floors"></div>
+          <label class="check" id="walls-row"><input id="walls" type="checkbox" /> Walls around the room</label>
+        </section>
+
+        <section id="brush-section" hidden>
+          <label class="slider">Size <output id="brush-size-out"></output>
+            <input id="brush-size" type="range" min="0.25" max="5" step="0.25" />
+          </label>
+          <label class="slider">Strength <output id="brush-opacity-out"></output>
+            <input id="brush-opacity" type="range" min="10" max="100" step="5" />
+          </label>
+        </section>
+
+        <section id="library-section" hidden>
+          <h2>Stamps</h2>
+          <button id="btn-import" type="button" class="wide">Add pictures…</button>
+          <input id="asset-search" type="search" class="search" placeholder="Search stamps" aria-label="Search stamps" />
+          <select id="asset-group" class="search" aria-label="Kind of stamp"></select>
+          <label class="check"><input id="asset-favourites" type="checkbox" /> Favourites only</label>
+          <div id="asset-grid" class="asset-grid" role="listbox" aria-label="Stamps"></div>
+          <p id="asset-note" class="note"></p>
+          <p class="note" id="asset-credit" hidden>Bundled stamps by <a href="https://www.tomcartos.com/" target="_blank" rel="noopener">Tom Cartos</a>, used under his <a href="https://www.tomcartos.com/toms-open-map-license" target="_blank" rel="noopener">Open Map License</a>.</p>
+          <div id="asset-actions" class="row" hidden>
+            <button id="btn-favourite" type="button"></button>
+            <button id="btn-remove-asset" type="button" title="Take this picture out of your stamps">Remove</button>
+          </div>
+        </section>
+
+        <section id="stamp-section" hidden>
+          <h2 id="stamp-title">Stamp</h2>
+          <label class="slider">Size <output id="stamp-size-out"></output>
+            <input id="stamp-size" type="range" min="0.25" max="10" step="0.25" />
+          </label>
+          <label class="slider">Turn <output id="stamp-rotation-out"></output>
+            <input id="stamp-rotation" type="range" min="-180" max="180" step="5" />
+          </label>
+          <div id="stairs-extras" hidden>
+            <label class="slider">Steps <output id="stairs-steps-out"></output>
+              <input id="stairs-steps" type="range" min="2" max="24" step="1" />
+            </label>
+            <div id="stairs-box">
+              <label class="slider">Width <output id="stairs-width-out"></output>
+                <input id="stairs-width" type="range" min="0.5" max="8" step="0.25" />
+              </label>
+              <label class="slider">Length <output id="stairs-length-out"></output>
+                <input id="stairs-length" type="range" min="0.5" max="12" step="0.25" />
+              </label>
+            </div>
+            <label class="field" id="stairs-turn-row">Winds
+              <select id="stairs-turn" class="input">
+                <option value="cw">Clockwise</option>
+                <option value="ccw">Counter-clockwise</option>
+              </select>
+            </label>
+            <label class="field">Material
+              <select id="stairs-material" class="input"></select>
+            </label>
+            <label class="field">Arrow
+              <select id="stairs-dir" class="input">
+                <option value="up">Going up</option>
+                <option value="down">Going down</option>
+                <option value="none">No arrow</option>
+              </select>
+            </label>
+            <p class="note">The arrow shows the way to go. For straight stairs it points to the top of the picture; turn the stairs to point it where you want.</p>
+          </div>
+          <label class="check"><input id="stamp-shadow" type="checkbox" /> Shadow</label>
+          <label class="check" id="scatter-row" title="Drag to drop many at once, each a little different">
+            <input id="stamp-scatter" type="checkbox" /> Scatter while dragging
+          </label>
+          <div id="stamp-extras" class="row" hidden>
+            <button id="btn-flip" type="button">Flip</button>
+            <label class="tint" id="stamp-tint-label">Tint <input id="stamp-tint" type="color" /></label>
+            <button id="btn-clear-tint" type="button">No tint</button>
+          </div>
+        </section>
+
+        <section id="light-section" hidden>
+          <h2 id="light-title">New light</h2>
+          <div class="presets" id="light-presets"></div>
+          <label class="slider">Reach <output id="light-size-out"></output>
+            <input id="light-size" type="range" min="1" max="15" step="0.5" />
+          </label>
+          <div class="row">
+            <label class="tint">Colour <input id="light-color" type="color" /></label>
+          </div>
+          <p class="note">Turn on “Preview lighting” below to see what lights do.</p>
+        </section>
+
+        <section id="text-section" hidden>
+          <h2 id="text-title">New text</h2>
+          <label class="field" id="label-text-row">Words
+            <input id="label-text" class="input" type="text" maxlength="120" autocomplete="off" />
+          </label>
+          <div class="presets" id="label-presets"></div>
+          <label class="field">Font <select id="label-font" class="input"></select></label>
+          <label class="slider">Size <output id="label-size-out"></output>
+            <input id="label-size" type="range" min="0.2" max="5" step="0.05" />
+          </label>
+          <label class="slider">Letter spacing <output id="label-spacing-out"></output>
+            <input id="label-spacing" type="range" min="0" max="50" step="5" />
+          </label>
+          <div class="row">
+            <label class="tint">Colour <input id="label-color" type="color" /></label>
+            <label class="check inline"><input id="label-outline" type="checkbox" /> Halo</label>
+            <label class="check inline"><input id="label-italic" type="checkbox" /> Italic</label>
+          </div>
+        </section>
+
+        <section id="gm-section" hidden>
+          <h2 id="gm-title">GM notes</h2>
+          <div class="choice" role="radiogroup" aria-label="Kind of GM note" id="marker-kinds"></div>
+          <div id="marker-fields">
+            <label class="field" id="marker-number-row">Room number
+              <input id="marker-number" class="input" type="number" min="1" max="999" step="1" />
+            </label>
+            <label class="field">Note for the GM
+              <input id="marker-text" class="input" type="text" maxlength="400" autocomplete="off" />
+            </label>
+          </div>
+          <button id="btn-renumber" type="button" class="wide" title="Number the rooms 1, 2, 3 from the top left">Renumber rooms in reading order</button>
+          <p class="note">GM notes are for you. Turn off “GM notes” under Layers to see what players will see.</p>
+        </section>
+
+        <section id="selection-section" hidden>
+          <h2 id="selection-title">Selected</h2>
+          <p id="room-help" class="note" hidden>Drag the round dots to reshape the room. Drag the square handles to stretch it; hold Shift to keep its proportions. Double-click an edge to add a dot, or a dot to remove it.</p>
+          <div class="row" id="order-row">
+            <button id="btn-front" type="button">Bring to front</button>
+            <button id="btn-back" type="button">Send to back</button>
+          </div>
+          <button id="btn-delete" type="button" class="wide" title="Delete (Delete key)">Delete</button>
+        </section>
+
+        <section id="levels-section">
+          <h2>Levels</h2>
+          <div class="choice" role="radiogroup" aria-label="Level being edited" id="level-list"></div>
+          <div class="row">
+            <button id="btn-add-level" type="button" title="Add a new level above the others">Add level</button>
+            <button id="btn-remove-level" type="button" title="Delete this level and everything on it">Remove level</button>
+          </div>
+          <label class="field">Name of this level
+            <input id="level-name" class="input" type="text" maxlength="40" autocomplete="off" />
+          </label>
+          <label class="check" id="show-below-row"><input id="show-below" type="checkbox" /> Show the level below, faintly</label>
+        </section>
+
+        <section id="lighting-section">
+          <h2>Lighting</h2>
+          <label class="check"><input id="lighting-preview" type="checkbox" /> Preview lighting</label>
+          <label class="slider">Darkness <output id="ambient-out"></output>
+            <input id="ambient" type="range" min="0" max="95" step="5" />
+          </label>
+        </section>
+
+        <h2>Layers</h2>
+        <table class="layers" id="layers">
+          <thead>
+            <tr><th></th><th>Show</th><th>Lock</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <h2>Grid</h2>
+        <div class="choice" role="radiogroup" aria-label="Grid shape" id="grid-type">
+          <button type="button" role="radio" data-value="square">Square</button>
+          <button type="button" role="radio" data-value="hex-flat">Hex, flat top</button>
+          <button type="button" role="radio" data-value="hex-pointy">Hex, pointy top</button>
+        </div>
+
+        <h2>Map size</h2>
+        <div class="fields">
+          <label>Width <input id="cols" type="number" min="1" max="100" step="1" /> <span>cells</span></label>
+          <label>Height <input id="rows" type="number" min="1" max="100" step="1" /> <span>cells</span></label>
+        </div>
+
+        <h2>Snap to grid</h2>
+        <div class="choice" role="radiogroup" aria-label="Snap to grid" id="snap-mode">
+          <button type="button" role="radio" data-value="cell">Full</button>
+          <button type="button" role="radio" data-value="half">Half</button>
+          <button type="button" role="radio" data-value="off">Off</button>
+        </div>
+      </aside>
+    </main>
+
+    <div id="context-menu" class="menu" role="menu" aria-label="Actions" hidden>
+      <button type="button" role="menuitem" data-act="front">Bring to front</button>
+      <button type="button" role="menuitem" data-act="up">Move up a layer</button>
+      <button type="button" role="menuitem" data-act="down">Move down a layer</button>
+      <button type="button" role="menuitem" data-act="back">Send to back</button>
+      <hr />
+      <button type="button" role="menuitem" data-act="copy">Copy</button>
+      <button type="button" role="menuitem" data-act="duplicate">Duplicate</button>
+      <button type="button" role="menuitem" data-act="flip">Flip</button>
+      <button type="button" role="menuitem" data-act="paste">Paste here</button>
+      <hr />
+      <button type="button" role="menuitem" data-act="delete">Delete</button>
+    </div>
+
+    <dialog id="help-dialog" class="dialog" aria-labelledby="help-title">
+      <form method="dialog" class="dialog-body">
+        <h2 id="help-title">Keyboard shortcuts</h2>
+        <div class="keys">
+          <h3>Tools</h3>
+          <dl>
+            <dt>V</dt><dd>Select</dd>
+            <dt>R</dt><dd>Rectangle room</dd>
+            <dt>C</dt><dd>Circle room</dd>
+            <dt>3</dt><dd>Triangle room</dd>
+            <dt>P</dt><dd>Free shape</dd>
+            <dt>D</dt><dd>Door</dd>
+            <dt>W</dt><dd>Window</dd>
+            <dt>B</dt><dd>Brush</dd>
+            <dt>S</dt><dd>Stamp</dd>
+            <dt>L</dt><dd>Light</dd>
+            <dt>T</dt><dd>Text</dd>
+            <dt>G</dt><dd>GM notes</dd>
+          </dl>
+          <h3>Editing</h3>
+          <dl>
+            <dt>Ctrl+Z</dt><dd>Undo</dd>
+            <dt>Ctrl+Y</dt><dd>Redo (also Ctrl+Shift+Z)</dd>
+            <dt>Ctrl+C</dt><dd>Copy the selected thing</dd>
+            <dt>Ctrl+X</dt><dd>Cut</dd>
+            <dt>Ctrl+V</dt><dd>Paste at the pointer</dd>
+            <dt>Ctrl+D</dt><dd>Duplicate</dd>
+            <dt>Alt + drag</dt><dd>Drag a copy of a thing</dd>
+            <dt>Delete</dt><dd>Delete the selected thing</dd>
+            <dt>Arrows</dt><dd>Nudge half a cell (Shift: a whole cell)</dd>
+            <dt>Q / E</dt><dd>Turn a stamp or text 15° (Shift: 5°)</dd>
+            <dt>F</dt><dd>Flip a stamp</dd>
+            <dt>[ / ]</dt><dd>Move down / up a layer</dd>
+            <dt>Shift+[ / ]</dt><dd>Send to back / bring to front</dd>
+            <dt>Right-click</dt><dd>Menu: order, copy, flip, delete</dd>
+          </dl>
+          <h3>Map</h3>
+          <dl>
+            <dt>Ctrl+S</dt><dd>Save to a file</dd>
+            <dt>Ctrl+O</dt><dd>Open a file</dd>
+            <dt>+ / -</dt><dd>Zoom in / out</dd>
+            <dt>0</dt><dd>Fit the map to the window</dd>
+            <dt>Space + drag</dt><dd>Pan (or middle mouse button)</dd>
+            <dt>Escape</dt><dd>Cancel, or deselect</dd>
+            <dt>Enter</dt><dd>Finish a free shape</dd>
+            <dt>?</dt><dd>Show this list</dd>
+          </dl>
+        </div>
+        <div class="row"><button type="submit" class="wide">Close</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="export-dialog" class="dialog" aria-labelledby="export-title">
+      <form method="dialog" class="dialog-body">
+        <h2 id="export-title">Export</h2>
+        <label class="field" id="export-level-row">Level
+          <select id="export-level" class="input"></select>
+        </label>
+        <label class="field">Pixels per cell
+          <input id="export-ppc" class="input" type="number" min="20" step="1" />
+        </label>
+        <p id="export-size" class="note"></p>
+
+        <section class="export-group">
+          <h3>Picture</h3>
+          <div class="wrap">
+            <label class="check"><input id="export-grid" type="checkbox" /> Grid lines</label>
+            <label class="check"><input id="export-gm" type="checkbox" /> GM notes and lights</label>
+            <label class="check"><input id="export-lighting" type="checkbox" /> Bake in the lighting</label>
+          </div>
+          <label class="field">File type
+            <select id="export-format" class="input">
+              <option value="png">PNG (best quality)</option>
+              <option value="jpeg">JPG (smaller file)</option>
+              <option value="webp">WebP (smaller file)</option>
+            </select>
+          </label>
+          <button id="btn-export-image" type="button" class="wide">Download picture</button>
+        </section>
+
+        <section class="export-group">
+          <h3>For a virtual tabletop</h3>
+          <p class="note">These use a clean picture with no grid lines or GM notes, because the tabletop draws its own. They carry the walls, doors and lights too.</p>
+          <button id="btn-export-uvtt" type="button" class="wide">Universal VTT (.dd2vtt)</button>
+          <button id="btn-export-foundry" type="button" class="wide">Foundry scene (picture and .json)</button>
+          <p id="export-hex-note" class="note" hidden>Universal VTT is made for square grids. On a hex map, use the Foundry scene, which sets up the hex grid.</p>
+        </section>
+
+        <p id="export-status" class="note" role="status"></p>
+        <div class="row"><button type="submit">Close</button></div>
+      </form>
+    </dialog>
+
+    <footer class="statusbar">
+      <span id="hint"></span>
+      <span id="cursor-cell">&nbsp;</span>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
