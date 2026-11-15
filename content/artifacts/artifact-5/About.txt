@@ -1,5 +1,11 @@
-Artifact 4:
-Moonshot
+Artifact 5
 
-Project will likely be a dungeon map creator. Potentially can incorporate VTT aspects,
-such as character placement, onscreen dice rolling, character sheet importing, etc.
+Tome & Tile
+
+The moonshot: an open-source virtual tabletop, meant to be a free alternative to Roll20 and Foundry. It began as a plan for a dungeon map maker with some tabletop features, and the map maker became the Scenic Sorcerer side quest, so this became the whole table: a shared map with tokens, chat, dice rolled by the server, character sheets you click to attack, automatic saves and damage, and a video call. It is built in the open under the AGPL licence by a team of three, John, Adrian and me, each working with their own Claude, in a repository of its own. The class final is on December 13, and the aim for then is a playable core, not a finished product.
+
+The design is written down in thirteen short decision records. A Rust server owns all game state and every dice roll, and browsers only send requests ("move this token", "roll d20+5") and draw the results. Before the server sends anything, it removes what that viewer is not allowed to see: hidden tokens, a monster's hit points, GM-only rolls. The map is drawn by a renderer written in Rust and compiled to WebAssembly, on WebGPU with a WebGL2 fallback, and the panels around it are TypeScript with SvelteKit. Every message between the parts is defined once, in Protocol Buffers, with the Rust and TypeScript code generated from it, so the three people's work cannot drift apart. Video goes through a LiveKit media server; the game server only hands out short-lived passes to join the call.
+
+What works as of November 15: the server moves tokens, carries chat, rolls dice (notation like d20+5 and 2d20kh1+5, advantage and disadvantage, rolled with the operating system's randomness) and filters everything per viewer; the renderer draws a map, a square grid and tokens in the browser and snaps a dragged token to the grid; the web page has panels that dock to any edge, collapse or float, a chat and dice log with roll cards, an initiative bar and a phone layout; a mock server lets the screens be built before the real server was ready; five ready-made level 3 SRD characters exist as data; a written map from Creature Cauldron's monster files to the game's own format is in review, ahead of the importer itself; and the server can issue video join passes. There are 179 Rust tests and 113 web tests, and CI runs them on every change.
+
+What is not there yet: the renderer is not mounted in the main web page, so the pictures show it on its own demo page and the web page with a placeholder where the map goes. Character sheets, clicking an ability to attack, saves and damage, 3D dice, the video panel, accounts and putting the whole thing online are all still ahead. The video join passes have never been tried against a real LiveKit server, because I have not made that account yet, and the character numbers were written from memory and still need checking against the SRD. The server has only a development stand-in for signing in and must not be put online as it is.
