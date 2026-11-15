@@ -1,0 +1,7 @@
+Side Quest (Adventurer Anvil):
+
+Content packs got their format, defined once in Zod, which gives the load checks, the TypeScript types and a JSON Schema for editors. The rules engine now works out scores, saves, skills, speed and Armor Class, each with its breakdown.
+
+The SRD races, subraces and languages came in from the same pinned community files Creature Cauldron uses. The real data turned up a race and a language both called "halfling", so lookups now name what they're looking in.
+
+The first screen went up, the Race step, in Effigy Engine's palette with the colours lifted for contrast, and browser tests check every page for accessibility. Then the Abilities step: standard array, point buy and rolling, each kept separately so switching loses nothing. The point-buy stepper announces the points left, and every roll stays in a log.

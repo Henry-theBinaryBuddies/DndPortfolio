@@ -1,0 +1,3 @@
+Side Quest (Adventurer Anvil):
+
+All 12 classes and their subclasses. The level-1 features that change numbers are calculated (Rage, Unarmored Defense, Second Wind, Lay on Hands), along with hit points and expertise. Then the Background step with the Acolyte: personality written freely, with the background's tables offered as suggestions, and the 2014 rule that a skill given twice (by your race and your background, say) is swapped for another of your choice.

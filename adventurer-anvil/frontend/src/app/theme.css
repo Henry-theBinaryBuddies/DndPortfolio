@@ -102,7 +102,8 @@ details.more p { margin-top: 8px; white-space: pre-line; }
 .tile[aria-expanded="true"] { border-color: var(--ember); }
 .tile .num { display: block; font-size: 17px; color: var(--ink-bright); }
 .rows { margin-top: 4px; }
-.row { display: flex; justify-content: space-between; width: 100%; padding: 3px 0; background: none; border: none; border-bottom: 1px dotted var(--edge); cursor: pointer; font-size: 14px; text-align: left; }
+.row { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 3px 0; background: none; border: none; border-bottom: 1px dotted var(--edge); cursor: pointer; font-size: 14px; text-align: left; }
+.row > span:last-child { text-align: right; }
 .row[aria-expanded="true"] { color: var(--ember); }
 .breakdown { margin-top: 6px; padding: 6px 9px; background: var(--panel); border: 1px solid var(--edge); border-radius: var(--radius); font-size: 13px; }
 .items { font-size: 14px; margin-top: 2px; }

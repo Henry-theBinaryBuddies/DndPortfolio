@@ -1,4 +1,13 @@
-Side Quest:
-Will likely link the website and game made over the summer.
-Need to get approval from Professor Marriott and Bryan on this.
+Side Quest
 
+Adventurer Anvil
+
+A character creator for Dungeons & Dragons in the spirit of Roll20's Charactermancer: guided steps, only legal choices, and a summary that shows how every number is worked out. It is a work in progress. The builder covers level 1 of the 2014 rules, from race to spells, with SRD 5.1 as its built-in content. Characters can't be saved yet, and it isn't online yet.
+
+Each step is a page: Race, Abilities (standard array, point buy, or 4d6 rolled in the app with every die kept in a roll log), Class, Background, Equipment and Spells. Options you can't take stay visible, greyed out with the reason ("Already known (High Elf)"). The summary beside the steps updates as you choose, and any number opens to show how it was reached: Armor Class 18 = Chain Mail 16 + Shield 2. Rule problems are listed, and a DM can allow one, which stays marked on the character.
+
+The core knows nothing about D&D. It knows characters, choices, content packs, calculated values and rule problems. The 2014 rules are a module plugged into it, so the 2024 rules, Pathfinder or another game can be added later, and a test fails if the core ever mentions a game word. A character file stores only the choices made; everything else is recalculated.
+
+Content comes in JSON packs, checked against a published schema. SRD 5.1 is imported into one from community files: 9 races, 12 classes, 237 items and 319 spells. Where the files leave things out, it corrects them (two missing quivers, the Acolyte's prayer book), and every race, class and caster is tested against tables entered by hand. Packs made from books you own will stay private to your account.
+
+Built with TypeScript, React and Vite, with Zod defining the pack format. 191 unit tests and 24 browser tests, with every page checked for WCAG 2.2 AA at desktop and phone sizes.

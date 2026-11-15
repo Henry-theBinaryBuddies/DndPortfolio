@@ -1,0 +1,5 @@
+Side Quest (Adventurer Anvil):
+
+The Equipment step: the class and background packages, or starting gold and a shop. The community files have no starting-wealth dice, so Claude checked the SRD's own rules text. The table isn't in the SRD, so the app asks for the gold your DM gives you. Worn armour now sets the Armor Class and every weapon gets an attack row. A check table entered by hand found a quiver missing from the Ranger's kit, as well as the Rogue's.
+
+The Spells step: all 319 SRD spells, the four ways classes get spells (known, prepared, spellbook and pact), and a Life cleric's always-prepared spells. Every class's cantrip list matched the hand-entered table name for name.

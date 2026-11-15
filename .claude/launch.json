@@ -4,8 +4,23 @@
     {
       "name": "adventurer-anvil",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "adventurer-anvil/frontend", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "adventurer-anvil/frontend",
+        "run",
+        "dev"
+      ],
       "port": 5205
+    },
+    {
+      "name": "portfolio",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8080"
+      ],
+      "port": 8080
     }
   ]
 }
