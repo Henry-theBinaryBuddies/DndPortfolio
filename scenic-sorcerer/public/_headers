@@ -1,0 +1,12 @@
+# Headers for Cloudflare Pages (read from the built site's root; see README.md, "Putting it online").
+# The page loads only its own files and talks to nothing else. Pictures the user adds stay in their browser, so
+# images may also come from data: and blob: addresses.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+# Scripts and styles have content hashes in their names, so they never change
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

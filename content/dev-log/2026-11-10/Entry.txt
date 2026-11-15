@@ -1,0 +1,9 @@
+Side Quest (Scenic Sorcerer):
+
+I asked for circles and triangles as room shapes, and for rooms to be reshaped by dragging their corners, so a circle can become an oval and an equilateral triangle an obtuse or acute one. Then I added that this would let people stretch and scale shapes too. Claude gave every selected room round dots on its corners, which reshape it, and eight square handles on a box round it, which stretch it, with Shift keeping the proportions. A circle is kept as a true oval, so stretching it stays clean. Doors and windows follow a room when it is stretched, and can sit on curved walls.
+
+Then lights and levels. Lights (candle, torch, lantern, magic glow, daylight) drive a lighting preview where walls stop light and windows let it through. A test caught a notch in the lit area where a wall crossed the edge of a light's reach, and the walls are now trimmed to it. A map can now have several levels, with the level below shown faintly.
+
+Then export, which is what I most wanted to get right. A picture can be saved as PNG, JPG or WebP up to 8192 pixels, and for virtual tabletops there is a Universal VTT file and a Foundry scene that carry the walls, doors, windows and lights. A hex map's picture is sized from the cell, so the grid lines up without nudging, which is the complaint about other tools I most wanted to fix. I checked the files, and the pixels of the pictures, in a browser. I have not imported them into Foundry, so the field names come from the formats as documented and may need small fixes after a first real import.
+
+Then getting ready to ship: a security policy, so the page may load only its own files plus pictures from the user's own browser. Claude served the built site with exactly those headers and ran a full session in a real browser, with nothing blocked and no errors. The portfolio card, its pictures, this log and a README with the Cloudflare Pages steps were added.
