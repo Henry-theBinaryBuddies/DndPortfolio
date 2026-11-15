@@ -9,6 +9,7 @@ import { abilitiesStep } from "./steps/abilities";
 import { backgroundStep } from "./steps/background";
 import { classStep } from "./steps/class";
 import { checkEquipment, equipmentStep } from "./steps/equipment";
+import { spellsStep } from "./steps/spells";
 import { replaceDuplicateSkills } from "./engine/duplicates";
 import { raceStep } from "./steps/race";
 
@@ -20,10 +21,14 @@ export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluat
   classStep(ctx);
   backgroundStep(ctx);
   equipmentStep(ctx);
+  spellsStep(ctx, base);
   // Any skill given twice by fixed effects is swapped for another of the character's choice.
   replaceDuplicateSkills(ctx);
   // ④
-  const { derived, lists, scores } = derive(ctx.tally, base);
+  // Items by local id, for proficiency names: the first loaded pack that has the id names it.
+  const items = new Map<string, string>();
+  for (const e of content.list("items")) if (!items.has(e.id)) items.set(e.id, e.name);
+  const { derived, lists, scores } = derive(ctx.tally, base, (id) => items.get(id));
   // ⑤
   check(ctx, scores);
   checkEquipment(ctx, scores);
@@ -54,17 +59,21 @@ export const dnd5e2014: SystemModule = {
       ],
     },
     { kind: "rows", label: "Attacks", items: [], prefix: { key: "attack." } },
+    { kind: "rows", label: "Spellcasting", items: [], prefix: { key: "spell." } },
     { kind: "list", label: "Saving throws", list: "saving-throws" },
     { kind: "list", label: "Skills", list: "skills" },
     { kind: "list", label: "Armour, weapons and tools", list: "other-proficiencies" },
     { kind: "list", label: "Senses", list: "senses" },
     { kind: "list", label: "Languages", list: "languages" },
     { kind: "list", label: "Resistances", list: "resistances" },
+    { kind: "list", label: "Cantrips", list: "cantrips" },
+    { kind: "list", label: "Spells", list: "spells" },
   ],
   stepLists: {
     class: [{ label: "What you get at level 1", list: "gains.class" }],
     background: [{ label: "What you get", list: "gains.background" }],
     equipment: [{ label: "Inventory", list: "inventory" }],
+    spells: [{ label: "Your spells", list: "spell-list" }],
   },
   initialChoices: () => ({}),
   evaluate,

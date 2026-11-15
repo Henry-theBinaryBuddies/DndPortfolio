@@ -23,9 +23,9 @@ export const choiceDomId = (key: string) => `choice-${key}`;
 export function ChoiceView(props: ChoiceProps) {
   switch (props.spec.kind) {
     case "pick-one":
-      return props.spec.presentation === "segmented" ? <Segmented {...props} /> : <PickOne {...props} />;
+      return props.spec.presentation === "segmented" ? <Segmented {...props} /> : props.spec.presentation === "list" ? <ListPick {...props} /> : <PickOne {...props} />;
     case "pick-many":
-      return <PickMany {...props} />;
+      return props.spec.presentation === "list" ? <ListPick {...props} /> : <PickMany {...props} />;
     case "assign":
       return <Assign {...props} />;
     case "allocate":
@@ -383,5 +383,102 @@ function Quantities({ spec, value, issues, onChange }: ChoiceProps) {
       )}
       <Issues issues={issues} />
     </section>
+  );
+}
+
+/** Tags the summary line doesn't already say (a spell's school is in it; Concentration and Ritual aren't). They all still filter. */
+const extraTags = (o: Option) => (o.tags ?? []).filter((t) => !(o.summary ?? "").toLowerCase().includes(t.toLowerCase()));
+
+/**
+ * A long list of options as rows (spells): each with its one-line summary and tags, the full text behind "Read more",
+ * a search, and a filter by tag. Radio buttons for one pick, checkboxes for several.
+ */
+function ListPick({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  const name = useId();
+  const [query, setQuery] = useState("");
+  const [tag, setTag] = useState("");
+  const options = spec.options ?? [];
+  const multi = spec.kind === "pick-many";
+  const picked = multi
+    ? (Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [])
+    : typeof value === "string" ? [value] : [];
+  const max = multi ? (spec.count?.max ?? options.length) : 1;
+  const tags = [...new Set(options.flatMap((o) => o.tags ?? []))].sort();
+  const q = query.trim().toLowerCase();
+  const shown = options.filter(
+    (o) => (!q || o.name.toLowerCase().includes(q) || (o.summary ?? "").toLowerCase().includes(q)) && (!tag || o.tags?.includes(tag)),
+  );
+  const toggle = (v: string) => {
+    if (!multi) return onChange(v);
+    onChange(picked.includes(v) ? picked.filter((p) => p !== v) : [...picked, v]);
+  };
+  const chosen = options.filter((o) => picked.includes(String(o.value))).map((o) => o.name);
+  const parts = [spec.source ? `From ${spec.source}` : "", multi ? `${picked.length} of ${max} chosen` : picked.length ? "" : spec.required ? "To do" : ""].filter(Boolean);
+
+  if (options.length === 0) {
+    return (
+      <fieldset className="choice" id={id} tabIndex={-1}>
+        <legend>{spec.label}</legend>
+        {spec.source && <p className="meta">From {spec.source}</p>}
+        <p className="notice">Nothing to choose from in the loaded packs yet.</p>
+      </fieldset>
+    );
+  }
+  return (
+    <fieldset className="choice" id={id} tabIndex={-1} aria-describedby={`${id}-count`}>
+      <legend>{spec.label}</legend>
+      <p className="meta" id={`${id}-count`} aria-live="polite">
+        {parts.join(" · ")}
+        {chosen.length > 0 && <>{parts.length ? " · " : ""}Chosen: {chosen.join(", ")}</>}
+      </p>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
+      {options.length > 6 && (
+        <div className="toolbar">
+          <label>
+            <span className="label">Search</span>
+            <input className="text-input" type="search" value={query} onChange={(e) => setQuery(e.target.value)} aria-label={`Search: ${spec.label}`} />
+          </label>
+          {tags.length > 1 && (
+            <label>
+              <span className="label">Show only</span>
+              <select className="text-input" value={tag} onChange={(e) => setTag(e.target.value)} aria-label={`Show only: ${spec.label}`}>
+                <option value="">Everything</option>
+                {tags.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
+      {shown.length === 0 && <p className="notice">Nothing matches. Clear the search or the filter to see all {options.length}.</p>}
+      <ul className="option-list">
+        {shown.map((option) => {
+          const v = String(option.value);
+          const on = picked.includes(v);
+          const blocked = (Boolean(option.unavailable) || (multi && picked.length >= max)) && !on;
+          return (
+            <li key={v} className={`${on ? "selected" : ""}${option.unavailable ? " unavailable" : ""}`}>
+              <label>
+                <input type={multi ? "checkbox" : "radio"} name={name} checked={on} disabled={blocked} onChange={() => toggle(v)} />
+                <span className="option-name">{option.name}</span>
+                <span className="dim option-summary">{option.unavailable ?? option.summary}</span>
+              </label>
+              {extraTags(option).length > 0 && (
+                <ul className="chips" aria-label={`About ${option.name}`}>
+                  {extraTags(option).map((t) => <li key={t} className="chip">{t}</li>)}
+                </ul>
+              )}
+              {option.description && (
+                <details className="more">
+                  <summary>Read more<span className="sr-only"> about {option.name}</span></summary>
+                  <p className="pre-line">{option.description}</p>
+                </details>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <Issues issues={issues} />
+    </fieldset>
   );
 }

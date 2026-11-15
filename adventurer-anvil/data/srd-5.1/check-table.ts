@@ -20,7 +20,7 @@ export interface RaceFacts {
 export const RACES: Record<string, RaceFacts> = {
   dwarf: {
     name: "Dwarf", bonuses: { con: 2 }, size: "medium", speed: 25, darkvision: 60, languages: ["Common", "Dwarvish"],
-    weapons: ["Battleaxe", "Handaxe", "Light Hammer", "Warhammer"], resistances: ["Poison"],
+    weapons: ["Battleaxe", "Handaxe", "Light hammer", "Warhammer"], resistances: ["Poison"],
   },
   elf: { name: "Elf", bonuses: { dex: 2 }, size: "medium", speed: 30, darkvision: 60, languages: ["Common", "Elvish"], skills: ["Perception"] },
   halfling: { name: "Halfling", bonuses: { dex: 2 }, size: "small", speed: 25, languages: ["Common", "Halfling"] },
@@ -53,7 +53,7 @@ export const SUBRACES: Record<string, SubraceFacts> = {
   "hill-dwarf": { name: "Hill Dwarf", race: "dwarf", bonuses: { wis: 1 } },
   "high-elf": { name: "High Elf", race: "elf", bonuses: { int: 1 }, weapons: ["Longsword", "Shortsword", "Shortbow", "Longbow"], extraLanguages: 1 },
   "lightfoot-halfling": { name: "Lightfoot Halfling", race: "halfling", bonuses: { cha: 1 } },
-  "rock-gnome": { name: "Rock Gnome", race: "gnome", bonuses: { con: 1 }, tools: ["Tinkers Tools"] },
+  "rock-gnome": { name: "Rock Gnome", race: "gnome", bonuses: { con: 1 }, tools: ["Tinker's Tools"] },
 };
 
 export const LANGUAGES = {
@@ -130,4 +130,45 @@ export const KITS: Record<string, KitFacts> = {
   sorcerer: { items: { dagger: 2 }, choices: 3 },
   warlock: { items: { "leather-armor": 1, dagger: 2 }, any: ["a simple weapon"], choices: 3 },
   wizard: { items: { spellbook: 1 }, choices: 3 },
+};
+
+/** Each caster at level 1, from the class tables and text: cantrips, spells known (or in the spellbook), 1st-level slots, the ability, and its cantrips by name. */
+export interface CasterFacts {
+  ability: string;
+  /** The class level spellcasting starts at. */
+  starts: number;
+  cantrips?: number;
+  known?: number;
+  spellbook?: number;
+  slots1?: number;
+  cantripList?: string[];
+}
+
+export const CASTERS: Record<string, CasterFacts> = {
+  bard: {
+    ability: "cha", starts: 1, cantrips: 2, known: 4, slots1: 2,
+    cantripList: ["Dancing Lights", "Light", "Mage Hand", "Mending", "Message", "Minor Illusion", "Prestidigitation", "True Strike", "Vicious Mockery"],
+  },
+  cleric: {
+    ability: "wis", starts: 1, cantrips: 3, slots1: 2,
+    cantripList: ["Guidance", "Light", "Mending", "Resistance", "Sacred Flame", "Spare the Dying", "Thaumaturgy"],
+  },
+  druid: {
+    ability: "wis", starts: 1, cantrips: 2, slots1: 2,
+    cantripList: ["Druidcraft", "Guidance", "Mending", "Poison Spray", "Produce Flame", "Resistance", "Shillelagh"],
+  },
+  paladin: { ability: "cha", starts: 2 },
+  ranger: { ability: "wis", starts: 2 },
+  sorcerer: {
+    ability: "cha", starts: 1, cantrips: 4, known: 2, slots1: 2,
+    cantripList: ["Acid Splash", "Chill Touch", "Dancing Lights", "Fire Bolt", "Light", "Mage Hand", "Mending", "Message", "Minor Illusion", "Poison Spray", "Prestidigitation", "Ray of Frost", "Shocking Grasp", "True Strike"],
+  },
+  warlock: {
+    ability: "cha", starts: 1, cantrips: 2, known: 2, slots1: 1,
+    cantripList: ["Chill Touch", "Eldritch Blast", "Mage Hand", "Minor Illusion", "Poison Spray", "Prestidigitation", "True Strike"],
+  },
+  wizard: {
+    ability: "int", starts: 1, cantrips: 3, spellbook: 6, slots1: 2,
+    cantripList: ["Acid Splash", "Chill Touch", "Dancing Lights", "Fire Bolt", "Light", "Mage Hand", "Mending", "Message", "Minor Illusion", "Poison Spray", "Prestidigitation", "Ray of Frost", "Shocking Grasp", "True Strike"],
+  },
 };

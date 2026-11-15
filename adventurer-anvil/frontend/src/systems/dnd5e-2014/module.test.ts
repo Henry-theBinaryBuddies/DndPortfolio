@@ -34,9 +34,9 @@ const highElf = {
 };
 
 describe("a new character", () => {
-  it("has Race, Abilities, Class, Background and Equipment steps to do, with 10s until scores are set", () => {
+  it("has Race, Abilities, Class, Background and Equipment steps to do, and Spells with nothing yet, with 10s until scores are set", () => {
     const v = view({});
-    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["race", "todo"], ["abilities", "todo"], ["class", "todo"], ["background", "todo"], ["equipment", "todo"]]);
+    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["race", "todo"], ["abilities", "todo"], ["class", "todo"], ["background", "todo"], ["equipment", "todo"], ["spells", "done"]]);
     expect(v.steps[0].choices[0].options?.map((o) => o.name)).toEqual(["Elf", "Half-Elf"]);
     expect(value(v, "ability.str")).toBe(10);
     expect(value(v, "ac")).toBe(10);
@@ -72,9 +72,11 @@ describe("the worked example: a High Elf with the standard array", () => {
     expect(names(v, "features")).toEqual(["Fey Ancestry", "Trance"]);
   });
 
-  it("opens the High Elf's choices on the Race step, keyed by their source", () => {
+  it("opens the High Elf's choices keyed by their source: the cantrip on the Spells step, drawn as a spell list", () => {
     const keys = v.steps[0].choices.map((c) => c.key);
-    expect(keys).toEqual(["race", "race.sample-srd:elf.subrace", "race.sample-srd:high-elf.cantrip", "race.sample-srd:high-elf.language"]);
+    expect(keys).toEqual(["race", "race.sample-srd:elf.subrace", "race.sample-srd:high-elf.language"]);
+    const spells = v.steps.find((s) => s.id === "spells")!;
+    expect(spells.choices.map((c) => [c.key, c.source, c.presentation])).toEqual([["race.sample-srd:high-elf.cantrip", "High Elf", "list"]]);
   });
 
   it("marks languages already known, with the reason", () => {
@@ -87,11 +89,12 @@ describe("the worked example: a High Elf with the standard array", () => {
     ]);
   });
 
-  it("says plainly when a choice has nothing to pick from yet, without blocking the step", () => {
-    // The sample pack has no spells (their format arrives in a later step).
-    expect(v.issues.map((i) => i.id)).toContain("no-options:race.sample-srd:high-elf.cantrip");
+  it("offers wizard cantrips for the High Elf's cantrip, on the Spells step, which waits for it", () => {
+    const cantrip = v.steps.find((s) => s.id === "spells")!.choices[0];
+    expect(cantrip.options?.map((o) => o.name)).toEqual(["Fire Bolt", "Light", "Prestidigitation"]);
     const done = view({ ...highElf, "race.sample-srd:high-elf.language": "sample-srd:draconic" });
     expect(done.steps.slice(0, 2).map((s) => s.status)).toEqual(["done", "done"]);
+    expect(done.steps.find((s) => s.id === "spells")?.status).toBe("todo");
     expect(names(done, "languages")).toEqual(["Common", "Elvish", "Draconic"]);
   });
 });

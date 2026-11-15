@@ -40,6 +40,9 @@ describe("choosing a class", () => {
     expect(options.map((o) => [o.name, o.tags])).toEqual([
       ["Fighter", ["d10 hit die", "Str or Dex", "Saves: Str, Con"]],
       ["Rogue", ["d8 hit die", "Dex", "Saves: Dex, Int"]],
+      ["Wizard", ["d6 hit die", "Int", "Saves: Int, Wis"]],
+      ["Cleric", ["d8 hit die", "Wis", "Saves: Wis, Cha"]],
+      ["Paladin", ["d10 hit die", "Str and Cha"]],
     ]);
   });
 

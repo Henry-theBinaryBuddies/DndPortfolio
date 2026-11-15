@@ -8,7 +8,7 @@ import { createContentIndex, newCharacterDocument, readPack, setChoice, viewChar
 import { dnd5e2014 } from "./module";
 import { pointBuy, standardArray } from "./testing/abilities";
 import { buildSrdPack } from "../../../../tools/srd/build";
-import { BACKGROUNDS, CLASSES, KITS, LANGUAGES, RACES, SUBRACES, type KitFacts } from "../../../../data/srd-5.1/check-table";
+import { BACKGROUNDS, CASTERS, CLASSES, KITS, LANGUAGES, RACES, SUBRACES, type KitFacts } from "../../../../data/srd-5.1/check-table";
 import type { EquipmentLine, StartingEquipment } from "./packFormat";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -56,6 +56,7 @@ describe("the SRD 5.1 pack", () => {
       proficiencies: json("data/srd-5.1/raw/5e-SRD-Proficiencies.json"),
       backgrounds: json("data/srd-5.1/raw/5e-SRD-Backgrounds.json"),
       equipment: json("data/srd-5.1/raw/5e-SRD-Equipment.json"),
+      spells: json("data/srd-5.1/raw/5e-SRD-Spells.json"),
     };
     expect(JSON.parse(JSON.stringify(buildSrdPack(raw).pack))).toEqual(committed);
   });
@@ -123,7 +124,12 @@ describe("real SRD races through the engine", () => {
     expect(v.derived["ability.wis"].breakdown).toEqual([{ label: "Base", amount: 12 }, { label: "Hill Dwarf", amount: 1 }]);
     expect(v.derived["speed.walk"].value).toBe(25);
     expect(names(v, "features")).toEqual(["Dwarven Resilience", "Stonecunning", "Tool Proficiency", "Dwarven Toughness"]);
-    expect(v.steps[0].status).toBe("done");
+    expect(v.steps[0].status).toBe("todo"); // the artisan's tools
+    const tools = v.steps[0].choices.find((c) => c.key === "race.srd-5.1:dwarf.tools")!;
+    expect(tools.options?.map((o) => o.name)).toEqual(["Smith's Tools", "Brewer's Supplies", "Mason's Tools"]);
+    const done = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", "race.srd-5.1:dwarf.tools": "brewers-supplies", ...standardArray(STANDARD) });
+    expect(done.steps[0].status).toBe("done");
+    expect(names(done, "proficiencies", "tool")).toEqual(["Brewer's Supplies"]);
   });
 
   it("a Dragonborn: the ancestry choice gives the resistance, and Breath Weapon is tracked per short rest", () => {
@@ -328,5 +334,52 @@ describe("real SRD equipment through the engine", () => {
     expect(step.choices.find((c) => c.key === "equipment.gold")?.kind).toBe("number");
     expect(step.choices.find((c) => c.key === "equipment.shop")?.options?.length).toBe(230); // every item with a price
     expect(v.derived.coins.value).toBe(8000 - 20 - 5000);
+  });
+});
+
+describe("each caster matches the check table at level 1", () => {
+  for (const [id, facts] of Object.entries(CASTERS)) {
+    it(id, () => {
+      const ref = `srd-5.1:${id}`;
+      const v = view({ ...pointBuy(TENS), "class.class": ref });
+      const step = v.steps.find((s) => s.id === "spells")!;
+      const c = (what: string) => step.choices.find((x) => x.key === `spells.${ref}.${what}`);
+      const cls = committed.collections.classes.find((x: { id: string }) => x.id === id);
+      expect(cls.spellcasting).toMatchObject({ ability: facts.ability, level: facts.starts });
+      if (facts.starts > 1) {
+        expect(step.choices).toEqual([]);
+        return;
+      }
+      expect(c("cantrips")?.count?.min).toBe(facts.cantrips);
+      expect(c("cantrips")?.options?.map((o) => o.name)).toEqual(facts.cantripList);
+      expect(c("known")?.count?.min).toBe(facts.known);
+      expect(c("spellbook")?.count?.min).toBe(facts.spellbook);
+      expect(v.derived["spell.slots"].value).toBe(`1st: ${facts.slots1}${id === "warlock" ? " (short rest)" : ""}`);
+    });
+  }
+});
+
+describe("real SRD spells through the engine", () => {
+  it("319 spells, each on at least one class list, with the SRD's eight schools", () => {
+    const spells = committed.collections.spells as { classes: string[]; school: string }[];
+    expect(spells.length).toBe(319);
+    expect(spells.filter((s) => s.classes.length === 0)).toEqual([]);
+    expect(new Set(spells.map((s) => s.school)).size).toBe(8);
+  });
+
+  it("a Life Domain cleric always has Bless and Cure Wounds; a High Elf wizard's cantrip is cast with Int; a tiefling's Thaumaturgy with Cha", () => {
+    const life = view({ ...pointBuy(TENS), "class.class": "srd-5.1:cleric", "class.srd-5.1:cleric.subclass": "srd-5.1:life" });
+    expect(names(life, "spells")).toEqual(["Bless (always prepared)", "Cure Wounds (always prepared)"]);
+    const elf = view({ race: "srd-5.1:elf", "race.srd-5.1:elf.subrace": "srd-5.1:high-elf", "race.srd-5.1:high-elf.cantrip": "srd-5.1:fire-bolt" });
+    expect(elf.lists["spell-list"]).toEqual([{ name: "Fire Bolt", source: "High Elf", detail: "Cantrip · cast with Intelligence" }]);
+    const tiefling = view({ race: "srd-5.1:tiefling", "class.class": "srd-5.1:wizard" });
+    expect(tiefling.derived["spell.dc.cha"].label).toBe("Spell save DC (Charisma)");
+  });
+
+  it("a Fiend warlock's expanded spells join its choices", () => {
+    // The Fiend is chosen at level 1 in the SRD (Otherworldly Patron).
+    const v = view({ "class.class": "srd-5.1:warlock", "class.srd-5.1:warlock.subclass": "srd-5.1:fiend" });
+    const known = v.steps.find((s) => s.id === "spells")!.choices.find((c) => c.key === "spells.srd-5.1:warlock.known")!;
+    expect(known.options?.map((o) => o.name)).toEqual(expect.arrayContaining(["Burning Hands", "Command"]));
   });
 });

@@ -129,6 +129,9 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
                   onRoll={roll}
                 />
               ))}
+              {step.choices.length === 0 && !view.issues.some((i) => i.step === step.id) && (
+                <p className="notice">Nothing to choose here yet: earlier steps decide what appears.</p>
+              )}
               {(system.stepLists?.[step.id] ?? []).map((l) => (
                 <StepList key={l.list} label={l.label} items={view.lists[l.list] ?? []} />
               ))}

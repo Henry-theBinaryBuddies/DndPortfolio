@@ -40,7 +40,7 @@ describe("2014 pack format", () => {
   it("names the place and the problem for a misspelled effect type", () => {
     const data = variant((p) => (p.collections.races[0].effects[2].type = "darkvison"));
     expect(errorsFor(data)).toEqual([
-      'collections.races[0].effects[2]: unknown effect type "darkvison" (known: ability-bonus, speed, sense, proficiency, language, resistance, grant, armor-class, armor-class-bonus, hit-points, expertise, choice, resource, feature)',
+      'collections.races[0].effects[2]: unknown effect type "darkvison" (known: ability-bonus, speed, sense, proficiency, language, resistance, grant, armor-class, armor-class-bonus, hit-points, expertise, choice, resource, feature, spell, expanded-spells)',
     ]);
   });
 

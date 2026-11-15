@@ -4,7 +4,8 @@
 import type { Class, Effect, Subclass } from "../../frontend/src/systems/dnd5e-2014/packFormat";
 import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
 import { kitFrom } from "./items";
-import type { RawChoice, RawClass, RawFeature, RawLevel, RawOption, RawRef, RawSrdClasses } from "./raw";
+import { spellcastingFor } from "./spells";
+import type { RawChoice, RawClass, RawFeature, RawLevel, RawOption, RawRef, RawSrdClasses, RawSubclass } from "./raw";
 
 /** What a written-in option can give: any effect but a choice. */
 type SimpleEffect = Exclude<Effect, { type: "choice" }>;
@@ -46,6 +47,8 @@ const COLUMN_NAMES: Record<string, string> = {
   "aura-range": "Aura range (ft)", "favored-enemies": "Favored Enemies", "favored-terrain": "Favored Terrain",
   "sneak-attack": "Sneak Attack", "sorcery-points": "Sorcery Points", "metamagic-known": "Metamagic known",
   "invocations-known": "Invocations known", "arcane-recovery-levels": "Arcane Recovery (spell levels)",
+  "cantrips-known": "Cantrips Known", "spells-known": "Spells Known",
+  ...Object.fromEntries(["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"].map((n, i) => [`spell-slots-level-${i + 1}`, `${n}-level slots`])),
 };
 
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six"];
@@ -213,8 +216,15 @@ export function buildClasses(raw: RawSrdClasses) {
       note("choice", f.level === 1 ? undefined : "Opens when levelling up arrives.");
       return [choice, feature(f)];
     }
-    if (/^spellcasting-|^pact-magic$|^domain-spells|spells$/.test(f.index)) note("text for now", "Spells arrive with the Spells step.");
-    else if (f.level > 1) note("text for now", "Typed when levelling up arrives, if there's anything to calculate.");
+    if (/^spellcasting-|^pact-magic$/.test(f.index)) {
+      note("calculated, with text", "Cantrips, spells known or prepared, and slots come from the class's spellcasting and table.");
+      return [feature(f)];
+    }
+    if (/^domain-spells-\d$|^oath-spells$/.test(f.index)) {
+      note("calculated, with text", "The subclass gives the spells, always prepared, at the levels its table says.");
+      return [feature(f)];
+    }
+    if (f.level > 1) note("text for now", "Typed when levelling up arrives, if there's anything to calculate.");
     else note("text", "Nothing to calculate.");
     return [feature(f)];
   }
@@ -224,7 +234,7 @@ export function buildClasses(raw: RawSrdClasses) {
   const diceText = (d: { dice_count: number; dice_value: number }) => `${d.dice_count}d${d.dice_value}`;
 
   /** The class table's columns, with a value at the first level and wherever it changes. */
-  function columnsFrom(levels: RawLevel[], field: "class_specific" | "subclass_specific") {
+  function columnsFrom(levels: RawLevel[], field: "class_specific" | "subclass_specific" | "spellcasting") {
     const columns = new Map<string, Record<string, number | string>>();
     const last = new Map<string, number | string>();
     for (const l of [...levels].sort((a, b) => a.level - b.level)) {
@@ -283,6 +293,8 @@ export function buildClasses(raw: RawSrdClasses) {
       ...(skillChoice?.desc ? [`Skills: ${skillChoice.desc}`] : []),
     ].join("\n");
 
+    const columns = [...columnsFrom(levels, "class_specific"), ...columnsFrom(levels, "spellcasting")];
+    const spellcasting = spellcastingFor(c, new Set(columns.map((col) => col.id)));
     return {
       id: c.index,
       name: c.name,
@@ -301,9 +313,10 @@ export function buildClasses(raw: RawSrdClasses) {
         ],
       },
       ...(subclass ? { subclass: { name: subclass.subclass_flavor, level: Math.min(...subLevels.map((l) => l.level)) } } : {}),
-      columns: columnsFrom(levels, "class_specific"),
+      columns,
       levels: levelsFrom(levels, c.name, c.index),
       startingEquipment: kitFrom(c),
+      ...(spellcasting ? { spellcasting } : {}),
     };
   });
 
@@ -316,9 +329,33 @@ export function buildClasses(raw: RawSrdClasses) {
       class: s.class.index,
       description: s.desc.join("\n\n"),
       ...(columns.length ? { columns } : {}),
-      levels: levelsFrom(levels, `${s.name} (${s.class.name})`, s.class.index),
+      levels: withSpells(levelsFrom(levels, `${s.name} (${s.class.name})`, s.class.index), s),
     };
   });
+
+  /**
+   * A subclass's spells, added at the levels they come: always prepared (a domain's or an oath's), or added to the
+   * class's list (a warlock patron's expanded spells). The Land's depend on the terrain chosen at level 3, so they
+   * wait for levelling up.
+   */
+  function withSpells(levels: { level: number; effects: Effect[] }[], s: RawSubclass) {
+    if (!s.spells?.length || s.index === "land") return levels;
+    const byLevel = new Map<number, string[]>();
+    for (const sp of s.spells) {
+      const at = sp.prerequisites.find((p) => p.type === "level");
+      if (!at || sp.prerequisites.length > 1) throw new Error(`${s.name}: a spell with prerequisites other than a level.`);
+      const level = Number(at.index.split("-").pop());
+      byLevel.set(level, [...(byLevel.get(level) ?? []), sp.spell.index]);
+    }
+    const out = levels.map((l) => ({ ...l, effects: [...l.effects] }));
+    for (const [level, ids] of [...byLevel].sort((a, b) => a[0] - b[0])) {
+      const effects: Effect[] = s.class.index === "warlock" ? [{ type: "expanded-spells", ids }] : ids.map((id) => ({ type: "spell", id, always: true }));
+      const entry = out.find((l) => l.level === level);
+      if (entry) entry.effects.push(...effects);
+      else out.push({ level, effects });
+    }
+    return out.sort((a, b) => a.level - b.level);
+  }
 
   return { classes, subclasses, notes };
 }

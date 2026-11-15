@@ -25,6 +25,7 @@ const raw: RawSrd = {
   proficiencies: read("5e-SRD-Proficiencies.json"),
   backgrounds: read("5e-SRD-Backgrounds.json"),
   equipment: read("5e-SRD-Equipment.json"),
+  spells: read("5e-SRD-Spells.json"),
 };
 
 const result = buildSrdPack(raw);
@@ -39,7 +40,7 @@ writeFileSync(join(ROOT, "data/srd-5.1/IMPORT-REPORT.md"), report(result));
 const c = result.pack.collections;
 console.log(
   `Imported ${c.races.length} races, ${c.subraces.length} subraces, ${c.classes.length} classes, ${c.subclasses.length} subclasses, ` +
-    `${c.backgrounds.length} background, ${c.items.length} items, ${c.languages.length} languages; ${result.corrections.length} corrections.`,
+    `${c.backgrounds.length} background, ${c.items.length} items, ${c.spells.length} spells, ${c.languages.length} languages; ${result.corrections.length} corrections.`,
 );
 
 function report({ pack, traits, features, corrections }: BuildResult): string {
@@ -57,9 +58,12 @@ Imported: **${c.races.length} races** (${c.races.map((r) => r.name).join(", ")})
 (${c.subraces.map((r) => r.name).join(", ")}), **${c.classes.length} classes** (${c.classes.map((r) => r.name).join(", ")}),
 **${c.subclasses.length} subclasses** (${c.subclasses.map((r) => r.name).join(", ")}), **${c.backgrounds.length} background**
 (${c.backgrounds.map((r) => r.name).join(", ")}: its skills, languages, feature, characteristics and equipment),
-**${c.items.length} items** (every mundane item: weapons, armour, gear, tools, mounts and vehicles; magic items come later) and
-**${c.languages.length} languages**. Every class and background has its starting equipment.
-The pack passes the app's own check (\`readPack\`). Feats and spells join as each gets its pack format.
+**${c.items.length} items** (every mundane item: weapons, armour, gear, tools, mounts and vehicles; magic items come later),
+**${c.spells.length} spells** (with their full text) and **${c.languages.length} languages**. Every caster has its spellcasting:
+the ability, the kind (known, prepared, spellbook or pact), and its table's cantrips, spells known and slots for levels 1 to 20.
+Subclass spells are in: always prepared for the Life Domain and the Oath of Devotion, added to the list for the Fiend; the
+Circle of the Land's wait for levelling up, as they depend on the terrain chosen at level 3. Every class and background has its starting equipment.
+The pack passes the app's own check (\`readPack\`). Feats join when they get their pack format.
 
 SRD 5.1 has no starting-wealth table (the rules text, checked at the same commit, starts its Equipment section with
 coins), so no class carries \`startingWealth\`: with starting gold, the player enters the gold their DM gives them. A
@@ -118,8 +122,8 @@ ${level1("text").map((f) => `${f.name} (${f.className})`).join(", ")}.
 
 ### Kept as text for now (${fby("text for now").length})
 
-${fby("text for now").length} features, of which ${level1("text for now").length} at level 1 (${level1("text for now").map((f) => f.name).join(", ")}): spellcasting
-arrives with the Spells step, and features above level 1 are typed when levelling up arrives.
+${fby("text for now").length} features, of which ${level1("text for now").length} at level 1${level1("text for now").length ? ` (${level1("text for now").map((f) => f.name).join(", ")})` : ""}: features
+above level 1 are typed when levelling up arrives.
 
 ## Corrections (${corrections.length})
 

@@ -5,6 +5,7 @@ import type { Effect, Language, Race, Subrace } from "../../frontend/src/systems
 import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
 import { KIT_CORRECTIONS, TEXT_CORRECTIONS } from "../../data/srd-5.1/corrections";
 import { buildItems } from "./items";
+import { buildSpells } from "./spells";
 import { buildBackgrounds } from "./backgrounds";
 import { buildClasses, type FeatureNote } from "./classes";
 import type { RawLanguage, RawRace, RawSrd, RawSubrace, RawTrait } from "./raw";
@@ -14,7 +15,7 @@ export const SRD_ATTRIBUTION =
   "available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative " +
   "Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.";
 
-export const PACK_VERSION = "0.4.0";
+export const PACK_VERSION = "0.5.0";
 
 /** How each trait was brought in, for the import report. */
 export type How = "calculated" | "calculated, with text" | "text" | "text for now" | "folded in";
@@ -92,9 +93,9 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
         note(t, "calculated");
         return [{ type: "choice", id: "language", label: "Choose one extra language", pick: t.language_options!.choose, from: { collection: "languages" } }];
       case "high-elf-cantrip":
-        note(t, "calculated, with text", "The cantrip is a choice; its text says Intelligence is the spellcasting ability.");
+        note(t, "calculated, with text", "The cantrip is a choice (on the Spells step), cast with Intelligence.");
         return [
-          { type: "choice", id: "cantrip", label: "Choose a wizard cantrip", pick: 1, from: { collection: "spells", where: { classes: "wizard", level: 0 } } },
+          { type: "choice", id: "cantrip", label: "Choose a wizard cantrip", pick: 1, from: { collection: "spells", where: { classes: "wizard", level: 0 } }, ability: "int" },
           feature(t, text),
         ];
       case "hellish-resistance":
@@ -123,14 +124,18 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
         note(t, "folded in", "The resistance is given by the Draconic Ancestry choice.");
         return [];
       case "tool-proficiency":
-        note(t, "text for now", "The choice of artisan's tools becomes a real choice once items exist.");
-        return [feature(t, text)];
+        note(t, "calculated, with text", "A choice of one of the three artisan's tools.");
+        return [
+          { type: "choice", id: "tools", label: "Tool Proficiency: choose artisan's tools", pick: t.proficiency_choices!.choose,
+            from: { options: t.proficiency_choices!.from.options.map((o) => ({ id: o.item.index, name: o.item.name, effects: [{ type: "proficiency", kind: "tool", id: o.item.index }] })) } },
+          feature(t, text),
+        ];
       case "dwarven-toughness":
         note(t, "calculated, with text", "+1 hit point per level.");
         return [{ type: "hit-points", perLevel: 1 }, feature(t, text)];
       case "infernal-legacy":
-        note(t, "text for now", "The spells it grants are added once spells exist.");
-        return [feature(t, text)];
+        note(t, "calculated, with text", "Thaumaturgy, cast with Charisma; Hellish Rebuke (level 3) and Darkness (level 5) wait for levelling up.");
+        return [{ type: "spell", id: "thaumaturgy", ability: "cha" }, feature(t, text)];
       default:
         note(t, "text", "Nothing to calculate.");
         return [feature(t, text)];
@@ -213,6 +218,7 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
       subclasses,
       backgrounds,
       items: buildItems(raw.equipment),
+      spells: buildSpells(raw.spells),
       languages: raw.languages.map(language),
     },
   };

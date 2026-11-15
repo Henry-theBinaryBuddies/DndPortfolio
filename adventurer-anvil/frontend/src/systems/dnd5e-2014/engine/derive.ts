@@ -15,7 +15,10 @@ export const proficiencyBonusFor = (level: number) => 2 + Math.floor((level - 1)
 
 const sum = (lines: BreakdownLine[]) => lines.reduce((total, line) => total + Number(line.amount), 0);
 
-export function derive(tally: Tally, base: Record<Ability, number>): DerivedResult {
+/** An item's name by its id ("brewers-supplies" → "Brewer's Supplies"), for naming weapon and tool proficiencies. */
+export type ItemName = (id: string) => string | undefined;
+
+export function derive(tally: Tally, base: Record<Ability, number>, itemName: ItemName = () => undefined): DerivedResult {
   const derived: Record<string, Derived> = {};
   const scores = {} as Record<Ability, number>;
 
@@ -139,11 +142,28 @@ export function derive(tally: Tally, base: Record<Ability, number>): DerivedResu
     derived["coins"] = { value: sum(coins), label: "Money", breakdown: coins };
   }
 
+  // Spellcasting: a save DC and attack bonus for each ability spells are cast with, and the slots.
+  const spellAbilities = [...new Set([...tally.casting.map((c) => c.ability), ...tally.spells.map((s) => s.ability).filter((a): a is Ability => Boolean(a))])];
+  for (const a of spellAbilities) {
+    const which = spellAbilities.length > 1 ? ` (${ABILITY_NAMES[a]})` : "";
+    const dc: BreakdownLine[] = [{ label: "Base", amount: 8 }, { label: "Proficiency bonus", amount: prof }, { label: ABILITY_NAMES[a], amount: modifier(scores[a]) }];
+    derived[`spell.dc.${a}`] = { value: sum(dc), label: `Spell save DC${which}`, breakdown: dc };
+    const attack = dc.slice(1);
+    derived[`spell.attack.${a}`] = { value: `${sum(attack) >= 0 ? "+" : "−"}${Math.abs(sum(attack))}`, label: `Spell attack${which}`, breakdown: attack };
+  }
+  const slotText = (c: Tally["casting"][number]) =>
+    Object.entries(c.slots).map(([l, n]) => `${ORDINAL[Number(l)]}: ${n}`).join(", ") + (c.pact ? " (short rest)" : "");
+  const casters = tally.casting.filter((c) => Object.keys(c.slots).length);
+  if (casters.length) {
+    derived["spell.slots"] = { value: casters.map(slotText).join("; "), label: "Spell slots", breakdown: casters.map((c) => ({ label: c.name, amount: slotText(c) })) };
+  }
+
   const usesOf = (u: number | AbilityUses) => (typeof u === "number" ? u : Math.max(u.min ?? 0, modifier(scores[u.ability]) + (u.add ?? 0)));
-  return { derived, lists: buildLists(tally, usesOf), scores };
+  return { derived, lists: buildLists(tally, usesOf, itemName), scores };
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+const ORDINAL = ["cantrip", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
 
 /**
  * Armor Class: worn armour's (its base, plus as much Dexterity as it allows); without armour, the best of 10 + Dex
@@ -182,15 +202,16 @@ const WEAPON_NAMES: Record<string, string> = {
   "crossbow-light": "Light crossbow", "crossbow-heavy": "Heavy crossbow", "crossbow-hand": "Hand crossbow",
 };
 
-function proficiencyName(kind: string, id: string): string {
+function proficiencyName(kind: string, id: string, itemName: ItemName): string {
   if (kind === "skill") return listName("skills", id);
   if (kind === "saving-throw") return ABILITY_NAMES[id as Ability] ?? id;
   if (kind === "armor") return ARMOR_NAMES[id] ?? titleFromId(id);
-  if (kind === "weapon") return WEAPON_NAMES[id] ?? titleFromId(id);
-  return titleFromId(id);
+  if (kind === "weapon") return WEAPON_NAMES[id] ?? itemName(id) ?? titleFromId(id);
+  return itemName(id) ?? titleFromId(id);
 }
 
-function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number): Record<string, ListItem[]> {
+function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, itemName: ItemName): Record<string, ListItem[]> {
+  const nameOf = (kind: string, id: string) => proficiencyName(kind, id, itemName);
   const lists: Record<string, ListItem[]> = {};
   const add = (list: string, item: ListItem, unique = true) => {
     const items = (lists[list] ??= []);
@@ -203,20 +224,20 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number): 
   for (const [sense, { range, from }] of senses) add("senses", { name: `${capital(sense)} ${range} ft`, source: from });
 
   for (const l of tally.languages) add("languages", { name: l.name, source: l.from.name });
-  for (const p of tally.proficiencies) add("proficiencies", { name: proficiencyName(p.kind, p.id), source: p.from.name, detail: p.kind });
+  for (const p of tally.proficiencies) add("proficiencies", { name: nameOf(p.kind, p.id), source: p.from.name, detail: p.kind });
   // For the summary: saving throws, skills (marking expertise), then armour, weapons and tools.
   const abilityOrder = (id: string) => ABILITIES.indexOf(id as Ability);
   for (const p of tally.proficiencies.filter((p) => p.kind === "saving-throw").sort((a, b) => abilityOrder(a.id) - abilityOrder(b.id))) {
-    add("saving-throws", { name: proficiencyName(p.kind, p.id), source: p.from.name });
+    add("saving-throws", { name: nameOf(p.kind, p.id), source: p.from.name });
   }
   for (const p of tally.proficiencies.filter((p) => p.kind === "skill")) {
     const expert = tally.expertise.some((e) => e.kind === "skill" && e.id === p.id);
-    add("skills", { name: `${proficiencyName(p.kind, p.id)}${expert ? " (expertise)" : ""}`, source: p.from.name });
+    add("skills", { name: `${nameOf(p.kind, p.id)}${expert ? " (expertise)" : ""}`, source: p.from.name });
   }
   for (const kind of ["armor", "weapon", "tool"] as const) {
     for (const p of tally.proficiencies.filter((p) => p.kind === kind)) {
       const expert = kind === "tool" && tally.expertise.some((e) => e.kind === "tool" && e.id === p.id);
-      add("other-proficiencies", { name: `${proficiencyName(p.kind, p.id)}${expert ? " (expertise)" : ""}`, source: p.from.name, detail: kind });
+      add("other-proficiencies", { name: `${nameOf(p.kind, p.id)}${expert ? " (expertise)" : ""}`, source: p.from.name, detail: kind });
     }
   }
   for (const r of tally.resistances) add("resistances", { name: capital(r.damage), source: r.from.name });
@@ -241,7 +262,19 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number): 
     }
     for (const r of resources) if (!named.has(r.id)) add(`gains.${step}`, { name: r.name, source: r.from.name, detail: per(r) }, false);
   }
-  for (const g of tally.grants) add(g.collection, { name: g.name, source: g.from.name });
+  // Granted entries listed by collection (feats, later). Spells have their own lists below.
+  for (const g of tally.grants) if (g.collection !== "spells") add(g.collection, { name: g.name, source: g.from.name });
+
+  // Spells: cantrips and spells for the summary (marking the prepared and always-prepared), and every spell with
+  // its details for the Spells step's own page.
+  const spells = [...tally.spells].sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+  for (const s of spells) {
+    const mark = s.always ? " (always prepared)" : s.prepared ? " (prepared)" : "";
+    add(s.level === 0 ? "cantrips" : "spells", { name: `${s.name}${s.level > 0 ? mark : ""}`, source: s.from.name });
+    const detail = [s.level === 0 ? "Cantrip" : `${ORDINAL[s.level]} level`, s.ability ? `cast with ${ABILITY_NAMES[s.ability]}` : undefined, mark.trim().replace(/[()]/g, "") || undefined]
+      .filter(Boolean).join(" · ");
+    add("spell-list", { name: s.name, source: s.from.name, detail });
+  }
 
   // The inventory: the same thing from the same place (and pack) is one line.
   const inventory = new Map<string, ListItem & { qty: number; base: string }>();

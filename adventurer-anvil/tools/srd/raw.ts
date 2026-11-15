@@ -66,6 +66,7 @@ export interface RawLanguage {
 export interface RawSrd extends RawSrdClasses {
   backgrounds: RawBackground[];
   equipment: RawEquipment[];
+  spells: RawSpell[];
   races: RawRace[];
   subraces: RawSubrace[];
   traits: RawTrait[];
@@ -103,6 +104,7 @@ export interface RawClass extends RawStartingEquipment {
     proficiency_choices?: RawChoice[];
   };
   subclasses: RawRef[];
+  spellcasting?: { level: number; spellcasting_ability: RawRef };
 }
 
 export interface RawSubclass {
@@ -111,6 +113,8 @@ export interface RawSubclass {
   class: RawRef;
   subclass_flavor: string;
   desc: string[];
+  /** Domain, oath, circle or expanded spells, each from a class level (and, for the Land, a terrain). */
+  spells?: { prerequisites: { index: string; type: string }[]; spell: RawRef }[];
 }
 
 export interface RawFeature {
@@ -137,6 +141,7 @@ export interface RawLevel {
   subclass?: RawRef;
   features: RawRef[];
   class_specific?: Record<string, unknown>;
+  spellcasting?: Record<string, number>;
   subclass_specific?: Record<string, unknown>;
 }
 
@@ -212,4 +217,23 @@ export interface RawEquipmentChoice {
 export interface RawStartingEquipment {
   starting_equipment: { equipment: RawRef; quantity: number }[];
   starting_equipment_options: RawEquipmentChoice[];
+}
+
+// ---- Spells (5e-SRD-Spells) ----
+
+export interface RawSpell {
+  index: string;
+  name: string;
+  level: number;
+  school: RawRef;
+  classes: RawRef[];
+  casting_time: string;
+  range: string;
+  components: ("V" | "S" | "M")[];
+  material?: string;
+  duration: string;
+  concentration: boolean;
+  ritual: boolean;
+  desc: string[];
+  higher_level?: string[];
 }

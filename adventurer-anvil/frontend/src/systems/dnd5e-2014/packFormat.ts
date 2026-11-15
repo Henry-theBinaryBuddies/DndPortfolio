@@ -6,7 +6,7 @@ import type { IndexedPack, PackFile, PackSchema } from "../../core";
 import { PACK_FORMAT, PACK_FORMAT_VERSION } from "../../core";
 import {
   ABILITIES, ARMOR_CLASSES, CHOICE_LISTS, choiceListValues, COIN_UNITS, COLLECTIONS, DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS,
-  RECHARGE, SENSES, SIZES, SKILL_IDS, WEAPON_PROPERTIES, type ChoiceList, type Collection,
+  RECHARGE, CASTING_KINDS, SCHOOLS, SENSES, SIZES, SKILL_IDS, WEAPON_PROPERTIES, type ChoiceList, type Collection,
 } from "./vocabulary";
 
 export const SYSTEM_ID = "dnd5e-2014";
@@ -99,8 +99,21 @@ const feature = z.strictObject({
   source: sourceSchema.optional(),
 });
 
+/** A spell you always have: known (a tiefling's Thaumaturgy, cast with Charisma) or always prepared (a Life cleric's domain spells). */
+const spell = z.strictObject({
+  type: z.literal("spell"),
+  id: ref,
+  /** The ability it is cast with; a class's own spells use the class's. */
+  ability: z.enum(ABILITIES).optional(),
+  /** Always prepared, and not counted against the spells you prepare. */
+  always: z.boolean().optional(),
+});
+/** Spells added to a class's list for you (a Fiend warlock's expanded list): they become options in that class's spell choices. */
+const expandedSpells = z.strictObject({ type: z.literal("expanded-spells"), ids: z.array(ref).min(1) });
+
 const SIMPLE_EFFECTS = [
   abilityBonus, speed, sense, proficiency, language, resistance, grant, armorClass, armorClassBonus, hitPoints, expertise, resource, feature,
+  spell, expandedSpells,
 ] as const;
 /** Every effect but a choice: what an option written into a choice can give. */
 const simpleEffectSchema = z.discriminatedUnion("type", [...SIMPLE_EFFECTS]);
@@ -122,11 +135,13 @@ const choice = z.strictObject({
   pick: z.int().positive(),
   from: z.union([collectionChoiceFrom, listChoiceFrom, optionsChoiceFrom, proficientChoiceFrom]),
   each: eachSchema.optional(),
+  /** For picks from spells: the ability they are cast with (a high elf's wizard cantrip: Intelligence). */
+  ability: z.enum(ABILITIES).optional(),
 });
 
 export const EFFECT_TYPES = [
   "ability-bonus", "speed", "sense", "proficiency", "language", "resistance", "grant", "armor-class", "armor-class-bonus",
-  "hit-points", "expertise", "choice", "resource", "feature",
+  "hit-points", "expertise", "choice", "resource", "feature", "spell", "expanded-spells",
 ] as const;
 
 export const effectSchema = z.discriminatedUnion("type", [...SIMPLE_EFFECTS, choice]);
@@ -200,7 +215,32 @@ export const classSchema = z.strictObject({
   startingEquipment: z.lazy(() => startingEquipmentSchema).optional(),
   /** Gold to buy equipment with instead, e.g. "5d4x10". Not in SRD 5.1. */
   startingWealth: z.lazy(() => wealthDice).optional(),
+  spellcasting: z.lazy(() => spellcastingSchema).optional(),
 });
+
+/**
+ * How a class casts spells. Counts come from its table's columns (by column id), so they grow with level:
+ * cantrips known, spells known (known and pact casters), and slots by spell level ("1": "slots-1").
+ */
+export const spellcastingSchema = z.strictObject({
+  ability: z.enum(ABILITIES),
+  /** The class level it starts at (2 for paladins and rangers). */
+  level,
+  kind: z.enum(CASTING_KINDS),
+  /** Whose spell list: this class's id by default. */
+  list: id.optional(),
+  cantrips: id.optional(),
+  known: id.optional(),
+  slots: z.record(z.string().regex(/^[1-9]$/, "a spell level from 1 to 9"), id),
+  /** Prepared and spellbook casters prepare their ability modifier plus their level (half their level for paladins), at least 1. */
+  prepare: z.enum(["level", "half-level"]).optional(),
+  /** Spellbook casters: spells in the book at the start, and how many are added each level. */
+  spellbook: z.strictObject({ start: z.int().positive(), perLevel: z.int().min(0) }).optional(),
+  ritual: z.boolean().optional(),
+  /** Item categories that can be a spellcasting focus (a component pouch always can). */
+  focus: z.array(id).optional(),
+});
+export type Spellcasting = z.infer<typeof spellcastingSchema>;
 
 export const subclassSchema = z.strictObject({ ...entryBase, class: ref, columns: columnsSchema.optional(), levels: levelsSchema });
 
@@ -255,6 +295,24 @@ export const itemSchema = z.strictObject({
   contents: z.array(z.strictObject({ item: ref, qty: z.int().positive() })).optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
+
+export const spellSchema = z.strictObject({
+  ...entryBase,
+  /** 0 for a cantrip. */
+  level: z.int().min(0).max(9),
+  school: z.enum(SCHOOLS),
+  /** The classes whose lists have it, by id ("wizard"): spell choices filter on these. */
+  classes: z.array(id),
+  castingTime: z.string().min(1),
+  range: z.string().min(1),
+  components: z.strictObject({ verbal: z.boolean().optional(), somatic: z.boolean().optional(), material: z.string().min(1).optional() }),
+  duration: z.string().min(1),
+  concentration: z.boolean().optional(),
+  ritual: z.boolean().optional(),
+  /** "At Higher Levels". */
+  higherLevels: z.string().optional(),
+});
+export type Spell = z.infer<typeof spellSchema>;
 
 /** One line of starting equipment: an item, any item of some categories (picked by the player), or a thing named only here. */
 const equipmentLine = z.union([
@@ -312,6 +370,7 @@ export const COLLECTION_SCHEMAS = {
   subclasses: subclassSchema,
   backgrounds: backgroundSchema,
   items: itemSchema,
+  spells: spellSchema,
   languages: languageSchema,
 } satisfies Partial<Record<Collection, z.ZodType>>;
 
@@ -409,6 +468,8 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
       const at = `${where}[${i}]`;
       if (effect.type === "language") resolves(effect.id, "languages", at);
       if (effect.type === "grant") resolves(effect.id, effect.collection, at);
+      if (effect.type === "spell") resolves(effect.id, "spells", at);
+      if (effect.type === "expanded-spells") effect.ids.forEach((s, j) => resolves(s, "spells", `${at}.ids[${j}]`));
       if ((effect.type === "proficiency" || effect.type === "expertise") && effect.kind === "skill" && !isSkill(effect.id)) {
         errors.push(`${at}: no skill "${effect.id}".`);
       }
@@ -432,6 +493,8 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
           const [kind, pid] = p.split(":");
           if (kind === "skill" && pid && !isSkill(pid)) errors.push(`${at}.from: no skill "${pid}".`);
         }
+      } else if (effect.ability && !("collection" in from && from.collection === "spells")) {
+        errors.push(`${at}.ability: only choices of spells say which ability they are cast with.`);
       } else if (effect.each) {
         errors.push(`${at}.each: only choices from a fixed list or from your proficiencies use "each"; ${"options" in from ? "options carry their own effects" : "picks from a collection are granted"}.`);
       }
@@ -523,6 +586,16 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
     const at = `collections.classes[${i}]`;
     checkLeveled(cls, at, columnIds(cls), [[cls.proficiencies, `${at}.proficiencies`], [cls.multiclass.proficiencies, `${at}.multiclass.proficiencies`]]);
     checkKit(cls.startingEquipment, `${at}.startingEquipment`);
+    const sc = cls.spellcasting;
+    if (sc) {
+      const cols = columnIds(cls);
+      for (const [what, col] of [["cantrips", sc.cantrips], ["known", sc.known], ...Object.entries(sc.slots).map(([l, c]) => [`slots.${l}`, c])] as [string, string | undefined][]) {
+        if (col && !cols.has(col)) errors.push(`${at}.spellcasting.${what}: no column "${col}" in the class table.`);
+      }
+      if ((sc.kind === "known" || sc.kind === "pact") && !sc.known) errors.push(`${at}.spellcasting: a ${sc.kind} caster needs "known", the column of spells known.`);
+      if ((sc.kind === "prepared" || sc.kind === "spellbook") && !sc.prepare) errors.push(`${at}.spellcasting: a ${sc.kind} caster needs "prepare" ("level" or "half-level").`);
+      if ((sc.kind === "spellbook") !== Boolean(sc.spellbook)) errors.push(`${at}.spellcasting: "spellbook" goes with the kind "spellbook", and only with it.`);
+    }
   });
   subclasses.forEach((sub, i) => {
     const at = `collections.subclasses[${i}]`;

@@ -10,7 +10,14 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
   const map = new Map<string, { verb: string; from: string }>();
   const notThis = (from: { choice?: ChoiceKey }) => from.choice !== choice.spec.key;
   const effect = choice.effect;
-  if (!effect) return map;
+  const spellsHad = () => {
+    for (const s of ctx.tally.spells) if (notThis(s.from)) map.set(s.ref, { verb: "Already known", from: s.from.name });
+  };
+  if (!effect) {
+    // The Spells step's own choices: a spell you already have from elsewhere can't be picked again.
+    if (choice.collection === "spells") spellsHad();
+    return map;
+  }
 
   if ("list" in effect.from) {
     if (effect.from.list === "skills") {
@@ -23,6 +30,8 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
     for (const e of ctx.tally.expertise) if (notThis(e.from)) map.set(`${e.kind}:${e.id}`, { verb: "Already expert", from: e.from.name });
   } else if ("options" in effect.from) {
     // Written-in options (a fighting style) are only ever given by their own choice.
+  } else if (effect.from.collection === "spells") {
+    spellsHad();
   } else if (effect.from.collection === "languages") {
     for (const l of ctx.tally.languages) if (notThis(l.from)) map.set(l.ref, { verb: "Already known", from: l.from.name });
   } else {
@@ -60,7 +69,8 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
       return o ? { ...option, unavailable: `${o.verb} (${o.from})` } : option;
     });
     const options = spec.options ?? [];
-    const want = spec.count?.min ?? 1;
+    const min = spec.count?.min ?? 1;
+    const max = spec.count?.max ?? 1;
 
     if (spec.kind === "pick-one" || spec.kind === "pick-many") {
       if (options.length === 0) {
@@ -69,10 +79,10 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
           message: `${spec.label}: the loaded packs have nothing to choose from yet.`,
         });
       }
-      if (picks.length > 0 && picks.length !== want) {
+      if (picks.length > 0 && (picks.length < min || picks.length > max)) {
         ctx.issues.push({
           id: `pick-count:${spec.key}`, severity: "error", step: spec.step, key: spec.key, overridable: true,
-          message: `${spec.label}: choose ${want} (${picks.length} chosen).`,
+          message: `${spec.label}: choose ${min === max ? min : min === 0 ? `up to ${max}` : `${min} to ${max}`} (${picks.length} chosen).`,
         });
       }
       if (new Set(picks).size !== picks.length) {

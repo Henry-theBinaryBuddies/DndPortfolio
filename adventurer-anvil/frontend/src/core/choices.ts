@@ -59,7 +59,7 @@ export interface ChoiceSpec {
   hint?: string;
   kind: ChoiceKind;
   options?: Option[];
-  /** pick-many: how many to pick. */
+  /** pick-many: how many to pick (a min of 0 makes it optional, up to max). */
   count?: { min: number; max: number };
   /** number: the allowed range; allocate: the lowest and highest value a slot may take. */
   range?: { min: number; max: number };
@@ -78,8 +78,11 @@ export interface ChoiceSpec {
   times?: number;
   /** text and long-text: ready-made lines to pick from or roll for; the text stays the person's to edit. */
   suggestions?: { text: string; note?: string }[];
-  /** pick-one: "segmented" draws a short list of options as a switch rather than cards. */
-  presentation?: "segmented";
+  /**
+   * pick-one: "segmented" draws a short list of options as a switch rather than cards.
+   * pick-one and pick-many: "list" draws a long list as rows with their details, a search and a filter by tag.
+   */
+  presentation?: "segmented" | "list";
   required: boolean;
   /** Set by the system: whether this choice is fully answered (e.g. all six slots filled, not just one). */
   answered?: boolean;

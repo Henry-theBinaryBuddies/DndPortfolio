@@ -5,7 +5,7 @@
   "id": "sample-srd",
   "version": "0.1.0",
   "system": "dnd5e-2014",
-  "title": "Sample: Elf, High Elf, Fighter, Rogue, Sentry and some items (tests only)",
+  "title": "Sample: Elf, High Elf, Fighter, Rogue, Wizard, Cleric, Sentry, items and spells (tests only)",
   "attribution": "This work includes material taken from the System Reference Document 5.1 (\"SRD 5.1\") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
   "requires": [],
   "collections": {
@@ -209,15 +209,93 @@
             ]
           }
         ]
+      },
+      {
+        "id": "wizard",
+        "name": "Wizard",
+        "hitDie": 6,
+        "proficiencies": [{ "type": "proficiency", "kind": "saving-throw", "id": "int" }, { "type": "proficiency", "kind": "saving-throw", "id": "wis" }],
+        "multiclass": { "requires": { "all": [{ "ability": "int", "min": 13 }] }, "proficiencies": [] },
+        "columns": [
+          { "id": "cantrips-known", "name": "Cantrips Known", "values": { "1": 3, "4": 4 } },
+          { "id": "slots-1", "name": "1st", "values": { "1": 2, "2": 3 } },
+          { "id": "slots-2", "name": "2nd", "values": { "1": 0, "3": 2 } }
+        ],
+        "spellcasting": { "ability": "int", "level": 1, "kind": "spellbook", "cantrips": "cantrips-known", "slots": { "1": "slots-1", "2": "slots-2" },
+          "prepare": "level", "spellbook": { "start": 6, "perLevel": 2 }, "ritual": true, "focus": ["arcane-foci"] },
+        "levels": [{ "level": 1, "effects": [{ "type": "feature", "name": "Arcane Recovery", "summary": "Recover some slots on a short rest." }] }]
+      },
+      {
+        "id": "cleric",
+        "name": "Cleric",
+        "hitDie": 8,
+        "proficiencies": [{ "type": "proficiency", "kind": "saving-throw", "id": "wis" }, { "type": "proficiency", "kind": "saving-throw", "id": "cha" }],
+        "multiclass": { "requires": { "all": [{ "ability": "wis", "min": 13 }] }, "proficiencies": [] },
+        "subclass": { "name": "Divine Domain", "level": 1 },
+        "columns": [
+          { "id": "cantrips-known", "name": "Cantrips Known", "values": { "1": 3 } },
+          { "id": "slots-1", "name": "1st", "values": { "1": 2 } }
+        ],
+        "spellcasting": { "ability": "wis", "level": 1, "kind": "prepared", "cantrips": "cantrips-known", "slots": { "1": "slots-1" },
+          "prepare": "level", "ritual": true, "focus": ["holy-symbols"] },
+        "levels": []
+      },
+      {
+        "id": "paladin",
+        "name": "Paladin",
+        "hitDie": 10,
+        "proficiencies": [],
+        "multiclass": { "requires": { "all": [{ "ability": "str", "min": 13 }, { "ability": "cha", "min": 13 }] }, "proficiencies": [] },
+        "columns": [{ "id": "slots-1", "name": "1st", "values": { "1": 0, "2": 2 } }],
+        "spellcasting": { "ability": "cha", "level": 2, "kind": "prepared", "slots": { "1": "slots-1" }, "prepare": "half-level" },
+        "levels": []
       }
     ],
     "subclasses": [
+      {
+        "id": "life",
+        "name": "Life Domain",
+        "class": "cleric",
+        "levels": [{ "level": 1, "effects": [{ "type": "spell", "id": "bless", "always": true }, { "type": "spell", "id": "cure-wounds", "always": true }] }]
+      },
       {
         "id": "champion",
         "name": "Champion",
         "class": "fighter",
         "levels": [{ "level": 3, "effects": [{ "type": "feature", "name": "Improved Critical", "summary": "Critical hits on 19 or 20." }] }]
       }
+    ],
+    "spells": [
+      { "id": "fire-bolt", "name": "Fire Bolt", "level": 0, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "120 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "A mote of fire: 1d10 fire damage." },
+      { "id": "light", "name": "Light", "level": 0, "school": "evocation", "classes": ["wizard", "cleric"], "castingTime": "1 action", "range": "Touch",
+        "components": { "verbal": true, "material": "a firefly or phosphorescent moss" }, "duration": "1 hour", "description": "An object sheds light." },
+      { "id": "prestidigitation", "name": "Prestidigitation", "level": 0, "school": "transmutation", "classes": ["wizard"], "castingTime": "1 action", "range": "10 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Up to 1 hour", "description": "A minor magical trick." },
+      { "id": "sacred-flame", "name": "Sacred Flame", "level": 0, "school": "evocation", "classes": ["cleric"], "castingTime": "1 action", "range": "60 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "Radiance descends: 1d8 radiant damage." },
+      { "id": "thaumaturgy", "name": "Thaumaturgy", "level": 0, "school": "transmutation", "classes": ["cleric"], "castingTime": "1 action", "range": "30 feet",
+        "components": { "verbal": true }, "duration": "Up to 1 minute", "description": "A minor wonder." },
+      { "id": "magic-missile", "name": "Magic Missile", "level": 1, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "120 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "Three darts of force.", "higherLevels": "One more dart per slot level above 1st." },
+      { "id": "shield", "name": "Shield", "level": 1, "school": "abjuration", "classes": ["wizard"], "castingTime": "1 reaction", "range": "Self",
+        "components": { "verbal": true, "somatic": true }, "duration": "1 round", "description": "+5 AC until your next turn." },
+      { "id": "detect-magic", "name": "Detect Magic", "level": 1, "school": "divination", "classes": ["wizard", "cleric"], "castingTime": "1 action", "range": "Self",
+        "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": true, "description": "Sense magic nearby." },
+      { "id": "burning-hands", "name": "Burning Hands", "level": 1, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "Self (15-foot cone)",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "A sheet of flame." },
+      { "id": "sleep", "name": "Sleep", "level": 1, "school": "enchantment", "classes": ["wizard"], "castingTime": "1 action", "range": "90 feet",
+        "components": { "verbal": true, "somatic": true, "material": "a pinch of fine sand" }, "duration": "1 minute", "description": "Creatures fall asleep." },
+      { "id": "comprehend-languages", "name": "Comprehend Languages", "level": 1, "school": "divination", "classes": ["wizard"], "castingTime": "1 action", "range": "Self",
+        "components": { "verbal": true, "somatic": true }, "duration": "1 hour", "ritual": true, "description": "Understand any language." },
+      { "id": "bless", "name": "Bless", "level": 1, "school": "enchantment", "classes": ["cleric"], "castingTime": "1 action", "range": "30 feet",
+        "components": { "verbal": true, "somatic": true, "material": "a sprinkling of holy water" }, "duration": "Concentration, up to 1 minute", "concentration": true, "description": "Up to three creatures add 1d4." },
+      { "id": "cure-wounds", "name": "Cure Wounds", "level": 1, "school": "evocation", "classes": ["cleric"], "castingTime": "1 action", "range": "Touch",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "Heal 1d8 + your modifier." },
+      { "id": "guiding-bolt", "name": "Guiding Bolt", "level": 1, "school": "evocation", "classes": ["cleric"], "castingTime": "1 action", "range": "120 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "1 round", "description": "4d6 radiant damage." },
+      { "id": "shatter", "name": "Shatter", "level": 2, "school": "evocation", "classes": ["wizard"], "castingTime": "1 action", "range": "60 feet",
+        "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "description": "A ringing noise: 3d8 thunder." }
     ],
     "backgrounds": [
       {

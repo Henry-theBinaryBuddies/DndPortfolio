@@ -43,6 +43,15 @@ export interface Tally {
   coins: { cp: number; label: string }[];
   /** What is worn: body armour and a shield. */
   worn: { armor?: { ref: string; name: string; armor: NonNullable<Item["armor"]> }; shield?: { ref: string; name: string; bonus: number } };
+  /**
+   * Spells the character has, once each: `ability` is what it's cast with; `always` means always prepared;
+   * `prepared` is set by the Spells step for spells prepared today.
+   */
+  spells: { ref: string; name: string; level: number; from: Origin; ability?: Ability; always?: boolean; prepared?: boolean }[];
+  /** Each class that casts spells: its ability and slots by spell level (a warlock's pact slots come back on a short rest). */
+  casting: { name: string; ability: Ability; slots: Record<number, number>; pact?: boolean }[];
+  /** Spells added to a class's list (a Fiend's expanded spells). */
+  expandedSpells: { ref: string; from: Origin }[];
   /** Weapons carried, once each, for the attack list. */
   weapons: { ref: string; name: string; weapon: NonNullable<Item["weapon"]> }[];
 }
@@ -50,7 +59,7 @@ export interface Tally {
 export function emptyTally(): Tally {
   return {
     abilityBonuses: [], speeds: [], senses: [], proficiencies: [], expertise: [], languages: [], resistances: [], grants: [],
-    resources: [], features: [], acFormulas: [], acBonuses: [], hitPoints: [], classes: [], items: [], coins: [], worn: {}, weapons: [],
+    resources: [], features: [], acFormulas: [], acBonuses: [], hitPoints: [], classes: [], items: [], coins: [], worn: {}, weapons: [], spells: [], casting: [], expandedSpells: [],
   };
 }
 

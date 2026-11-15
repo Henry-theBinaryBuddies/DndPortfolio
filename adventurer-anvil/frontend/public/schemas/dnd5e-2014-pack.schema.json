@@ -558,6 +558,60 @@
                       "properties": {
                         "type": {
                           "type": "string",
+                          "const": "spell"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
+                          ]
+                        },
+                        "always": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "expanded-spells"
+                        },
+                        "ids": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "ids"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
                           "const": "choice"
                         },
                         "id": {
@@ -1125,6 +1179,60 @@
                                                 "name"
                                               ],
                                               "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "spell"
+                                                },
+                                                "id": {
+                                                  "type": "string",
+                                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                },
+                                                "ability": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "str",
+                                                    "dex",
+                                                    "con",
+                                                    "int",
+                                                    "wis",
+                                                    "cha"
+                                                  ]
+                                                },
+                                                "always": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "id"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "expanded-spells"
+                                                },
+                                                "ids": {
+                                                  "minItems": 1,
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string",
+                                                    "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                  }
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "ids"
+                                              ],
+                                              "additionalProperties": false
                                             }
                                           ]
                                         }
@@ -1228,6 +1336,17 @@
                               ],
                               "additionalProperties": false
                             }
+                          ]
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
                           ]
                         }
                       },
@@ -1796,6 +1915,60 @@
                       "properties": {
                         "type": {
                           "type": "string",
+                          "const": "spell"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
+                          ]
+                        },
+                        "always": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "expanded-spells"
+                        },
+                        "ids": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "ids"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
                           "const": "choice"
                         },
                         "id": {
@@ -2363,6 +2536,60 @@
                                                 "name"
                                               ],
                                               "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "spell"
+                                                },
+                                                "id": {
+                                                  "type": "string",
+                                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                },
+                                                "ability": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "str",
+                                                    "dex",
+                                                    "con",
+                                                    "int",
+                                                    "wis",
+                                                    "cha"
+                                                  ]
+                                                },
+                                                "always": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "id"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "expanded-spells"
+                                                },
+                                                "ids": {
+                                                  "minItems": 1,
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string",
+                                                    "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                  }
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "ids"
+                                              ],
+                                              "additionalProperties": false
                                             }
                                           ]
                                         }
@@ -2466,6 +2693,17 @@
                               ],
                               "additionalProperties": false
                             }
+                          ]
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
                           ]
                         }
                       },
@@ -3005,6 +3243,60 @@
                       "properties": {
                         "type": {
                           "type": "string",
+                          "const": "spell"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
+                          ]
+                        },
+                        "always": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "expanded-spells"
+                        },
+                        "ids": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "ids"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
                           "const": "choice"
                         },
                         "id": {
@@ -3572,6 +3864,60 @@
                                                 "name"
                                               ],
                                               "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "spell"
+                                                },
+                                                "id": {
+                                                  "type": "string",
+                                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                },
+                                                "ability": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "str",
+                                                    "dex",
+                                                    "con",
+                                                    "int",
+                                                    "wis",
+                                                    "cha"
+                                                  ]
+                                                },
+                                                "always": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "id"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "expanded-spells"
+                                                },
+                                                "ids": {
+                                                  "minItems": 1,
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string",
+                                                    "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                  }
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "ids"
+                                              ],
+                                              "additionalProperties": false
                                             }
                                           ]
                                         }
@@ -3675,6 +4021,17 @@
                               ],
                               "additionalProperties": false
                             }
+                          ]
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
                           ]
                         }
                       },
@@ -4219,6 +4576,60 @@
                           "required": [
                             "type",
                             "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "const": "spell"
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            },
+                            "ability": {
+                              "type": "string",
+                              "enum": [
+                                "str",
+                                "dex",
+                                "con",
+                                "int",
+                                "wis",
+                                "cha"
+                              ]
+                            },
+                            "always": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "const": "expanded-spells"
+                            },
+                            "ids": {
+                              "minItems": 1,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              }
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "ids"
                           ],
                           "additionalProperties": false
                         },
@@ -4794,6 +5205,60 @@
                                                     "name"
                                                   ],
                                                   "additionalProperties": false
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "type": {
+                                                      "type": "string",
+                                                      "const": "spell"
+                                                    },
+                                                    "id": {
+                                                      "type": "string",
+                                                      "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                    },
+                                                    "ability": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "str",
+                                                        "dex",
+                                                        "con",
+                                                        "int",
+                                                        "wis",
+                                                        "cha"
+                                                      ]
+                                                    },
+                                                    "always": {
+                                                      "type": "boolean"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "type",
+                                                    "id"
+                                                  ],
+                                                  "additionalProperties": false
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "type": {
+                                                      "type": "string",
+                                                      "const": "expanded-spells"
+                                                    },
+                                                    "ids": {
+                                                      "minItems": 1,
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string",
+                                                        "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                      }
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "type",
+                                                    "ids"
+                                                  ],
+                                                  "additionalProperties": false
                                                 }
                                               ]
                                             }
@@ -4897,6 +5362,17 @@
                                   ],
                                   "additionalProperties": false
                                 }
+                              ]
+                            },
+                            "ability": {
+                              "type": "string",
+                              "enum": [
+                                "str",
+                                "dex",
+                                "con",
+                                "int",
+                                "wis",
+                                "cha"
                               ]
                             }
                           },
@@ -5448,6 +5924,60 @@
                             "required": [
                               "type",
                               "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "spell"
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              },
+                              "ability": {
+                                "type": "string",
+                                "enum": [
+                                  "str",
+                                  "dex",
+                                  "con",
+                                  "int",
+                                  "wis",
+                                  "cha"
+                                ]
+                              },
+                              "always": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "expanded-spells"
+                              },
+                              "ids": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "ids"
                             ],
                             "additionalProperties": false
                           },
@@ -6023,6 +6553,60 @@
                                                       "name"
                                                     ],
                                                     "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "type": "string",
+                                                        "const": "spell"
+                                                      },
+                                                      "id": {
+                                                        "type": "string",
+                                                        "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                      },
+                                                      "ability": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "str",
+                                                          "dex",
+                                                          "con",
+                                                          "int",
+                                                          "wis",
+                                                          "cha"
+                                                        ]
+                                                      },
+                                                      "always": {
+                                                        "type": "boolean"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "id"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "type": "string",
+                                                        "const": "expanded-spells"
+                                                      },
+                                                      "ids": {
+                                                        "minItems": 1,
+                                                        "type": "array",
+                                                        "items": {
+                                                          "type": "string",
+                                                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                        }
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "ids"
+                                                    ],
+                                                    "additionalProperties": false
                                                   }
                                                 ]
                                               }
@@ -6126,6 +6710,17 @@
                                     ],
                                     "additionalProperties": false
                                   }
+                                ]
+                              },
+                              "ability": {
+                                "type": "string",
+                                "enum": [
+                                  "str",
+                                  "dex",
+                                  "con",
+                                  "int",
+                                  "wis",
+                                  "cha"
                                 ]
                               }
                             },
@@ -6389,6 +6984,103 @@
               "startingWealth": {
                 "type": "string",
                 "pattern": "^\\d+d\\d+(?:x\\d+)?$"
+              },
+              "spellcasting": {
+                "type": "object",
+                "properties": {
+                  "ability": {
+                    "type": "string",
+                    "enum": [
+                      "str",
+                      "dex",
+                      "con",
+                      "int",
+                      "wis",
+                      "cha"
+                    ]
+                  },
+                  "level": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "known",
+                      "prepared",
+                      "spellbook",
+                      "pact"
+                    ]
+                  },
+                  "list": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "cantrips": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "known": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "slots": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "pattern": "^[1-9]$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    }
+                  },
+                  "prepare": {
+                    "type": "string",
+                    "enum": [
+                      "level",
+                      "half-level"
+                    ]
+                  },
+                  "spellbook": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "perLevel": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "perLevel"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "ritual": {
+                    "type": "boolean"
+                  },
+                  "focus": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    }
+                  }
+                },
+                "required": [
+                  "ability",
+                  "level",
+                  "kind",
+                  "slots"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -6961,6 +7653,60 @@
                             "properties": {
                               "type": {
                                 "type": "string",
+                                "const": "spell"
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              },
+                              "ability": {
+                                "type": "string",
+                                "enum": [
+                                  "str",
+                                  "dex",
+                                  "con",
+                                  "int",
+                                  "wis",
+                                  "cha"
+                                ]
+                              },
+                              "always": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "expanded-spells"
+                              },
+                              "ids": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "ids"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
                                 "const": "choice"
                               },
                               "id": {
@@ -7528,6 +8274,60 @@
                                                       "name"
                                                     ],
                                                     "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "type": "string",
+                                                        "const": "spell"
+                                                      },
+                                                      "id": {
+                                                        "type": "string",
+                                                        "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                      },
+                                                      "ability": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "str",
+                                                          "dex",
+                                                          "con",
+                                                          "int",
+                                                          "wis",
+                                                          "cha"
+                                                        ]
+                                                      },
+                                                      "always": {
+                                                        "type": "boolean"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "id"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "type": "string",
+                                                        "const": "expanded-spells"
+                                                      },
+                                                      "ids": {
+                                                        "minItems": 1,
+                                                        "type": "array",
+                                                        "items": {
+                                                          "type": "string",
+                                                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                        }
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "ids"
+                                                    ],
+                                                    "additionalProperties": false
                                                   }
                                                 ]
                                               }
@@ -7631,6 +8431,17 @@
                                     ],
                                     "additionalProperties": false
                                   }
+                                ]
+                              },
+                              "ability": {
+                                "type": "string",
+                                "enum": [
+                                  "str",
+                                  "dex",
+                                  "con",
+                                  "int",
+                                  "wis",
+                                  "cha"
                                 ]
                               }
                             },
@@ -8161,6 +8972,60 @@
                       "required": [
                         "type",
                         "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "spell"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
+                          ]
+                        },
+                        "always": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "expanded-spells"
+                        },
+                        "ids": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "ids"
                       ],
                       "additionalProperties": false
                     },
@@ -8736,6 +9601,60 @@
                                                 "name"
                                               ],
                                               "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "spell"
+                                                },
+                                                "id": {
+                                                  "type": "string",
+                                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                },
+                                                "ability": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "str",
+                                                    "dex",
+                                                    "con",
+                                                    "int",
+                                                    "wis",
+                                                    "cha"
+                                                  ]
+                                                },
+                                                "always": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "id"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "const": "expanded-spells"
+                                                },
+                                                "ids": {
+                                                  "minItems": 1,
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string",
+                                                    "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                  }
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "ids"
+                                              ],
+                                              "additionalProperties": false
                                             }
                                           ]
                                         }
@@ -8839,6 +9758,17 @@
                               ],
                               "additionalProperties": false
                             }
+                          ]
+                        },
+                        "ability": {
+                          "type": "string",
+                          "enum": [
+                            "str",
+                            "dex",
+                            "con",
+                            "int",
+                            "wis",
+                            "cha"
                           ]
                         }
                       },
@@ -9399,6 +10329,120 @@
             "required": [
               "id",
               "name"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "spells": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "book": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "page": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "book"
+                ],
+                "additionalProperties": false
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9
+              },
+              "school": {
+                "type": "string",
+                "enum": [
+                  "abjuration",
+                  "conjuration",
+                  "divination",
+                  "enchantment",
+                  "evocation",
+                  "illusion",
+                  "necromancy",
+                  "transmutation"
+                ]
+              },
+              "classes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                }
+              },
+              "castingTime": {
+                "type": "string",
+                "minLength": 1
+              },
+              "range": {
+                "type": "string",
+                "minLength": 1
+              },
+              "components": {
+                "type": "object",
+                "properties": {
+                  "verbal": {
+                    "type": "boolean"
+                  },
+                  "somatic": {
+                    "type": "boolean"
+                  },
+                  "material": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "duration": {
+                "type": "string",
+                "minLength": 1
+              },
+              "concentration": {
+                "type": "boolean"
+              },
+              "ritual": {
+                "type": "boolean"
+              },
+              "higherLevels": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "level",
+              "school",
+              "classes",
+              "castingTime",
+              "range",
+              "components",
+              "duration"
             ],
             "additionalProperties": false
           }

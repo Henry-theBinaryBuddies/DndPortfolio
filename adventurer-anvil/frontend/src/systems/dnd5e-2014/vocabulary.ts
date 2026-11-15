@@ -61,6 +61,12 @@ export const WEAPON_PROPERTIES = [
   "ammunition", "finesse", "heavy", "light", "loading", "reach", "special", "thrown", "two-handed", "versatile", "monk",
 ] as const;
 
+/** The eight schools of magic. */
+export const SCHOOLS = ["abjuration", "conjuration", "divination", "enchantment", "evocation", "illusion", "necromancy", "transmutation"] as const;
+
+/** How a class gets its spells: a fixed number known; the whole list, prepared daily; a spellbook to prepare from; or a warlock's pact. */
+export const CASTING_KINDS = ["known", "prepared", "spellbook", "pact"] as const;
+
 export const ARMOR_CLASSES = ["light", "medium", "heavy", "shield"] as const;
 
 /** Fixed lists a choice can pick from (see the choice effect's from.list), and the effect each pick fills in. */

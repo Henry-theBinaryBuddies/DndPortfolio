@@ -2,8 +2,8 @@
 // picked is applied too (a fixed-list pick fills in `each`, a collection pick is granted, a written-in option
 // gives its own effects), so a picked entry with effects of its own (a feat, later) is expanded in turn.
 import type { ChoiceSpec, Option } from "../../../core";
-import type { ChoiceEffect, EachTemplate, Effect } from "../packFormat";
-import { ABILITY_NAMES, choiceListValues, SKILLS, type ChoiceList, type Collection } from "../vocabulary";
+import type { ChoiceEffect, EachTemplate, Effect, Spell } from "../packFormat";
+import { ABILITY_NAMES, choiceListValues, SKILLS, type Ability, type ChoiceList, type Collection } from "../vocabulary";
 import { fullRef, matchesWhere, picksOf, type Context, type Source } from "./context";
 import { describeEffects } from "./describe";
 import type { Origin } from "./tally";
@@ -69,18 +69,30 @@ function applyEffect(ctx: Context, source: Source, effect: Effect, choice: strin
     case "feature":
       tally.features.push({ name: effect.name, summary: effect.summary, description: effect.description, source: effect.source, from });
       return;
+    case "spell":
+      grant(ctx, source, "spells", fullRef(effect.id, source.pack), from, depth, { ability: effect.ability, always: effect.always });
+      return;
+    case "expanded-spells":
+      for (const id of effect.ids) tally.expandedSpells.push({ ref: fullRef(id, source.pack), from });
+      return;
     case "choice":
       openChoice(ctx, source, effect, depth);
       return;
   }
 }
 
+/** How a granted spell is cast. */
+export type SpellGrant = { ability?: Ability; always?: boolean };
+
 /** Grants an entry. A missing one is skipped here; the check stage reports it. */
-function grant(ctx: Context, source: Source, collection: Collection, ref: string, from: Origin, depth: number): void {
+export function grant(ctx: Context, source: Source, collection: Collection, ref: string, from: Origin, depth: number, spell?: SpellGrant): void {
   const entry = ctx.content.get(collection, ref);
   if (!entry) return;
   if (collection === "languages") ctx.tally.languages.push({ ref, name: entry.name, from });
   else ctx.tally.grants.push({ collection, ref, name: entry.name, from });
+  if (collection === "spells" && !ctx.tally.spells.some((s) => s.ref === ref)) {
+    ctx.tally.spells.push({ ref, name: entry.name, level: Number(entry.level) || 0, from, ...spell });
+  }
 
   const effects = (entry as { effects?: unknown }).effects;
   if (Array.isArray(effects) && depth < MAX_DEPTH) {
@@ -92,15 +104,18 @@ export function openChoice(ctx: Context, source: Source, effect: ChoiceEffect, d
   const key = `${source.key}.${effect.id}`;
   const picks = picksOf(ctx.doc.choices[key]);
   const from = effect.from;
+  // Spell picks appear on the Spells step, drawn as a spell list, wherever they come from (a high elf's cantrip).
+  const spells = "collection" in from && from.collection === "spells";
   const spec: ChoiceSpec = {
     key,
-    step: source.step,
+    step: spells ? "spells" : source.step,
     label: effect.label,
     source: source.name,
     kind: effect.pick === 1 ? "pick-one" : "pick-many",
     options: optionsFor(ctx, from),
     count: effect.pick === 1 ? undefined : { min: effect.pick, max: effect.pick },
     required: true,
+    ...(spells ? { presentation: "list" as const } : {}),
   };
   ctx.open.push({
     spec, picks, effect,
@@ -119,7 +134,7 @@ export function openChoice(ctx: Context, source: Source, effect: ChoiceEffect, d
       const option = from.options.find((o) => o.id === pick);
       for (const e of option?.effects ?? []) applyEffect(ctx, source, e as Effect, key, depth + 1);
     } else {
-      grant(ctx, source, from.collection, pick, { name: source.name, step: source.step, choice: key }, depth + 1);
+      grant(ctx, source, from.collection, pick, { name: source.name, step: source.step, choice: key }, depth + 1, spells ? { ability: effect.ability } : undefined);
     }
   }
 }
@@ -148,10 +163,31 @@ function optionsFor(ctx: Context, from: ChoiceEffect["from"]): Option[] {
     return from.options.map((o) => ({ value: o.id, name: o.name, summary: o.summary, description: o.description, tags: describeEffects(o.effects as Effect[]) }));
   }
   if ("proficient" in from) return []; // filled in by the check stage
-  return ctx.content
-    .list(from.collection)
-    .filter((entry) => matchesWhere(entry, from.where))
-    .map((entry) => ({ value: entry.ref, name: entry.name, summary: typeof entry.summary === "string" ? entry.summary : undefined }));
+  const entries = ctx.content.list(from.collection).filter((entry) => matchesWhere(entry, from.where));
+  if (from.collection === "spells") return entries.map((entry) => spellOption(entry as unknown as Spell & { ref: string }));
+  return entries.map((entry) => ({ value: entry.ref, name: entry.name, summary: typeof entry.summary === "string" ? entry.summary : undefined }));
+}
+
+const ORDINALS = ["cantrip", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
+/** "Cantrip", "1st level". */
+export const spellLevelName = (level: number) => (level === 0 ? "Cantrip" : `${ORDINALS[level]} level`);
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** A spell as an option: "Evocation cantrip · 1 action · 120 feet", tagged with its school, and Concentration or Ritual. */
+export function spellOption(spell: Spell & { ref: string }): Option {
+  const what = spell.level === 0 ? `${capital(spell.school)} cantrip` : `${ORDINALS[spell.level]}-level ${spell.school}`;
+  const components = [spell.components.verbal && "V", spell.components.somatic && "S", spell.components.material && "M"].filter(Boolean).join(", ");
+  return {
+    value: spell.ref,
+    name: spell.name,
+    summary: [what, spell.castingTime, spell.range, spell.duration].join(" · "),
+    description: [
+      `Components: ${components}${spell.components.material ? ` (${spell.components.material})` : ""}.`,
+      spell.description ?? "",
+      spell.higherLevels ? `At higher levels. ${spell.higherLevels}` : "",
+    ].filter(Boolean).join("\n\n"),
+    tags: [capital(spell.school), ...(spell.concentration ? ["Concentration"] : []), ...(spell.ritual ? ["Ritual"] : [])],
+  };
 }
 
 export function listName(list: ChoiceList, value: string): string {
