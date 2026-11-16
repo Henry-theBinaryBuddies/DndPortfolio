@@ -1,0 +1,17 @@
+[
+  {
+    "src": "./assets/screenshots/artifact-5/01-map.jpg",
+    "alt": "A top-down dungeon map on a square grid: two stone-tiled rooms with dark walls joined by a doorway in the middle wall, a red rug with a gold border in the lower left, brown barrels in two corners, a blue token with a smiling face in the top left, a smaller green token with yellow eyes, and a larger plain green circle. A line of text above the map reads user mock-gm, socket connected.",
+    "caption": "The map, drawn in the browser by the Rust renderer, with the server's tokens on it. The map and the two portraits are pictures drawn for the demo; the plain green circle is a token whose picture is missing, to show it falls back to a flat colour. This is the renderer's own demo page, and the picture was taken in a browser with no WebGPU, so it shows the WebGL2 fallback. The map is not yet part of the main web page."
+  },
+  {
+    "src": "./assets/screenshots/artifact-5/02-shell-and-chat.jpg",
+    "alt": "The Tome & Tile web page as a GM sees it. An Initiative panel across the top says no combat in progress. An empty map area fills the middle with the words the map will appear here. A Chat panel on the right shows a GM message, a roll card for a Perception check with advantage showing two d20 dice, one struck through as dropped, plus 5 for a total of 22, and a second GM message, with a message box and a dice form below. Video, Sheet and Tools panels are empty placeholders.",
+    "caption": "The web page as the GM sees it, connected to the mock server. Every panel docks to an edge, collapses or floats. The chat and dice log shows a roll card with the dropped die struck through and the server's total; the browser never works out a roll itself. The Hide from players box appears only for the GM. The map area, the character sheet, video and GM tools are still placeholders."
+  },
+  {
+    "src": "./assets/screenshots/artifact-5/03-phone.jpg",
+    "alt": "A phone screen. The top is an empty dark map area with faint grid lines. A Chat sheet covers the bottom half, showing a roll card for Thieves' tools with advantage, a d20 showing 10 and a second d20 showing 6 struck through as dropped, plus 7, for a total of 17, and a player message reading Let us see if it opens. Below it are a message box, a dice form and a bar of five tabs: Chat, Sheet, Initiative, Video and Tools.",
+    "caption": "The same page on a phone. The panels become tabs along the bottom and open as a sheet over the map; every button is large enough to tap. A player has chatted and rolled with advantage, against the mock server."
+  }
+]
