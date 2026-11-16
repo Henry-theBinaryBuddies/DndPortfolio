@@ -1,0 +1,159 @@
+# SRD 5.1 import report
+
+Written by `tools/import-srd.ts` (`npm run import:srd`); do not edit by hand. Pack version 0.5.0.
+
+Imported: **9 races** (Dwarf, Elf, Halfling, Human, Dragonborn, Gnome, Half-Elf, Half-Orc, Tiefling), **4 subraces**
+(Hill Dwarf, High Elf, Lightfoot Halfling, Rock Gnome), **12 classes** (Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard),
+**12 subclasses** (Berserker, Lore, Life, Land, Champion, Open Hand, Devotion, Hunter, Thief, Draconic, Fiend, Evocation), **1 background**
+(Acolyte: its skills, languages, feature, characteristics and equipment),
+**237 items** (every mundane item: weapons, armour, gear, tools, mounts and vehicles; magic items come later),
+**319 spells** (with their full text) and **16 languages**. Every caster has its spellcasting:
+the ability, the kind (known, prepared, spellbook or pact), and its table's cantrips, spells known and slots for levels 1 to 20.
+Subclass spells are in: always prepared for the Life Domain and the Oath of Devotion, added to the list for the Fiend; the
+Circle of the Land's wait for levelling up, as they depend on the terrain chosen at level 3. Every class and background has its starting equipment.
+The pack passes the app's own check (`readPack`). Feats join when they get their pack format.
+
+SRD 5.1 has no starting-wealth table (the rules text, checked at the same commit, starts its Equipment section with
+coins), so no class carries `startingWealth`: with starting gold, the player enters the gold their DM gives them. A
+private pack can add the dice.
+
+## How the 38 racial traits were brought in
+
+### Calculated (8)
+
+| Trait | Note |
+|---|---|
+| Darkvision |  |
+| Dwarven Combat Training |  |
+| Keen Senses |  |
+| Skill Versatility |  |
+| Menacing |  |
+| Hellish Resistance |  |
+| Elf Weapon Training |  |
+| Extra Language |  |
+
+### Calculated, with the text kept (9)
+
+| Trait | Note |
+|---|---|
+| Dwarven Resilience | Poison resistance is calculated; advantage on saves against poison is described. |
+| Tool Proficiency | A choice of one of the three artisan's tools. |
+| Draconic Ancestry | A choice of damage type gives the resistance; the dragon's colour is not stored, only its damage type. |
+| Breath Weapon | Tracked as 1 use per short rest; its damage and DC are described until the sheet calculates them. |
+| Relentless Endurance | Tracked as 1 use per long rest. |
+| Infernal Legacy | Thaumaturgy, cast with Charisma; Hellish Rebuke (level 3) and Darkness (level 5) wait for levelling up. |
+| Dwarven Toughness | +1 hit point per level. |
+| High Elf Cantrip | The cantrip is a choice (on the Spells step), cast with Intelligence. |
+| Tinker | The tool proficiency is calculated; building clockwork devices is described. |
+
+### Kept as text for now (0)
+
+| Trait | Becomes calculated when |
+|---|---|
+
+
+### Described: nothing to calculate (10)
+
+Stonecunning, Fey Ancestry, Trance, Brave, Halfling Nimbleness, Lucky, Gnome Cunning, Savage Attacks, Naturally Stealthy, Artificer's Lore.
+
+### Folded into another trait (11)
+
+| Trait | Note |
+|---|---|
+| Draconic Ancestry (Black) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Blue) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Brass) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Bronze) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Copper) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Gold) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Green) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Red) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (Silver) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Draconic Ancestry (White) | Its row is in the Draconic Ancestry table in that trait's text. |
+| Damage Resistance | The resistance is given by the Draconic Ancestry choice. |
+
+## How the 317 class and subclass features were brought in
+
+Every feature from level 1 to 20 is in the pack. The level-1 ones that need calculating are typed; the rest are kept
+as their SRD text until the step that uses them (levelling up, spells).
+
+### Calculated (23)
+
+| Class | Level | Feature | Note |
+|---|---|---|---|
+| Life (Cleric) | 1 | Bonus Proficiency | Heavy armour. |
+| Barbarian | 1 | Rage | Uses per long rest from the Rages column; its damage bonus is in the class table. |
+| Barbarian | 1 | Unarmored Defense | AC 10 + Dex + Con without armour; a shield is allowed. |
+| Bard | 1 | Spellcasting: Bard | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Bard | 1 | Bardic Inspiration (d6) | Uses equal your Charisma modifier (at least one) per long rest. |
+| Cleric | 1 | Spellcasting: Cleric | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Cleric | 1 | Domain Spells | The subclass gives the spells, always prepared, at the levels its table says. |
+| Cleric | 3 | Domain Spells | The subclass gives the spells, always prepared, at the levels its table says. |
+| Cleric | 5 | Domain Spells | The subclass gives the spells, always prepared, at the levels its table says. |
+| Cleric | 7 | Domain Spells | The subclass gives the spells, always prepared, at the levels its table says. |
+| Cleric | 9 | Domain Spells | The subclass gives the spells, always prepared, at the levels its table says. |
+| Druid | 1 | Spellcasting: Druid | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Fighter | 1 | Second Wind | 1 use per short rest. |
+| Monk | 1 | Unarmored Defense | AC 10 + Dex + Wis without armour or a shield. |
+| Paladin | 1 | Divine Sense | Uses equal 1 + your Charisma modifier per long rest. |
+| Paladin | 1 | Lay on Hands | The pool is tracked as hit points: 5 per paladin level, per long rest. |
+| Paladin | 2 | Spellcasting: Paladin | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Paladin | 3 | Oath Spells | The subclass gives the spells, always prepared, at the levels its table says. |
+| Ranger | 2 | Spellcasting: Ranger | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Sorcerer | 1 | Spellcasting: Sorcerer | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Warlock | 1 | Pact Magic | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Wizard | 1 | Spellcasting: Wizard | Cantrips, spells known or prepared, and slots come from the class's spellcasting and table. |
+| Draconic (Sorcerer) | 1 | Draconic Resilience | +1 hit point per level, and AC 13 + Dex without armour. |
+
+### Choices (23; 5 at level 1)
+
+| Class | Level | Feature | Note |
+|---|---|---|---|
+| Bard | 3 | Expertise | Opens when levelling up arrives. |
+| Bard | 10 | Expertise | Opens when levelling up arrives. |
+| Fighter | 1 | Fighting Style |  |
+| Paladin | 2 | Fighting Style | Opens when levelling up arrives. |
+| Ranger | 1 | Favored Enemy (1 type) |  |
+| Ranger | 1 | Natural Explorer (1 terrain type) |  |
+| Ranger | 2 | Fighting Style | Opens when levelling up arrives. |
+| Ranger | 6 | Favored Enemy (2 types) | Opens when levelling up arrives. |
+| Ranger | 6 | Natural Explorer (2 terrain types) | Opens when levelling up arrives. |
+| Ranger | 10 | Natural Explorer (3 terrain types) | Opens when levelling up arrives. |
+| Ranger | 14 | Favored Enemy (3 enemies) | Opens when levelling up arrives. |
+| Rogue | 1 | Expertise |  |
+| Rogue | 6 | Expertise | Opens when levelling up arrives. |
+| Sorcerer | 3 | Metamagic | Opens when levelling up arrives. |
+| Sorcerer | 10 | Metamagic | Opens when levelling up arrives. |
+| Sorcerer | 17 | Metamagic | Opens when levelling up arrives. |
+| Warlock | 3 | Pact Boon | Opens when levelling up arrives. |
+| Champion (Fighter) | 10 | Additional Fighting Style | Opens when levelling up arrives. |
+| Hunter (Ranger) | 3 | Hunter's Prey | Opens when levelling up arrives. |
+| Hunter (Ranger) | 7 | Defensive Tactics | Opens when levelling up arrives. |
+| Hunter (Ranger) | 11 | Multiattack | Opens when levelling up arrives. |
+| Hunter (Ranger) | 15 | Superior Hunter's Defense | Opens when levelling up arrives. |
+| Draconic (Sorcerer) | 1 | Dragon Ancestor | A choice of dragon; also gives Draconic. The damage type is used by later features. |
+
+### Level 1, described: nothing to calculate (10)
+
+Divine Domain (Cleric), Druidic (Druid), Martial Arts (Monk), Sneak Attack (Rogue), Thieves' Cant (Rogue), Sorcerous Origin (Sorcerer), Otherworldly Patron (Warlock), Arcane Recovery (Wizard), Disciple of Life (Life (Cleric)), Dark One's Blessing (Fiend (Warlock)).
+
+### Kept as text for now (261)
+
+261 features, of which 0 at level 1: features
+above level 1 are typed when levelling up arrives.
+
+## Corrections (6)
+
+Each is in `data/srd-5.1/corrections.ts`, with its reason.
+
+- **high-elf-cantrip**: Typo in the community file ("form" for "from").
+- **brave**: Typo in the community file ("saving throw" for "saving throws").
+- **relentless-endurance**: A sentence starting in lower case in the community file.
+- **rogue (equipment)**: The Rogue's "(a) a shortbow and quiver of 20 arrows" has no quiver in the community file; it is added.
+- **ranger (equipment)**: The Ranger's "a longbow and a quiver of 20 arrows" has no quiver in the community file; it is added.
+- **acolyte (equipment)**: The Acolyte's equipment in the community file has only the holy symbol, common clothes, the pouch and 15 gp. The SRD also gives a prayer book or prayer wheel, 5 sticks of incense and vestments. Vestments are an SRD item; the others are not, so they are added by name, without weights.
+
+## Not in SRD 5.1, so not shipped
+
+Variant Human, and every subrace beyond the four above: these belong in private packs. The community files also carry no
+name lists or random height and weight tables, so the Details step's suggestions for these races will come from private packs.

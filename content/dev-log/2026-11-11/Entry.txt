@@ -1,3 +1,7 @@
+Side Quest (Adventurer Anvil):
+
+The core: a character file that stores only the choices made (plus DM rulings and a roll log), a small set of generic choice kinds (pick one, pick several, assign, allocate, roll), and one function that recalculates the whole character from the file. Dice notation like 4d6kh3 is parsed and rolled with every die kept. To prove the core doesn't secretly depend on D&D, Claude wrote a made-up gardening game that only the tests use, and ran it through the core.
+
 Side Quest (Scenic Sorcerer):
 
 The map maker needed art, and that took most of the day. Claude first found a hand-inked set of free dungeon pictures and had it ready to add, but I had not seen it, and when I did I said it looked awful and had it all removed. Claude then drew a small set of its own, and then a softer version, and I said those looked flat and basic and that it should stop making its own art. So we went looking for art I could use properly. The free pictures with open licences were nearly all small pixel art, and the good painted ones came with rules about where they could be used. Most forbid putting them inside a program that lets people place them, which is exactly what this is. Tom Cartos's Open Map License is the exception: it allows his props inside free map software, as long as they are never sold or paywalled, and asks for a credit. Claude checked the licence text before we chose it. I downloaded his bundle myself, and Claude shrank the pictures so they load quickly and saved them as WebP, which I asked him about and he said was fine.

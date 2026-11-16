@@ -7,3 +7,7 @@ Then Claude asked questions until the design was settled. I chose battle maps fi
 Steps 1 to 4 were built today. 1: a blank map with square, flat-top and pointy-top hex grids, panning, zooming, snapping, unlimited undo, autosave, and saving and opening a file. 2: rooms, walls, doors and windows that snap onto walls and move with their room, and floor textures painted by code. I then asked for a way to switch the walls off for people who do not want the black outline, which became a per-room setting. 3: a texture brush, stamps from pictures you add yourself, a stamp library kept in the browser, and layers. 4: text with preset looks, and a GM layer with room numbers that count up by themselves, traps, secret doors and notes.
 
 Testing in a browser found one real bug. Closing the tab within half a second of a change lost the change, because autosave waits that long. It now saves as the tab closes.
+
+Side Quest (Adventurer Anvil):
+
+Claude set up the project the same way as Creature Cauldron (Vite, React and TypeScript) and wrote up the architecture we agreed: an app shell, a game-agnostic core, a rules module for each game, and content in packs. A test fails if the core imports the app, a game module or React, or uses a game word like "spell".

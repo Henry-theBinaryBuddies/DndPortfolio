@@ -1,0 +1,40 @@
+# Adventurer Anvil: architecture
+
+Agreed 8 Nov 2026 (Milestone 1, step 1).
+
+```
+        App shell (React)        screens, storage, look
+               │
+              Core               knows no game rules
+           ┌───┴────┐
+   System module   Content packs
+   dnd5e-2014:     SRD 5.1, your books:
+   the rules       data only
+```
+
+## The four parts
+
+1. **App shell** (`src/app/`): the step screens, the sheet, the look, saving to the browser. It never calculates anything: it asks the core what to show and hands it the user's choices.
+2. **Core** (`src/core/`): knows no game. Its ideas are general: a *character* is a document of *choices*; a *step* is a screen of choices described by a system module; a *derived value* is anything calculated from choices; a *validation result* says whether a choice is legal and why; an *override* is a DM unlocking an illegal choice. It loads and checks content packs and asks the system module to do the rules work.
+3. **System module** (`src/systems/<id>/`, first `dnd5e-2014`): all the rules of one game, and only there. It supplies the steps, the derived-value calculations, the legality checks, the sheet layout, the exporters, and the schema its content packs must follow.
+4. **Content packs** (`public/packs/`, and later each account's private packs): data only, never logic. A pack says what a High Elf has; the module says how that is applied.
+
+## The rule
+
+Each layer depends only on the layer below it, and the core never mentions a specific game. No "Strength", "spell slot" or "d20" in the core or the app shell. `src/boundaries.test.ts` checks this on every test run.
+
+Adding a system (D&D 2024, Pathfinder, Kids on Bikes, ...) means a new system module and its packs, with no change to the core or the shell.
+
+## Example: choosing High Elf
+
+1. The shell sends the choice `race = srd:high-elf`.
+2. The core records it in the character document and asks the module to recompute.
+3. The module reads High Elf from the SRD pack, applies +2 Dex and +1 Int, adds the traits, opens a new choice (one wizard cantrip), and re-checks earlier choices.
+4. The core returns the derived values, open choices and warnings.
+5. The shell redraws the summary, shows the cantrip picker, and flags any step the change made invalid.
+
+## Decisions
+
+- **A. Rules run in the browser, in TypeScript.** The Milestone 2 server stores characters but does not recompute them; it trusts the client's numbers, acceptable for a non-competitive tool. The rules are written once.
+- **B. Choices are stored; derived values are not.** Rules fixes and pack updates reach old characters automatically.
+- **C. Packs are referenced by id and version** (`srd-5.1@1.0`). A character that uses a pack not loaded on this device still opens, with the affected choices shown as missing content.

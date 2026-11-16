@@ -1,0 +1,37 @@
+[
+  {
+    "src": "./assets/screenshots/artifact-6/01-race.jpg",
+    "alt": "The Race step: nine race cards with Elf selected, a detail panel listing the elf's traits as chips, High Elf chosen as the subrace, and a summary column on the right showing Dexterity 12 = Base 10 + Elf 2.",
+    "caption": "The Race step. Every choice changes the summary at once, and any number opens to show where it came from."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/02-abilities-roll.jpg",
+    "alt": "The Abilities step set to Roll: six sets of four dice, the lowest die of each crossed out, with their totals, above a table for giving each total to an ability.",
+    "caption": "Rolling 4d6 and dropping the lowest, in the app. Every set stays in the roll log, so a DM can see the real results."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/03-class.jpg",
+    "alt": "The Class step for a Fighter: two skills chosen as chips, the Defense fighting style selected with its +1 AC in armour tag, and a list of what the class gives at level 1.",
+    "caption": "A Fighter's level-1 choices. Features that change numbers, like the Defense style, are calculated, not just described."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/04-equipment.jpg",
+    "alt": "The Equipment step with the Fighter's package: chain mail and a martial weapon and shield chosen, a grid of martial weapons with their damage, and the summary showing Armor Class 19 = Chain Mail 16 + Shield 2 + Fighter 1, with attack rows for a warhammer and a handaxe.",
+    "caption": "Equipment from the class and background packages. Worn armour sets the Armor Class, and every weapon gets an attack row."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/05-shop.jpg",
+    "alt": "The starting gold route: 120 gold entered, a running total of 25 gp spent and 95 gp left, the bought leather armour and longsword, and a search for armour with the items too expensive to buy greyed out.",
+    "caption": "Starting gold and the shop. SRD 5.1 has no starting-wealth dice, so you enter what your DM gives you; you can't buy what you can't afford."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/06-spells.jpg",
+    "alt": "The wizard's cantrip list: rows with each spell's school, casting time, range and duration, three cantrips chosen, and Fire Bolt greyed out as already known from the High Elf.",
+    "caption": "The Spells step. All 319 SRD spells, with search, filters and full text; a spell you already have elsewhere can't be picked twice."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/07-phone.jpg",
+    "alt": "The Race step on a phone: one column of race cards, the High Elf chosen, and a Next button fixed at the bottom of the screen.",
+    "caption": "On a phone: one column and a Back and Next bar. Every page is checked for WCAG 2.2 AA at both sizes."
+  }
+]
