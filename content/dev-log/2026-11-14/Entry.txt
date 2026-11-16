@@ -7,6 +7,7 @@ I asked Claude to file the next milestone's issues for John and Adrian, eight in
 Then John's pull requests arrived: a socket client, the chat and dice panel and the initiative bar, stacked on top of each other. I asked Claude to approve what was waiting for me, and it ran them instead of only reading them. It typed a chat message containing HTML tags to see whether they would be treated as code (they showed as plain text), rolled dice with advantage against the mock server, and narrowed the window to the width of a phone to check that nothing overflowed. It found nothing that blocked and listed a few small things, such as a hint that suggests a dice format the mock server rejects. I had Claude merge them in order, which mattered: the third was built on the second, so it had to be pointed at main first, or it would have merged into the wrong branch. A fourth, a log entry from John, turned out to be inside the others already and now only conflicts.
 
 Nothing yet shows the map and the chat on the same web page. That is the next piece, and it is John's.
+
 Side Quest (Adventurer Anvil):
 
 The Equipment step: the class and background packages, or starting gold and a shop. The community files have no starting-wealth dice, so Claude checked the SRD's own rules text. The table isn't in the SRD, so the app asks for the gold your DM gives you. Worn armour now sets the Armor Class and every weapon gets an attack row. A check table entered by hand found a quiver missing from the Ranger's kit, as well as the Rogue's.
