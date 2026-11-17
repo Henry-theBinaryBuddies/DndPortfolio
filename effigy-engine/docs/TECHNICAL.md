@@ -230,6 +230,7 @@ The human head could not be pushed into a convincing Dragonborn: that was tried 
 - The file also carries a coarser copy of the skin, which clothing is fitted to: its skin is about 330,000 triangles, and a tunic fitted to it was too heavy to merge.
 - It is loaded only the first time the Dragonborn is chosen. If that fails, the app goes back to the humanoid and says why.
 - Its sliders are smooth warps of its own sculpt: muzzle, jaw, brow plates, neck, horns, spines, plus Torso size and the expressions.
+- The warps and expressions are placed by positions on the sculpt (the eyes, the brow plate, the line of the lips, the jaw's hinge, the roots of the horns and spines). A change to the sculpt must leave those where they are, or move the matching numbers in `dragonborn.ts`. The revision of 16 Nov 2026 (eyelids, a reshaped muzzle, brow horns, lip scales; see `assets/dragonborn/README.md`) kept them all.
 - Horns and spines move with the skin they grow from.
 
 ## 6. Hair, beards, brows and locks
@@ -671,3 +672,5 @@ The built site was checked under exactly these headers before the first deploy (
   - the clothing test print stopped by bed adhesion; nothing deprecated, unproven features labelled;
   - horn-tip warnings for the ram and Dragonborn;
   - deployed to Cloudflare Pages at effigy.creaturecauldron.com.
+- **16 Nov:**
+  - the Dragonborn's sculpt revised: eyelids, a lower and narrower muzzle with sideways nostrils, brow horns, longer crest fins, rows of lip scales.

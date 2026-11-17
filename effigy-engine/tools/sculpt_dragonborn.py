@@ -175,10 +175,10 @@ EYE_TURN = turn(y=0.5)  # each eye looks this far out to its side
 # The muzzle (upper jaw) and the lower jaw, as sections along Z: z, half width, top, bottom, corner
 MUZZLE = dict(
     z=[-0.06, 0.0, 0.045, 0.09, 0.133],  # (1.5 cm shorter than first sculpted: it reads better, and fits a tabletop base)
-    half_width=[0.068, 0.06, 0.051, 0.042, 0.036],
-    top=[0.03, 0.018, 0.009, 0.004, 0.0],
+    half_width=[0.068, 0.06, 0.05, 0.038, 0.028],
+    top=[0.03, 0.017, 0.006, -0.003, -0.011],
     bottom=[-0.072, -0.072, -0.071, -0.069, -0.068],
-    corner=[0.03, 0.027, 0.024, 0.024, 0.026],
+    corner=[0.03, 0.026, 0.019, 0.016, 0.016],
 )
 JAW = dict(
     z=[-0.085, -0.03, 0.027, 0.068, 0.092],
@@ -203,6 +203,17 @@ SPINES = [
 ]
 # Brow plates: an angry slant down toward the nose, overhanging the eye
 BROW_TURN = turn(z=0.32, y=0.35)
+# Brow horns: a row of short, swept-back nubs along the brow ridge, from over the eye back to the horn (root, tip, radius)
+BROW_NUBS = [
+    ((0.058, 0.036, 0.004), (0.073, 0.05, -0.022), 0.0075),
+    ((0.057, 0.045, -0.02), (0.071, 0.061, -0.046), 0.007),
+    ((0.052, 0.054, -0.042), (0.064, 0.07, -0.066), 0.006),
+]
+# The eyelids: shells over the eyeball, this much thicker than it; the upper one comes down lower toward the nose (a
+# scowl), the lower one is a low rim. (LID_UPPER: its edge's height on the eye at its middle, and its slant)
+LID = 0.0032
+LID_UPPER = (0.0042, 0.3)
+LID_LOWER = -0.0085
 NOSTRIL_TURN = turn(z=0.55, y=0.25)
 
 
@@ -223,15 +234,31 @@ def head(P):
     d = smin(d, segment(Q, (0.046, -0.024, 0.03), (0.068, -0.03, -0.05), 0.009, 0.013), 0.02)
     # The heavy brow plate over each eye
     d = smin(d, ellipsoid(Q, (0.043, 0.026, 0.018), (0.03, 0.011, 0.032), BROW_TURN), 0.014)
-    # The ridge down the top of the muzzle, and the nostrils with a raised rim
-    d = smin(d, segment(P, (0, 0.035, 0.03), (0, 0.002, 0.117), 0.01, 0.008), 0.015)
-    d = smin(d, ellipsoid(P, (0, -0.012, 0.117), (0.027, 0.023, 0.021)), 0.012)
-    d = smin(d, ellipsoid(Q, (0.021, -0.002, 0.117), (0.01, 0.007, 0.015), NOSTRIL_TURN), 0.008)
-    d = smax(d, -ellipsoid(Q, (0.023, 0.0, 0.123), (0.0085, 0.005, 0.011), NOSTRIL_TURN), 0.003)
-    # Sockets cut under the brow, then the eyeballs set deep in them
+    # (and the plate between the brows, down onto the bridge of the muzzle: without it each brow ended in a knob)
+    d = smin(d, ellipsoid(P, (0, 0.019, 0.034), (0.024, 0.013, 0.032), turn(x=0.3)), 0.016)
+    for root, tip, radius in BROW_NUBS:
+        d = smin(d, segment(Q, root, tip, radius, 0.0032), 0.006)
+    # The ridge down the top of the muzzle, a ridge from each brow to its nostril (so the top of the muzzle is a plane
+    # with edges, not a barrel), and the nostrils: a swelling out to each side of the tip, opening sideways
+    d = smin(d, segment(P, (0, 0.035, 0.03), (0, -0.006, 0.112), 0.01, 0.007), 0.018)
+    d = smin(d, segment(Q, (0.04, 0.019, 0.04), (0.021, -0.018, 0.1), 0.0055, 0.004), 0.018)
+    d = smin(d, ellipsoid(P, (0, -0.024, 0.113), (0.019, 0.019, 0.017)), 0.012)
+    d = smin(d, ellipsoid(Q, (0.021, -0.014, 0.108), (0.0115, 0.009, 0.016), NOSTRIL_TURN), 0.008)
+    d = smax(d, -ellipsoid(Q, (0.026, -0.013, 0.114), (0.0055, 0.0042, 0.0105), NOSTRIL_TURN), 0.003)
+    # The swelling over each fang's root, and the edge of the lower jaw back to its angle
+    d = smin(d, ellipsoid(Q, (0.034, -0.044, 0.08), (0.008, 0.018, 0.012)), 0.014)
+    d = smin(d, segment(Q, (0.022, -0.086, 0.06), (0.058, -0.118, -0.05), 0.007, 0.012), 0.016)
+    # Sockets cut under the brow, then the eyeballs set deep in them, and a lid over and under each
     d = smax(d, -ellipsoid(Q, EYE, (0.021, 0.0115, 0.018), EYE_TURN), 0.004)
-    d = smin(d, np.linalg.norm(Q - (EYE - EYE_TURN[:, 2] * 0.0085), axis=1) - EYE_RADIUS, 0.002)
-    return d
+    centre = EYE - EYE_TURN[:, 2] * 0.0085
+    ball = np.linalg.norm(Q - centre, axis=1)
+    d = smin(d, ball - EYE_RADIUS, 0.002)
+    local = (Q - centre) @ EYE_TURN
+    # (only over the front of the eye, where it shows in its socket: round its sides the shell stood out as a knob)
+    shell = smax(ball - (EYE_RADIUS + LID), 0.005 - local[:, 2], 0.003)
+    upper = smax(shell, LID_UPPER[0] + LID_UPPER[1] * local[:, 0] - local[:, 1], 0.0015)
+    lower = smax(shell, local[:, 1] - LID_LOWER, 0.0015)
+    return smin(d, np.minimum(upper, lower), 0.003)
 
 
 def outgrowths(P):
@@ -250,10 +277,10 @@ SPINE_FLAT = np.array([1.0, 1.8, 1.0])  # cheek spines are flattened plates, thi
 CREST_FLAT = np.array([2.2, 1.0, 1.0])  # crest spines are thin from side to side
 # The crest: a row of short spines over the crown and down the back of the neck (root, tip, radius)
 CREST = [
-    ((0, 0.084, -0.045), (0, 0.105, -0.072), 0.011),
-    ((0, 0.084, -0.08), (0, 0.104, -0.113), 0.012),
-    ((0, 0.068, -0.113), (0, 0.08, -0.15), 0.012),
-    ((0, 0.042, -0.138), (0, 0.046, -0.176), 0.011),
+    ((0, 0.084, -0.045), (0, 0.112, -0.084), 0.01),
+    ((0, 0.084, -0.08), (0, 0.112, -0.124), 0.011),
+    ((0, 0.068, -0.113), (0, 0.088, -0.158), 0.012),
+    ((0, 0.042, -0.138), (0, 0.05, -0.184), 0.011),
     ((0, -0.04, -0.141), (0, -0.048, -0.18), 0.012),
     ((0, -0.1, -0.155), (0, -0.11, -0.192), 0.012),
     ((0, -0.16, -0.165), (0, -0.172, -0.2), 0.011),
@@ -609,7 +636,13 @@ def scale_size(P):
     s = lerp(s, 0.014, near((0.045, 0.028, 0.015), (0.03, 0.016, 0.035)))
     s = lerp(s, 0.014, near((0.062, -0.045, -0.035), (0.03, 0.035, 0.045)))
     muzzle = smoothstep(0.04, 0.09, H[:, 2]) * (1 - near((0.045, 0.028, 0.015), (0.03, 0.016, 0.035)))
-    return lerp(s, 0.0065, muzzle * headness)
+    s = lerp(s, 0.0065, muzzle * headness)
+    # Shields along the top of the muzzle, between its two ridges, as on a lizard's snout; and a ring of fine scales
+    # round each eye
+    shield = smoothstep(0.025, 0.045, H[:, 2]) * smoothstep(0.112, 0.098, H[:, 2]) * smoothstep(0.03, 0.02, H[:, 0]) * smoothstep(-0.03, -0.016, H[:, 1])
+    s = lerp(s, 0.0125, shield * headness)
+    ring = np.linalg.norm(H - EYE, axis=1) - EYE_RADIUS
+    return lerp(s, 0.0052, smoothstep(0.019, 0.01, ring) * headness)
 
 
 def tailward(P, N):
@@ -625,6 +658,37 @@ def tailward(P, N):
 # much. Distances between scales are measured that way, so the cells come out as staggered, overlapping rows
 # rather than round cobbles.
 ROW_STRETCH = 1.45
+# The lip scales: a row of squarish scales along each lip, as a reptile has, the lower row set half a scale along from
+# the upper. (LABIAL: each row's near and far edge from the line of the lips, upper then lower; a scale's length; how
+# far it stands and how deep the grooves between are cut. Head frame.)
+LABIAL = dict(upper=(0.0034, 0.0142), lower=(-0.0125, -0.0034), length=0.0112, rise=0.00085, groove=0.0007)
+LABIAL_TURN = (0.085, 0.03)  # where the row turns across the front of the muzzle, and the radius it is measured round
+
+
+def labial_scales(Hf):
+    """The lip scales at each point (head frame): how much it is one (0..1), its relief, and a number for each scale
+    (for its tone in the paint)."""
+    x, y, z = np.abs(Hf[:, 0]), Hf[:, 1], Hf[:, 2]
+    dy = y - lip_at(z)
+    z0, radius = LABIAL_TURN
+    # (along the lip: straight down each side, then round the front, so a scale sits square across the tip)
+    s = np.where(z < z0, z, z0 + radius * np.arctan2(np.maximum(z - z0, 0), np.maximum(x, 1e-6)))
+    front = z0 + radius * math.pi / 2
+    weight = np.zeros(len(Hf))
+    relief = np.zeros(len(Hf))
+    number = np.zeros(len(Hf))
+    for row, (lo, hi) in enumerate((LABIAL["upper"], LABIAL["lower"])):
+        u = (front - s) / LABIAL["length"] + 0.5 * (1 - row)
+        f = u - np.floor(u)
+        edge = np.minimum(np.minimum(f, 1 - f) * LABIAL["length"], np.minimum(hi - dy, dy - lo))
+        inside = smoothstep(lo - 0.0006, lo + 0.0004, dy) * smoothstep(hi + 0.0006, hi - 0.0004, dy) * smoothstep(MOUTH_CORNER + 0.004, MOUTH_CORNER + 0.016, z)
+        dome = LABIAL["rise"] * (0.75 + 0.25 * np.sin(np.pi * np.clip((dy - lo) / (hi - lo), 0, 1)))
+        carved = lerp(dome, -LABIAL["groove"], 1 - smoothstep(0.0, 0.0013, np.maximum(edge, 0)))
+        take = inside > weight
+        weight = np.where(take, inside, weight)
+        relief = np.where(take, carved, relief)
+        number = np.where(take, np.floor(u) * 2 + row, number)
+    return weight, relief * HEAD_SCALE, number
 
 
 def row_distance(delta, flow):
@@ -692,6 +756,12 @@ def horn_ridges(P):
             h = np.clip((points - root) @ axis / (axis @ axis), 0, 1)
             clearance = spine(points, root, tip, radius, flat)
             on_horn = np.maximum(on_horn, smoothstep(0.005, 0.001, clearance) * smoothstep(0.15, 0.4, h))
+    # (and the brow horns, which are too small to carry scales: cut into them, they were lumps)
+    for root, tip, radius in BROW_NUBS:
+        root, tip = np.array(root, float), np.array(tip, float)
+        axis = tip - root
+        h = np.clip((H - root) @ axis / (axis @ axis), 0, 1)
+        on_horn = np.maximum(on_horn, smoothstep(0.004, 0.001, segment(H, root, tip, radius, 0.0032)) * smoothstep(0.05, 0.3, h))
     return ridge, on_horn
 
 
@@ -781,13 +851,17 @@ def scales(obj):
     scute = lerp(0.0014 * (1 - f), -0.0007, 1 - smoothstep(0.0, 0.07, f))
     skin = lerp(skin, scute, front)
 
+    # The lip scales, in place of the scattered ones along each lip
+    labial, labial_relief, labial_number = labial_scales(head_frame(P))
+    skin = lerp(skin, labial_relief, labial)
+
     ridge, on_horn = horn_ridges(P)
     H = mirrored(head_frame(P))
     eye = smoothstep(EYE_RADIUS + 0.002, EYE_RADIUS + 0.007, np.linalg.norm(H - EYE, axis=1))
     # On the eyeball: a ring round the iris and a slit pupil, pressed in
     local = (H - (EYE - EYE_TURN[:, 2] * 0.0085)) @ EYE_TURN
     across = np.hypot(local[:, 0], local[:, 1])
-    looking = (local[:, 2] > 0) * (1 - eye)
+    looking = (local[:, 2] > 0) * (1 - eye) * (np.linalg.norm(local, axis=1) < EYE_RADIUS + 0.0008)
     iris = 1 - smoothstep(0.0003, 0.0008, np.abs(across - 0.0105))
     slit = smoothstep(0.0012, 0.0006, np.abs(local[:, 0]) / np.sqrt(np.clip(1 - (local[:, 1] / 0.0095) ** 2, 0.01, 1)))
     slit *= local[:, 1] ** 2 < 0.0095**2
@@ -798,7 +872,7 @@ def scales(obj):
     # Nor inside the mouth line, where the two lips' scales would press into each other
     Hf = head_frame(P)
     lip = np.interp(Hf[:, 2], LIP_Z, LIP_Y)
-    cut *= 1 - smoothstep(0.009, 0.004, np.abs(Hf[:, 1] - lip)) * smoothstep(MOUTH_CORNER - 0.03, MOUTH_CORNER - 0.01, Hf[:, 2])
+    cut *= 1 - smoothstep(0.0055, 0.003, np.abs(Hf[:, 1] - lip)) * smoothstep(MOUTH_CORNER - 0.03, MOUTH_CORNER - 0.01, Hf[:, 2])
     # Nor inside the mouth, nor on the teeth and tongue
     cut *= smoothstep(0.002, 0.004, mouth_opening(Hf)) * (mouth_part(Hf) == 0)
     lift = (skin * (1 - on_horn) * eye + ridge + pressed) * cut
@@ -811,6 +885,9 @@ def scales(obj):
     # each scale, its own slight shade, and how pale the underside is, the throat's scutes and under the jaw, as on a
     # reptile's belly. Kept as a colour on the mesh, which the decimation for the app carries over (see export_app).
     tone = rng.random(len(sites))[owner]
+    # (a lip scale's tone is its own, from its place in the row, the same on both sides)
+    labial_tone = np.abs(np.sin(labial_number * 12.9898 + 4.1) * 43758.5453) % 1
+    tone = np.where(labial > 0.5, labial_tone, tone)
     under_jaw = smoothstep(-0.3, -0.75, N[:, 1]) * smoothstep(0.07, 0.04, np.abs(Hf[:, 0])) * smoothstep(-0.05, -0.09, Hf[:, 1]) * smoothstep(-0.1, -0.04, Hf[:, 2])
     throat = smoothstep(0.0, 0.4, N[:, 2]) * smoothstep(0.06, 0.035, x) * smoothstep(-0.32, -0.26, y) * smoothstep(-0.03, -0.09, y)
     belly = np.maximum(np.maximum(front, throat), under_jaw) * (1 - on_horn) * eye
@@ -911,6 +988,8 @@ def export_stl(obj, path):
         handle.write(struct.pack("<I", len(tris)))
         handle.write(record.tobytes())
     size = co.max(0) - co.min(0)
+    for a, b in crossing[:6]:
+        log("  crossing at (mm, Blender axes)", np.round(np.array(bm.faces[a].calc_center_median()) * 1000, 1).tolist())
     log("STL: %d triangles, %.1f x %.1f x %.1f mm, open or shared-by-more edges: %d, crossing triangle pairs: %d" % (len(tris), size[0], size[1], size[2], open_edges, len(crossing)))
     bm.free()
 

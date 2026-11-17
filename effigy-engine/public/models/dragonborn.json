@@ -3,8 +3,8 @@
   "version": 5,
   "source": "tools/sculpt_dragonborn.py",
   "units": "head units (metres x 5): origin between the human bust's eyes, y up, the face toward +z",
-  "vertices": 206749,
-  "triangles": 413494,
+  "vertices": 207006,
+  "triangles": 414008,
   "eyes": [
     {
       "centre": [
@@ -217,8 +217,8 @@
       ],
       "tip": [
         0.0,
-        0.72875,
-        -0.239
+        0.769,
+        -0.308
       ]
     },
     {
@@ -230,8 +230,8 @@
       ],
       "tip": [
         0.0,
-        0.723,
-        -0.47475
+        0.769,
+        -0.538
       ]
     },
     {
@@ -243,8 +243,8 @@
       ],
       "tip": [
         0.0,
-        0.585,
-        -0.6875
+        0.631,
+        -0.7335
       ]
     },
     {
@@ -256,8 +256,8 @@
       ],
       "tip": [
         0.0,
-        0.3895,
-        -0.837
+        0.4125,
+        -0.883
       ]
     },
     {
