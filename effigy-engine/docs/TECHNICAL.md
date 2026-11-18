@@ -674,3 +674,5 @@ The built site was checked under exactly these headers before the first deploy (
   - deployed to Cloudflare Pages at effigy.creaturecauldron.com.
 - **16 Nov:**
   - the Dragonborn's sculpt revised: eyelids, a lower and narrower muzzle with sideways nostrils, brow horns, longer crest fins, rows of lip scales.
+- **17 Nov:**
+  - the Dragonborn's mouth rebuilt: a predator's uneven, back-curving teeth, fangs showing with the mouth shut, gums, a grooved tongue.

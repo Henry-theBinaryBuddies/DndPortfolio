@@ -298,14 +298,32 @@ LIP_Y = [-0.06, -0.068, -0.07, -0.068, -0.068]
 # (narrower and shallower toward the front, where the lower jaw is slight: there a wider hollow left its wall too thin)
 MOUTH = dict(z=[MOUTH_CORNER, 0.03, 0.07, 0.112], half_width=[0.036, 0.029, 0.018, 0.012], above=[0.006, 0.014, 0.013, 0.008], below=[0.003, 0.0042, 0.0032, 0.0025])
 SLIT = 0.0018  # half the gap between the lips, shut (wide enough for the 2 mm grid to keep the lips apart)
-# The teeth: along each side of the mouth, upper ones hanging from the palate's edge and lower ones (set between them)
-# standing from the floor's; and a fang either side, hanging from the upper lip outside the narrower lower jaw, so it
-# shows over the lower lip with the mouth shut. (root, tip, root radius)
-# (each: z, its root's and tip's height above the lips, how far out from the hollow's side, root radius)
-TEETH_UPPER = [(z, 0.0085, 0.0005, 0.003, 0.0032) for z in np.linspace(0.012, 0.1, 7)]
-TEETH_LOWER = [(z, -0.0055, -0.001, -0.0015, 0.0026) for z in np.linspace(0.019, 0.093, 6)]
-FANG = ((0.033, 0.004, 0.08), (0.034, -0.016, 0.084), 0.0052)
-TONGUE = ((0, -0.0035, 0.045), (0.016, 0.0025, 0.042))
+# The teeth, a predator's: of mixed sizes, each curving back a little toward its tip.
+#    (what belongs to the upper jaw and what to the lower keep 2 mm apart with the mouth shut: nearer, the grid joined
+#    them, or left a sliver between that crossed itself)
+#  - inside the mouth, down each side: upper ones hanging from the palate's edge, large and small in turn, and lower
+#    ones standing from the floor between them, their tips up inside the hollow of the upper jaw (the mouth shut);
+#    and a pair of each across the front
+#  - outside it: fangs hanging from the upper lip where it overhangs the narrower lower jaw, so they show over the
+#    lower lip with the mouth shut: the great fang, one behind and one before it, and two across the tip of the muzzle
+# (inside: z, its root's and tip's height above the lips, how far out from the hollow's side, root radius)
+TEETH_UPPER = [(z, 0.0105 if i % 2 else 0.0085, 0.0012 if i % 2 else 0.002, 0.002 if i % 2 else 0.003, 0.0037 if i % 2 else 0.0026) for i, z in enumerate(np.linspace(0.021, 0.1, 7))]
+TEETH_LOWER = [(z, -0.0055, tip, inset, radius) for z, tip, inset, radius in zip(np.linspace(0.0275, 0.093, 6), [0.002, 0.005, 0.003, 0.006, 0.008, 0.0045], [-0.004, -0.004, -0.004, -0.004, -0.0058, -0.0045], [0.0028, 0.0032, 0.0028, 0.0033, 0.0043, 0.003])]
+# (across the front, inside: x, z, root's and tip's height above the lips, root radius)
+TEETH_FRONT_LOWER = [(0.005, 0.087, -0.0055, 0.0045, 0.0027)]
+# (outside: root (x, height above the lips, z), tip, root radius)
+FANGS = [
+    ((0.033, 0.004, 0.08), (0.034, -0.021, 0.083), 0.0058),
+    ((0.0395, 0.004, 0.057), (0.04, -0.011, 0.058), 0.0042),
+    ((0.027, 0.004, 0.101), (0.0275, -0.0125, 0.103), 0.0042),
+    ((0.0165, 0.004, 0.1185), (0.0165, -0.0105, 0.121), 0.0036),
+    ((0.0058, 0.004, 0.1245), (0.0058, -0.0085, 0.1265), 0.0031),
+]
+TOOTH_SWEEP = 0.22  # how far back a tooth's tip lies, for its length
+# The tongue: sections along z (half width, and its top and underside relative to the lips), with a groove down it
+TONGUE = dict(z=[0.004, 0.03, 0.06, 0.085, 0.099], half_width=[0.017, 0.016, 0.0125, 0.0085, 0.0045], top=[-0.0012, 0.0006, 0.0002, -0.0008, -0.002], bottom=-0.0065, groove=0.0011)
+# The gums: a rounded ridge the teeth grow from, along the upper and the lower edge of the hollow and across its front
+GUM = dict(upper=0.0028, lower=0.0018)
 
 
 def lip_at(z):
@@ -336,21 +354,72 @@ def tooth_points(z, rise, sink, inset):
     return hw, lip + rise, lip + sink
 
 
-def mouth_contents(P):
-    """The teeth, the fangs and the tongue (head frame, both sides)."""
-    Q = mirrored(P)
-    d = np.full(len(P), 1.0)
+def tooth(Q, root, tip, radius, point):
+    """A tooth from root to tip, curving back toward its tip (a tube through a point part of the way along)."""
+    root, tip = np.array(root, float), np.array(tip, float)
+    length = np.linalg.norm(tip - root)
+    tip = tip - np.array([0, 0, TOOTH_SWEEP * length])
+    mid = root + 0.55 * (tip - root) + np.array([0, 0, 0.45 * TOOTH_SWEEP * length])
+    return tube(Q, [root, mid, tip], [radius, 0.62 * radius, point])
+
+
+def upper_teeth(Q):
+    """The upper jaw's teeth and fangs (Q: head frame, mirrored)."""
+    d = np.full(len(Q), 1.0)
     for z, rise, sink, inset, radius in TEETH_UPPER:
         x, root, tip = tooth_points(z, rise, sink, inset)
-        d = np.minimum(d, bounded(Q, (x - 0.01, tip - 0.01, z - 0.01), (x + 0.01, root + 0.01, z + 0.01), lambda R: segment(R, (x, root, z), (x, tip, z), radius, 0.0007)))
+        d = np.minimum(d, tooth(Q, (x, root, z), (x, tip, z), radius, 0.0007))
+    for (rx, ry, rz), (tx, ty, tz), radius in FANGS:
+        d = np.minimum(d, tooth(Q, (rx, lip_at(rz) + ry, rz), (tx, lip_at(rz) + ty, tz), radius, 0.0012))
+    return d
+
+
+def lower_teeth(Q):
+    """The lower jaw's teeth (Q: head frame, mirrored)."""
+    d = np.full(len(Q), 1.0)
     for z, rise, sink, inset, radius in TEETH_LOWER:
         x, root, tip = tooth_points(z, rise, sink, inset)
-        d = np.minimum(d, bounded(Q, (x - 0.01, root - 0.01, z - 0.01), (x + 0.01, tip + 0.01, z + 0.01), lambda R: segment(R, (x, root, z), (x, tip, z), radius, 0.0006)))
-    (rx, ry, rz), (tx, ty, tz), radius = FANG
-    lip = lip_at(rz)
-    d = np.minimum(d, bounded(Q, (rx - 0.012, lip + ty - 0.01, rz - 0.012), (rx + 0.012, lip + ry + 0.01, tz + 0.012), lambda R: segment(R, (rx, lip + ry, rz), (tx, lip + ty, tz), radius, 0.0012)))
-    (cx, cy, cz), r = TONGUE
-    return np.minimum(d, ellipsoid(P, (cx, lip_at(cz) + cy, cz), r))
+        d = np.minimum(d, tooth(Q, (x, root, z), (x, tip, z), radius, 0.0007))
+    for x, z, rise, sink, radius in TEETH_FRONT_LOWER:
+        d = np.minimum(d, tooth(Q, (x, lip_at(z) + rise, z), (x, lip_at(z) + sink, z), radius, 0.0007))
+    return d
+
+
+def tongue(P):
+    """The tongue: a low rounded strip along the floor of the mouth, narrowing to its tip, grooved down its middle."""
+    z = np.array(TONGUE["z"])
+    lip = lip_at(z)
+    d = loft(P, z, TONGUE["half_width"], lip + np.array(TONGUE["top"]), lip + TONGUE["bottom"], np.full(len(z), 0.0022), 0.004, 0.004)
+    top = lip + np.array(TONGUE["top"])
+    groove = tube(P, [(0, top[i] + 0.0004, z[i]) for i in range(1, len(z) - 1)] + [(0, top[-1] + 0.0004, z[-1] - 0.006)], [TONGUE["groove"]] * (len(z) - 1))
+    return smax(d, -groove, 0.0012)
+
+
+def gums(Q):
+    """The ridges the teeth grow from (Q: head frame, mirrored): along each side and across the front."""
+    # (not back to the corner of the mouth: the hollow is too shallow there to hold a ridge, and it crossed the lips)
+    z = np.linspace(MOUTH["z"][0] + 0.024, MOUTH["z"][-1] - 0.003, 8)
+    hw = np.interp(z, MOUTH["z"], MOUTH["half_width"])
+    lip = lip_at(z)
+    above = np.interp(z, MOUTH["z"], MOUTH["above"])
+    below = np.interp(z, MOUTH["z"], MOUTH["below"])
+    upper = [(hw[i] + 0.0012, lip[i] + min(above[i], 0.0095) - 0.0008, z[i]) for i in range(len(z))] + [(0.0, lip[-1] + min(above[-1], 0.0095) - 0.0008, z[-1] + 0.003)]
+    # (against the hollow's side: stood off it, the trench between was too narrow for the grid, and crossed itself)
+    lower = [(hw[i] - 0.0015, lip[i] - below[i], z[i]) for i in range(len(z))]
+    return np.minimum(tube(Q, upper, [GUM["upper"]] * len(upper)), tube(Q, lower, [GUM["lower"]] * len(lower)))
+
+
+# (the box all of the mouth's contents lie in, head frame, mirrored: they are only worked out inside it)
+MOUTH_BOX = ((-0.001, -0.1, -0.005), (0.055, -0.045, 0.14))
+
+
+def mouth_contents(P):
+    """The teeth, the fangs, the gums and the tongue (head frame, both sides)."""
+    Q = mirrored(P)
+    hard = bounded(Q, *MOUTH_BOX, lambda R: np.minimum(upper_teeth(R), lower_teeth(R)))
+    soft = bounded(Q, *MOUTH_BOX, lambda R: np.minimum(gums(R), tongue(R)))
+    # (the teeth stand crisply out of the gums)
+    return smin(hard, soft, 0.0008)
 
 
 def mouth_part(P):
@@ -360,22 +429,10 @@ def mouth_part(P):
     part = np.zeros(len(P), np.uint8)
     near = lambda dist: dist < 0.0012
     part[near(mouth_opening(P) + 0.0) & (np.abs(P[:, 0]) < 0.05)] = 4
-    up = np.full(len(P), 1.0)
-    for z, rise, sink, inset, radius in TEETH_UPPER:
-        x, root, tip = tooth_points(z, rise, sink, inset)
-        up = np.minimum(up, segment(Q, (x, root, z), (x, tip, z), radius, 0.0007))
-    (rx, ry, rz), (tx, ty, tz), radius = FANG
-    lip = lip_at(rz)
-    up = np.minimum(up, segment(Q, (rx, lip + ry, rz), (tx, lip + ty, tz), radius, 0.0012))
-    down = np.full(len(P), 1.0)
-    for z, rise, sink, inset, radius in TEETH_LOWER:
-        x, root, tip = tooth_points(z, rise, sink, inset)
-        down = np.minimum(down, segment(Q, (x, root, z), (x, tip, z), radius, 0.0006))
-    (cx, cy, cz), r = TONGUE
-    tongue = ellipsoid(P, (cx, lip_at(cz) + cy, cz), r)
-    part[near(tongue)] = 3
-    part[near(down)] = 2
-    part[near(up)] = 1
+    part[near(bounded(Q, *MOUTH_BOX, gums))] = 4
+    part[near(bounded(Q, *MOUTH_BOX, tongue))] = 3
+    part[near(bounded(Q, *MOUTH_BOX, lower_teeth))] = 2
+    part[near(bounded(Q, *MOUTH_BOX, upper_teeth))] = 1
     return part
 
 
@@ -1094,10 +1151,11 @@ def harmonic(fixed, value, edges, passes=3000):
     return np.where(fixed, value, x)
 
 
-def space_average(H, w, cell=0.003, reach=2, passes=3):
+def space_average(H, w, cell=0.003, reach=2, passes=3, give=None):
     """w averaged over the space round each point (head frame), not over the surface: splatted into a grid, blurred (three
     box blurs, near enough a Gaussian of 7 mm) and read back. Over the surface, the weights changed faster down into
-    each groove between the scales and up out of it than over the space it crosses, and the grooves' walls folded."""
+    each groove between the scales and up out of it than over the space it crosses, and the grooves' walls folded.
+    Only the points where `give` is set are averaged from (all, if it is not given)."""
     low = H.min(0) - (reach * passes + 2) * cell
     f = (H - low) / cell
     shape = tuple(int(s) + reach * passes + 4 for s in f.max(0))
@@ -1111,6 +1169,7 @@ def space_average(H, w, cell=0.003, reach=2, passes=3):
                 corners.append(((i0[:, 0] + dx, i0[:, 1] + dy, i0[:, 2] + dz), k))
     total, weight = np.zeros(shape), np.zeros(shape)
     for at, k in corners:
+        k = k if give is None else k * give
         np.add.at(total, at, k * w)
         np.add.at(weight, at, k)
 
@@ -1156,11 +1215,14 @@ def jaw_weights(P, mouth, edges):
     upper &= ~corner
     w = harmonic(lower | upper, lower * 1.0, edges)
     near_lips = 1 - smoothstep(0.008, 0.02, mouth_opening(H))
-    w = np.where(mouth == 0, lerp(space_average(H, w), w, near_lips), w)
+    # (the teeth and the tongue are left out of the averages: the fangs hang close beside the lower jaw, held still, and
+    # averaged in they slowed the skin of the jaw next to them, which folded as it opened)
+    soft = (mouth == 0) | (mouth == 4)
+    w = np.where(mouth == 0, lerp(space_average(H, w, give=soft), w, near_lips), w)
     # (where the lips close at the corner, the weights still rose from none to a third within a millimetre, over the
     # surface; averaged over space there, finely, as there is no gap between the lips to keep)
     at_corner = (1 - smoothstep(0.003, JAW_CORNER[2], from_corner)) * ((mouth == 0) | (mouth == 4))
-    return lerp(w, space_average(H, w, cell=0.002), at_corner)
+    return lerp(w, space_average(H, w, cell=0.002, give=soft), at_corner)
 
 
 def cover_mesh(P, tris, tri_region):
@@ -1223,6 +1285,13 @@ def export_app(obj, out_dir):
     bm = bmesh.new()
     bm.from_mesh(obj.data)
     bmesh.ops.triangulate(bm, faces=list(bm.faces))
+    # The decimation leaves long thin triangles along the foot of the bust, which turn over when the torso is slimmed:
+    # their edges are turned to make them as near equal-sided as the same surface allows. Only there (in the 2.5 cm
+    # above the base, which clothing thins out before; done everywhere, it moved the chest under the breastplate) and
+    # only where it is near flat, within 4.5 degrees, so nothing carved changes. (Blender's axes: Z is up.)
+    foot = BUST_BOTTOM + 0.025
+    flat = [e for e in bm.edges if len(e.link_faces) == 2 and max(v.co.z for v in e.verts) < foot and e.link_faces[0].normal.dot(e.link_faces[1].normal) > 0.997]
+    bmesh.ops.beautify_fill(bm, faces=list({f for e in flat for f in e.link_faces}), edges=flat)
     bm.to_mesh(obj.data)
     bm.free()
     mesh = obj.data

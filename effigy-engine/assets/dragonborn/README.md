@@ -29,6 +29,8 @@ A second pass over the sculpt, all in the script:
 - **Crest:** the four fins over the crown are longer and swept back.
 - **Scales:** a row of squarish scales along each lip, the lower row set half a scale along from the upper; larger shields on top of the muzzle; a ring of fine scales round each eye.
 
+**The mouth, revised 17 Nov 2026.** A predator's teeth, of mixed sizes and curving back toward their tips, in place of the even rows: large and small in turn down the upper jaw, the lower teeth standing between them, a pair across the front of the lower jaw, and outside the lips the great fang with a smaller one behind and before it, and two more across the tip of the muzzle, so several show with the mouth shut. Gum ridges along both jaws for the teeth to grow from, and a longer, tapered tongue with a groove down its middle. What belongs to the upper jaw and what to the lower is kept 2 mm apart with the mouth shut, or the grid joins them. The teeth and tongue are left out of the smoothing of the jaw's weights, since the still fangs slowed the jaw's skin beside them and it folded as it opened. The decimation for the app also evens out the long thin triangles along the foot of the bust, which folded when the torso was slimmed.
+
 The eyes, the line of the lips, the mouth, the jaw's hinge, the brow plate and the roots of the horns and spines are where they were, because the app's shape controls and expressions are placed by them (`src/dragonborn.ts`).
 
 ## Renders
@@ -38,7 +40,7 @@ The eyes, the line of the lips, the mouth, the jaw's hinge, the brow plate and t
 
 ## Test STL
 
-The STL is the bust on a plain round plinth, at about 1:12 (36.7 x 38.7 x 51.1 mm), 2.30 million triangles. The latest build (16 Nov 2026) passed the script's own check: no edge used by other than two triangles, no triangles passing through each other (each pair the bounding test reports is tested exactly).
+The STL is the bust on a plain round plinth, at about 1:12 (36.6 x 38.7 x 51.1 mm), 2.32 million triangles. The latest build (17 Nov 2026) has no edge used by other than two triangles, but **2 pairs of triangles cross** where a scale groove falls on the sharp back corner of the right shoulder, at the flat side cut. The scales are laid out at random from the mesh's vertices, so any change to the sculpt moves them, and this corner catches one now and then; the build of 16 Nov had none. It concerns only this test STL: the app's print merges the bust into one solid with Manifold, and its export check passes.
 
 The independent Trimesh check (`tools/check-stl.py`) was last run on the build before it (watertight, consistently wound, a true volume, one body, 19.0 cm³) and has not been run again on this one.
 
