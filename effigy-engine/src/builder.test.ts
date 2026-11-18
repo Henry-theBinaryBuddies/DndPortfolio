@@ -891,9 +891,10 @@ describe("hair round the ears", () => {
           expect(covered(positions, normals, shell, 1 * MM), `${race} ${body} ${hairStyle}: cap`).toBeLessThan(0.03);
           if (hairStyle === "dreadlocks") {
             // the locks pass over the top of the ear and down behind it: little of it has one lying on it (an elf's
-            // point reaches up among the locks, so a little of its tip has one close above: 6% of the ear; a human's 3%)
+            // point reaches up among the locks, so a little of its tip has one close above: 8% of the ear since its ears were
+            // lengthened, on 17 Nov 2026, from 6%; a human's 3%)
             const share = covered(positions, normals, buildLockShell(p, positions, normals, base)!, 0.6 * MM);
-            expect(share, `${race} ${body}: locks`).toBeLessThan(0.08);
+            expect(share, `${race} ${body}: locks`).toBeLessThan(0.09);
           }
         }
       }

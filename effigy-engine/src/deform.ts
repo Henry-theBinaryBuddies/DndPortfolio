@@ -131,6 +131,14 @@ export function deformHead(base: HeadBase, p: Params): Deformed {
     // nostril wings
     push(blob(0, -0.03, 0.17, 0.05, 0.14, 0.1), k.noseBridge * 0.05);
     push(blob(0.11, -0.23, 0.14, 0.025, 0.05, 0.06), -0.014);
+    // A bulbous nose: the tip (the nose's lowest, foremost point is at y -0.18, z 0.22) swells round and drops a
+    // little, and the wings of the nostrils grow fuller and wider
+    if (k.noseBulb > 0) {
+      push(blob(0, -0.19, 0.19, 0.07, 0.065, 0.065), 0.07 * k.noseBulb);
+      dy -= 0.018 * k.noseBulb * blob(0, -0.18, 0.21, 0.07, 0.05, 0.06);
+      push(blob(0.1, -0.215, 0.15, 0.045, 0.045, 0.06), 0.02 * k.noseBulb);
+      dx += x0 * 0.25 * k.noseBulb * blob(0, -0.21, 0.16, 0.13, 0.06, 0.1);
+    }
 
     // Nasolabial folds: a soft groove from the side of the nose toward the corner of the mouth, ending
     // above it. Young faces barely have one; it deepens with age and with a heavy face. (Carved deep at
