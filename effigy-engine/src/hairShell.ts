@@ -207,31 +207,85 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
   // off again, as softly as it fades in, so there is no ledge)
   if (keepOff) for (let i = 0; i < count; i++) soft[i] *= keepOff[i];
 
-  // The growth map tapered inward from the hairline (see Style.taper): by how many rings of the mesh each vertex
-  // lies inside it, so it builds up over that many rings whatever the growth map does at its edge
+  // The growth map tapered inward from the hairline (see Style.taper): by how far along the surface each vertex lies
+  // inside it, so it builds up over that distance whatever the growth map does at its edge. The distance runs from
+  // where each edge of the mesh crosses the hairline (the growth map's half-way line), not from the nearest vertex
+  // outside it: counted in whole rings of the mesh, every vertex of a ring had the same value, and the hair's colour
+  // and thickness stepped along the mesh's rows, a staircase across the forehead.
   let inward = grow;
   if (style.taper) {
-    const rings = new Float32Array(count).fill(style.taper);
-    let front: number[] = [];
-    for (let i = 0; i < count; i++)
+    const far = Infinity;
+    const dist = new Float32Array(count).fill(far);
+    const length = (i: number, j: number) => Math.hypot(positions[i * 3] - positions[j * 3], positions[i * 3 + 1] - positions[j * 3 + 1], positions[i * 3 + 2] - positions[j * 3 + 2]);
+    let crossing = 0;
+    let crossings = 0;
+    for (let i = 0; i < count; i++) {
       if (grow[i] < 0.5) {
-        rings[i] = 0;
-        front.push(i);
+        dist[i] = 0;
+        continue;
       }
-    for (let ring = 1; ring < style.taper && front.length; ring++) {
-      const next: number[] = [];
-      for (const i of front)
-        for (let k = base.offsets[i]; k < base.offsets[i + 1]; k++) {
-          const j = base.neighbours[k];
-          if (rings[j] > ring) {
-            rings[j] = ring;
-            next.push(j);
-          }
+      for (let k = base.offsets[i]; k < base.offsets[i + 1]; k++) {
+        const j = base.neighbours[k];
+        if (grow[j] >= 0.5) continue;
+        const edge = length(i, j);
+        const t = (grow[i] - 0.5) / (grow[i] - grow[j]);
+        dist[i] = Math.min(dist[i], t * edge);
+        crossing += edge;
+        crossings++;
+      }
+    }
+    // (the taper is as long as `taper` rings of the mesh where it crosses the hairline, as it was when counted in rings)
+    const span = style.taper * (crossings ? crossing / crossings : 0.01);
+    // Outward from there along the mesh's edges, nearest first (only as far as the taper reaches)
+    const heap: number[] = [];
+    const push = (i: number) => {
+      heap.push(i);
+      let c = heap.length - 1;
+      while (c > 0) {
+        const parent = (c - 1) >> 1;
+        if (dist[heap[parent]] <= dist[heap[c]]) break;
+        [heap[parent], heap[c]] = [heap[c], heap[parent]];
+        c = parent;
+      }
+    };
+    const pop = () => {
+      const top = heap[0];
+      const last = heap.pop()!;
+      if (heap.length) {
+        heap[0] = last;
+        let c = 0;
+        for (;;) {
+          const l = 2 * c + 1;
+          const r = l + 1;
+          let m = c;
+          if (l < heap.length && dist[heap[l]] < dist[heap[m]]) m = l;
+          if (r < heap.length && dist[heap[r]] < dist[heap[m]]) m = r;
+          if (m === c) break;
+          [heap[m], heap[c]] = [heap[c], heap[m]];
+          c = m;
         }
-      front = next;
+      }
+      return top;
+    };
+    const done = new Uint8Array(count);
+    for (let i = 0; i < count; i++) if (grow[i] >= 0.5 && dist[i] < far) push(i);
+    while (heap.length) {
+      const i = pop();
+      if (done[i]) continue;
+      done[i] = 1;
+      if (dist[i] > span) continue;
+      for (let k = base.offsets[i]; k < base.offsets[i + 1]; k++) {
+        const j = base.neighbours[k];
+        if (done[j] || grow[j] < 0.5) continue;
+        const d = dist[i] + length(i, j);
+        if (d < dist[j]) {
+          dist[j] = d;
+          push(j);
+        }
+      }
     }
     inward = new Float32Array(count);
-    for (let i = 0; i < count; i++) inward[i] = grow[i] * smooth(rings[i] / style.taper);
+    for (let i = 0; i < count; i++) inward[i] = grow[i] * smooth(Math.min(dist[i], span) / span);
   }
 
   // The direction to raise each vertex in: the skin's normals, smoothed across the surface
@@ -296,8 +350,11 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     // edge ended in knife-thin points with an open underside showing)
     const settle = smooth(depth / 0.35);
     const clumped = 1 + ((style.clumps ? style.clumps(x, y, z) : 1) - 1) * settle;
-    // At the very edge it dips just under the skin, so it meets the skin without a step
-    const root = SKIN_GAP * (2 * smooth(w / 0.08) - 1);
+    // At the very edge it dips just under the skin, so it meets the skin without a step. For hair (a style with a
+    // taper), where it comes out of the skin follows the spread-out growth map, which changes over several rows of the
+    // mesh: the growth map itself goes from none to full within about one row, so the line where the shell came out of
+    // the skin ran along the mesh's rows and columns, a staircase across the forehead.
+    const root = SKIN_GAP * (2 * (style.taper ? smooth((soft[v] - 0.2) / 0.2) : smooth(w / 0.08)) - 1);
     const lift = root + style.thickness(x, y, z) * (scale ? scale[v] : 1) * clumped * depth;
     // ...and carried along the comb, so a swept style's mass leans back instead of rising straight up
     if (style.hang) lean.copy(comb);
