@@ -64,6 +64,25 @@ const crop: Pattern = (x, _y, z) => {
 
 // The carving at a point of the scalp, in the undeformed head's coordinates (so it stays with the head
 // however it is reshaped), for each style
+// Drawn up to a topknot: the locks run straight up from the hairline to the bun on the crown, which hides where they
+// meet (as the crop's, a whole number of them round the head)
+const TOPKNOT_Z = -0.42; // the bun's place on the crown (see locks.ts)
+const drawnUp: Pattern = (x, _y, z) => {
+  const angle = Math.atan2(x, z - TOPKNOT_Z);
+  const r = Math.hypot(x, z - TOPKNOT_Z);
+  const across = ((angle + 0.015 * Math.sin(r * 13)) / (2 * Math.PI)) * CROP_LOCKS * HAIR_CARVING.lockPitch;
+  return locks(across, r) * smooth((r - 0.12) / 0.08);
+};
+
+// Drawn back to a ponytail: the locks run back over the head and converge where it is tied, at the back of the head
+// (the line they run round lies lower toward the front, or the locks would crowd at the forehead too)
+const TAIL_Y = 0.15; // where it is tied (see locks.ts)
+const drawnBack: Pattern = (x, y, z) => {
+  const axisY = TAIL_Y - 0.25 * (1 - smooth((-z - 0.2) / 0.5));
+  const radius = Math.hypot(x, y - axisY);
+  return locks(0.5 * Math.atan2(x, y - axisY) + 0.01 * Math.sin(z * 9 + x * 5), z) * smooth((radius - 0.12) / 0.08);
+};
+
 const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   swept,
   long: swept,
@@ -72,6 +91,8 @@ const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   mohawk: (x, y, z) => locks(x + 0.008 * Math.sin(z * 11 + y * 5), z),
   // (dreadlocks grow from a close crop)
   dreadlocks: crop,
+  topknot: drawnUp,
+  ponytail: drawnBack,
 };
 
 export function hairPattern(style: Exclude<HairStyle, "none">): Pattern {

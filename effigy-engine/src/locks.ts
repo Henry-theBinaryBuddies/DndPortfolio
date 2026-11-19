@@ -364,14 +364,127 @@ function dreadShell(positions: Float32Array, normals: Float32Array, base: HeadBa
   return tubes.geometry();
 }
 
-// The locks of a dreadlocks style, as a closed solid made of tubes; null for any other style
+// The head vertex nearest a point of the undeformed head (where a bun or a tail is rooted: always the same one, so it
+// stays with the head however it is reshaped)
+function nearestVertex(base: HeadBase, x: number, y: number, z: number): number {
+  const bp = base.positions;
+  let best = Infinity;
+  let at = 0;
+  for (let v = 0; v < bp.length / 3; v++) {
+    const d = (bp[v * 3] - x) ** 2 + (bp[v * 3 + 1] - y) ** 2 + (bp[v * 3 + 2] - z) ** 2;
+    if (d < best) {
+      best = d;
+      at = v;
+    }
+  }
+  return at;
+}
+
+// A topknot: the hair drawn up to the crown (see the topknot cap in hairShell.ts) and wound into a bun there. The bun
+// is a short tube standing up off the crown, rooted under the cap, swelling a little to its widest and closing in a
+// dome: it widens by no more than about 15 degrees from its root, so it prints without supports. Its grooves wind
+// round it, as hair wound into a bun does.
+export const BUN = { at: [0, 0.563, -0.42] as const, radius: 0.15, height: 0.3, coils: 9 };
+
+function bunShell(positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry {
+  const v = nearestVertex(base, ...BUN.at);
+  const n = new THREE.Vector3(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]);
+  // (up off the crown, tipped a little toward the back as the hair is drawn there)
+  const up = new THREE.Vector3(0, 1, -0.25).normalize().add(n).normalize();
+  const start = new THREE.Vector3(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]).addScaledVector(n, -0.04);
+  const rings = 18;
+  const path = Array.from({ length: rings }, (_, i) => start.clone().addScaledVector(up, (BUN.height * i) / (rings - 1)));
+  const widest = 0.42;
+  const tubes = new Tubes();
+  tubes.add(
+    path,
+    (t) => BUN.radius * (t < widest ? 0.82 + 0.18 * smooth01(t / widest) : Math.sqrt(Math.max(0, 1 - ((t - widest) / (1 - widest)) ** 2))),
+    28,
+    () => null,
+  );
+  return tubes.geometry();
+}
+
+export const bunPattern: Pattern = (c, s, length) => {
+  const angle = Math.atan2(s, c);
+  const across = (angle / (2 * Math.PI)) * BUN.coils * HAIR_CARVING.lockPitch + 2.2 * length;
+  return locks(across, length, BUN.coils);
+};
+
+// A ponytail: the hair drawn back (see the ponytail cap in hairShell.ts) and tied at the back of the head, falling
+// from there down the back of the neck until it rests on it, so it prints without supports. A thick rope, bound
+// near its root, fuller below the tie and thinning to its end, carved with locks down its length.
+export const TAIL = { at: [0, 0.15, -0.86] as const, radius: 0.095, coils: 9, tie: 0.065 };
+
+function tailShell(positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry {
+  const cloud = new Cloud(positions);
+  const v = nearestVertex(base, ...TAIL.at);
+  const n = new THREE.Vector3(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]);
+  const start = new THREE.Vector3(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]).addScaledVector(n, -0.03);
+  const step = 0.04;
+  const toNeck = new THREE.Vector3();
+  const path = fall(cloud, {
+    start,
+    direction: n,
+    steps: 14,
+    step,
+    radius: TAIL.radius,
+    // (out from the head past the tie, then falling, and below the skull leaning in to lie down the back of the neck:
+    // falling plumb, it hung clear of the neck in an arc; leaning in from the tie, it pressed into the back of the skull
+    // and curled up there)
+    target: (p, i) => (i < 3 ? n.clone().addScaledVector(PLUMB, 1.5) : toNeck.set(base.neck.x - p.x, 0, base.neck.z - p.z).setLength(0.45 * smooth01((-0.15 - p.y) / 0.25)).add(PLUMB)),
+    rate: 0.3,
+    land: LAND_STEPS,
+    endY: -0.8,
+    rest: base.neck,
+  });
+  const total = path.reduce((sum, point, i) => (i ? sum + point.distanceTo(path[i - 1]) : 0), 0);
+  const tieAt = (TAIL.tie + 0.03) / total; // (just clear of the cap)
+  const cap = Math.min(0.3, 0.1 / total);
+  const tubes = new Tubes();
+  tubes.add(
+    path,
+    (t) => {
+      // bound at the tie, full just below it, thinning to its end, which closes in a rounded tip
+      const body = TAIL.radius * (t < tieAt ? 0.85 + 0.15 * smooth01(t / tieAt) : 1.3 - 0.6 * smooth01((t - tieAt) / (1 - tieAt)));
+      const band = 0.12 * Math.exp(-((((t - tieAt) * total) / 0.012) ** 2));
+      return (body + TAIL.radius * band) * (t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1);
+    },
+    20,
+    () => null,
+  );
+  return tubes.geometry();
+}
+
+export const tailPattern: Pattern = (c, s, length) => {
+  const angle = Math.atan2(s, c);
+  const across = (angle / (2 * Math.PI)) * TAIL.coils * HAIR_CARVING.lockPitch + 0.25 * length;
+  // (the tie, and the hair gathered into it, left plain)
+  return locks(across, length, TAIL.coils) * smooth01((length - TAIL.tie - 0.05) / 0.03);
+};
+
+const smooth01 = (t: number) => {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+};
+
+// The part a style's tubes make (see parts.ts), for its name in warnings
+export function lockPart(p: Params): string {
+  return p.hairStyle === "topknot" ? "bun" : p.hairStyle === "ponytail" ? "tail" : "locks";
+}
+
+// The locks of a dreadlocks style, or the bun of a topknot or the tail of a ponytail, as a closed solid made of
+// tubes; null for any other style
 export function buildLockShell(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   if (p.hairStyle === "dreadlocks") return dreadShell(positions, normals, base);
+  if (p.hairStyle === "topknot") return bunShell(positions, normals, base);
+  if (p.hairStyle === "ponytail") return tailShell(positions, normals, base);
   return null;
 }
 
 // ...and as they print: subdivided, with their grooves carved in
 export function buildLocks(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
   const shell = buildLockShell(p, positions, normals, base);
-  return shell ? carveShell(shell, base, p.hairStyle, dreadPattern) : null;
+  const pattern = p.hairStyle === "topknot" ? bunPattern : p.hairStyle === "ponytail" ? tailPattern : dreadPattern;
+  return shell ? carveShell(shell, base, p.hairStyle, pattern) : null;
 }

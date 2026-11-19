@@ -73,6 +73,10 @@ const STYLES: Record<Exclude<HairStyle, "none">, Style> = {
   long: { thickness: (_x, y) => 0.025 + 0.02 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1], lean: 0.3 },
   // Dreadlocks are tubes (see locks.ts) rooted in a close crop, so the scalp is covered between them
   dreadlocks: { thickness: (_x, y) => 0.025 + 0.012 * smooth((y - 0.1) / 0.4), flow: [0, -1, 0], lean: 0 },
+  // A topknot and a ponytail: the hair drawn tight over the head to where it is gathered (the bun or the tail is a tube,
+  // see locks.ts), a little fuller than a crop
+  topknot: { thickness: (_x, y) => 0.028 + 0.01 * smooth((y - 0.1) / 0.4), flow: [0, 1, -0.4], lean: 0.15 },
+  ponytail: { thickness: (_x, y) => 0.028 + 0.01 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1], lean: 0.2 },
 };
 
 // The smallest lift off the skin, so the shell never fights the skin for the same depth at the hairline

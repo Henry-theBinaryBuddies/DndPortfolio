@@ -882,7 +882,7 @@ describe("hair round the ears", () => {
   it("keeps off the ears, whatever the race's ears are like: the hairline tucks round and behind them", () => {
     for (const race of ["human", "elf", "gnome", "halfling", "tiefling"] as const) {
       for (const body of ["masculine", "feminine"] as const) {
-        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks"] as const) {
+        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks", "topknot", "ponytail"] as const) {
           const p = { ...applyRace(defaultParams(), race), body, hairStyle };
           const { positions, normals } = sculptBust(p, base);
           const shell = buildHairShell(p, positions, normals, base)!;
@@ -914,7 +914,7 @@ describe("hair round the ears", () => {
 });
 
 describe("carved hair", () => {
-  const styles = ["cropped", "swept", "mohawk", "long"] as const;
+  const styles = ["cropped", "swept", "mohawk", "long", "topknot", "ponytail"] as const;
 
   it("is carved no finer than the printer can make, with ridges left between the grooves wide enough to print", () => {
     expect(HAIR_CARVING.lockGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
@@ -1014,8 +1014,9 @@ describe("carved hair", () => {
   }, 300000);
 });
 
+// (and the other styles built from tubes: a topknot's bun and a ponytail's tail)
 describe("dreadlocks", () => {
-  const styles = ["dreadlocks"] as const;
+  const styles = ["dreadlocks", "topknot", "ponytail"] as const;
   const shellOf = (hairStyle: (typeof styles)[number], overrides: Partial<Params> = {}) => {
     const p = params({ hairStyle, ...overrides });
     const bust = sculptBust(p, base);
@@ -1117,7 +1118,8 @@ describe("dreadlocks", () => {
   }, 120000);
 
   it("end on the body: the tip of every lock rests on the head, neck or shoulders, so it prints without supports", () => {
-    for (const style of styles) {
+    // (not the bun: it stands up off the crown, and its top is printed last)
+    for (const style of ["dreadlocks", "ponytail"] as const) {
       const { shell, bust } = shellOf(style);
       const pos = shell.attributes.position;
       const along = shell.attributes.headPos;
@@ -1157,7 +1159,7 @@ describe("dreadlocks", () => {
         }
         if (!rests && pos.getY(v) > bottom + 0.05) floating.push(v);
       }
-      expect(tips, style).toBeGreaterThan(2);
+      expect(tips, style).toBeGreaterThan(style === "ponytail" ? 0 : 2);
       expect(floating.length, `${style}: tips with nothing under them`).toBe(0);
     }
   }, 120000);

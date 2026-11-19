@@ -36,6 +36,8 @@ const PARTS: Record<string, PartInfo> = {
   hair: { material: "hair", label: "the hair", role: "hair" },
   curtain: { material: "hair", label: "the hair", role: "hair" },
   locks: { material: "hair", label: "the dreadlocks", role: "hair" },
+  bun: { material: "hair", label: "the topknot", role: "hair" },
+  tail: { material: "hair", label: "the ponytail", role: "hair" },
   beard: { material: "hair", label: "the beard", role: "hair" },
   tunic: { material: "cloth", label: "the tunic", role: "garment" },
   cuirass: { material: "metal", label: "the breastplate", role: "garment" },

@@ -54,7 +54,9 @@ export type HornStyle = (typeof HORN_STYLES)[number];
 
 // (Long hair is still rough, so no race starts with it; it is there to choose.)
 // (dreadlocks are built from tubes over a close crop: see locks.ts)
-export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dreadlocks"] as const;
+// (a topknot and a ponytail are a close cap drawn to where the hair is gathered, and the bun or the tail itself, a tube:
+// see locks.ts)
+export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dreadlocks", "topknot", "ponytail"] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
 // Beards are sculpted like the hair (see beard.ts)
