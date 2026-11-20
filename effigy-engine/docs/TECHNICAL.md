@@ -259,6 +259,8 @@ These rules come from the first print: any texture that is to print has to be ge
 - Each lock is a closed tube that falls under gravity and keeps falling until its tip rests on the body.
 - The first print showed tips over open air turn to spaghetti, because a printer lays the tip first.
 
+**Curls** (`hairShell.ts`, `hairCarve.ts`, added 19 Nov 2026; the halfling's default) are a fuller cap raised into domed knobs, one per curl, each carved with a groove spiralling in to its middle and parted from the next. The curls are cells round points scattered over the undeformed head (`curlCell`), read there by both the knobs and the carving so they stay together however the head is reshaped. A curl is about 5 mm across at full size with a 1.6 mm spiral pitch, which leaves a 1.2 mm ridge between turns.
+
 **Topknot and ponytail** (`locks.ts`, added 18 Nov 2026) are built the same way, over a close cap whose carving runs to where the hair is gathered (`hairCarve.ts`):
 
 - The topknot's bun is one short tube standing up off the crown, widening by about 15 degrees at most so it needs no supports, with grooves winding round it.

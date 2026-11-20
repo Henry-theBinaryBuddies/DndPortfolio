@@ -3,7 +3,7 @@ import { scalp, STRIP_HALF_WIDTH } from "./hair";
 import { beardWeight } from "./beard";
 import { carvingDepth } from "./beardCarve";
 import { carveShell } from "./carve";
-import { hairPattern, hangingPattern } from "./hairCarve";
+import { CURL, curlCell, hairPattern, hangingPattern } from "./hairCarve";
 import type { HeadBase } from "./headMesh";
 import type { HairStyle, Params } from "./params";
 import { beardMasses, beardVolume, groomingFrame, scalpContour, sweptClumps, sweptVolume } from "./sculptForms";
@@ -33,6 +33,9 @@ interface Style {
   // folds into a wall or a point there.
   directionSmoothing?: number;
   clumps?: (x: number, y: number, z: number) => number; // sculpted clumps: a factor on the thickness
+  // Where the clumps are read: on the undeformed head (as the carving is), so each clump stays under its own carving
+  // however the head is reshaped, rather than on the reshaped one
+  clumpsOnHead?: boolean;
   // How much the displacement off the skin is smoothed across the shell (passes). Neighbouring vertices
   // that move very differently fold the surface over itself: a full beard's lean pushed the front of the
   // chin down past its own underside.
@@ -77,6 +80,16 @@ const STYLES: Record<Exclude<HairStyle, "none">, Style> = {
   // see locks.ts), a little fuller than a crop
   topknot: { thickness: (_x, y) => 0.028 + 0.01 * smooth((y - 0.1) / 0.4), flow: [0, 1, -0.4], lean: 0.15 },
   ponytail: { thickness: (_x, y) => 0.028 + 0.01 * smooth((y - 0.1) / 0.4), flow: [0, -0.1, -1], lean: 0.2 },
+  // Curls: a fuller cap built up into round knobs, one to each curl (see hairCarve.ts), highest at their middles
+  curls: {
+    thickness: (_x, y) => 0.04 + 0.022 * smooth((y - 0.1) / 0.4),
+    // (domed: a smooth step made them flat-topped, like cobbles)
+    clumps: (x, y, z) => 0.4 + 0.95 * Math.sqrt(Math.max(0, 1 - (curlCell(x, y, z).d1 / (0.66 * CURL.cell)) ** 2)),
+    flow: [0, 1, 0],
+    lean: 0,
+    clumpsOnHead: true,
+    displacementSmoothing: 2, // (smoothed as much as the others, the knobs ran together)
+  },
 };
 
 // The smallest lift off the skin, so the shell never fights the skin for the same depth at the hairline
@@ -353,7 +366,8 @@ function raiseShell(positions: Float32Array, normals: Float32Array, base: HeadBa
     // Clumps and lean fade out toward the edge, so the shell never overhangs its own root (where it did, its
     // edge ended in knife-thin points with an open underside showing)
     const settle = smooth(depth / 0.35);
-    const clumped = 1 + ((style.clumps ? style.clumps(x, y, z) : 1) - 1) * settle;
+    const clumps = !style.clumps ? 1 : style.clumpsOnHead ? style.clumps(base.positions[v * 3], base.positions[v * 3 + 1], base.positions[v * 3 + 2]) : style.clumps(x, y, z);
+    const clumped = 1 + (clumps - 1) * settle;
     // At the very edge it dips just under the skin, so it meets the skin without a step. For hair (a style with a
     // taper), where it comes out of the skin follows the spread-out growth map, which changes over several rows of the
     // mesh: the growth map itself goes from none to full within about one row, so the line where the shell came out of

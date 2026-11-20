@@ -83,6 +83,77 @@ const drawnBack: Pattern = (x, y, z) => {
   return locks(0.5 * Math.atan2(x, y - axisY) + 0.01 * Math.sin(z * 9 + x * 5), z) * smooth((radius - 0.12) / 0.08);
 };
 
+// Curls: a cap of round curls, each a knob of hair with a groove spiralling in to its middle, parted from the next by a
+// groove. They are laid out as cells round points scattered evenly over the head (the same ones always, by a jittered
+// grid), sized for the printer (a curl about 4 mm across at full size: smaller, its spiral would be finer than a
+// nozzle can draw).
+// (about 5 mm across, for a turn and a half of spiral: smaller, each showed only a crescent of one)
+export const CURL = { cell: 0.15, pitch: 1.6 * MM }; // (a 1.2 mm ridge left between the turns of the spiral)
+const HEAD_MIDDLE = [0, 0.05, -0.35] as const;
+
+// The two nearest curl centres to a point: how far off each is, and the nearest one
+export function curlCell(x: number, y: number, z: number): { d1: number; d2: number; cx: number; cy: number; cz: number } {
+  const c = CURL.cell;
+  const gx = Math.floor(x / c);
+  const gy = Math.floor(y / c);
+  const gz = Math.floor(z / c);
+  let d1 = Infinity;
+  let d2 = Infinity;
+  let cx = 0;
+  let cy = 0;
+  let cz = 0;
+  for (let i = -1; i <= 1; i++)
+    for (let j = -1; j <= 1; j++)
+      for (let k = -1; k <= 1; k++) {
+        const key = (gx + i) * 7919 + (gy + j) * 104729 + (gz + k) * 1299709;
+        const px = (gx + i + 0.15 + 0.7 * hash(key)) * c;
+        const py = (gy + j + 0.15 + 0.7 * hash(key + 1)) * c;
+        const pz = (gz + k + 0.15 + 0.7 * hash(key + 2)) * c;
+        const d = Math.hypot(x - px, y - py, z - pz);
+        if (d < d1) {
+          d2 = d1;
+          d1 = d;
+          cx = px;
+          cy = py;
+          cz = pz;
+        } else if (d < d2) d2 = d;
+      }
+  return { d1, d2, cx, cy, cz };
+}
+
+const curls: Pattern = (x, y, z) => {
+  const { d1, d2, cx, cy, cz } = curlCell(x, y, z);
+  // The parting round each curl
+  const parting = 1 - smooth((d2 - d1) / (1.2 * HAIR_CARVING.lockGroove));
+  // ...and its spiral, measured round the curl in the plane of the scalp under it (across the line from the middle
+  // of the head out through the curl)
+  let rx = cx - HEAD_MIDDLE[0];
+  let ry = cy - HEAD_MIDDLE[1];
+  let rz = cz - HEAD_MIDDLE[2];
+  const rl = Math.hypot(rx, ry, rz) || 1;
+  rx /= rl;
+  ry /= rl;
+  rz /= rl;
+  // (a direction across it: up, or forward where the curl faces up)
+  let ux = -rz;
+  let uy = 0;
+  let uz = rx;
+  if (Math.hypot(ux, uz) < 0.3) [ux, uy, uz] = [0, rz, -ry];
+  const ul = Math.hypot(ux, uy, uz);
+  ux /= ul;
+  uy /= ul;
+  uz /= ul;
+  const vx = ry * uz - rz * uy;
+  const vy = rz * ux - rx * uz;
+  const vz = rx * uy - ry * ux;
+  const dx = x - cx;
+  const dy = y - cy;
+  const dz = z - cz;
+  const angle = Math.atan2(dx * vx + dy * vy + dz * vz, dx * ux + dy * uy + dz * uz);
+  const spiral = vee(d1 / CURL.pitch - angle / (2 * Math.PI), HAIR_CARVING.fineGroove / CURL.pitch / 2) * smooth((d1 - 0.35 * CURL.pitch) / (0.4 * CURL.pitch));
+  return HAIR_CARVING.lockDepth * Math.max(parting, spiral);
+};
+
 const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   swept,
   long: swept,
@@ -93,6 +164,7 @@ const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   dreadlocks: crop,
   topknot: drawnUp,
   ponytail: drawnBack,
+  curls,
 };
 
 export function hairPattern(style: Exclude<HairStyle, "none">): Pattern {

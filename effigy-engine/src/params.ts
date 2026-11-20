@@ -56,7 +56,7 @@ export type HornStyle = (typeof HORN_STYLES)[number];
 // (dreadlocks are built from tubes over a close crop: see locks.ts)
 // (a topknot and a ponytail are a close cap drawn to where the hair is gathered, and the bun or the tail itself, a tube:
 // see locks.ts)
-export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dreadlocks", "topknot", "ponytail"] as const;
+export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dreadlocks", "topknot", "ponytail", "curls"] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
 // Beards are sculpted like the hair (see beard.ts)
@@ -244,7 +244,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     label: "Halfling",
     skeleton: { ...HUMAN, planes: 0.1, angularity: 0.08, headWidth: 1.1, headHeight: 0.93, earSize: 0.7, noseLength: 0.15, noseWidth: 0.88, noseBridge: -0.3, noseBulb: 0.25, jaw: 0.82, chin: 0.15, browBase: -0.25, browWidth: 0.7, browArch: 0.004, cheekBase: 0.52, lipBase: 0.15, gaunt: 0, shoulders: 0.8 },
     hornStyle: "none",
-    hairStyle: "cropped",
+    hairStyle: "curls",
     defaults: { muscle: 0.3, weight: 0.58 },
   },
   // Big expressive nose, pointed ears, full cheeks and a small chin

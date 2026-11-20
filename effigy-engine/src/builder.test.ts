@@ -10,7 +10,7 @@ import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
 import { deformHead } from "./deform";
 import { frontPoint, sculptBust } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
-import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
+import { CURL, HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
 import { buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
 import { scalp } from "./hair";
 import { JAW, jawWeights, turnWithJaw } from "./jaw";
@@ -882,7 +882,7 @@ describe("hair round the ears", () => {
   it("keeps off the ears, whatever the race's ears are like: the hairline tucks round and behind them", () => {
     for (const race of ["human", "elf", "gnome", "halfling", "tiefling"] as const) {
       for (const body of ["masculine", "feminine"] as const) {
-        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks", "topknot", "ponytail"] as const) {
+        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks", "topknot", "ponytail", "curls"] as const) {
           const p = { ...applyRace(defaultParams(), race), body, hairStyle };
           const { positions, normals } = sculptBust(p, base);
           const shell = buildHairShell(p, positions, normals, base)!;
@@ -914,13 +914,15 @@ describe("hair round the ears", () => {
 });
 
 describe("carved hair", () => {
-  const styles = ["cropped", "swept", "mohawk", "long", "topknot", "ponytail"] as const;
+  const styles = ["cropped", "swept", "mohawk", "long", "topknot", "ponytail", "curls"] as const;
 
   it("is carved no finer than the printer can make, with ridges left between the grooves wide enough to print", () => {
     expect(HAIR_CARVING.lockGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
     expect(HAIR_CARVING.fineGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
     expect(HAIR_CARVING.lockDepth).toBeGreaterThanOrEqual(0.3 * MM);
     expect(HAIR_CARVING.lockPitch / 2 - (HAIR_CARVING.lockGroove + HAIR_CARVING.fineGroove) / 2).toBeGreaterThanOrEqual(MIN_FEATURE);
+    // (a curl's spiral: the ridge between its turns)
+    expect(CURL.pitch - HAIR_CARVING.fineGroove).toBeGreaterThanOrEqual(MIN_FEATURE);
   });
 
   it("is subdivided into sixteen times the shell's triangles, and stays a closed solid, for every style", () => {
