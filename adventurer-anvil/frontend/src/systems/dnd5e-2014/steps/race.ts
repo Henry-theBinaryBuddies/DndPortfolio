@@ -7,6 +7,7 @@ import { expandSource } from "../engine/expand";
 import type { Effect } from "../packFormat";
 
 export const RACE_STEP = { id: "race", label: "Race" };
+export const RACE_KEY = "race";
 
 /** An option card for a race or subrace: its name, one line, the full text, and chips for what it gives. */
 function optionFor(entry: ContentEntry & { ref: string }): Option {
@@ -33,10 +34,10 @@ export function subracesOf(content: ContentIndex, raceRef: string) {
 
 export function raceStep(ctx: Context): void {
   ctx.steps.push(RACE_STEP);
-  const racePicks = picksOf(ctx.doc.choices["race"]);
+  const racePicks = picksOf(ctx.doc.choices[RACE_KEY]);
   ctx.open.push({
     spec: {
-      key: "race", step: "race", label: "Choose a race", kind: "pick-one", required: true,
+      key: RACE_KEY, step: "race", label: "Choose a race", kind: "pick-one", required: true,
       options: ctx.content.list("races").map(optionFor),
     },
     picks: racePicks,

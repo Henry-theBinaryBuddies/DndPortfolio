@@ -1,12 +1,15 @@
 // The builder: header, step list, the current step (or Review or Licences), the summary, and the footer.
-// It asks the core for the whole picture on every change and calculates nothing itself.
+// It asks the core for the whole picture on every change and calculates nothing itself, and saves as it goes.
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { createContentIndex, NAME_KEY, rollSet, rollSets, viewCharacter, type ChoiceSpec, type SystemModule } from "../core";
+import { NAME_KEY, rollSet, rollSets, viewCharacter, type CharacterDocument, type ChoiceSpec, type ContentIndex, type SystemModule } from "../core";
 import { ChoiceView, choiceDomId, StepList } from "./choices";
+import { downloadCharacter } from "./files";
 import type { LoadedPack } from "./packs";
 import { Licences, Review } from "./pages";
-import { freshCharacter, reducer } from "./state";
+import { reducer } from "./state";
+import type { CharacterStore } from "./store";
 import { Summary, type TodoItem } from "./Summary";
+import { useAutosave, type SaveStatus } from "./useAutosave";
 
 type Page = { kind: "step"; id: string } | { kind: "review" } | { kind: "licences" };
 
@@ -24,9 +27,42 @@ function groupChoices(specs: ChoiceSpec[]): { group?: string; specs: ChoiceSpec[
 const MARK = { done: "✓", todo: "○", problem: "!" } as const;
 const MARK_TEXT = { done: "done", todo: "to do", problem: "has a problem" } as const;
 
-export function Builder({ system, packs }: { system: SystemModule; packs: LoadedPack[] }) {
-  const [doc, dispatch] = useReducer(reducer, undefined, () => freshCharacter(system, packs));
-  const content = useMemo(() => createContentIndex(packs), [packs]);
+/** "Saved 9:41 pm" today, "Saved 18 Nov" before. */
+function savedText(at: Date): string {
+  const today = at.toDateString() === new Date().toDateString();
+  return `Saved ${today ? at.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : at.toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
+}
+
+function SaveState({ status }: { status: SaveStatus }) {
+  switch (status.kind) {
+    case "blank": return <span className="dim">Not saved yet</span>;
+    case "saving": return <span className="dim">Saving…</span>;
+    case "saved": return <span className="dim">{savedText(status.at)}</span>;
+    case "full": return <span className="attention" role="alert">Not saved: browser storage is full. Download a copy from Review.</span>;
+    case "failed": return <span className="attention" role="alert">Not saved: {status.message}</span>;
+  }
+}
+
+/** The character the builder opens with: a new one, or one opened from storage or a file (and anything to note). */
+export interface Opening {
+  doc: CharacterDocument;
+  saved: boolean;
+  notes: string[];
+}
+
+export function Builder({ system, packs, content, store, opening, onLeave, focusHeading }: {
+  system: SystemModule;
+  packs: LoadedPack[];
+  content: ContentIndex;
+  store: CharacterStore;
+  opening: Opening;
+  /** Back to the list of characters (after any waiting change is saved). */
+  onLeave: () => void;
+  focusHeading: boolean;
+}) {
+  const [doc, dispatch] = useReducer(reducer, opening.doc);
+  const save = useAutosave({ doc, store, system, content, startSaved: opening.saved, onReplace: (d) => dispatch({ type: "replace", doc: d }) });
+  const [notes, setNotes] = useState(opening.notes);
   const view = useMemo(() => viewCharacter(system, doc, content), [system, doc, content]);
   const [page, setPage] = useState<Page>(() => ({ kind: "step", id: view.steps[0]?.id ?? "review" }));
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -53,6 +89,7 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
   // Only when the page really changed: on first load focus starts at the top, where the skip link is.
   // (Comparing with the page last shown, rather than a "first time" flag, also holds when React runs effects twice.)
   const shownPage = useRef(page);
+  useEffect(() => { if (focusHeading) document.querySelector<HTMLElement>("#main h1")?.focus(); }, []);
   useEffect(() => {
     if (shownPage.current === page) return;
     shownPage.current = page;
@@ -87,8 +124,9 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
       <header className="top">
         <span className="brand">Adventurer Anvil</span>
         <div className="who">
+          <button type="button" className="button small" onClick={() => void save.flush().then(onLeave)}>Characters</button>
           <span className="name">{doc.name || "New character"}</span>
-          <span className="dim">Not saved yet</span>
+          <SaveState status={save.status} />
         </div>
       </header>
 
@@ -119,6 +157,21 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
         </nav>
 
         <main className="page" id="main">
+          {save.elsewhere && (
+            <div className="notice banner" role="alert">
+              <p>{save.elsewhere === "changed" ? "This character was changed in another tab." : "This character was deleted in another tab."} Saving here is paused.</p>
+              <p className="banner-actions">
+                {save.elsewhere === "changed" && <button type="button" className="button small primary" onClick={() => void save.reload()}>Reload it</button>}
+                <button type="button" className="button small" onClick={save.keepMine}>{save.elsewhere === "changed" ? "Keep this tab's version" : "Save it again"}</button>
+              </p>
+            </div>
+          )}
+          {notes.length > 0 && (
+            <div className="notice banner">
+              <ul>{notes.map((n) => <li key={n}>{n}</li>)}</ul>
+              <p className="banner-actions"><button type="button" className="button small" onClick={() => setNotes([])}>Dismiss</button></p>
+            </div>
+          )}
           {page.kind === "step" && step && (
             <>
               <p className="mobile-step">
@@ -169,6 +222,7 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
               onClear={(keys) => dispatch({ type: "clear", keys })}
               onAllow={(issueId, note) => dispatch({ type: "allow", issueId, note })}
               onDisallow={(issueId) => dispatch({ type: "disallow", issueId })}
+              onDownload={() => downloadCharacter(doc)}
             />
           )}
           {page.kind === "licences" && <Licences packs={packs} />}

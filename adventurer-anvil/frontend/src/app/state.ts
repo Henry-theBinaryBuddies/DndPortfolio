@@ -1,4 +1,4 @@
-// The character being built, held in memory (saving arrives in Milestone 1, step 8). Every change goes through
+// The character being built, held in memory and saved by the builder as it changes. Every change goes through
 // the core's functions, which return a new document.
 import { addOverride, addRolls, clearChoices, NAME_KEY, newCharacterDocument, removeOverride, setChoice, setName, type CharacterDocument, type ChoiceKey, type ChoiceValue, type RollRecord, type SystemModule } from "../core";
 import type { LoadedPack } from "./packs";
@@ -8,7 +8,9 @@ export type Action =
   | { type: "clear"; keys: ChoiceKey[] }
   | { type: "rolls"; rolls: RollRecord[] }
   | { type: "allow"; issueId: string; note: string }
-  | { type: "disallow"; issueId: string };
+  | { type: "disallow"; issueId: string }
+  /** The whole file, e.g. the copy another tab saved. */
+  | { type: "replace"; doc: CharacterDocument };
 
 export function reducer(doc: CharacterDocument, action: Action): CharacterDocument {
   const now = new Date().toISOString();
@@ -25,6 +27,8 @@ export function reducer(doc: CharacterDocument, action: Action): CharacterDocume
       return addOverride(doc, action.issueId, action.note, now);
     case "disallow":
       return removeOverride(doc, action.issueId, now);
+    case "replace":
+      return action.doc;
   }
 }
 

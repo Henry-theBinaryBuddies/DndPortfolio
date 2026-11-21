@@ -21,6 +21,11 @@ export const PORTRAIT_KEY = "details.portrait";
 /** The most a portrait may take in the file (the app shrinks pictures to 256 × 256 first). */
 export const PORTRAIT_MAX_CHARS = 300_000;
 
+/** The portrait, if it is a picture of an allowed kind and size; otherwise nothing. */
+export function goodPortrait(value: unknown): string | undefined {
+  return typeof value === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(value) && value.length <= PORTRAIT_MAX_CHARS ? value : undefined;
+}
+
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const ETHICS = ["lawful", "neutral", "chaotic"] as const;
 const MORALS = ["good", "neutral", "evil"] as const;
@@ -105,7 +110,7 @@ export function detailsStep(ctx: Context): void {
 
   // Portrait: an image the app has shrunk, kept in the file.
   const portrait = doc.choices[PORTRAIT_KEY];
-  const valid = typeof portrait === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(portrait) && portrait.length <= PORTRAIT_MAX_CHARS;
+  const valid = goodPortrait(portrait) !== undefined;
   ctx.open.push({
     spec: { key: PORTRAIT_KEY, step: STEP, label: "Portrait", kind: "image", required: false, hint: "A PNG, JPEG or WebP picture, shrunk to 256 × 256 and kept with the character." },
     picks: [],

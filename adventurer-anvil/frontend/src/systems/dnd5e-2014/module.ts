@@ -1,18 +1,19 @@
 // The 2014 system module: the pipeline from step 5 (sources → expand → tally → derive → check), assembled
 // into the SystemModule the core expects.
-import type { CharacterDocument, ContentIndex, Evaluation, SystemModule } from "../../core";
+import type { CharacterBlurb, CharacterDocument, ContentIndex, Evaluation, SystemModule } from "../../core";
 import { check, stepReports, unusedChoices } from "./engine/check";
 import { newContext } from "./engine/context";
 import { derive } from "./engine/derive";
 import { packSchema, SYSTEM_ID } from "./packFormat";
 import { abilitiesStep } from "./steps/abilities";
 import { backgroundStep } from "./steps/background";
-import { classStep } from "./steps/class";
+import { CLASS_KEY, classStep, STARTING_LEVEL } from "./steps/class";
 import { checkEquipment, equipmentStep } from "./steps/equipment";
 import { spellsStep } from "./steps/spells";
-import { detailsStep } from "./steps/details";
+import { detailsStep, goodPortrait, PORTRAIT_KEY } from "./steps/details";
 import { replaceDuplicateSkills } from "./engine/duplicates";
-import { raceStep } from "./steps/race";
+import { RACE_KEY, raceStep } from "./steps/race";
+import { picksOf } from "./engine/context";
 
 export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation {
   const ctx = newContext(doc, content);
@@ -80,4 +81,18 @@ export const dnd5e2014: SystemModule = {
   initialChoices: () => ({}),
   evaluate,
   migrate: (doc) => doc,
+  describe,
 };
+
+/** "Hill Dwarf Cleric 1" (the subrace or race, then the class and level; whichever are chosen) and the portrait. */
+export function describe(doc: CharacterDocument, content: ContentIndex): CharacterBlurb {
+  const raceRef = picksOf(doc.choices[RACE_KEY])[0];
+  const race = raceRef ? content.get("races", raceRef) : undefined;
+  const subRef = raceRef ? picksOf(doc.choices[`race.${raceRef}.subrace`])[0] : undefined;
+  const sub = subRef ? content.get("subraces", subRef) : undefined;
+  const classRef = picksOf(doc.choices[CLASS_KEY])[0];
+  const cls = classRef ? content.get("classes", classRef) : undefined;
+  const text = [sub?.name ?? race?.name, cls && `${cls.name} ${STARTING_LEVEL}`].filter(Boolean).join(" ");
+  const picture = goodPortrait(doc.choices[PORTRAIT_KEY]);
+  return picture ? { text, picture } : { text };
+}

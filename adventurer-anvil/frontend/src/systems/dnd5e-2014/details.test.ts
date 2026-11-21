@@ -128,3 +128,19 @@ describe("the SRD races' suggestions match their own text", () => {
     });
   }
 });
+
+describe("how a saved character is described in lists", () => {
+  const blurb = (choices: Record<string, ChoiceValue>) => {
+    let doc = newCharacterDocument({ id: "c", system: { id: "dnd5e-2014", version: 1 }, packs: [], now: T });
+    for (const [key, value] of Object.entries(choices)) doc = setChoice(doc, key, value, T);
+    return dnd5e2014.describe(doc, createContentIndex([srd]));
+  };
+  it("the subrace (or race), then the class and level, and the portrait", () => {
+    expect(blurb({})).toEqual({ text: "" });
+    expect(blurb({ race: "srd-5.1:dwarf" })).toEqual({ text: "Dwarf" });
+    expect(blurb({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", "class.class": "srd-5.1:cleric" })).toEqual({ text: "Hill Dwarf Cleric 1" });
+    const png = "data:image/png;base64,iVBORw0KGgo=";
+    expect(blurb({ "class.class": "srd-5.1:wizard", [PORTRAIT_KEY]: png })).toEqual({ text: "Wizard 1", picture: png });
+    expect(blurb({ [PORTRAIT_KEY]: "data:text/html;base64,PGI+" })).toEqual({ text: "" });
+  });
+});

@@ -43,6 +43,15 @@ export interface SystemModule {
   evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation;
   /** Upgrades a file written by an older version of this system. */
   migrate(doc: CharacterDocument): CharacterDocument;
+  /** How a character appears in lists of saved characters. */
+  describe(doc: CharacterDocument, content: ContentIndex): CharacterBlurb;
+}
+
+/** A few words, e.g. "Hill Dwarf Cleric 1" (empty when nothing is chosen yet), and the portrait, if one was added. */
+export interface CharacterBlurb {
+  text: string;
+  /** A data URL. */
+  picture?: string;
 }
 
 /** An issue as the app shell sees it: with the DM's ruling, if there is one. */

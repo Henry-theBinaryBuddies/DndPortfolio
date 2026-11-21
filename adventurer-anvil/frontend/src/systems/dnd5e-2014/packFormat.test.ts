@@ -13,6 +13,7 @@ const dnd: SystemModule = {
   initialChoices: () => ({}),
   evaluate: () => ({ steps: [], derived: {}, lists: {}, issues: [], unused: [] }),
   migrate: (doc) => doc,
+  describe: () => ({ text: "" }),
 };
 
 /** A deep copy of the sample, changed by `edit`. */

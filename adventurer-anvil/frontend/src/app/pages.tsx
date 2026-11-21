@@ -66,7 +66,7 @@ function Allow({ issue, onAllow }: { issue: ResolvedIssue; onAllow: (note: strin
   );
 }
 
-export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow }: {
+export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload }: {
   view: CharacterView;
   doc: CharacterDocument;
   stepLabel: (id: string) => string;
@@ -74,6 +74,7 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
   onClear: (keys: string[]) => void;
   onAllow: (issueId: string, note: string) => void;
   onDisallow: (issueId: string) => void;
+  onDownload: () => void;
 }) {
   const open = view.issues.filter((i) => !i.override);
   const errors = open.filter((i) => i.severity === "error");
@@ -163,6 +164,14 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
           <button type="button" className="button" onClick={() => onClear(view.unused)}>Clear these</button>
         </section>
       )}
+
+      <section className="section" aria-labelledby="review-file">
+        <h2 id="review-file">A copy of your own</h2>
+        <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
+          The character is saved in this browser. Download a file to keep it safe, move it to another device, or share it.
+        </p>
+        <button type="button" className="button" style={{ marginTop: 8 }} onClick={onDownload}>Download character file</button>
+      </section>
     </>
   );
 }

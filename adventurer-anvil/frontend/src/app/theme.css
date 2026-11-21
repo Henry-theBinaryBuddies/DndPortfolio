@@ -129,7 +129,8 @@ blockquote { margin: 8px 0 0; padding: 8px 12px; border-left: 2px solid var(--ed
 /* ---- Phone ---- */
 @media (max-width: 760px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
-  .top .who { display: none; } /* the summary bar shows the name on phones */
+  .top .who .name { display: none; } /* the summary bar shows the name on phones */
+  .top .who { flex-wrap: wrap; justify-content: flex-end; text-align: right; }
   .rail { display: none; }
   .side { border-left: none; border-bottom: 1px solid var(--edge); order: -1; padding: 10px 16px; }
   .side.collapsed .side-body { display: none; }
@@ -214,4 +215,24 @@ select { font: inherit; color: var(--ink); background: var(--panel); border: 1px
   table.slots th, table.slots td { border-bottom: none; padding: 0; }
   table.slots td:nth-of-type(1) { grid-column: 1 / -1; }
   table.slots select { width: 100%; }
+}
+
+/* ---- Saving, and My characters ---- */
+.banner { margin-bottom: 14px; color: var(--ink); }
+.banner ul { margin: 0; padding-left: 18px; }
+.banner h2 { margin-bottom: 4px; }
+.banner-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.characters { max-width: 860px; }
+.character-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.character-list > li { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--edge); }
+.avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--panel); border: 1px solid var(--edge-strong); color: var(--ink-dim); font-size: 16px; }
+.who-line { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.character-name { font-size: 17px; color: var(--ink-bright); overflow-wrap: anywhere; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.confirm { grid-column: 1 / -1; font-size: 14px; }
+.button.danger { border-color: var(--ember); color: var(--ember); }
+@media (max-width: 760px) {
+  .character-list > li { grid-template-columns: 48px minmax(0, 1fr); }
+  .row-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }

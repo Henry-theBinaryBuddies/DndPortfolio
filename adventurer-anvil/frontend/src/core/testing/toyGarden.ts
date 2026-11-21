@@ -47,6 +47,10 @@ export const toyGarden: SystemModule = {
   ],
   initialChoices: () => ({}),
   migrate: (doc) => ({ ...doc, system: { ...doc.system, version: 1 } }),
+  describe: (doc, content) => {
+    const plant = typeof doc.choices["plant"] === "string" ? content.get("plants", doc.choices["plant"] as string) : undefined;
+    return { text: plant ? `${plant.name} garden` : "" };
+  },
 
   evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation {
     const plantRef = typeof doc.choices["plant"] === "string" ? (doc.choices["plant"] as string) : undefined;
