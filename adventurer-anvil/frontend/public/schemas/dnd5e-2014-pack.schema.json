@@ -623,9 +623,26 @@
                           "minLength": 1
                         },
                         "pick": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 9007199254740991
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                }
+                              },
+                              "required": [
+                                "column"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
                         },
                         "from": {
                           "anyOf": [
@@ -652,12 +669,30 @@
                                     "type": "string"
                                   },
                                   "additionalProperties": {
-                                    "type": [
-                                      "string",
-                                      "number",
-                                      "boolean"
+                                    "anyOf": [
+                                      {
+                                        "type": [
+                                          "string",
+                                          "number",
+                                          "boolean"
+                                        ]
+                                      },
+                                      {
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "items": {
+                                          "type": [
+                                            "string",
+                                            "number",
+                                            "boolean"
+                                          ]
+                                        }
+                                      }
                                     ]
                                   }
+                                },
+                                "known": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -716,6 +751,39 @@
                                       },
                                       "description": {
                                         "type": "string"
+                                      },
+                                      "requires": {
+                                        "type": "object",
+                                        "properties": {
+                                          "level": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 20
+                                          },
+                                          "option": {
+                                            "type": "object",
+                                            "properties": {
+                                              "choice": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              },
+                                              "id": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              }
+                                            },
+                                            "required": [
+                                              "choice",
+                                              "id"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "spell": {
+                                            "type": "string",
+                                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                          }
+                                        },
+                                        "additionalProperties": false
                                       },
                                       "effects": {
                                         "type": "array",
@@ -1356,6 +1424,24 @@
                         "label",
                         "pick",
                         "from"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "ability-score-improvement"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ],
                       "additionalProperties": false
                     }
@@ -2072,9 +2158,26 @@
                           "minLength": 1
                         },
                         "pick": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 9007199254740991
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                }
+                              },
+                              "required": [
+                                "column"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
                         },
                         "from": {
                           "anyOf": [
@@ -2101,12 +2204,30 @@
                                     "type": "string"
                                   },
                                   "additionalProperties": {
-                                    "type": [
-                                      "string",
-                                      "number",
-                                      "boolean"
+                                    "anyOf": [
+                                      {
+                                        "type": [
+                                          "string",
+                                          "number",
+                                          "boolean"
+                                        ]
+                                      },
+                                      {
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "items": {
+                                          "type": [
+                                            "string",
+                                            "number",
+                                            "boolean"
+                                          ]
+                                        }
+                                      }
                                     ]
                                   }
+                                },
+                                "known": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -2165,6 +2286,39 @@
                                       },
                                       "description": {
                                         "type": "string"
+                                      },
+                                      "requires": {
+                                        "type": "object",
+                                        "properties": {
+                                          "level": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 20
+                                          },
+                                          "option": {
+                                            "type": "object",
+                                            "properties": {
+                                              "choice": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              },
+                                              "id": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              }
+                                            },
+                                            "required": [
+                                              "choice",
+                                              "id"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "spell": {
+                                            "type": "string",
+                                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                          }
+                                        },
+                                        "additionalProperties": false
                                       },
                                       "effects": {
                                         "type": "array",
@@ -2805,6 +2959,24 @@
                         "label",
                         "pick",
                         "from"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "ability-score-improvement"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ],
                       "additionalProperties": false
                     }
@@ -3400,9 +3572,26 @@
                           "minLength": 1
                         },
                         "pick": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 9007199254740991
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                }
+                              },
+                              "required": [
+                                "column"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
                         },
                         "from": {
                           "anyOf": [
@@ -3429,12 +3618,30 @@
                                     "type": "string"
                                   },
                                   "additionalProperties": {
-                                    "type": [
-                                      "string",
-                                      "number",
-                                      "boolean"
+                                    "anyOf": [
+                                      {
+                                        "type": [
+                                          "string",
+                                          "number",
+                                          "boolean"
+                                        ]
+                                      },
+                                      {
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "items": {
+                                          "type": [
+                                            "string",
+                                            "number",
+                                            "boolean"
+                                          ]
+                                        }
+                                      }
                                     ]
                                   }
+                                },
+                                "known": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -3493,6 +3700,39 @@
                                       },
                                       "description": {
                                         "type": "string"
+                                      },
+                                      "requires": {
+                                        "type": "object",
+                                        "properties": {
+                                          "level": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 20
+                                          },
+                                          "option": {
+                                            "type": "object",
+                                            "properties": {
+                                              "choice": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              },
+                                              "id": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              }
+                                            },
+                                            "required": [
+                                              "choice",
+                                              "id"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "spell": {
+                                            "type": "string",
+                                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                          }
+                                        },
+                                        "additionalProperties": false
                                       },
                                       "effects": {
                                         "type": "array",
@@ -4133,6 +4373,24 @@
                         "label",
                         "pick",
                         "from"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "ability-score-improvement"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ],
                       "additionalProperties": false
                     }
@@ -4741,9 +4999,26 @@
                               "minLength": 1
                             },
                             "pick": {
-                              "type": "integer",
-                              "exclusiveMinimum": 0,
-                              "maximum": 9007199254740991
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "column": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                    }
+                                  },
+                                  "required": [
+                                    "column"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
                             },
                             "from": {
                               "anyOf": [
@@ -4770,12 +5045,30 @@
                                         "type": "string"
                                       },
                                       "additionalProperties": {
-                                        "type": [
-                                          "string",
-                                          "number",
-                                          "boolean"
+                                        "anyOf": [
+                                          {
+                                            "type": [
+                                              "string",
+                                              "number",
+                                              "boolean"
+                                            ]
+                                          },
+                                          {
+                                            "minItems": 1,
+                                            "type": "array",
+                                            "items": {
+                                              "type": [
+                                                "string",
+                                                "number",
+                                                "boolean"
+                                              ]
+                                            }
+                                          }
                                         ]
                                       }
+                                    },
+                                    "known": {
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
@@ -4834,6 +5127,39 @@
                                           },
                                           "description": {
                                             "type": "string"
+                                          },
+                                          "requires": {
+                                            "type": "object",
+                                            "properties": {
+                                              "level": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 20
+                                              },
+                                              "option": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "choice": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                  },
+                                                  "id": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "choice",
+                                                  "id"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              "spell": {
+                                                "type": "string",
+                                                "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           },
                                           "effects": {
                                             "type": "array",
@@ -5476,6 +5802,24 @@
                             "from"
                           ],
                           "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "const": "ability-score-improvement"
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "id"
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     }
@@ -6089,9 +6433,26 @@
                                 "minLength": 1
                               },
                               "pick": {
-                                "type": "integer",
-                                "exclusiveMinimum": 0,
-                                "maximum": 9007199254740991
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "column": {
+                                        "type": "string",
+                                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                      }
+                                    },
+                                    "required": [
+                                      "column"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
                               },
                               "from": {
                                 "anyOf": [
@@ -6118,12 +6479,30 @@
                                           "type": "string"
                                         },
                                         "additionalProperties": {
-                                          "type": [
-                                            "string",
-                                            "number",
-                                            "boolean"
+                                          "anyOf": [
+                                            {
+                                              "type": [
+                                                "string",
+                                                "number",
+                                                "boolean"
+                                              ]
+                                            },
+                                            {
+                                              "minItems": 1,
+                                              "type": "array",
+                                              "items": {
+                                                "type": [
+                                                  "string",
+                                                  "number",
+                                                  "boolean"
+                                                ]
+                                              }
+                                            }
                                           ]
                                         }
+                                      },
+                                      "known": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -6182,6 +6561,39 @@
                                             },
                                             "description": {
                                               "type": "string"
+                                            },
+                                            "requires": {
+                                              "type": "object",
+                                              "properties": {
+                                                "level": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 20
+                                                },
+                                                "option": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "choice": {
+                                                      "type": "string",
+                                                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                    },
+                                                    "id": {
+                                                      "type": "string",
+                                                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "choice",
+                                                    "id"
+                                                  ],
+                                                  "additionalProperties": false
+                                                },
+                                                "spell": {
+                                                  "type": "string",
+                                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                }
+                                              },
+                                              "additionalProperties": false
                                             },
                                             "effects": {
                                               "type": "array",
@@ -6824,6 +7236,24 @@
                               "from"
                             ],
                             "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "ability-score-improvement"
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ],
+                            "additionalProperties": false
                           }
                         ]
                       }
@@ -7102,6 +7532,15 @@
                       "known",
                       "prepared",
                       "spellbook",
+                      "pact"
+                    ]
+                  },
+                  "progression": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "half",
+                      "third",
                       "pact"
                     ]
                   },
@@ -7810,9 +8249,26 @@
                                 "minLength": 1
                               },
                               "pick": {
-                                "type": "integer",
-                                "exclusiveMinimum": 0,
-                                "maximum": 9007199254740991
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "column": {
+                                        "type": "string",
+                                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                      }
+                                    },
+                                    "required": [
+                                      "column"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
                               },
                               "from": {
                                 "anyOf": [
@@ -7839,12 +8295,30 @@
                                           "type": "string"
                                         },
                                         "additionalProperties": {
-                                          "type": [
-                                            "string",
-                                            "number",
-                                            "boolean"
+                                          "anyOf": [
+                                            {
+                                              "type": [
+                                                "string",
+                                                "number",
+                                                "boolean"
+                                              ]
+                                            },
+                                            {
+                                              "minItems": 1,
+                                              "type": "array",
+                                              "items": {
+                                                "type": [
+                                                  "string",
+                                                  "number",
+                                                  "boolean"
+                                                ]
+                                              }
+                                            }
                                           ]
                                         }
+                                      },
+                                      "known": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -7903,6 +8377,39 @@
                                             },
                                             "description": {
                                               "type": "string"
+                                            },
+                                            "requires": {
+                                              "type": "object",
+                                              "properties": {
+                                                "level": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 20
+                                                },
+                                                "option": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "choice": {
+                                                      "type": "string",
+                                                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                    },
+                                                    "id": {
+                                                      "type": "string",
+                                                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "choice",
+                                                    "id"
+                                                  ],
+                                                  "additionalProperties": false
+                                                },
+                                                "spell": {
+                                                  "type": "string",
+                                                  "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                                }
+                                              },
+                                              "additionalProperties": false
                                             },
                                             "effects": {
                                               "type": "array",
@@ -8545,6 +9052,24 @@
                               "from"
                             ],
                             "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "ability-score-improvement"
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ],
+                            "additionalProperties": false
                           }
                         ]
                       }
@@ -9137,9 +9662,26 @@
                           "minLength": 1
                         },
                         "pick": {
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 9007199254740991
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                }
+                              },
+                              "required": [
+                                "column"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
                         },
                         "from": {
                           "anyOf": [
@@ -9166,12 +9708,30 @@
                                     "type": "string"
                                   },
                                   "additionalProperties": {
-                                    "type": [
-                                      "string",
-                                      "number",
-                                      "boolean"
+                                    "anyOf": [
+                                      {
+                                        "type": [
+                                          "string",
+                                          "number",
+                                          "boolean"
+                                        ]
+                                      },
+                                      {
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "items": {
+                                          "type": [
+                                            "string",
+                                            "number",
+                                            "boolean"
+                                          ]
+                                        }
+                                      }
                                     ]
                                   }
+                                },
+                                "known": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -9230,6 +9790,39 @@
                                       },
                                       "description": {
                                         "type": "string"
+                                      },
+                                      "requires": {
+                                        "type": "object",
+                                        "properties": {
+                                          "level": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 20
+                                          },
+                                          "option": {
+                                            "type": "object",
+                                            "properties": {
+                                              "choice": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              },
+                                              "id": {
+                                                "type": "string",
+                                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                              }
+                                            },
+                                            "required": [
+                                              "choice",
+                                              "id"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "spell": {
+                                            "type": "string",
+                                            "pattern": "^(?:[a-z0-9]+(?:[.-][a-z0-9]+)*:)?[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                          }
+                                        },
+                                        "additionalProperties": false
                                       },
                                       "effects": {
                                         "type": "array",
@@ -9870,6 +10463,24 @@
                         "label",
                         "pick",
                         "from"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "ability-score-improvement"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ],
                       "additionalProperties": false
                     }

@@ -56,6 +56,7 @@ export function spellcastingFor(c: RawClass, columns: Set<string>): Spellcasting
     ability: c.spellcasting.spellcasting_ability.index as Ability,
     level: c.spellcasting.level,
     kind: how.kind,
+    progression: how.kind === "pact" ? "pact" : c.index === "paladin" || c.index === "ranger" ? "half" : "full",
     ...(columns.has("cantrips-known") ? { cantrips: "cantrips-known" } : {}),
     ...(columns.has("spells-known") ? { known: "spells-known" } : {}),
     slots,

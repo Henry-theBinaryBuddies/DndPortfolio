@@ -3,10 +3,11 @@
 // gives its own effects), so a picked entry with effects of its own (a feat, later) is expanded in turn.
 import type { ChoiceSpec, Option } from "../../../core";
 import type { ChoiceEffect, EachTemplate, Effect, Spell } from "../packFormat";
-import { ABILITY_NAMES, choiceListValues, SKILLS, type Ability, type ChoiceList, type Collection } from "../vocabulary";
+import { ABILITY_SLOTS } from "../steps/abilities";
+import { ABILITIES, ABILITY_NAMES, choiceListValues, SKILLS, type Ability, type ChoiceList, type Collection } from "../vocabulary";
 import { fullRef, matchesWhere, picksOf, type Context, type Source } from "./context";
 import { describeEffects } from "./describe";
-import type { Origin } from "./tally";
+import { originText, type Origin } from "./tally";
 
 /** Guards against an entry that (through choices and grants) ends up granting itself. */
 const MAX_DEPTH = 6;
@@ -15,8 +16,11 @@ export function expandSource(ctx: Context, source: Source, depth = 0): void {
   for (const effect of source.effects) applyEffect(ctx, source, effect, undefined, depth);
 }
 
+/** Where a source's choices say they come from: "Fighter 3", "Champion (Fighter 10)", "Elf". */
+const sourceText = (source: Source) => originText({ name: source.name, at: source.at });
+
 function applyEffect(ctx: Context, source: Source, effect: Effect, choice: string | undefined, depth: number): void {
-  const from: Origin = { name: source.name, step: source.step, choice };
+  const from: Origin = { name: source.name, step: source.step, choice, ...(source.at ? { at: source.at } : {}) };
   const { tally } = ctx;
   switch (effect.type) {
     case "ability-bonus":
@@ -47,7 +51,7 @@ function applyEffect(ctx: Context, source: Source, effect: Effect, choice: strin
       tally.acBonuses.push({ amount: effect.amount, while: effect.while, from });
       return;
     case "hit-points":
-      tally.hitPoints.push({ perLevel: effect.perLevel, from });
+      tally.hitPoints.push({ perLevel: effect.perLevel, from, ...(source.classLevel ? { classLevel: source.classLevel } : {}) });
       return;
     case "language":
       grant(ctx, source, "languages", fullRef(effect.id, source.pack), from, depth);
@@ -78,6 +82,52 @@ function applyEffect(ctx: Context, source: Source, effect: Effect, choice: strin
     case "choice":
       openChoice(ctx, source, effect, depth);
       return;
+    case "ability-score-improvement":
+      openImprovement(ctx, source, effect.id);
+      return;
+  }
+}
+
+/** An Ability Score Improvement: 2 points, at most 2 to one score. */
+export const IMPROVEMENT = { points: 2, max: 2, cap: 20 };
+
+/** The stored increases ({ str: 2 } or { dex: 1, con: 1 }); null if malformed. Zeros are allowed and ignored. */
+function readImprovement(value: unknown): Partial<Record<Ability, number>> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const out: Partial<Record<Ability, number>> = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (!(ABILITIES as readonly string[]).includes(k) || !Number.isInteger(v) || (v as number) < 0 || (v as number) > IMPROVEMENT.max) return null;
+    if (v) out[k as Ability] = v as number;
+  }
+  return out;
+}
+
+/** Opens an Ability Score Improvement as points to spend on the six scores, and applies what is spent. */
+function openImprovement(ctx: Context, source: Source, id: string): void {
+  const key = `${source.key}.${id}`;
+  const value = ctx.doc.choices[key];
+  const stored = value === undefined ? {} : readImprovement(value);
+  const spent = Object.values(stored ?? {}).reduce((t, v) => t + v, 0);
+  const where = sourceText(source);
+  const cost = Object.fromEntries(Array.from({ length: IMPROVEMENT.max + 1 }, (_, v) => [String(v), v]));
+  ctx.open.push({
+    spec: {
+      key, step: source.step, label: "Ability Score Improvement", source: where, kind: "allocate", required: true,
+      hint: `Add 2 to one score, or 1 to two. This can't raise a score above ${IMPROVEMENT.cap}.`,
+      slots: ABILITY_SLOTS, range: { min: 0, max: IMPROVEMENT.max }, budget: { total: IMPROVEMENT.points, cost }, slotValue: { label: "Increase", cost: false },
+    },
+    picks: [],
+    answered: stored !== null && spent === IMPROVEMENT.points,
+    source: { key: source.key, name: source.name, pack: source.pack, classLevel: source.classLevel },
+  });
+  if (stored === null || spent > IMPROVEMENT.points) {
+    ctx.issues.push({
+      id: `improvement:${key}`, severity: "error", step: source.step, key, overridable: stored !== null,
+      message: `Ability Score Improvement (${where}): add ${IMPROVEMENT.points} points in all, at most ${IMPROVEMENT.max} to one score.`,
+    });
+  }
+  for (const [ability, amount] of Object.entries(stored ?? {}) as [Ability, number][]) {
+    ctx.tally.abilityBonuses.push({ ability, amount, cap: IMPROVEMENT.cap, from: { name: `Ability Score Improvement (${where})`, step: source.step, choice: key } });
   }
 }
 
@@ -100,20 +150,29 @@ export function grant(ctx: Context, source: Source, collection: Collection, ref:
   }
 }
 
+/** How many a choice picks: its number, or its class table column at the class's level (0 if the table has none yet). */
+export function pickCount(effect: ChoiceEffect, source: Pick<Source, "columns">): number {
+  return typeof effect.pick === "number" ? effect.pick : Number(source.columns?.[effect.pick.column] ?? 0) || 0;
+}
+
 export function openChoice(ctx: Context, source: Source, effect: ChoiceEffect, depth = 0): void {
   const key = `${source.key}.${effect.id}`;
   const picks = picksOf(ctx.doc.choices[key]);
   const from = effect.from;
+  const n = pickCount(effect, source);
+  if (n <= 0) return;
+  // One pick of a fixed number is a pick-one; a count from the class table stays a list as it grows.
+  const one = n === 1 && typeof effect.pick === "number";
   // Spell picks appear on the Spells step, drawn as a spell list, wherever they come from (a high elf's cantrip).
   const spells = "collection" in from && from.collection === "spells";
   const spec: ChoiceSpec = {
     key,
     step: spells ? "spells" : source.step,
     label: effect.label,
-    source: source.name,
-    kind: effect.pick === 1 ? "pick-one" : "pick-many",
+    source: sourceText(source),
+    kind: one ? "pick-one" : "pick-many",
     options: optionsFor(ctx, from),
-    count: effect.pick === 1 ? undefined : { min: effect.pick, max: effect.pick },
+    count: one ? undefined : { min: n, max: n },
     required: true,
     ...(spells ? { presentation: "list" as const } : {}),
   };
@@ -121,6 +180,7 @@ export function openChoice(ctx: Context, source: Source, effect: ChoiceEffect, d
     spec, picks, effect,
     collection: "collection" in from ? from.collection : undefined,
     proficient: "proficient" in from ? from.proficient : undefined,
+    source: { key: source.key, name: source.name, pack: source.pack, classLevel: source.classLevel },
   });
 
   // Apply what was picked, even if a pick breaks a rule: the check stage reports it, and a DM may allow it.
@@ -134,7 +194,7 @@ export function openChoice(ctx: Context, source: Source, effect: ChoiceEffect, d
       const option = from.options.find((o) => o.id === pick);
       for (const e of option?.effects ?? []) applyEffect(ctx, source, e as Effect, key, depth + 1);
     } else {
-      grant(ctx, source, from.collection, pick, { name: source.name, step: source.step, choice: key }, depth + 1, spells ? { ability: effect.ability } : undefined);
+      grant(ctx, source, from.collection, pick, { name: source.name, step: source.step, choice: key, ...(source.at ? { at: source.at } : {}) }, depth + 1, spells ? { ability: effect.ability } : undefined);
     }
   }
 }

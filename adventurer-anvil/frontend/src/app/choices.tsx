@@ -38,7 +38,7 @@ export function ChoiceView(props: ChoiceProps) {
     case "number":
       return <NumberChoice {...props} />;
     case "quantities":
-      return <Quantities {...props} />;
+      return props.spec.presentation === "steppers" ? <Steppers {...props} /> : <Quantities {...props} />;
     case "image":
       return <ImageChoice {...props} />;
     default:
@@ -400,6 +400,60 @@ function Quantities({ spec, value, issues, onChange }: ChoiceProps) {
           <ul className="shop">{options.map(row)}</ul>
         </details>
       )}
+      <Issues issues={issues} />
+    </section>
+  );
+}
+
+/**
+ * How many of each of a few options, all listed with their own − and +, within a budget (levels given to other
+ * classes). An option that can't be taken says why but stays usable: the file may say otherwise and a DM can allow it.
+ */
+function Steppers({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  const options = spec.options ?? [];
+  const counts = asCounts(value);
+  const budget = spec.budget;
+  const cost = (o: Option) => budget?.cost[String(o.value)] ?? 1;
+  const spent = options.reduce((total, o) => total + cost(o) * (counts[String(o.value)] ?? 0), 0);
+  const left = (budget?.total ?? 0) - spent;
+  const set = (v: string, n: number) => {
+    const next = { ...counts };
+    if (n > 0) next[v] = n;
+    else delete next[v];
+    onChange(next);
+  };
+  return (
+    <section className="choice" id={id} tabIndex={-1} aria-labelledby={`${id}-label`}>
+      <h2 id={`${id}-label`} className="choice-title">{spec.label}</h2>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
+      {budget && (
+        <p className="meta" aria-live="polite">
+          {spent} of {budget.total} given · {left >= 0 ? `${left} left` : <span className="attention">{-left} too many</span>}
+        </p>
+      )}
+      <ul className="shop">
+        {options.map((o) => {
+          const v = String(o.value);
+          const n = counts[v] ?? 0;
+          const full = budget !== undefined && cost(o) > left;
+          return (
+            <li key={v}>
+              <span className="shop-name">{o.name}</span>
+              <span className={`shop-tags ${o.unavailable ? "attention" : "dim"}`}>{o.unavailable ?? [o.summary, ...(o.tags ?? [])].filter(Boolean).join(" · ")}</span>
+              <span className="stepper">
+                <button type="button" className="button small" disabled={n === 0} onClick={() => set(v, n - 1)}>
+                  −<span className="sr-only"> one fewer for {o.name}</span>
+                </button>
+                <span className="final">{n}<span className="sr-only"> for {o.name}</span></span>
+                <button type="button" className="button small" disabled={full} onClick={() => set(v, n + 1)}>
+                  +<span className="sr-only"> one more for {o.name}{full ? " (none left to give)" : ""}</span>
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
       <Issues issues={issues} />
     </section>
   );

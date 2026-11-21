@@ -1,6 +1,6 @@
 // The Review and Licences pages: built from the core's evaluation and the loaded packs, so every system gets them.
 import { useId, useState } from "react";
-import { NAME_KEY, type CharacterDocument, type CharacterView, type ChoiceSpec, type ChoiceValue, type ResolvedIssue } from "../core";
+import { NAME_KEY, type CharacterDocument, type CharacterView, type ChoiceSpec, type ChoiceValue, type LevelUp, type ResolvedIssue } from "../core";
 import { coinsText } from "./format";
 import type { LoadedPack } from "./packs";
 
@@ -19,12 +19,19 @@ export function answerText(spec: ChoiceSpec, value: ChoiceValue | undefined): st
     case "assign":
     case "allocate": {
       if (typeof value !== "object" || Array.isArray(value)) return undefined;
-      const parts = (spec.slots ?? []).filter((s) => (value as Record<string, unknown>)[s.id] !== undefined).map((s) => `${s.name.slice(0, 3)} ${(value as Record<string, unknown>)[s.id]}`);
+      const v = value as Record<string, unknown>;
+      // Values that start from 0 (an increase) are shown as "+2", and the zeros left out.
+      const increase = spec.kind === "allocate" && (spec.range?.min ?? 0) === 0;
+      const parts = (spec.slots ?? [])
+        .filter((s) => v[s.id] !== undefined && !(increase && !v[s.id]))
+        .map((s) => `${s.name.slice(0, 3)} ${increase ? "+" : ""}${v[s.id]}`);
       return parts.length ? parts.join(", ") : undefined;
     }
     case "quantities": {
       if (typeof value !== "object" || Array.isArray(value)) return undefined;
-      const parts = Object.entries(value).filter(([, n]) => typeof n === "number" && n > 0).map(([v, n]) => (n === 1 ? nameOf(v) : `${nameOf(v)} × ${n}`));
+      // A shop's "Rope × 2"; a short list of steppers' "Wizard 1".
+      const parts = Object.entries(value).filter(([, n]) => typeof n === "number" && n > 0)
+        .map(([v, n]) => (spec.presentation === "steppers" ? `${nameOf(v)} ${n}` : n === 1 ? nameOf(v) : `${nameOf(v)} × ${n}`));
       const spent = Object.entries(value).reduce((t, [v, n]) => t + (spec.budget?.cost[v] ?? 0) * (typeof n === "number" ? n : 0), 0);
       return parts.length ? `${list(parts)}${spec.budget?.format === "coins" ? ` (${coinsText(spent)})` : ""}` : undefined;
     }
@@ -66,7 +73,7 @@ function Allow({ issue, onAllow }: { issue: ResolvedIssue; onAllow: (note: strin
   );
 }
 
-export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload }: {
+export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload, levelUp, onLevelUp }: {
   view: CharacterView;
   doc: CharacterDocument;
   stepLabel: (id: string) => string;
@@ -75,6 +82,9 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
   onAllow: (issueId: string, note: string) => void;
   onDisallow: (issueId: string) => void;
   onDownload: () => void;
+  /** Whether the character can go up a level (for systems that have levels), and doing it. */
+  levelUp?: LevelUp;
+  onLevelUp?: () => void;
 }) {
   const open = view.issues.filter((i) => !i.override);
   const errors = open.filter((i) => i.severity === "error");
@@ -162,6 +172,22 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
             {view.unused.map((key) => <li key={key}><code>{key}</code></li>)}
           </ul>
           <button type="button" className="button" onClick={() => onClear(view.unused)}>Clear these</button>
+        </section>
+      )}
+
+      {levelUp && (
+        <section className="section" aria-labelledby="review-level">
+          <h2 id="review-level">Level up</h2>
+          {levelUp.ok ? (
+            <>
+              <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
+                Adds a level and opens the step where you choose what comes with it.
+              </p>
+              <button type="button" className="button" style={{ marginTop: 8 }} onClick={onLevelUp}>{levelUp.label}</button>
+            </>
+          ) : (
+            <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>{levelUp.reason}</p>
+          )}
         </section>
       )}
 

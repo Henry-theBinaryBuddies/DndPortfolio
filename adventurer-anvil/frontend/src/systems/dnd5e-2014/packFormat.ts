@@ -50,15 +50,24 @@ const armorClassBonus = z.strictObject({
   amount: z.int().min(-10).max(10),
   while: z.enum(["armored", "unarmored"]).optional(),
 });
-/** Extra hit points for every character level (Dwarven Toughness, Draconic Resilience). */
+/**
+ * Extra hit points for every level: every character level (Dwarven Toughness), or every level in the class when a
+ * class or subclass gives it (Draconic Resilience).
+ */
 const hitPoints = z.strictObject({ type: z.literal("hit-points"), perLevel: z.int().min(-5).max(10) });
 /** Double the proficiency bonus for a skill or tool you are proficient in. */
 const expertise = z.strictObject({ type: z.literal("expertise"), kind: z.enum(["skill", "tool"]), id });
+const whereValue = z.union([z.string(), z.number(), z.boolean()]);
 /** Pick entries from a collection; each pick is granted (a language known, a cantrip known...). */
 const collectionChoiceFrom = z.strictObject({
   collection: z.enum(COLLECTIONS),
-  /** Only entries whose fields match: a list field matches if it contains the value. */
-  where: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  /**
+   * Only entries whose fields match: a list field matches if it contains the value. A list of values matches any of
+   * them (spells of level 0 to 5: "level": [0, 1, 2, 3, 4, 5]).
+   */
+  where: z.record(z.string(), z.union([whereValue, z.array(whereValue).min(1)])).optional(),
+  /** Spells picked here count among the class's spells known (a bard's Magical Secrets). */
+  known: z.boolean().optional(),
 });
 /** Pick from one of the module's fixed lists; `each` says what every pick gives. */
 const listChoiceFrom = z.strictObject({
@@ -118,12 +127,21 @@ const SIMPLE_EFFECTS = [
 /** Every effect but a choice: what an option written into a choice can give. */
 const simpleEffectSchema = z.discriminatedUnion("type", [...SIMPLE_EFFECTS]);
 
+/**
+ * What an option needs before it can be picked (an Eldritch Invocation's): a level in the class, an option picked in
+ * another of the same class's choices (Pact of the Blade, from "pact-boon"), or a spell known (Eldritch Blast).
+ */
+const optionRequires = z
+  .strictObject({ level: z.int().min(1).max(20).optional(), option: z.strictObject({ choice: id, id }).optional(), spell: ref.optional() })
+  .refine((r) => r.level !== undefined || r.option || r.spell, 'give "level", "option" or "spell"');
+
 /** An option written into the choice itself (a fighting style), with what it gives. */
 const inlineOption = z.strictObject({
   id,
   name: z.string().min(1),
   summary: z.string().optional(),
   description: z.string().optional(),
+  requires: optionRequires.optional(),
   effects: z.array(simpleEffectSchema),
 });
 const optionsChoiceFrom = z.strictObject({ options: z.array(inlineOption).min(1) });
@@ -132,19 +150,26 @@ const choice = z.strictObject({
   type: z.literal("choice"),
   id,
   label: z.string().min(1),
-  pick: z.int().positive(),
+  /** How many to pick: a number, or a column of the class table (Invocations Known), so it grows with level. */
+  pick: z.union([z.int().positive(), z.strictObject({ column: id })]),
   from: z.union([collectionChoiceFrom, listChoiceFrom, optionsChoiceFrom, proficientChoiceFrom]),
   each: eachSchema.optional(),
   /** For picks from spells: the ability they are cast with (a high elf's wizard cantrip: Intelligence). */
   ability: z.enum(ABILITIES).optional(),
 });
 
+/**
+ * An Ability Score Improvement: the character adds 2 to one score, or 1 to two, none above 20. `id` names its choice
+ * (unique within the class, like a choice's id).
+ */
+const abilityScoreImprovement = z.strictObject({ type: z.literal("ability-score-improvement"), id });
+
 export const EFFECT_TYPES = [
   "ability-bonus", "speed", "sense", "proficiency", "language", "resistance", "grant", "armor-class", "armor-class-bonus",
-  "hit-points", "expertise", "choice", "resource", "feature", "spell", "expanded-spells",
+  "hit-points", "expertise", "choice", "resource", "feature", "spell", "expanded-spells", "ability-score-improvement",
 ] as const;
 
-export const effectSchema = z.discriminatedUnion("type", [...SIMPLE_EFFECTS, choice]);
+export const effectSchema = z.discriminatedUnion("type", [...SIMPLE_EFFECTS, choice, abilityScoreImprovement]);
 export type Effect = z.infer<typeof effectSchema>;
 export type ChoiceEffect = Extract<Effect, { type: "choice" }>;
 
@@ -241,6 +266,11 @@ export const spellcastingSchema = z.strictObject({
   /** The class level it starts at (2 for paladins and rangers). */
   level,
   kind: z.enum(CASTING_KINDS),
+  /**
+   * How its levels count towards a multiclass character's spell slots: all of them ("full", the default), half
+   * ("half": paladins and rangers), a third ("third"), or not at all ("pact": a warlock's Pact Magic is separate).
+   */
+  progression: z.enum(["full", "half", "third", "pact"]).optional(),
   /** Whose spell list: this class's id by default. */
   list: id.optional(),
   cantrips: id.optional(),
@@ -493,6 +523,11 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
       }
       if (effect.type !== "choice") return;
       const from = effect.from;
+      if (typeof effect.pick === "object") {
+        if (!columns) errors.push(`${at}.pick: only classes and subclasses have table columns to count from.`);
+        else if (!columns.has(effect.pick.column)) errors.push(`${at}.pick: no column "${effect.pick.column}" in the class table.`);
+      }
+      if ("collection" in from && from.known && from.collection !== "spells") errors.push(`${at}.from.known: only choices of spells count among the spells known.`);
       if ("list" in from) {
         const expected = CHOICE_LISTS[from.list];
         if (!effect.each) errors.push(`${at}: a choice from the list "${from.list}" needs "each" (a ${expected} effect).`);
@@ -517,6 +552,7 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
         from.options.forEach((o, j) => {
           if (seen.has(o.id)) errors.push(`${at}.from.options[${j}]: the id "${o.id}" is used twice.`);
           seen.add(o.id);
+          if (o.requires?.spell) resolves(o.requires.spell, "spells", `${at}.from.options[${j}].requires.spell`);
           checkEffects(o.effects as Effect[], `${at}.from.options[${j}].effects`, columns);
         });
       }
@@ -539,7 +575,7 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
     for (const [effects, at] of lists) {
       checkEffects(effects, at, columns);
       effects.forEach((e, i) => {
-        if (e.type !== "choice") return;
+        if (e.type !== "choice" && e.type !== "ability-score-improvement") return;
         if (e.id === "subclass") errors.push(`${at}[${i}]: the choice id "subclass" is kept for choosing the subclass.`);
         else if (ids.has(e.id)) errors.push(`${at}[${i}]: the choice id "${e.id}" is also used at ${ids.get(e.id)}.`);
         ids.set(e.id, `${at}[${i}]`);
@@ -609,6 +645,9 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
       if ((sc.kind === "known" || sc.kind === "pact") && !sc.known) errors.push(`${at}.spellcasting: a ${sc.kind} caster needs "known", the column of spells known.`);
       if ((sc.kind === "prepared" || sc.kind === "spellbook") && !sc.prepare) errors.push(`${at}.spellcasting: a ${sc.kind} caster needs "prepare" ("level" or "half-level").`);
       if ((sc.kind === "spellbook") !== Boolean(sc.spellbook)) errors.push(`${at}.spellcasting: "spellbook" goes with the kind "spellbook", and only with it.`);
+      if (sc.progression !== undefined && (sc.kind === "pact") !== (sc.progression === "pact")) {
+        errors.push(`${at}.spellcasting.progression: "pact" goes with the kind "pact", and only with it.`);
+      }
     }
   });
   subclasses.forEach((sub, i) => {

@@ -5,6 +5,8 @@ import type { LoadedPack } from "./packs";
 
 export type Action =
   | { type: "set"; key: ChoiceKey; value: ChoiceValue }
+  /** Several choices at once, as one change (levelling up). */
+  | { type: "set-many"; choices: Record<ChoiceKey, ChoiceValue> }
   | { type: "clear"; keys: ChoiceKey[] }
   | { type: "rolls"; rolls: RollRecord[] }
   | { type: "allow"; issueId: string; note: string }
@@ -19,6 +21,8 @@ export function reducer(doc: CharacterDocument, action: Action): CharacterDocume
       // The name lives in the file's own field, not among the choices.
       if (action.key === NAME_KEY) return setName(doc, typeof action.value === "string" ? action.value : "", now);
       return setChoice(doc, action.key, action.value, now);
+    case "set-many":
+      return withChoices(doc, action.choices, now);
     case "clear":
       return clearChoices(doc, action.keys, now);
     case "rolls":
@@ -30,6 +34,11 @@ export function reducer(doc: CharacterDocument, action: Action): CharacterDocume
     case "replace":
       return action.doc;
   }
+}
+
+/** The document with these choices set. */
+export function withChoices(doc: CharacterDocument, choices: Record<ChoiceKey, ChoiceValue>, now: string): CharacterDocument {
+  return Object.entries(choices).reduce((d, [key, value]) => setChoice(d, key, value, now), doc);
 }
 
 export function freshCharacter(system: SystemModule, packs: LoadedPack[]): CharacterDocument {

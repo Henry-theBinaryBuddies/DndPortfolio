@@ -2,7 +2,7 @@
 import type { BreakdownLine, Derived, ListItem } from "../../../core";
 import { ABILITIES, ABILITY_NAMES, SKILLS, type Ability, type Skill } from "../vocabulary";
 import { listName } from "./expand";
-import { bonusesFor, type AbilityUses, type Tally } from "./tally";
+import { bonusesFor, originText, type AbilityUses, type Tally } from "./tally";
 
 export interface DerivedResult {
   derived: Record<string, Derived>;
@@ -77,14 +77,26 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
   derived["initiative"] = { value: modifier(scores.dex), label: "Initiative", breakdown: [{ label: "Dexterity", amount: modifier(scores.dex) }] };
   derived["ac"] = armorClass(tally, scores);
 
-  // Hit points and hit dice, once there is a class. Level 1: the first class's whole hit die, plus Con, plus any
-  // per-level bonus. (Later levels, rolled or averaged, arrive with levelling up.)
+  // Hit points and hit dice, once there is a class: the first class's whole hit die at level 1, the hit die's fixed
+  // average (half, plus 1) for every level after, Constitution for every level, and any per-level bonus (a class's
+  // counts its own levels). Rolled hit points are an optional rule for later.
   const first = tally.classes[0];
   if (first) {
     const con = modifier(scores.con);
-    const hp: BreakdownLine[] = [{ label: `${first.name} hit die (d${first.hitDie}, highest at level 1)`, amount: first.hitDie }];
+    const hp: BreakdownLine[] = [{ label: `${first.name} level 1 (d${first.hitDie}, highest)`, amount: first.hitDie }];
+    for (const c of tally.classes) {
+      const from = c === first ? 2 : 1;
+      const n = c.level - from + 1;
+      if (n <= 0) continue;
+      const average = c.hitDie / 2 + 1;
+      const which = n === 1 ? `level ${from}` : `levels ${from}–${c.level}`;
+      hp.push({ label: `${c.name} ${which} (d${c.hitDie}, average ${average}${n > 1 ? " each" : ""})`, amount: average * n });
+    }
     hp.push({ label: level > 1 ? `Constitution × ${level}` : "Constitution", amount: con * level });
-    for (const h of tally.hitPoints) hp.push({ label: level > 1 ? `${h.from.name} × ${level}` : h.from.name, amount: h.perLevel * level });
+    for (const h of tally.hitPoints) {
+      const n = h.classLevel ?? level;
+      hp.push({ label: n > 1 ? `${h.from.name} × ${n}` : h.from.name, amount: h.perLevel * n });
+    }
     derived["hp"] = { value: Math.max(1, sum(hp)), label: "Hit points", breakdown: hp };
     const dice = new Map<number, number>();
     for (const c of tally.classes) dice.set(c.hitDie, (dice.get(c.hitDie) ?? 0) + c.level);
@@ -143,7 +155,7 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
   }
 
   // Spellcasting: a save DC and attack bonus for each ability spells are cast with, and the slots.
-  const spellAbilities = [...new Set([...tally.casting.map((c) => c.ability), ...tally.spells.map((s) => s.ability).filter((a): a is Ability => Boolean(a))])];
+  const spellAbilities = [...new Set([...tally.casting.map((c) => c.ability), ...tally.spells.map((s) => s.ability)].filter((a): a is Ability => Boolean(a)))];
   for (const a of spellAbilities) {
     const which = spellAbilities.length > 1 ? ` (${ABILITY_NAMES[a]})` : "";
     const dc: BreakdownLine[] = [{ label: "Base", amount: 8 }, { label: "Proficiency bonus", amount: prof }, { label: ABILITY_NAMES[a], amount: modifier(scores[a]) }];
@@ -245,12 +257,12 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
     `${usesOf(r.uses)} per ${r.recharge === "short" ? "short rest" : r.recharge === "long" ? "long rest" : "dawn"}`;
   for (const f of tally.features) {
     const page = f.source ? ` (${f.source.book}${f.source.page ? ` p. ${f.source.page}` : ""})` : "";
-    add("features", { name: f.name, source: f.from.name, detail: f.summary ? `${f.summary}${page}` : page.trim() || undefined }, false);
+    add("features", { name: f.name, source: originText(f.from), detail: f.summary ? `${f.summary}${page}` : page.trim() || undefined }, false);
   }
   for (const r of tally.resources) add("resources", { name: r.name, source: r.from.name, detail: per(r) }, false);
 
   // What each step gives, for the step's own page ("gains.class"): its features, with the uses where a resource
-  // shares the feature's name (Second Wind), then any other resources.
+  // shares the feature's name (Second Wind), then any other resources. A class's say the level they come at.
   const steps = new Set([...tally.features, ...tally.resources].map((x) => x.from.step).filter((s): s is string => Boolean(s)));
   for (const step of steps) {
     const resources = tally.resources.filter((r) => r.from.step === step);
@@ -258,7 +270,7 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
     for (const f of tally.features.filter((f) => f.from.step === step)) {
       const r = resources.find((r) => r.name === f.name && r.from.name === f.from.name);
       if (r) named.add(r.id);
-      add(`gains.${step}`, { name: f.name, source: f.from.name, detail: r ? per(r) : f.summary, description: f.description }, false);
+      add(`gains.${step}`, { name: f.name, source: originText(f.from), detail: r ? per(r) : f.summary, description: f.description }, false);
     }
     for (const r of resources) if (!named.has(r.id)) add(`gains.${step}`, { name: r.name, source: r.from.name, detail: per(r) }, false);
   }

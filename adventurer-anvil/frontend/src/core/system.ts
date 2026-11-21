@@ -45,7 +45,15 @@ export interface SystemModule {
   migrate(doc: CharacterDocument): CharacterDocument;
   /** How a character appears in lists of saved characters. */
   describe(doc: CharacterDocument, content: ContentIndex): CharacterBlurb;
+  /**
+   * For games where characters advance: the choices to change to take the next step up, and the step to show them on;
+   * or why it can't be done yet. Without it, the app offers no such button.
+   */
+  levelUp?(doc: CharacterDocument, content: ContentIndex): LevelUp;
 }
+
+/** `label`: the button's words, e.g. "Level up to 6". */
+export type LevelUp = { ok: true; label: string; choices: Record<ChoiceKey, ChoiceValue>; step: string } | { ok: false; reason: string };
 
 /** A few words, e.g. "Hill Dwarf Cleric 1" (empty when nothing is chosen yet), and the portrait, if one was added. */
 export interface CharacterBlurb {

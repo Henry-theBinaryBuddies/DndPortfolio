@@ -1,8 +1,9 @@
 // ⑤ Check: mark options already owned, report rule problems, work out each step's status, and find
 // choices left behind.
-import type { ChoiceKey, Option, StepReport } from "../../../core";
+import type { ChoiceKey, ContentEntry, Option, StepReport } from "../../../core";
+import type { Effect } from "../packFormat";
 import { ABILITIES, ABILITY_NAMES, type Ability } from "../vocabulary";
-import type { Context, OpenChoice } from "./context";
+import { fullRef, picksOf, type Context, type OpenChoice } from "./context";
 import { listName } from "./expand";
 
 /** For one open choice: option value → the source that already gives it (from anywhere but this choice). */
@@ -29,7 +30,15 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
   } else if ("proficient" in effect.from) {
     for (const e of ctx.tally.expertise) if (notThis(e.from)) map.set(`${e.kind}:${e.id}`, { verb: "Already expert", from: e.from.name });
   } else if ("options" in effect.from) {
-    // Written-in options (a fighting style) are only ever given by their own choice.
+    // A written-in option already chosen in another choice that offers it too (a second Fighting Style, Metamagic).
+    const mine = effect.from.options;
+    for (const other of ctx.open) {
+      if (other === choice || !other.effect || !("options" in other.effect.from)) continue;
+      for (const pick of other.picks) {
+        const o = other.effect.from.options.find((x) => x.id === pick);
+        if (o && mine.some((x) => x.id === o.id && x.name === o.name)) map.set(pick, { verb: "Already chosen", from: other.spec.source ?? other.spec.label });
+      }
+    }
   } else if (effect.from.collection === "spells") {
     spellsHad();
   } else if (effect.from.collection === "languages") {
@@ -37,6 +46,50 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
   } else {
     const collection = effect.from.collection;
     for (const g of ctx.tally.grants) if (g.collection === collection && notThis(g.from)) map.set(g.ref, { verb: "Already have", from: g.from.name });
+  }
+  return map;
+}
+
+/** A choice effect with this id in a class's or subclass's levels (to name an option another choice needs). */
+function findChoice(ctx: Context, sourceKey: string, id: string): Extract<Effect, { type: "choice" }> | undefined {
+  const ref = sourceKey.slice(sourceKey.indexOf(".") + 1);
+  const entry = (ctx.content.get("classes", ref) ?? ctx.content.get("subclasses", ref)) as (ContentEntry & { levels?: { effects: Effect[] }[] }) | undefined;
+  for (const l of entry?.levels ?? []) {
+    for (const e of l.effects) if (e.type === "choice" && e.id === id) return e;
+  }
+  return undefined;
+}
+
+/**
+ * For a choice of written-in options: option id → what it still needs (an Eldritch Invocation's warlock level, its
+ * Pact Boon, a cantrip known).
+ */
+function unmet(ctx: Context, choice: OpenChoice): Map<string, string> {
+  const map = new Map<string, string>();
+  const effect = choice.effect;
+  const source = choice.source;
+  if (!effect || !source || !("options" in effect.from)) return map;
+  for (const o of effect.from.options) {
+    const r = o.requires;
+    if (!r) continue;
+    const needs: string[] = [];
+    if (r.level !== undefined && (source.classLevel ?? 0) < r.level) needs.push(`${source.name} level ${r.level}`);
+    if (r.option) {
+      const key = `${source.key}.${r.option.choice}`;
+      if (!picksOf(ctx.doc.choices[key]).includes(r.option.id)) {
+        const other = findChoice(ctx, source.key, r.option.choice);
+        const named = other && "options" in other.from ? other.from.options.find((x) => x.id === r.option!.id)?.name : undefined;
+        needs.push(named ?? r.option.id);
+      }
+    }
+    if (r.spell) {
+      const ref = fullRef(r.spell, source.pack);
+      if (!ctx.tally.spells.some((s) => s.ref === ref)) {
+        const spell = ctx.content.get("spells", ref);
+        needs.push(spell ? `the ${spell.name} ${Number(spell.level) === 0 ? "cantrip" : "spell"}` : r.spell);
+      }
+    }
+    if (needs.length) map.set(o.id, `Needs ${needs.join(" and ")}`);
   }
   return map;
 }
@@ -64,9 +117,12 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
   for (const choice of ctx.open) {
     const { spec, picks } = choice;
     const have = owned(ctx, choice);
+    const needs = unmet(ctx, choice);
     spec.options = spec.options?.map((option): Option => {
       const o = have.get(String(option.value));
-      return o ? { ...option, unavailable: `${o.verb} (${o.from})` } : option;
+      if (o) return { ...option, unavailable: `${o.verb} (${o.from})` };
+      const need = needs.get(String(option.value));
+      return need ? { ...option, unavailable: need } : option;
     });
     const options = spec.options ?? [];
     const min = spec.count?.min ?? 1;
@@ -108,8 +164,9 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
                 },
           );
         } else if (option.unavailable) {
+          const needed = needs.has(pick) && !have.has(pick);
           ctx.issues.push({
-            id: `already-have:${spec.key}:${pick}`, severity: "error", step: spec.step, key: spec.key, overridable: true,
+            id: `${needed ? "needs" : "already-have"}:${spec.key}:${pick}`, severity: "error", step: spec.step, key: spec.key, overridable: true,
             message: `${spec.label}: ${option.name}: ${option.unavailable.charAt(0).toLowerCase()}${option.unavailable.slice(1)}.`,
           });
         }
@@ -117,8 +174,19 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
     }
   }
 
+  // A bonus that may not raise a score above a cap (an Ability Score Improvement's 20).
+  const capped = new Set<Ability>();
+  for (const b of ctx.tally.abilityBonuses) {
+    if (b.cap === undefined || scores[b.ability] <= b.cap || !b.from.choice) continue;
+    capped.add(b.ability);
+    ctx.issues.push({
+      id: `above-cap:${b.from.choice}:${b.ability}`, severity: "error", step: b.from.step ?? "abilities", key: b.from.choice, overridable: true,
+      message: `${b.from.name}: ${ABILITY_NAMES[b.ability]} would be ${scores[b.ability]}, but this can't raise a score above ${b.cap}.`,
+    });
+  }
+
   for (const ability of ABILITIES) {
-    if (scores[ability] > 20) {
+    if (scores[ability] > 20 && !capped.has(ability)) {
       ctx.issues.push({
         id: `score-above-20:${ability}`, severity: "warning", step: "abilities", overridable: true,
         message: `${ABILITY_NAMES[ability]} is ${scores[ability]}; scores normally top out at 20.`,

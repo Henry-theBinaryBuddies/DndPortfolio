@@ -29,7 +29,7 @@ const METHODS = [
   { value: "roll", name: "Roll" },
 ];
 
-const SLOTS: Slot[] = ABILITIES.map((a) => ({ id: a, name: ABILITY_NAMES[a], derived: `ability.${a}`, derivedNote: `ability.${a}.mod` }));
+export const ABILITY_SLOTS: Slot[] = ABILITIES.map((a) => ({ id: a, name: ABILITY_NAMES[a], derived: `ability.${a}`, derivedNote: `ability.${a}.mod` }));
 
 type Partial6 = Partial<Record<Ability, number>>;
 
@@ -79,7 +79,7 @@ export function abilitiesStep(ctx: Context): Record<Ability, number> {
 
   if (method === "standard-array") {
     const stored = readPartial(ctx.doc.choices[STANDARD_KEY]);
-    open({ key: STANDARD_KEY, step: "abilities", label: "Give each value to an ability", kind: "assign", required: true, slots: SLOTS, values: STANDARD_ARRAY }, stored);
+    open({ key: STANDARD_KEY, step: "abilities", label: "Give each value to an ability", kind: "assign", required: true, slots: ABILITY_SLOTS, values: STANDARD_ARRAY }, stored);
     if (stored && !drawnFrom(Object.values(stored), STANDARD_ARRAY)) {
       issue("standard-array", STANDARD_KEY, "The standard array is 15, 14, 13, 12, 10 and 8, each used once.");
     }
@@ -87,7 +87,7 @@ export function abilitiesStep(ctx: Context): Record<Ability, number> {
     const stored = readPartial(ctx.doc.choices[POINT_BUY_KEY]);
     open(
       {
-        key: POINT_BUY_KEY, step: "abilities", label: "Spend your points", kind: "allocate", required: true, slots: SLOTS,
+        key: POINT_BUY_KEY, step: "abilities", label: "Spend your points", kind: "allocate", required: true, slots: ABILITY_SLOTS,
         range: { min: POINT_BUY.min, max: POINT_BUY.max }, budget: { total: POINT_BUY.total, cost: POINT_BUY.cost },
       },
       stored,
@@ -111,7 +111,7 @@ export function abilitiesStep(ctx: Context): Record<Ability, number> {
     });
     if (latest) {
       const stored = readPartial(ctx.doc.choices[ROLLED_KEY]);
-      open({ key: ROLLED_KEY, step: "abilities", label: "Give each total to an ability", kind: "assign", required: true, slots: SLOTS, values: latest }, stored);
+      open({ key: ROLLED_KEY, step: "abilities", label: "Give each total to an ability", kind: "assign", required: true, slots: ABILITY_SLOTS, values: latest }, stored);
       if (stored && !drawnFrom(Object.values(stored), latest)) {
         issue("rolled-mismatch", ROLLED_KEY, "These scores don't match your latest roll. Give its totals out again.");
       }

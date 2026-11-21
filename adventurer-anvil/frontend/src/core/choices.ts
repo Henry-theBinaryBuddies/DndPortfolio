@@ -70,6 +70,8 @@ export interface ChoiceSpec {
   range?: { min: number; max: number };
   /** assign and allocate: the slots to fill. */
   slots?: Slot[];
+  /** allocate: what a slot's value is called ("Base" if not given), and whether each value's cost is shown (yes if not given). */
+  slotValue?: { label: string; cost?: boolean };
   /** assign: the values to place, one per slot (values may repeat, e.g. two rolled 12s). */
   values?: number[];
   /**
@@ -86,8 +88,9 @@ export interface ChoiceSpec {
   /**
    * pick-one: "segmented" draws a short list of options as a switch rather than cards.
    * pick-one and pick-many: "list" draws a long list as rows with their details, a search and a filter by tag.
+   * quantities: "steppers" draws every option at once, each with its own − and + (a short list), rather than a shop.
    */
-  presentation?: "segmented" | "list";
+  presentation?: "segmented" | "list" | "steppers";
   required: boolean;
   /** Set by the system: whether this choice is fully answered (e.g. all six slots filled, not just one). */
   answered?: boolean;

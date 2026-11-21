@@ -18,6 +18,8 @@ export interface Source {
   /** For a class or subclass: its level, and its table's values at that level (resources may count from them). */
   classLevel?: number;
   columns?: Record<string, number | string>;
+  /** For a class or subclass: the class level these effects come at, for people ("Fighter 3"). */
+  at?: string;
 }
 
 /** A choice on screen, with what has been picked so far. */
@@ -33,6 +35,8 @@ export interface OpenChoice {
   proficient?: string[];
   /** For steps that store something other than picks (e.g. ability scores): is it answered? */
   answered?: boolean;
+  /** The source that opened it, for options with prerequisites (a level in its class, another of its choices). */
+  source?: Pick<Source, "key" | "name" | "pack" | "classLevel">;
 }
 
 export interface Context {
@@ -61,11 +65,16 @@ export function fullRef(id: string, pack: string): string {
   return id.includes(":") ? id : `${pack}:${id}`;
 }
 
-/** A `where` filter: a list field matches if it contains the value, any other field if it equals it. */
-export function matchesWhere(entry: Record<string, unknown>, where: Record<string, string | number | boolean> | undefined): boolean {
+type WhereValue = string | number | boolean;
+
+/**
+ * A `where` filter: a list field matches if it contains the value, any other field if it equals it. A list of
+ * wanted values matches if any of them does.
+ */
+export function matchesWhere(entry: Record<string, unknown>, where: Record<string, WhereValue | WhereValue[]> | undefined): boolean {
   if (!where) return true;
   return Object.entries(where).every(([field, wanted]) => {
     const have = entry[field];
-    return Array.isArray(have) ? have.includes(wanted) : have === wanted;
+    return (Array.isArray(wanted) ? wanted : [wanted]).some((w) => (Array.isArray(have) ? have.includes(w) : have === w));
   });
 }

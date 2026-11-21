@@ -43,11 +43,12 @@ function SaveState({ status }: { status: SaveStatus }) {
   }
 }
 
-/** The character the builder opens with: a new one, or one opened from storage or a file (and anything to note). */
+/** The character the builder opens with: a new one, or one opened from storage or a file (and anything to note), and the step to show first. */
 export interface Opening {
   doc: CharacterDocument;
   saved: boolean;
   notes: string[];
+  step?: string;
 }
 
 export function Builder({ system, packs, content, store, opening, onLeave, focusHeading }: {
@@ -64,7 +65,8 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
   const save = useAutosave({ doc, store, system, content, startSaved: opening.saved, onReplace: (d) => dispatch({ type: "replace", doc: d }) });
   const [notes, setNotes] = useState(opening.notes);
   const view = useMemo(() => viewCharacter(system, doc, content), [system, doc, content]);
-  const [page, setPage] = useState<Page>(() => ({ kind: "step", id: view.steps[0]?.id ?? "review" }));
+  const [page, setPage] = useState<Page>(() => ({ kind: "step", id: (opening.step && view.steps.some((s) => s.id === opening.step) ? opening.step : view.steps[0]?.id) ?? "review" }));
+  const levelUp = useMemo(() => system.levelUp?.(doc, content), [system, doc, content]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const focusTarget = useRef<string | null>(null);
 
@@ -223,6 +225,12 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
               onAllow={(issueId, note) => dispatch({ type: "allow", issueId, note })}
               onDisallow={(issueId) => dispatch({ type: "disallow", issueId })}
               onDownload={() => downloadCharacter(doc)}
+              levelUp={levelUp}
+              onLevelUp={() => {
+                if (!levelUp?.ok) return;
+                dispatch({ type: "set-many", choices: levelUp.choices });
+                goTo(levelUp.step);
+              }}
             />
           )}
           {page.kind === "licences" && <Licences packs={packs} />}

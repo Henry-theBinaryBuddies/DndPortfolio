@@ -1,9 +1,11 @@
-// "My characters": the saved characters, newest first, each to open, download or delete; a new one; or a file to
-// open. Opening a file checks it (readCharacterText) and saves it here before the builder opens it.
+// "My characters": the saved characters, newest first, each to open, level up (for systems with levels), download or
+// delete; a new one; or a file to open. Opening a file checks it (readCharacterText) and saves it here before the
+// builder opens it.
 import { useEffect, useRef, useState } from "react";
 import { readCharacter, readCharacterText, type CharacterDocument, type ContentIndex, type SystemModule } from "../core";
 import type { Opening } from "./Builder";
 import { downloadCharacter } from "./files";
+import { withChoices } from "./state";
 import { StorageFullError, type CharacterStore, type CharacterSummary } from "./store";
 
 const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "unknown");
@@ -47,6 +49,23 @@ export function Characters({ store, system, content, onOpen, onNew, focusHeading
     const result = readCharacter(await store.load(id), system, content.packs());
     if (!result.ok) return setMessage(`That character couldn't be opened. ${result.error}`);
     onOpen({ doc: result.doc, saved: true, notes: result.notes });
+  };
+
+  /** Takes the next level, saves it, and opens the step where its choices are made. */
+  const levelUp = async (summary: CharacterSummary) => {
+    setMessage(null);
+    const result = readCharacter(await store.load(summary.id), system, content.packs());
+    if (!result.ok) return setMessage(`That character couldn't be opened. ${result.error}`);
+    const next = system.levelUp?.(result.doc, content);
+    if (!next) return;
+    if (!next.ok) return setMessage(`${nameOf(summary)} can't level up yet. ${next.reason}`);
+    const doc = withChoices(result.doc, next.choices, new Date().toISOString());
+    try {
+      await store.save(doc, system.describe(doc, content));
+      onOpen({ doc, saved: true, notes: result.notes, step: next.step });
+    } catch (e) {
+      fail(e);
+    }
   };
 
   const download = async (id: string) => {
@@ -140,6 +159,7 @@ export function Characters({ store, system, content, onOpen, onNew, focusHeading
                 ) : (
                   <span className="row-actions">
                     <button type="button" className="button small primary" onClick={() => void open(c.id)}>Open<span className="sr-only"> {nameOf(c)}</span></button>
+                    {system.levelUp && <button type="button" className="button small" onClick={() => void levelUp(c)}>Level up<span className="sr-only"> {nameOf(c)}</span></button>}
                     <button type="button" className="button small" onClick={() => void download(c.id)}>Download<span className="sr-only"> {nameOf(c)}</span></button>
                     <button type="button" className="button small" onClick={() => setConfirming(c.id)}>Delete<span className="sr-only"> {nameOf(c)}</span></button>
                   </span>

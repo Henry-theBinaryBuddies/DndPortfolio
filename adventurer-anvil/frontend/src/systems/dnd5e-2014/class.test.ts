@@ -57,7 +57,7 @@ describe("choosing a class", () => {
     const v = view(fighter);
     expect(v.derived.hp).toEqual({
       value: 11, label: "Hit points",
-      breakdown: [{ label: "Fighter hit die (d10, highest at level 1)", amount: 10 }, { label: "Constitution", amount: 1 }],
+      breakdown: [{ label: "Fighter level 1 (d10, highest)", amount: 10 }, { label: "Constitution", amount: 1 }],
     });
     expect(v.derived["hit-dice"].value).toBe("1d10");
     expect(v.derived.level.breakdown).toEqual([{ label: "Fighter", amount: 1 }]);
@@ -69,7 +69,7 @@ describe("choosing a class", () => {
   it("only level-1 features apply: Second Wind with its uses, not Action Surge (level 2)", () => {
     const v = view(fighter);
     expect(v.lists["gains.class"]).toEqual([
-      { name: "Second Wind", source: "Fighter", detail: "1 per short rest", description: undefined },
+      { name: "Second Wind", source: "Fighter 1", detail: "1 per short rest", description: undefined },
     ]);
     expect(names(v, "resources")).toEqual(["Second Wind"]);
   });

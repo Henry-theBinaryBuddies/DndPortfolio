@@ -4,11 +4,21 @@ import type { Ability, Collection } from "../vocabulary";
 import type { DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS, RECHARGE, SENSES } from "../vocabulary";
 import type { Item } from "../packFormat";
 
-/** Where an entry came from: the source's name ("Elf"), its step, and the choice key if it was picked. */
+/**
+ * Where an entry came from: the source's name ("Elf"), its step, and the choice key if it was picked. For a class or
+ * subclass, `at` is the class level it comes at ("Fighter 3").
+ */
 export interface Origin {
   name: string;
   step?: string;
   choice?: ChoiceKey;
+  at?: string;
+}
+
+/** An origin for people: "Fighter 3", "Champion (Fighter 3)", or just the name. */
+export function originText(o: Origin): string {
+  if (!o.at) return o.name;
+  return o.at.startsWith(o.name) ? o.at : `${o.name} (${o.at})`;
 }
 
 type Of<T extends readonly string[]> = T[number];
@@ -17,7 +27,8 @@ type Of<T extends readonly string[]> = T[number];
 export type AbilityUses = { ability: Ability; add?: number; min?: number };
 
 export interface Tally {
-  abilityBonuses: { ability: Ability; amount: number; from: Origin }[];
+  /** `cap`: this bonus may not raise the score above it (an Ability Score Improvement's 20). */
+  abilityBonuses: { ability: Ability; amount: number; from: Origin; cap?: number }[];
   speeds: { mode: Of<typeof MOVEMENT>; value: number; from: Origin }[];
   senses: { sense: Of<typeof SENSES>; range: number; from: Origin }[];
   /** `replaced`: a duplicate the character swaps for another (see engine/duplicates.ts); it counts for nothing. */
@@ -31,9 +42,10 @@ export interface Tally {
   /** Ways to work out Armor Class unarmoured, besides 10 + Dex. */
   acFormulas: { base: number; abilities: Ability[]; shield?: boolean; from: Origin }[];
   acBonuses: { amount: number; while?: "armored" | "unarmored"; from: Origin }[];
-  hitPoints: { perLevel: number; from: Origin }[];
-  /** Class levels, the first class first. */
-  classes: { ref: string; name: string; hitDie: number; level: number }[];
+  /** `classLevel`: given by a class or subclass, so counted per level in that class rather than per character level. */
+  hitPoints: { perLevel: number; from: Origin; classLevel?: number }[];
+  /** Class levels, the first class first, with the subclass's name once chosen. */
+  classes: { ref: string; name: string; hitDie: number; level: number; subclass?: string }[];
   /**
    * What the character carries. `ref` is missing for things named only in starting equipment ("vestments");
    * `weight` is per item (a bundle's weight already shared out); `in` names the pack it came in.
@@ -48,8 +60,11 @@ export interface Tally {
    * `prepared` is set by the Spells step for spells prepared today.
    */
   spells: { ref: string; name: string; level: number; from: Origin; ability?: Ability; always?: boolean; prepared?: boolean }[];
-  /** Each class that casts spells: its ability and slots by spell level (a warlock's pact slots come back on a short rest). */
-  casting: { name: string; ability: Ability; slots: Record<number, number>; pact?: boolean }[];
+  /**
+   * Each class that casts spells: its ability and slots by spell level (a warlock's pact slots come back on a short
+   * rest). A multiclass character's shared slots are one entry of their own, without an ability.
+   */
+  casting: { name: string; ability?: Ability; slots: Record<number, number>; pact?: boolean }[];
   /** Spells added to a class's list (a Fiend's expanded spells). */
   expandedSpells: { ref: string; from: Origin }[];
   /** Weapons carried, once each, for the attack list. */

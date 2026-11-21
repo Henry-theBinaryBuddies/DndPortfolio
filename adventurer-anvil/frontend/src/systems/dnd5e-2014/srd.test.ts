@@ -192,7 +192,7 @@ describe("each class matches the check table", () => {
       expect(cls.subclass).toEqual(facts.subclass);
       // The subclass choice is on this step only when the subclass comes at level 1.
       expect(step.choices.some((c) => c.key === `class.${ref}.subclass`)).toBe(facts.subclass.level === 1);
-      const gained = (v.lists["gains.class"] ?? []).filter((g) => g.source === facts.name).map((g) => g.name.replace(/[:(].*$/, "").trim());
+      const gained = (v.lists["gains.class"] ?? []).filter((g) => g.source === `${facts.name} 1`).map((g) => g.name.replace(/[:(].*$/, "").trim());
       for (const f of facts.level1) expect(gained, f).toContain(f);
     });
   }
@@ -211,7 +211,7 @@ describe("real SRD classes through the engine", () => {
   it("a Hill Dwarf Barbarian: d12 + Con + Dwarven Toughness, Unarmored Defense, two rages", () => {
     const v = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", ...standardArray(STANDARD), "class.class": "srd-5.1:barbarian" });
     expect(v.derived.hp.breakdown).toEqual([
-      { label: "Barbarian hit die (d12, highest at level 1)", amount: 12 }, { label: "Constitution", amount: 2 }, { label: "Hill Dwarf", amount: 1 },
+      { label: "Barbarian level 1 (d12, highest)", amount: 12 }, { label: "Constitution", amount: 2 }, { label: "Hill Dwarf", amount: 1 },
     ]);
     expect(v.derived.ac.breakdown).toEqual([{ label: "Barbarian (unarmoured)", amount: 10 }, { label: "Dexterity", amount: 2 }, { label: "Constitution", amount: 2 }]);
     expect(v.lists["gains.class"].find((g) => g.name === "Rage")?.detail).toBe("2 per long rest");

@@ -48,7 +48,6 @@ function report({ pack, traits, features, corrections }: BuildResult): string {
   const by = (how: string) => traits.filter((t) => t.how === how);
   const fby = (how: string) => features.filter((f) => f.how === how);
   const frows = (list: typeof features) => list.map((f) => `| ${f.className} | ${f.level} | ${f.name} | ${f.note ?? ""} |`).join("\n");
-  const level1 = (how: string) => fby(how).filter((f) => f.level === 1);
   const rows = (list: typeof traits) => list.map((t) => `| ${t.name} | ${t.note ?? ""} |`).join("\n");
   return `# SRD 5.1 import report
 
@@ -101,8 +100,8 @@ ${rows(by("folded in"))}
 
 ## How the ${features.length} class and subclass features were brought in
 
-Every feature from level 1 to 20 is in the pack. The level-1 ones that need calculating are typed; the rest are kept
-as their SRD text until the step that uses them (levelling up, spells).
+Every feature from level 1 to 20 is in the pack. Those that need calculating or choosing are typed; the rest are kept
+as their SRD text, shown in "What you get" at their level.
 
 ### Calculated (${fby("calculated").length + fby("calculated, with text").length})
 
@@ -116,14 +115,9 @@ ${frows([...fby("calculated"), ...fby("calculated, with text")])}
 |---|---|---|---|
 ${frows(fby("choice"))}
 
-### Level 1, described: nothing to calculate (${level1("text").length})
+### Described: nothing to calculate (${fby("text").length})
 
-${level1("text").map((f) => `${f.name} (${f.className})`).join(", ")}.
-
-### Kept as text for now (${fby("text for now").length})
-
-${fby("text for now").length} features, of which ${level1("text for now").length} at level 1${level1("text for now").length ? ` (${level1("text for now").map((f) => f.name).join(", ")})` : ""}: features
-above level 1 are typed when levelling up arrives.
+${fby("text").map((f) => `${f.name} (${f.className} ${f.level})`).join(", ")}.
 
 ## Corrections (${corrections.length})
 

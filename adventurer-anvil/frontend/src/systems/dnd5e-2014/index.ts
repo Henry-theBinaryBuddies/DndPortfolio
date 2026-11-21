@@ -2,4 +2,4 @@
 // It may use the core, never the app shell (src/boundaries.test.ts checks this).
 export * from "./vocabulary";
 export * from "./packFormat";
-export { describe, dnd5e2014, evaluate } from "./module";
+export { describe, dnd5e2014, evaluate, levelUp } from "./module";
