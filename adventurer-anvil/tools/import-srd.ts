@@ -131,9 +131,15 @@ Each is in \`data/srd-5.1/corrections.ts\`, with its reason.
 
 ${corrections.map((x) => `- **${x.trait}**: ${x.reason}`).join("\n")}
 
+## Details suggestions
+
+SRD 5.1 describes each race's age and size in words, so \`tools/srd/details.ts\` turns them into numbers by hand, with
+the words beside each. Weights are suggested only where the SRD gives an average (as that average plus or minus 15%).
+SRD 5.1 has no name lists; the name syllables in the same file are Adventurer Anvil's own, under its code licence.
+
 ## Not in SRD 5.1, so not shipped
 
-Variant Human, and every subrace beyond the four above: these belong in private packs. The community files also carry no
-name lists or random height and weight tables, so the Details step's suggestions for these races will come from private packs.
+Variant Human, and every subrace beyond the four above: these belong in private packs. Random height and weight tables
+and example names are not in SRD 5.1.
 `;
 }

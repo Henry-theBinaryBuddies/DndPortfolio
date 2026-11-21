@@ -283,6 +283,7 @@ function wear(ctx: Context): void {
         ],
       },
       picks,
+      collection: "items",
     });
     const worn = armour.find((a) => a.ref === picks[0]);
     if (worn) ctx.tally.worn.armor = { ref: worn.ref, name: worn.name, armor: worn.armor! };

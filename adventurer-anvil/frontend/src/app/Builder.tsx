@@ -1,7 +1,7 @@
 // The builder: header, step list, the current step (or Review or Licences), the summary, and the footer.
 // It asks the core for the whole picture on every change and calculates nothing itself.
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { createContentIndex, rollSet, rollSets, viewCharacter, type ChoiceSpec, type SystemModule } from "../core";
+import { createContentIndex, NAME_KEY, rollSet, rollSets, viewCharacter, type ChoiceSpec, type SystemModule } from "../core";
 import { ChoiceView, choiceDomId, StepList } from "./choices";
 import type { LoadedPack } from "./packs";
 import { Licences, Review } from "./pages";
@@ -9,6 +9,17 @@ import { freshCharacter, reducer } from "./state";
 import { Summary, type TodoItem } from "./Summary";
 
 type Page = { kind: "step"; id: string } | { kind: "review" } | { kind: "licences" };
+
+/** Runs of choices sharing a group become one part, drawn together; every other choice is a part of its own. */
+function groupChoices(specs: ChoiceSpec[]): { group?: string; specs: ChoiceSpec[] }[] {
+  const parts: { group?: string; specs: ChoiceSpec[] }[] = [];
+  for (const spec of specs) {
+    const last = parts.at(-1);
+    if (spec.group && last?.group === spec.group) last.specs.push(spec);
+    else parts.push({ group: spec.group, specs: [spec] });
+  }
+  return parts;
+}
 
 const MARK = { done: "✓", todo: "○", problem: "!" } as const;
 const MARK_TEXT = { done: "done", todo: "to do", problem: "has a problem" } as const;
@@ -117,18 +128,30 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
               {view.issues.filter((i) => i.step === step.id && !i.key).map((i) => (
                 <p key={i.id} className={`issue ${i.severity}`}>{i.message}</p>
               ))}
-              {step.choices.map((spec) => (
-                <ChoiceView
-                  key={spec.key}
-                  spec={spec}
-                  value={doc.choices[spec.key]}
-                  issues={view.issues.filter((i) => i.key === spec.key && !i.id.startsWith("no-options:"))}
-                  onChange={(value) => dispatch({ type: "set", key: spec.key, value })}
-                  derived={view.derived}
-                  rollSets={spec.kind === "roll" ? rollSets(doc, spec.key) : []}
-                  onRoll={roll}
-                />
-              ))}
+              {groupChoices(step.choices).map((part) => {
+                const one = (spec: ChoiceSpec) => (
+                  <ChoiceView
+                    key={spec.key}
+                    spec={spec}
+                    value={spec.key === NAME_KEY ? doc.name : doc.choices[spec.key]}
+                    issues={view.issues.filter((i) => i.key === spec.key && !i.id.startsWith("no-options:"))}
+                    onChange={(value) => dispatch({ type: "set", key: spec.key, value })}
+                    derived={view.derived}
+                    rollSets={spec.kind === "roll" ? rollSets(doc, spec.key) : []}
+                    onRoll={roll}
+                  />
+                );
+                if (!part.group) return one(part.specs[0]);
+                return (
+                  <fieldset key={`group-${part.specs[0].key}`} className="choice">
+                    <legend>{part.group}</legend>
+                    {part.specs[0].source && part.specs.some((s) => s.suggestions?.length) && (
+                      <p className="meta">Suggestions from {part.specs.find((s) => s.suggestions?.length)!.source}</p>
+                    )}
+                    <div className="choice-grid">{part.specs.map(one)}</div>
+                  </fieldset>
+                );
+              })}
               {step.choices.length === 0 && !view.issues.some((i) => i.step === step.id) && (
                 <p className="notice">Nothing to choose here yet: earlier steps decide what appears.</p>
               )}
@@ -138,7 +161,15 @@ export function Builder({ system, packs }: { system: SystemModule; packs: Loaded
             </>
           )}
           {page.kind === "review" && (
-            <Review view={view} stepLabel={stepLabel} onGoTo={goTo} onClear={(keys) => dispatch({ type: "clear", keys })} />
+            <Review
+              view={view}
+              doc={doc}
+              stepLabel={stepLabel}
+              onGoTo={goTo}
+              onClear={(keys) => dispatch({ type: "clear", keys })}
+              onAllow={(issueId, note) => dispatch({ type: "allow", issueId, note })}
+              onDisallow={(issueId) => dispatch({ type: "disallow", issueId })}
+            />
           )}
           {page.kind === "licences" && <Licences packs={packs} />}
 

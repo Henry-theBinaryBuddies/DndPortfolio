@@ -22,7 +22,8 @@ export type ChoiceKind =
   | "assign" // put given values into slots (e.g. a fixed set of scores into stats)
   | "allocate" // spend a budget across slots, with a cost per value
   | "roll" // dice whose result is logged
-  | "quantities"; // how many of each option, within an optional budget (a shop)
+  | "quantities" // how many of each option, within an optional budget (a shop)
+  | "image"; // a picture, stored as a data: URL (a portrait)
 
 export interface Option {
   /** The value stored when this option is picked: usually a content reference "pack:entry". */
@@ -57,6 +58,10 @@ export interface ChoiceSpec {
   source?: string;
   /** A sentence of help shown under the label. */
   hint?: string;
+  /** Consecutive choices with the same group are drawn together under this heading (e.g. "Appearance"), compactly. */
+  group?: string;
+  /** pick-one cards: lay them out in this many columns (e.g. 3 for an alignment grid). */
+  columns?: number;
   kind: ChoiceKind;
   options?: Option[];
   /** pick-many: how many to pick (a min of 0 makes it optional, up to max). */

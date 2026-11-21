@@ -28,12 +28,11 @@
         "suggestions": {
           "ageAdult": 100,
           "ageMax": 750,
-          "height": "4'6\" + 2d10 in.",
-          "weight": "90 + (2d4 × height roll) lb.",
+          "height": { "min": 56, "max": 74 },
+          "weight": { "min": 90, "max": 145 },
           "names": {
-            "male": ["Adran", "Aelar", "Aramil"],
-            "female": ["Adrie", "Althaea", "Anastrianna"],
-            "family": ["Amakiir", "Amastacia", "Galanodel"]
+            "given": ["Ilvaren", "Saelith", "Tarnis"],
+            "family": ["Ashveil", "Dawnreach"]
           }
         }
       },

@@ -161,19 +161,33 @@ const entryBase = {
   source: sourceSchema.optional(),
 };
 
+const range = z.strictObject({ min: z.number().positive(), max: z.number().positive() }).refine((r) => r.min <= r.max, "min must not be above max");
+const syllables = z.array(z.string().min(1)).min(1);
+
 export const raceSchema = z.strictObject({
   ...entryBase,
   size: z.enum(SIZES),
   effects: z.array(effectSchema),
-  /** Feeds random suggestions on the Details step. */
+  /** Feeds suggestions on the Details step: ages, a height range in inches, a weight range in pounds, and names. */
   suggestions: z
     .strictObject({
       ageAdult: z.int().positive().optional(),
       ageMax: z.int().positive().optional(),
-      height: z.string().optional(),
-      weight: z.string().optional(),
-      names: z.record(z.string(), z.array(z.string())).optional(),
+      height: range.optional(),
+      weight: range.optional(),
+      /** Lists of names to suggest from, by kind (e.g. "given", "family"); used instead of nameParts when present. */
+      names: z.record(z.string(), z.array(z.string().min(1)).min(1)).optional(),
+      /** Syllables a name is built from: a start, sometimes a middle, an end; and a family name's own parts. */
+      nameParts: z
+        .strictObject({
+          start: syllables,
+          middle: syllables.optional(),
+          end: syllables,
+          family: z.strictObject({ start: syllables, end: syllables }).optional(),
+        })
+        .optional(),
     })
+    .refine((s) => s.ageAdult === undefined || s.ageMax === undefined || s.ageAdult < s.ageMax, "ageAdult must be below ageMax")
     .optional(),
 });
 

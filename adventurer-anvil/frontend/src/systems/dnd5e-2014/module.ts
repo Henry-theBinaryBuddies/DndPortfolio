@@ -10,6 +10,7 @@ import { backgroundStep } from "./steps/background";
 import { classStep } from "./steps/class";
 import { checkEquipment, equipmentStep } from "./steps/equipment";
 import { spellsStep } from "./steps/spells";
+import { detailsStep } from "./steps/details";
 import { replaceDuplicateSkills } from "./engine/duplicates";
 import { raceStep } from "./steps/race";
 
@@ -22,6 +23,7 @@ export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluat
   backgroundStep(ctx);
   equipmentStep(ctx);
   spellsStep(ctx, base);
+  detailsStep(ctx);
   // Any skill given twice by fixed effects is swapped for another of the character's choice.
   replaceDuplicateSkills(ctx);
   // ④

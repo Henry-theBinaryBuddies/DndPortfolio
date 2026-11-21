@@ -39,6 +39,8 @@ export function ChoiceView(props: ChoiceProps) {
       return <NumberChoice {...props} />;
     case "quantities":
       return <Quantities {...props} />;
+    case "image":
+      return <ImageChoice {...props} />;
     default:
       return (
         <section className="choice" id={choiceDomId(props.spec.key)} tabIndex={-1}>
@@ -112,7 +114,7 @@ function PickOne({ spec, value, issues, onChange }: ChoiceProps) {
     <fieldset className="choice" id={choiceDomId(spec.key)} tabIndex={-1}>
       <legend>{spec.label}</legend>
       <Meta spec={spec} picked={value === undefined ? 0 : 1} />
-      <div className="cards">
+      <div className="cards" style={spec.columns ? { gridTemplateColumns: `repeat(${spec.columns}, minmax(0, 1fr))` } : undefined}>
         {options.map((option) => {
           const isSelected = option.value === value;
           return (
@@ -239,9 +241,26 @@ function TextChoice({ spec, value, issues, onChange }: ChoiceProps) {
     const pool = unused.length ? unused : suggestions;
     use(pool[Math.floor(Math.random() * pool.length)].text);
   };
+  if (spec.group) {
+    return (
+      <div className="compact" id={id} tabIndex={-1}>
+        <label htmlFor={`${id}-input`} className="label">{spec.label}</label>
+        <div className="compact-row">
+          <input id={`${id}-input`} className="text-input" value={text} onChange={(e) => onChange(e.target.value)} />
+          {suggestions.length > 0 && (
+            <button type="button" className="button small" onClick={suggest}>
+              Suggest<span className="sr-only"> {spec.label.toLowerCase()}{spec.source ? ` for a ${spec.source.toLowerCase()}` : ""}</span>
+            </button>
+          )}
+        </div>
+        <Issues issues={issues} />
+      </div>
+    );
+  }
   return (
     <section className="choice" id={id} tabIndex={-1}>
       <label htmlFor={`${id}-input`} className="choice-title">{spec.label}</label>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
       {spec.source && <p className="meta">Suggestions from {spec.source}</p>}
       {spec.kind === "long-text" ? (
         <textarea id={`${id}-input`} className="text-input" rows={lines ? 3 : 2} value={text} onChange={(e) => onChange(e.target.value)} />
@@ -480,5 +499,58 @@ function ListPick({ spec, value, issues, onChange }: ChoiceProps) {
       </ul>
       <Issues issues={issues} />
     </fieldset>
+  );
+}
+
+/** The longest side of a stored picture, in pixels. */
+const IMAGE_SIZE = 256;
+
+/** Reads a picture file and shrinks it to fit IMAGE_SIZE, as a data: URL (PNG stays PNG, for transparent tokens; the rest become JPEG). */
+async function shrinkImage(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, IMAGE_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return file.type === "image/png" ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.85);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** A picture (a portrait): choose a file, see it, remove it. It is shrunk here, in the browser, before it is stored. */
+function ImageChoice({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  const [error, setError] = useState<string | null>(null);
+  const src = typeof value === "string" && value.startsWith("data:image/") ? value : undefined;
+  const choose = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return setError("Choose a PNG, JPEG or WebP picture.");
+    try {
+      onChange(await shrinkImage(file));
+    } catch {
+      setError("That picture couldn't be read. Try another.");
+    }
+  };
+  return (
+    <section className="choice" id={id} tabIndex={-1}>
+      <label htmlFor={`${id}-input`} className="choice-title">{spec.label}</label>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
+      <div className="image-choice">
+        {src ? <img src={src} alt={`${spec.label} chosen`} className="image-preview" /> : <div className="image-preview empty" aria-hidden="true">No picture</div>}
+        <div>
+          <input id={`${id}-input`} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => void choose(e.target.files?.[0])} />
+          {src && <button type="button" className="button small" onClick={() => onChange(null)}>Remove<span className="sr-only"> {spec.label.toLowerCase()}</span></button>}
+        </div>
+      </div>
+      {error && <p className="issue error" role="alert">{error}</p>}
+      <Issues issues={issues} />
+    </section>
   );
 }

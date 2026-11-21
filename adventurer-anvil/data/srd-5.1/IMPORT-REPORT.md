@@ -1,6 +1,6 @@
 # SRD 5.1 import report
 
-Written by `tools/import-srd.ts` (`npm run import:srd`); do not edit by hand. Pack version 0.5.0.
+Written by `tools/import-srd.ts` (`npm run import:srd`); do not edit by hand. Pack version 0.6.0.
 
 Imported: **9 races** (Dwarf, Elf, Halfling, Human, Dragonborn, Gnome, Half-Elf, Half-Orc, Tiefling), **4 subraces**
 (Hill Dwarf, High Elf, Lightfoot Halfling, Rock Gnome), **12 classes** (Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard),
@@ -153,7 +153,13 @@ Each is in `data/srd-5.1/corrections.ts`, with its reason.
 - **ranger (equipment)**: The Ranger's "a longbow and a quiver of 20 arrows" has no quiver in the community file; it is added.
 - **acolyte (equipment)**: The Acolyte's equipment in the community file has only the holy symbol, common clothes, the pouch and 15 gp. The SRD also gives a prayer book or prayer wheel, 5 sticks of incense and vestments. Vestments are an SRD item; the others are not, so they are added by name, without weights.
 
+## Details suggestions
+
+SRD 5.1 describes each race's age and size in words, so `tools/srd/details.ts` turns them into numbers by hand, with
+the words beside each. Weights are suggested only where the SRD gives an average (as that average plus or minus 15%).
+SRD 5.1 has no name lists; the name syllables in the same file are Adventurer Anvil's own, under its code licence.
+
 ## Not in SRD 5.1, so not shipped
 
-Variant Human, and every subrace beyond the four above: these belong in private packs. The community files also carry no
-name lists or random height and weight tables, so the Details step's suggestions for these races will come from private packs.
+Variant Human, and every subrace beyond the four above: these belong in private packs. Random height and weight tables
+and example names are not in SRD 5.1.

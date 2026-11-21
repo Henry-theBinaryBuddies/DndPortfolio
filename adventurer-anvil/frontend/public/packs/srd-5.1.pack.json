@@ -3,7 +3,7 @@
   "format": "adventurer-anvil-pack",
   "formatVersion": 1,
   "id": "srd-5.1",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "system": "dnd5e-2014",
   "title": "System Reference Document 5.1",
   "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
@@ -120,7 +120,77 @@
             "name": "Tool Proficiency",
             "description": "You gain proficiency with the artisan's tools of your choice: smith's tools, brewer's supplies, or mason's tools."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 50,
+          "ageMax": 350,
+          "height": {
+            "min": 48,
+            "max": 60
+          },
+          "weight": {
+            "min": 128,
+            "max": 173
+          },
+          "nameParts": {
+            "start": [
+              "Bar",
+              "Dur",
+              "Gor",
+              "Kha",
+              "Thra",
+              "Bro",
+              "Dag",
+              "Hel",
+              "Mor",
+              "Rur",
+              "Vol",
+              "Ytt"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "o",
+              "un"
+            ],
+            "end": [
+              "din",
+              "grim",
+              "dra",
+              "nar",
+              "rik",
+              "tha",
+              "gar",
+              "wyn",
+              "bek",
+              "dis"
+            ],
+            "family": {
+              "start": [
+                "Iron",
+                "Stone",
+                "Deep",
+                "Ember",
+                "Gold",
+                "Anvil",
+                "Granite",
+                "Copper",
+                "Slate",
+                "Hammer"
+              ],
+              "end": [
+                "delve",
+                "mantle",
+                "vein",
+                "shield",
+                "brow",
+                "hollow",
+                "keel",
+                "helm"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "elf",
@@ -165,7 +235,71 @@
             "kind": "skill",
             "id": "perception"
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 100,
+          "ageMax": 750,
+          "height": {
+            "min": 58,
+            "max": 74
+          },
+          "nameParts": {
+            "start": [
+              "Ae",
+              "Cael",
+              "Ely",
+              "Ithil",
+              "Lor",
+              "Mae",
+              "Sylv",
+              "Tae",
+              "Vael",
+              "Fen",
+              "Ny",
+              "Ser"
+            ],
+            "middle": [
+              "ra",
+              "li",
+              "an",
+              "the"
+            ],
+            "end": [
+              "wen",
+              "dris",
+              "ion",
+              "ara",
+              "eth",
+              "iel",
+              "or",
+              "yra",
+              "as",
+              "ien"
+            ],
+            "family": {
+              "start": [
+                "Moon",
+                "Star",
+                "Silver",
+                "Dawn",
+                "Leaf",
+                "Mist",
+                "Wind",
+                "Dusk"
+              ],
+              "end": [
+                "bough",
+                "song",
+                "glade",
+                "veil",
+                "shade",
+                "fall",
+                "thorn",
+                "light"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "halfling",
@@ -205,7 +339,76 @@
             "name": "Lucky",
             "description": "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 20,
+          "ageMax": 150,
+          "height": {
+            "min": 34,
+            "max": 38
+          },
+          "weight": {
+            "min": 34,
+            "max": 46
+          },
+          "nameParts": {
+            "start": [
+              "Ro",
+              "Pip",
+              "Mer",
+              "Tam",
+              "Bel",
+              "Cor",
+              "Fen",
+              "Lil",
+              "Wil",
+              "Os",
+              "Dod",
+              "Nim"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "o"
+            ],
+            "end": [
+              "by",
+              "wick",
+              "lo",
+              "ny",
+              "ric",
+              "sie",
+              "bo",
+              "den",
+              "ella",
+              "kin"
+            ],
+            "family": {
+              "start": [
+                "Apple",
+                "Bramble",
+                "Hill",
+                "Thistle",
+                "Honey",
+                "Kettle",
+                "Tumble",
+                "Clover",
+                "Barley",
+                "Mossy"
+              ],
+              "end": [
+                "foot",
+                "bottom",
+                "dale",
+                "whistle",
+                "bank",
+                "pot",
+                "weed",
+                "button"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "human",
@@ -260,7 +463,76 @@
               "collection": "languages"
             }
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 18,
+          "ageMax": 90,
+          "height": {
+            "min": 60,
+            "max": 78
+          },
+          "nameParts": {
+            "start": [
+              "Al",
+              "Bren",
+              "Cor",
+              "Da",
+              "Ed",
+              "Gar",
+              "Hal",
+              "Is",
+              "Jor",
+              "Kat",
+              "Mar",
+              "Ro",
+              "Sel",
+              "Tob",
+              "Wen"
+            ],
+            "middle": [
+              "a",
+              "e",
+              "ri",
+              "o"
+            ],
+            "end": [
+              "ric",
+              "a",
+              "wyn",
+              "ton",
+              "ra",
+              "an",
+              "ett",
+              "ina",
+              "mund",
+              "ley"
+            ],
+            "family": {
+              "start": [
+                "Ash",
+                "Black",
+                "Brook",
+                "Har",
+                "Kings",
+                "Mill",
+                "Thorn",
+                "West",
+                "Hollow",
+                "Red"
+              ],
+              "end": [
+                "wood",
+                "more",
+                "ford",
+                "well",
+                "ton",
+                "field",
+                "gate",
+                "by"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "dragonborn",
@@ -326,7 +598,75 @@
             "name": "Breath Weapon",
             "description": "You can use your action to exhale destructive energy. Your draconic ancestry determines the size, shape, and damage type of the exhalation.\n\nWhen you use your breath weapon, each creature in the area of the exhalation must make a saving throw, the type of which is determined by your draconic ancestry. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you cannot use it again until you complete a short or long rest."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 15,
+          "ageMax": 80,
+          "height": {
+            "min": 74,
+            "max": 80
+          },
+          "weight": {
+            "min": 213,
+            "max": 288
+          },
+          "nameParts": {
+            "start": [
+              "Ark",
+              "Bal",
+              "Dra",
+              "Gha",
+              "Kri",
+              "Med",
+              "Nal",
+              "Rho",
+              "Sha",
+              "Tor",
+              "Vre",
+              "Zor"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "u",
+              "esh"
+            ],
+            "end": [
+              "ax",
+              "ar",
+              "ion",
+              "esh",
+              "ith",
+              "os",
+              "ra",
+              "uun",
+              "ex",
+              "yra"
+            ],
+            "family": {
+              "start": [
+                "Kel",
+                "Mor",
+                "Tur",
+                "Vor",
+                "Nax",
+                "Shan",
+                "Dar",
+                "Yar"
+              ],
+              "end": [
+                "dranth",
+                "verax",
+                "khan",
+                "thul",
+                "orrin",
+                "sarix",
+                "mesh",
+                "iras"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "gnome",
@@ -361,7 +701,75 @@
             "name": "Gnome Cunning",
             "description": "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 40,
+          "ageMax": 450,
+          "height": {
+            "min": 36,
+            "max": 48
+          },
+          "weight": {
+            "min": 34,
+            "max": 46
+          },
+          "nameParts": {
+            "start": [
+              "Bim",
+              "Fiz",
+              "Glim",
+              "Nib",
+              "Pock",
+              "Quill",
+              "Tink",
+              "Wob",
+              "Zan",
+              "Orl",
+              "Dim",
+              "Sprock"
+            ],
+            "middle": [
+              "a",
+              "le",
+              "bo",
+              "i"
+            ],
+            "end": [
+              "ble",
+              "wick",
+              "nock",
+              "ix",
+              "ry",
+              "gin",
+              "dle",
+              "pip",
+              "zy",
+              "bert"
+            ],
+            "family": {
+              "start": [
+                "Cog",
+                "Gear",
+                "Spark",
+                "Brass",
+                "Fizzle",
+                "Tinker",
+                "Copper",
+                "Whistle"
+              ],
+              "end": [
+                "spindle",
+                "bottle",
+                "sprocket",
+                "wheel",
+                "button",
+                "pin",
+                "nozzle",
+                "coil"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "half-elf",
@@ -438,7 +846,64 @@
               "kind": "skill"
             }
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 20,
+          "ageMax": 180,
+          "height": {
+            "min": 60,
+            "max": 72
+          },
+          "nameParts": {
+            "start": [
+              "Ari",
+              "Cal",
+              "Ely",
+              "Kae",
+              "Lan",
+              "Mir",
+              "Ren",
+              "Sar",
+              "Tal",
+              "Vel"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "en"
+            ],
+            "end": [
+              "dor",
+              "is",
+              "wyn",
+              "ia",
+              "an",
+              "eth",
+              "ric",
+              "elle",
+              "on",
+              "ys"
+            ],
+            "family": {
+              "start": [
+                "Ash",
+                "Silver",
+                "Thorn",
+                "Wind",
+                "Brook",
+                "Hollow"
+              ],
+              "end": [
+                "wood",
+                "glade",
+                "more",
+                "song",
+                "ford",
+                "veil"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "half-orc",
@@ -495,7 +960,48 @@
             "kind": "skill",
             "id": "intimidation"
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 14,
+          "ageMax": 75,
+          "height": {
+            "min": 60,
+            "max": 78
+          },
+          "nameParts": {
+            "start": [
+              "Bru",
+              "Dru",
+              "Gra",
+              "Kru",
+              "Mog",
+              "Rag",
+              "Sku",
+              "Tho",
+              "Urg",
+              "Vol",
+              "Zug",
+              "Har"
+            ],
+            "middle": [
+              "a",
+              "o",
+              "u"
+            ],
+            "end": [
+              "nak",
+              "gash",
+              "ra",
+              "dug",
+              "osh",
+              "ka",
+              "mar",
+              "rek",
+              "tha",
+              "ush"
+            ]
+          }
+        }
       },
       {
         "id": "tiefling",
@@ -544,7 +1050,49 @@
             "name": "Infernal Legacy",
             "description": "You know the thaumaturgy cantrip. When you reach 3rd level, you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the darkness spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 18,
+          "ageMax": 100,
+          "height": {
+            "min": 60,
+            "max": 78
+          },
+          "nameParts": {
+            "start": [
+              "Ak",
+              "Bael",
+              "Cri",
+              "Dam",
+              "Ka",
+              "Mor",
+              "Nem",
+              "Orth",
+              "Ri",
+              "Sor",
+              "Vex",
+              "Zar"
+            ],
+            "middle": [
+              "a",
+              "e",
+              "i",
+              "ra"
+            ],
+            "end": [
+              "ion",
+              "eth",
+              "ira",
+              "ius",
+              "oth",
+              "ys",
+              "ael",
+              "ex",
+              "ora",
+              "is"
+            ]
+          }
+        }
       }
     ],
     "subraces": [

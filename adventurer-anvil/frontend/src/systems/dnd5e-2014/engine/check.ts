@@ -103,7 +103,8 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
                 }
               : {
                   id: `invalid-pick:${spec.key}:${pick}`, severity: "error", step: spec.step, key: spec.key, overridable: true,
-                  message: `${spec.label}: "${pick}" is not one of the options.`,
+                  // Named where the content is known ("Chain Mail is not one of the options"), else as stored.
+                  message: `${spec.label}: ${(choice.collection && ctx.content.get(choice.collection, pick)?.name) || `"${pick}"`} is not one of the options.`,
                 },
           );
         } else if (option.unavailable) {

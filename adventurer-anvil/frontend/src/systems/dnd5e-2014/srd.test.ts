@@ -258,10 +258,11 @@ describe("each background matches the check table", () => {
       expect(names(v, "proficiencies", "skill")).toEqual(facts.skills);
       expect(step.choices.find((c) => c.key === `background.${ref}.languages`)?.count?.min).toBe(facts.languages);
       expect((v.lists["gains.background"] ?? []).map((g) => g.name)).toEqual([facts.feature]);
-      const traits = step.choices.find((c) => c.key === "background.traits")!;
-      const ideal = step.choices.find((c) => c.key === "background.ideal")!;
-      const bond = step.choices.find((c) => c.key === "background.bond")!;
-      const flaw = step.choices.find((c) => c.key === "background.flaw")!;
+      const details = v.steps.find((s) => s.id === "details")!; // personality is written on the Details step
+      const traits = details.choices.find((c) => c.key === "background.traits")!;
+      const ideal = details.choices.find((c) => c.key === "background.ideal")!;
+      const bond = details.choices.find((c) => c.key === "background.bond")!;
+      const flaw = details.choices.find((c) => c.key === "background.flaw")!;
       expect([traits, ideal, bond, flaw].map((c) => c.suggestions?.length)).toEqual([facts.tables.traits, facts.tables.ideals, facts.tables.bonds, facts.tables.flaws]);
       expect(kitFacts(entry("backgrounds", id).startingEquipment!)).toEqual(facts.kit);
     });
@@ -269,7 +270,7 @@ describe("each background matches the check table", () => {
 
   it("the Acolyte's ideals carry the SRD's one-word alignments", () => {
     const v = view({ background: "srd-5.1:acolyte" });
-    const ideal = v.steps.find((s) => s.id === "background")!.choices.find((c) => c.key === "background.ideal")!;
+    const ideal = v.steps.find((s) => s.id === "details")!.choices.find((c) => c.key === "background.ideal")!;
     expect(ideal.suggestions?.map((s) => s.note)).toEqual(["Lawful", "Good", "Chaotic", "Lawful", "Lawful", "Any"]);
   });
 

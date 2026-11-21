@@ -162,6 +162,24 @@ select { font: inherit; color: var(--ink); background: var(--panel); border: 1px
 .stepper .final { display: inline-block; min-width: 2ch; text-align: center; margin: 0 6px; }
 .button.small { padding: 1px 9px; }
 .number-input { max-width: 12em; }
+.choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 16px; }
+.compact .label { display: block; }
+.compact-row { display: flex; gap: 6px; align-items: center; }
+.compact-row .text-input { margin: 4px 0; }
+.image-choice { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.image-choice input[type="file"] { display: block; margin-bottom: 6px; max-width: 100%; }
+.image-preview { width: 128px; height: 128px; object-fit: contain; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--panel); }
+.image-preview.empty { display: grid; place-items: center; color: var(--ink-dim); font-size: 13px; }
+.ready { padding: 10px 12px; border: 1px solid var(--ember); border-radius: var(--radius); margin-top: 10px; }
+.answers { list-style: none; margin: 8px 0 0; padding: 0; }
+.answers > li { display: grid; grid-template-columns: 9em minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--edge); }
+.answers .answer-list { font-size: 14px; }
+.allow-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.allow-form .text-input { margin: 0; max-width: 360px; }
+@media (max-width: 760px) {
+  .answers > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .answers .answer-list { grid-column: 1 / -1; grid-row: 2; }
+}
 .toolbar { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: end; margin-bottom: 6px; }
 .toolbar label { display: flex; flex-direction: column; flex: 1 1 180px; max-width: 320px; }
 .toolbar .text-input { margin: 2px 0 4px; }

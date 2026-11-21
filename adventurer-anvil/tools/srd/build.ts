@@ -6,6 +6,7 @@ import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
 import { KIT_CORRECTIONS, TEXT_CORRECTIONS } from "../../data/srd-5.1/corrections";
 import { buildItems } from "./items";
 import { buildSpells } from "./spells";
+import { suggestionsFor } from "./details";
 import { buildBackgrounds } from "./backgrounds";
 import { buildClasses, type FeatureNote } from "./classes";
 import type { RawLanguage, RawRace, RawSrd, RawSubrace, RawTrait } from "./raw";
@@ -15,7 +16,7 @@ export const SRD_ATTRIBUTION =
   "available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative " +
   "Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.";
 
-export const PACK_VERSION = "0.5.0";
+export const PACK_VERSION = "0.6.0";
 
 /** How each trait was brought in, for the import report. */
 export type How = "calculated" | "calculated, with text" | "text" | "text for now" | "folded in";
@@ -170,6 +171,7 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
       size: r.size.toLowerCase() as Race["size"],
       description: [`Age. ${r.age}`, `Alignment. ${r.alignment}`, `Size. ${r.size_description}`, `Languages. ${r.language_desc}`].join("\n\n"),
       effects,
+      ...(suggestionsFor(r.index) ? { suggestions: suggestionsFor(r.index) } : {}),
     };
   };
 
