@@ -1,5 +1,5 @@
-// The Background step in a real browser, with the SRD Acolyte: its languages and feature, characteristics written,
-// suggested or picked, the duplicate-skill swap, and WCAG checks on a wide screen and a phone.
+// The Background step in a real browser, with the SRD Acolyte: its languages and feature, the pointer to Details
+// (where personality is written), the duplicate-skill swap, and WCAG checks on a wide screen and a phone.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -19,7 +19,7 @@ async function goToBackground(page: Page) {
   }
 }
 
-test("an Acolyte: two languages finish the step; the feature shows; characteristics are written, suggested or picked", async ({ page }) => {
+test("an Acolyte: two languages finish the step; the feature shows; personality is pointed to Details", async ({ page }) => {
   await page.goto("/");
   await expect(group(page, "Choose a race")).toBeVisible();
   await goToBackground(page);
@@ -32,17 +32,7 @@ test("an Acolyte: two languages finish the step; the feature shows; characterist
   await expect(stepButton(page, /^Background, done/)).toBeVisible();
   await expect(page.getByRole("region", { name: "What you get" })).toContainText("Shelter of the Faithful");
 
-  const traits = page.getByRole("textbox", { name: "Personality traits (two)" });
-  await traits.fill("I hum hymns when nervous.");
-  await page.getByRole("button", { name: "Suggest personality traits (two)" }).click();
-  await expect(traits).toHaveValue(/^I hum hymns when nervous\.\n.+/); // a suggestion is added as a second line
-
-  await page.getByRole("button", { name: "Suggest ideal" }).click();
-  await expect(page.getByRole("textbox", { name: "Ideal" })).toHaveValue(/\S/);
-
-  await page.getByText("All suggestions (6) for bond").click();
-  await page.getByRole("button", { name: /^I would die to recover an ancient relic/ }).click();
-  await expect(page.getByRole("textbox", { name: "Bond" })).toHaveValue(/^I would die to recover an ancient relic/);
+  await expect(page.getByText("Its personality tables are offered as suggestions on the Details step.")).toBeVisible();
   await expectAccessible(page);
 });
 

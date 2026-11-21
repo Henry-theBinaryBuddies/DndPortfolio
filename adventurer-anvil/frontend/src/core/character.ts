@@ -49,6 +49,13 @@ export interface CharacterDocument {
 }
 
 export const CHARACTER_FORMAT = "adventurer-anvil-character" as const;
+
+/**
+ * A choice key the core keeps for the character's name. The name lives in `name`, not in `choices` (file lists
+ * and the header read it), so a system that asks for it opens a text choice with this key and the app writes it
+ * with setName.
+ */
+export const NAME_KEY = "$name";
 export const CHARACTER_FORMAT_VERSION = 1 as const;
 
 /** A fresh, empty character for a system. `now` and `id` are passed in so tests are repeatable. */

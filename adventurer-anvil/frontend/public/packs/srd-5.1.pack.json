@@ -3,7 +3,7 @@
   "format": "adventurer-anvil-pack",
   "formatVersion": 1,
   "id": "srd-5.1",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "system": "dnd5e-2014",
   "title": "System Reference Document 5.1",
   "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
@@ -120,7 +120,77 @@
             "name": "Tool Proficiency",
             "description": "You gain proficiency with the artisan's tools of your choice: smith's tools, brewer's supplies, or mason's tools."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 50,
+          "ageMax": 350,
+          "height": {
+            "min": 48,
+            "max": 60
+          },
+          "weight": {
+            "min": 128,
+            "max": 173
+          },
+          "nameParts": {
+            "start": [
+              "Bar",
+              "Dur",
+              "Gor",
+              "Kha",
+              "Thra",
+              "Bro",
+              "Dag",
+              "Hel",
+              "Mor",
+              "Rur",
+              "Vol",
+              "Ytt"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "o",
+              "un"
+            ],
+            "end": [
+              "din",
+              "grim",
+              "dra",
+              "nar",
+              "rik",
+              "tha",
+              "gar",
+              "wyn",
+              "bek",
+              "dis"
+            ],
+            "family": {
+              "start": [
+                "Iron",
+                "Stone",
+                "Deep",
+                "Ember",
+                "Gold",
+                "Anvil",
+                "Granite",
+                "Copper",
+                "Slate",
+                "Hammer"
+              ],
+              "end": [
+                "delve",
+                "mantle",
+                "vein",
+                "shield",
+                "brow",
+                "hollow",
+                "keel",
+                "helm"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "elf",
@@ -165,7 +235,71 @@
             "kind": "skill",
             "id": "perception"
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 100,
+          "ageMax": 750,
+          "height": {
+            "min": 58,
+            "max": 74
+          },
+          "nameParts": {
+            "start": [
+              "Ae",
+              "Cael",
+              "Ely",
+              "Ithil",
+              "Lor",
+              "Mae",
+              "Sylv",
+              "Tae",
+              "Vael",
+              "Fen",
+              "Ny",
+              "Ser"
+            ],
+            "middle": [
+              "ra",
+              "li",
+              "an",
+              "the"
+            ],
+            "end": [
+              "wen",
+              "dris",
+              "ion",
+              "ara",
+              "eth",
+              "iel",
+              "or",
+              "yra",
+              "as",
+              "ien"
+            ],
+            "family": {
+              "start": [
+                "Moon",
+                "Star",
+                "Silver",
+                "Dawn",
+                "Leaf",
+                "Mist",
+                "Wind",
+                "Dusk"
+              ],
+              "end": [
+                "bough",
+                "song",
+                "glade",
+                "veil",
+                "shade",
+                "fall",
+                "thorn",
+                "light"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "halfling",
@@ -205,7 +339,76 @@
             "name": "Lucky",
             "description": "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 20,
+          "ageMax": 150,
+          "height": {
+            "min": 34,
+            "max": 38
+          },
+          "weight": {
+            "min": 34,
+            "max": 46
+          },
+          "nameParts": {
+            "start": [
+              "Ro",
+              "Pip",
+              "Mer",
+              "Tam",
+              "Bel",
+              "Cor",
+              "Fen",
+              "Lil",
+              "Wil",
+              "Os",
+              "Dod",
+              "Nim"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "o"
+            ],
+            "end": [
+              "by",
+              "wick",
+              "lo",
+              "ny",
+              "ric",
+              "sie",
+              "bo",
+              "den",
+              "ella",
+              "kin"
+            ],
+            "family": {
+              "start": [
+                "Apple",
+                "Bramble",
+                "Hill",
+                "Thistle",
+                "Honey",
+                "Kettle",
+                "Tumble",
+                "Clover",
+                "Barley",
+                "Mossy"
+              ],
+              "end": [
+                "foot",
+                "bottom",
+                "dale",
+                "whistle",
+                "bank",
+                "pot",
+                "weed",
+                "button"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "human",
@@ -260,7 +463,76 @@
               "collection": "languages"
             }
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 18,
+          "ageMax": 90,
+          "height": {
+            "min": 60,
+            "max": 78
+          },
+          "nameParts": {
+            "start": [
+              "Al",
+              "Bren",
+              "Cor",
+              "Da",
+              "Ed",
+              "Gar",
+              "Hal",
+              "Is",
+              "Jor",
+              "Kat",
+              "Mar",
+              "Ro",
+              "Sel",
+              "Tob",
+              "Wen"
+            ],
+            "middle": [
+              "a",
+              "e",
+              "ri",
+              "o"
+            ],
+            "end": [
+              "ric",
+              "a",
+              "wyn",
+              "ton",
+              "ra",
+              "an",
+              "ett",
+              "ina",
+              "mund",
+              "ley"
+            ],
+            "family": {
+              "start": [
+                "Ash",
+                "Black",
+                "Brook",
+                "Har",
+                "Kings",
+                "Mill",
+                "Thorn",
+                "West",
+                "Hollow",
+                "Red"
+              ],
+              "end": [
+                "wood",
+                "more",
+                "ford",
+                "well",
+                "ton",
+                "field",
+                "gate",
+                "by"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "dragonborn",
@@ -326,7 +598,75 @@
             "name": "Breath Weapon",
             "description": "You can use your action to exhale destructive energy. Your draconic ancestry determines the size, shape, and damage type of the exhalation.\n\nWhen you use your breath weapon, each creature in the area of the exhalation must make a saving throw, the type of which is determined by your draconic ancestry. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you cannot use it again until you complete a short or long rest."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 15,
+          "ageMax": 80,
+          "height": {
+            "min": 74,
+            "max": 80
+          },
+          "weight": {
+            "min": 213,
+            "max": 288
+          },
+          "nameParts": {
+            "start": [
+              "Ark",
+              "Bal",
+              "Dra",
+              "Gha",
+              "Kri",
+              "Med",
+              "Nal",
+              "Rho",
+              "Sha",
+              "Tor",
+              "Vre",
+              "Zor"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "u",
+              "esh"
+            ],
+            "end": [
+              "ax",
+              "ar",
+              "ion",
+              "esh",
+              "ith",
+              "os",
+              "ra",
+              "uun",
+              "ex",
+              "yra"
+            ],
+            "family": {
+              "start": [
+                "Kel",
+                "Mor",
+                "Tur",
+                "Vor",
+                "Nax",
+                "Shan",
+                "Dar",
+                "Yar"
+              ],
+              "end": [
+                "dranth",
+                "verax",
+                "khan",
+                "thul",
+                "orrin",
+                "sarix",
+                "mesh",
+                "iras"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "gnome",
@@ -361,7 +701,75 @@
             "name": "Gnome Cunning",
             "description": "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 40,
+          "ageMax": 450,
+          "height": {
+            "min": 36,
+            "max": 48
+          },
+          "weight": {
+            "min": 34,
+            "max": 46
+          },
+          "nameParts": {
+            "start": [
+              "Bim",
+              "Fiz",
+              "Glim",
+              "Nib",
+              "Pock",
+              "Quill",
+              "Tink",
+              "Wob",
+              "Zan",
+              "Orl",
+              "Dim",
+              "Sprock"
+            ],
+            "middle": [
+              "a",
+              "le",
+              "bo",
+              "i"
+            ],
+            "end": [
+              "ble",
+              "wick",
+              "nock",
+              "ix",
+              "ry",
+              "gin",
+              "dle",
+              "pip",
+              "zy",
+              "bert"
+            ],
+            "family": {
+              "start": [
+                "Cog",
+                "Gear",
+                "Spark",
+                "Brass",
+                "Fizzle",
+                "Tinker",
+                "Copper",
+                "Whistle"
+              ],
+              "end": [
+                "spindle",
+                "bottle",
+                "sprocket",
+                "wheel",
+                "button",
+                "pin",
+                "nozzle",
+                "coil"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "half-elf",
@@ -438,7 +846,64 @@
               "kind": "skill"
             }
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 20,
+          "ageMax": 180,
+          "height": {
+            "min": 60,
+            "max": 72
+          },
+          "nameParts": {
+            "start": [
+              "Ari",
+              "Cal",
+              "Ely",
+              "Kae",
+              "Lan",
+              "Mir",
+              "Ren",
+              "Sar",
+              "Tal",
+              "Vel"
+            ],
+            "middle": [
+              "a",
+              "i",
+              "en"
+            ],
+            "end": [
+              "dor",
+              "is",
+              "wyn",
+              "ia",
+              "an",
+              "eth",
+              "ric",
+              "elle",
+              "on",
+              "ys"
+            ],
+            "family": {
+              "start": [
+                "Ash",
+                "Silver",
+                "Thorn",
+                "Wind",
+                "Brook",
+                "Hollow"
+              ],
+              "end": [
+                "wood",
+                "glade",
+                "more",
+                "song",
+                "ford",
+                "veil"
+              ]
+            }
+          }
+        }
       },
       {
         "id": "half-orc",
@@ -495,7 +960,48 @@
             "kind": "skill",
             "id": "intimidation"
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 14,
+          "ageMax": 75,
+          "height": {
+            "min": 60,
+            "max": 78
+          },
+          "nameParts": {
+            "start": [
+              "Bru",
+              "Dru",
+              "Gra",
+              "Kru",
+              "Mog",
+              "Rag",
+              "Sku",
+              "Tho",
+              "Urg",
+              "Vol",
+              "Zug",
+              "Har"
+            ],
+            "middle": [
+              "a",
+              "o",
+              "u"
+            ],
+            "end": [
+              "nak",
+              "gash",
+              "ra",
+              "dug",
+              "osh",
+              "ka",
+              "mar",
+              "rek",
+              "tha",
+              "ush"
+            ]
+          }
+        }
       },
       {
         "id": "tiefling",
@@ -544,7 +1050,49 @@
             "name": "Infernal Legacy",
             "description": "You know the thaumaturgy cantrip. When you reach 3rd level, you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the darkness spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells."
           }
-        ]
+        ],
+        "suggestions": {
+          "ageAdult": 18,
+          "ageMax": 100,
+          "height": {
+            "min": 60,
+            "max": 78
+          },
+          "nameParts": {
+            "start": [
+              "Ak",
+              "Bael",
+              "Cri",
+              "Dam",
+              "Ka",
+              "Mor",
+              "Nem",
+              "Orth",
+              "Ri",
+              "Sor",
+              "Vex",
+              "Zar"
+            ],
+            "middle": [
+              "a",
+              "e",
+              "i",
+              "ra"
+            ],
+            "end": [
+              "ion",
+              "eth",
+              "ira",
+              "ius",
+              "oth",
+              "ys",
+              "ael",
+              "ex",
+              "ora",
+              "is"
+            ]
+          }
+        }
       }
     ],
     "subraces": [
@@ -869,6 +1417,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -914,6 +1466,10 @@
             "level": 8,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -953,6 +1509,10 @@
           {
             "level": 12,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -994,6 +1554,10 @@
             "level": 16,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -1023,6 +1587,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -1718,6 +2286,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -1757,6 +2329,10 @@
           {
             "level": 8,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -1802,6 +2378,27 @@
                 "description": "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet of you who can hear you. That creature gains one Bardic Inspiration die, a d6. Once within the next 10 minutes, the creature can roll the die and add the number rolled to one ability check, attack roll, or saving throw it makes. The creature can wait until after it rolls the d20 before deciding to use the Bardic Inspiration die, but must decide before the GM says whether the roll succeeds or fails. Once the Bardic Inspiration die is rolled, it is lost. A creature can have only one Bardic Inspiration die at a time.\n\nYou can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain any expended uses when you finish a long rest. \n\nYour Bardic Inspiration die changes when you reach certain levels in this class. The die becomes a d8 at 5th level, a d10 at 10th level, and a d12 at 15th level."
               },
               {
+                "type": "choice",
+                "id": "magical-secrets-1",
+                "label": "Magical Secrets: choose two spells from any class",
+                "pick": 2,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "level": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5
+                    ]
+                  },
+                  "known": true
+                },
+                "ability": "cha"
+              },
+              {
                 "type": "feature",
                 "name": "Magical Secrets",
                 "description": "By 10th level, you have plundered magical knowledge from a wide spectrum of disciplines. Choose two spells from any class, including this one. A spell you choose must be of a level you can cast, as shown on the Bard table, or a cantrip. \n\nThe chosen spells count as bard spells for you and are included in the number in the Spells Known column of the Bard table. \n\nYou learn two additional spells from any class at 14th level and again at 18th level."
@@ -1811,6 +2408,10 @@
           {
             "level": 12,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -1831,6 +2432,29 @@
           {
             "level": 14,
             "effects": [
+              {
+                "type": "choice",
+                "id": "magical-secrets-2",
+                "label": "Magical Secrets: choose two spells from any class",
+                "pick": 2,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "level": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7
+                    ]
+                  },
+                  "known": true
+                },
+                "ability": "cha"
+              },
               {
                 "type": "feature",
                 "name": "Magical Secrets",
@@ -1857,6 +2481,10 @@
             "level": 16,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -1877,6 +2505,31 @@
             "level": 18,
             "effects": [
               {
+                "type": "choice",
+                "id": "magical-secrets-3",
+                "label": "Magical Secrets: choose two spells from any class",
+                "pick": 2,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "level": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7,
+                      8,
+                      9
+                    ]
+                  },
+                  "known": true
+                },
+                "ability": "cha"
+              },
+              {
                 "type": "feature",
                 "name": "Magical Secrets",
                 "description": "By 10th level, you have plundered magical knowledge from a wide spectrum of disciplines. Choose two spells from any class, including this one. A spell you choose must be of a level you can cast, as shown on the Bard table, or a cantrip. \n\nThe chosen spells count as bard spells for you and are included in the number in the Spells Known column of the Bard table. \n\nYou learn two additional spells from any class at 14th level and again at 18th level."
@@ -1886,6 +2539,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -2004,6 +2661,7 @@
           "ability": "cha",
           "level": 1,
           "kind": "known",
+          "progression": "full",
           "cantrips": "cantrips-known",
           "known": "spells-known",
           "slots": {
@@ -2281,6 +2939,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -2330,6 +2992,10 @@
           {
             "level": 8,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -2381,6 +3047,10 @@
             "level": 12,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -2400,6 +3070,10 @@
           {
             "level": 16,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -2435,6 +3109,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -2579,6 +3257,7 @@
           "ability": "wis",
           "level": 1,
           "kind": "prepared",
+          "progression": "full",
           "cantrips": "cantrips-known",
           "slots": {
             "1": "spell-slots-level-1",
@@ -2898,6 +3577,10 @@
                 "description": "Starting at 2nd level, you can use your action to magically assume the shape of a beast that you have seen before. You can use this feature twice. You regain expended uses when you finish a short or long rest.\n\nYour druid level determines the beasts you can transform into, as shown in the Beast Shapes table. At 2nd level, for example, you can transform into any beast that has a challenge rating of 1/4 or lower that doesn't have a flying or swimming speed.\n\nYou can stay in a beast shape for a number of hours equal to half your druid level (rounded down). You then revert to your normal form unless you expend another use of this feature. You can revert to your normal form earlier by using a bonus action on your turn. You automatically revert if you fall unconscious, drop to 0 hit points, or die.\n\nWhile you are transformed, the following rules apply:\n\n- Your game statistics are replaced by the statistics of the beast, but you retain your alignment, personality, and Intelligence, Wisdom, and Charisma scores. You also retain all of your skill and saving throw proficiencies, in addition to gaining those of the creature. If the creature has the same proficiency as you and the bonus in its stat block is higher than yours, use the creature's bonus instead of yours. If the creature has any legendary or lair actions, you can't use them.\n\n- When you transform, you assume the beast's hit points and Hit Dice. When you revert to your normal form, you return to the number of hit points you had before you transformed. However, if you revert as a result of dropping to 0 hit points, any excess damage carries over to your normal form. For example, if you take 10 damage in animal form and have only 1 hit point left, you revert and take 9 damage. As long as the excess damage doesn't reduce your normal form to 0 hit points, you aren't knocked unconscious.\n\n- You can't cast spells, and your ability to speak or take any action that requires hands is limited to the capabilities of your beast form. Transforming doesn't break your concentration on a spell you've already cast, however, or prevent you from taking actions that are part of a spell, such as call lightning, that you've already cast.\n\n- You retain the benefit of any features from your class, race, or other source and can use them if the new form is physically capable of doing so. However, you can't use any of your special senses, such as darkvision, unless your new form also has that sense.\n\n- You choose whether your equipment falls to the ground in your space, merges into your new form, or is worn by it. Worn equipment functions as normal, but the GM decides whether it is practical for the new form to wear a piece of equipment, based on the creature's shape and size. Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with it. Equipment that merges with the form has no effect until you leave the form."
               },
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -2923,6 +3606,10 @@
                 "description": "Starting at 2nd level, you can use your action to magically assume the shape of a beast that you have seen before. You can use this feature twice. You regain expended uses when you finish a short or long rest.\n\nYour druid level determines the beasts you can transform into, as shown in the Beast Shapes table. At 2nd level, for example, you can transform into any beast that has a challenge rating of 1/4 or lower that doesn't have a flying or swimming speed.\n\nYou can stay in a beast shape for a number of hours equal to half your druid level (rounded down). You then revert to your normal form unless you expend another use of this feature. You can revert to your normal form earlier by using a bonus action on your turn. You automatically revert if you fall unconscious, drop to 0 hit points, or die.\n\nWhile you are transformed, the following rules apply:\n\n- Your game statistics are replaced by the statistics of the beast, but you retain your alignment, personality, and Intelligence, Wisdom, and Charisma scores. You also retain all of your skill and saving throw proficiencies, in addition to gaining those of the creature. If the creature has the same proficiency as you and the bonus in its stat block is higher than yours, use the creature's bonus instead of yours. If the creature has any legendary or lair actions, you can't use them.\n\n- When you transform, you assume the beast's hit points and Hit Dice. When you revert to your normal form, you return to the number of hit points you had before you transformed. However, if you revert as a result of dropping to 0 hit points, any excess damage carries over to your normal form. For example, if you take 10 damage in animal form and have only 1 hit point left, you revert and take 9 damage. As long as the excess damage doesn't reduce your normal form to 0 hit points, you aren't knocked unconscious.\n\n- You can't cast spells, and your ability to speak or take any action that requires hands is limited to the capabilities of your beast form. Transforming doesn't break your concentration on a spell you've already cast, however, or prevent you from taking actions that are part of a spell, such as call lightning, that you've already cast.\n\n- You retain the benefit of any features from your class, race, or other source and can use them if the new form is physically capable of doing so. However, you can't use any of your special senses, such as darkvision, unless your new form also has that sense.\n\n- You choose whether your equipment falls to the ground in your space, merges into your new form, or is worn by it. Worn equipment functions as normal, but the GM decides whether it is practical for the new form to wear a piece of equipment, based on the creature's shape and size. Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with it. Equipment that merges with the form has no effect until you leave the form."
               },
               {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -2943,6 +3630,10 @@
             "level": 12,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -2962,6 +3653,10 @@
           {
             "level": 16,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -2987,6 +3682,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -3083,6 +3782,7 @@
           "ability": "wis",
           "level": 1,
           "kind": "prepared",
+          "progression": "full",
           "cantrips": "cantrips-known",
           "slots": {
             "1": "spell-slots-level-1",
@@ -3348,6 +4048,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 6th, 8th, 12th, 14th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -3368,6 +4072,10 @@
             "level": 6,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-6"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 6th, 8th, 12th, 14th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -3387,6 +4095,10 @@
           {
             "level": 8,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -3428,6 +4140,10 @@
             "level": 12,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 6th, 8th, 12th, 14th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -3448,6 +4164,10 @@
             "level": 14,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-14"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 6th, 8th, 12th, 14th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -3467,6 +4187,10 @@
           {
             "level": 16,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -3502,6 +4226,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -4171,6 +4899,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -4231,6 +4963,10 @@
             "level": 8,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -4270,6 +5006,10 @@
           {
             "level": 12,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -4311,6 +5051,10 @@
             "level": 16,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -4340,6 +5084,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -4714,6 +5462,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -4754,6 +5506,10 @@
             "level": 8,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -4783,6 +5539,10 @@
           {
             "level": 12,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -4814,6 +5574,10 @@
             "level": 16,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -4833,6 +5597,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -4958,6 +5726,7 @@
           "ability": "cha",
           "level": 2,
           "kind": "prepared",
+          "progression": "half",
           "slots": {
             "1": "spell-slots-level-1",
             "2": "spell-slots-level-2",
@@ -5404,6 +6173,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -5574,6 +6347,10 @@
             "level": 8,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -5658,6 +6435,10 @@
           {
             "level": 12,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -5774,6 +6555,10 @@
             "level": 16,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -5793,6 +6578,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -5904,6 +6693,7 @@
           "ability": "wis",
           "level": 2,
           "kind": "known",
+          "progression": "half",
           "known": "spells-known",
           "slots": {
             "1": "spell-slots-level-1",
@@ -6123,6 +6913,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 10th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -6178,6 +6972,10 @@
             "level": 8,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 10th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -6198,6 +6996,10 @@
             "level": 10,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-10"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 10th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -6217,6 +7019,10 @@
           {
             "level": 12,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -6258,6 +7064,10 @@
             "level": 16,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 10th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -6287,6 +7097,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -6738,6 +7552,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -6757,6 +7575,10 @@
           {
             "level": 8,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -6836,6 +7658,10 @@
             "level": 12,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -6855,6 +7681,10 @@
           {
             "level": 16,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -6943,6 +7773,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -7055,6 +7889,7 @@
           "ability": "cha",
           "level": 1,
           "kind": "known",
+          "progression": "full",
           "cantrips": "cantrips-known",
           "known": "spells-known",
           "slots": {
@@ -7320,6 +8155,416 @@
             "level": 2,
             "effects": [
               {
+                "type": "choice",
+                "id": "eldritch-invocations",
+                "label": "Eldritch Invocations",
+                "pick": {
+                  "column": "invocations-known"
+                },
+                "from": {
+                  "options": [
+                    {
+                      "id": "agonizing-blast",
+                      "name": "Agonizing Blast",
+                      "description": "When you cast eldritch blast, add your Charisma modifier to the damage it deals on a hit.",
+                      "requires": {
+                        "spell": "eldritch-blast"
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "armor-of-shadows",
+                      "name": "Armor of Shadows",
+                      "description": "You can cast mage armor on yourself at will, without expending a spell slot or material components.",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "mage-armor",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "beast-speech",
+                      "name": "Beast Speech",
+                      "description": "You can cast speak with animals at will, without expending a spell slot.",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "speak-with-animals",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "beguiling-influence",
+                      "name": "Beguiling Influence",
+                      "description": "You gain proficiency in the Deception and Persuasion skills.",
+                      "effects": [
+                        {
+                          "type": "proficiency",
+                          "kind": "skill",
+                          "id": "deception"
+                        },
+                        {
+                          "type": "proficiency",
+                          "kind": "skill",
+                          "id": "persuasion"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "book-of-ancient-secrets",
+                      "name": "Book of Ancient Secrets",
+                      "description": "You can now inscribe magical rituals in your Book of Shadows. Choose two 1st-level spells that have the ritual tag from any class's spell list (the two needn't be from the same list). The spells appear in the book and don't count against the number of spells you know. With your Book of Shadows in hand, you can cast the chosen spells as rituals. You can't cast the spells except as rituals, unless you've learned them by some other means. You can also cast a warlock spell you know as a ritual if it has the ritual tag.\n\nOn your adventures, you can add other ritual spells to your Book of Shadows. When you find such a spell, you can add it to the book if the spell's level is equal to or less than half your warlock level (rounded up) and if you can spare the time to transcribe the spell. For each level of the spell, the transcription process takes 2 hours and costs 50 gp for the rare inks needed to inscribe it.",
+                      "requires": {
+                        "option": {
+                          "choice": "pact-boon",
+                          "id": "tome"
+                        }
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "devils-sight",
+                      "name": "Devil's Sight",
+                      "description": "You can see normally in darkness, both magical and nonmagical, to a distance of 120 feet.",
+                      "effects": []
+                    },
+                    {
+                      "id": "eldritch-sight",
+                      "name": "Eldritch Sight",
+                      "description": "You can cast detect magic at will, without expending a spell slot.",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "detect-magic",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "eldritch-spear",
+                      "name": "Eldritch Spear",
+                      "description": "When you cast eldritch blast, its range is 300 feet.",
+                      "requires": {
+                        "spell": "eldritch-blast"
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "eyes-of-the-rune-keeper",
+                      "name": "Eyes of the Rune Keeper",
+                      "description": "You can read all writing.",
+                      "effects": []
+                    },
+                    {
+                      "id": "fiendish-vigor",
+                      "name": "Fiendish Vigor",
+                      "description": "You can cast false life on yourself at will as a 1st-level spell, without expending a spell slot or material components.",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "false-life",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "gaze-of-two-minds",
+                      "name": "Gaze of Two Minds",
+                      "description": "You can use your action to touch a willing humanoid and perceive through its senses until the end of your next turn. As long as the creature is on the same plane of existence as you, you can use your action on subsequent turns to maintain this connection, extending the duration until the end of your next turn. While perceiving through the other creature's senses, you benefit from any special senses possessed by that creature, and you are blinded and deafened to your own surroundings.",
+                      "effects": []
+                    },
+                    {
+                      "id": "mask-of-many-faces",
+                      "name": "Mask of Many Faces",
+                      "description": "You can cast disguise self at will, without expending a spell slot.",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "disguise-self",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "misty-visions",
+                      "name": "Misty Visions",
+                      "description": "You can cast silent image at will, without expending a spell slot or material components.",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "silent-image",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "repelling-blast",
+                      "name": "Repelling Blast",
+                      "description": "When you hit a creature with eldritch blast, you can push the creature up to 10 feet away from you in a straight line.",
+                      "requires": {
+                        "spell": "eldritch-blast"
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "thief-of-five-fates",
+                      "name": "Thief of Five Fates",
+                      "description": "You can cast bane once using a warlock spell slot. You can't do so again until you finish a long rest.",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "bane",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "voice-of-the-chain-master",
+                      "name": "Voice of the Chain Master",
+                      "description": "You can communicate telepathically with your familiar and perceive through your familiar's senses as long as you are on the same plane of existence.\n\nAdditionally, while perceiving through your familiar's senses, you can also speak through your familiar in your own voice, even if your familiar is normally incapable of speech.",
+                      "requires": {
+                        "option": {
+                          "choice": "pact-boon",
+                          "id": "chain"
+                        }
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "mire-the-mind",
+                      "name": "Mire the Mind",
+                      "description": "You can cast slow once using a warlock spell slot. You can't do so again until you finish a long rest.",
+                      "requires": {
+                        "level": 5
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "slow",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "one-with-shadows",
+                      "name": "One with Shadows",
+                      "description": "When you are in an area of dim light or darkness, you can use your action to become invisible until you move or take an action or a reaction.",
+                      "requires": {
+                        "level": 5
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "sign-of-ill-omen",
+                      "name": "Sign of Ill Omen",
+                      "description": "You can cast bestow curse once using a warlock spell slot. You can't do so again until you finish a long rest.",
+                      "requires": {
+                        "level": 5
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "bestow-curse",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "thirsting-blade",
+                      "name": "Thirsting Blade",
+                      "description": "You can attack with your pact weapon twice, instead of once, whenever you take the Attack action on your turn.",
+                      "requires": {
+                        "level": 5,
+                        "option": {
+                          "choice": "pact-boon",
+                          "id": "blade"
+                        }
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "bewitching-whispers",
+                      "name": "Bewitching Whispers",
+                      "description": "You can cast compulsion once using a warlock spell slot. You can't do so again until you finish a long rest.",
+                      "requires": {
+                        "level": 7
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "compulsion",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "dreadful-word",
+                      "name": "Dreadful Word",
+                      "description": "You can cast confusion once using a warlock spell slot. You can't do so again until you finish a long rest.",
+                      "requires": {
+                        "level": 7
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "confusion",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "sculptor-of-flesh",
+                      "name": "Sculptor of Flesh",
+                      "description": "You can cast polymorph once using a warlock spell slot. You can't do so again until you finish a long rest.",
+                      "requires": {
+                        "level": 7
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "polymorph",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "ascendant-step",
+                      "name": "Ascendant Step",
+                      "description": "You can cast levitate on yourself at will, without expending a spell slot or material components.",
+                      "requires": {
+                        "level": 9
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "levitate",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "minions-of-chaos",
+                      "name": "Minions of Chaos",
+                      "description": "You can cast conjure elemental once using a warlock spell slot. You can't do so again until you finish a long rest.",
+                      "requires": {
+                        "level": 9
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "conjure-elemental",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "otherworldly-leap",
+                      "name": "Otherworldly Leap",
+                      "description": "You can cast jump on yourself at will, without expending a spell slot or material components.",
+                      "requires": {
+                        "level": 9
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "jump",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "whispers-of-the-grave",
+                      "name": "Whispers of the Grave",
+                      "description": "You can cast speak with dead at will, without expending a spell slot.",
+                      "requires": {
+                        "level": 9
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "speak-with-dead",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "lifedrinker",
+                      "name": "Lifedrinker",
+                      "description": "When you hit a creature with your pact weapon, the creature takes extra necrotic damage equal to your Charisma modifier (minimum 1).",
+                      "requires": {
+                        "level": 12,
+                        "option": {
+                          "choice": "pact-boon",
+                          "id": "blade"
+                        }
+                      },
+                      "effects": []
+                    },
+                    {
+                      "id": "chains-of-carceri",
+                      "name": "Chains of Carceri",
+                      "description": "You can cast hold monster at will--targeting a celestial, fiend, or elemental--without expending a spell slot or material components. You must finish a long rest before you can use this invocation on the same creature again.",
+                      "requires": {
+                        "level": 15,
+                        "option": {
+                          "choice": "pact-boon",
+                          "id": "chain"
+                        }
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "hold-monster",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "master-of-myriad-forms",
+                      "name": "Master of Myriad Forms",
+                      "description": "You can cast alter self at will, without expending a spell slot.",
+                      "requires": {
+                        "level": 15
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "alter-self",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "visions-of-distant-realms",
+                      "name": "Visions of Distant Realms",
+                      "description": "You can cast arcane eye at will, without expending a spell slot.",
+                      "requires": {
+                        "level": 15
+                      },
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "arcane-eye",
+                          "ability": "cha"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "witch-sight",
+                      "name": "Witch Sight",
+                      "description": "You can see the true form of any shapechanger or creature concealed by illusion or transmutation magic while the creature is within 30 feet of you and within line of sight.",
+                      "requires": {
+                        "level": 15
+                      },
+                      "effects": []
+                    }
+                  ]
+                }
+              },
+              {
                 "type": "feature",
                 "name": "Eldritch Invocations",
                 "description": "In your study of occult lore, you have unearthed eldritch invocations, fragments of forbidden knowledge that imbue you with an abiding magical ability.\n\nAt 2nd level, you gain two eldritch invocations of your choice. Your invocation options are detailed at the end of the class description. When you gain certain warlock levels, you gain additional invocations of your choice, as shown in the Invocations Known column of the Warlock table.\n\nAdditionally, when you gain a level in this class, you can choose one of the invocations you know and replace it with another invocation that you could learn at that level."
@@ -7368,6 +8613,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -7387,6 +8636,10 @@
           {
             "level": 8,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -7408,6 +8661,20 @@
             "level": 11,
             "effects": [
               {
+                "type": "choice",
+                "id": "mystic-arcanum-6",
+                "label": "Mystic Arcanum: choose a 6th-level warlock spell",
+                "pick": 1,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "warlock",
+                    "level": 6
+                  }
+                },
+                "ability": "cha"
+              },
+              {
                 "type": "feature",
                 "name": "Mystic Arcanum (6th level)",
                 "description": "At 11th level, your patron bestows upon you a magical secret called an arcanum. Choose one 6th- level spell from the warlock spell list as this arcanum.\n\nYou can cast your arcanum spell once without expending a spell slot. You must finish a long rest before you can do so again.\n\nAt higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th- level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level. You regain all uses of your Mystic Arcanum when you finish a long rest."
@@ -7418,6 +8685,10 @@
             "level": 12,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -7427,6 +8698,20 @@
           {
             "level": 13,
             "effects": [
+              {
+                "type": "choice",
+                "id": "mystic-arcanum-7",
+                "label": "Mystic Arcanum: choose a 7th-level warlock spell",
+                "pick": 1,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "warlock",
+                    "level": 7
+                  }
+                },
+                "ability": "cha"
+              },
               {
                 "type": "feature",
                 "name": "Mystic Arcanum (7th level)",
@@ -7448,6 +8733,20 @@
             "level": 15,
             "effects": [
               {
+                "type": "choice",
+                "id": "mystic-arcanum-8",
+                "label": "Mystic Arcanum: choose a 8th-level warlock spell",
+                "pick": 1,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "warlock",
+                    "level": 8
+                  }
+                },
+                "ability": "cha"
+              },
+              {
                 "type": "feature",
                 "name": "Mystic Arcanum (8th level)",
                 "description": "At 11th level, your patron bestows upon you a magical secret called an arcanum. Choose one 6th- level spell from the warlock spell list as this arcanum.\n\nYou can cast your arcanum spell once without expending a spell slot. You must finish a long rest before you can do so again.\n\nAt higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th- level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level. You regain all uses of your Mystic Arcanum when you finish a long rest."
@@ -7457,6 +8756,10 @@
           {
             "level": 16,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -7468,6 +8771,20 @@
             "level": 17,
             "effects": [
               {
+                "type": "choice",
+                "id": "mystic-arcanum-9",
+                "label": "Mystic Arcanum: choose a 9th-level warlock spell",
+                "pick": 1,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "warlock",
+                    "level": 9
+                  }
+                },
+                "ability": "cha"
+              },
+              {
                 "type": "feature",
                 "name": "Mystic Arcanum (9th level)",
                 "description": "At 11th level, your patron bestows upon you a magical secret called an arcanum. Choose one 6th- level spell from the warlock spell list as this arcanum.\n\nYou can cast your arcanum spell once without expending a spell slot. You must finish a long rest before you can do so again.\n\nAt higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th- level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level. You regain all uses of your Mystic Arcanum when you finish a long rest."
@@ -7477,6 +8794,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -7600,6 +8921,7 @@
           "ability": "cha",
           "level": 1,
           "kind": "pact",
+          "progression": "pact",
           "cantrips": "cantrips-known",
           "known": "spells-known",
           "slots": {
@@ -7835,6 +9157,10 @@
             "level": 4,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-4"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -7854,6 +9180,10 @@
           {
             "level": 8,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-8"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -7875,6 +9205,10 @@
             "level": 12,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-12"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -7895,6 +9229,10 @@
             "level": 16,
             "effects": [
               {
+                "type": "ability-score-improvement",
+                "id": "asi-16"
+              },
+              {
                 "type": "feature",
                 "name": "Ability Score Improvement",
                 "description": "When you reach 4th level, and again at 8th, 12th, 16th, and 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature."
@@ -7914,6 +9252,10 @@
           {
             "level": 19,
             "effects": [
+              {
+                "type": "ability-score-improvement",
+                "id": "asi-19"
+              },
               {
                 "type": "feature",
                 "name": "Ability Score Improvement",
@@ -8016,6 +9358,7 @@
           "ability": "int",
           "level": 1,
           "kind": "spellbook",
+          "progression": "full",
           "cantrips": "cantrips-known",
           "slots": {
             "1": "spell-slots-level-1",
@@ -8123,6 +9466,24 @@
           {
             "level": 6,
             "effects": [
+              {
+                "type": "choice",
+                "id": "additional-magical-secrets",
+                "label": "Additional Magical Secrets: choose two spells from any class",
+                "pick": 2,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "level": [
+                      0,
+                      1,
+                      2,
+                      3
+                    ]
+                  }
+                },
+                "ability": "cha"
+              },
               {
                 "type": "feature",
                 "name": "Additional Magical Secrets",
@@ -9249,6 +10610,29 @@
             }
           ]
         }
+      }
+    ],
+    "feats": [
+      {
+        "id": "grappler",
+        "name": "Grappler",
+        "summary": "Advantage against creatures you grapple, and you can pin them.",
+        "description": "Prerequisite: Strength 13 or higher\n\nYou've developed the skills necessary to hold your own in close-quarters grappling. You gain the following benefits:\n- You have advantage on attack rolls against a creature you are grappling.\n- You can use your action to try to pin a creature grappled by you. To do so, make another grapple check. If you succeed, you and the creature are both restrained until the grapple ends.",
+        "requires": {
+          "abilities": [
+            {
+              "ability": "str",
+              "min": 13
+            }
+          ]
+        },
+        "effects": [
+          {
+            "type": "feature",
+            "name": "Grappler",
+            "description": "You've developed the skills necessary to hold your own in close-quarters grappling. You gain the following benefits:\n- You have advantage on attack rolls against a creature you are grappling.\n- You can use your action to try to pin a creature grappled by you. To do so, make another grapple check. If you succeed, you and the creature are both restrained until the grapple ends."
+          }
+        ]
       }
     ],
     "items": [

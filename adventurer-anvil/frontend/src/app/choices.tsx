@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import type { ChoiceSpec, ChoiceValue, Derived, ListItem, Option, ResolvedIssue, RollRecord } from "../core";
 import { coinsText } from "./format";
-import { Allocate, Assign, Roll } from "./slots";
+import { Allocate, Assign, CompactRoll, Roll } from "./slots";
 
 export interface ChoiceProps {
   spec: ChoiceSpec;
@@ -31,14 +31,16 @@ export function ChoiceView(props: ChoiceProps) {
     case "allocate":
       return <Allocate {...props} />;
     case "roll":
-      return <Roll {...props} />;
+      return props.spec.presentation === "compact" ? <CompactRoll {...props} /> : <Roll {...props} />;
     case "text":
     case "long-text":
       return <TextChoice {...props} />;
     case "number":
       return <NumberChoice {...props} />;
     case "quantities":
-      return <Quantities {...props} />;
+      return props.spec.presentation === "steppers" ? <Steppers {...props} /> : <Quantities {...props} />;
+    case "image":
+      return <ImageChoice {...props} />;
     default:
       return (
         <section className="choice" id={choiceDomId(props.spec.key)} tabIndex={-1}>
@@ -55,6 +57,7 @@ function Segmented({ spec, value, issues, onChange }: ChoiceProps) {
   return (
     <fieldset className="choice" id={choiceDomId(spec.key)} tabIndex={-1}>
       <legend>{spec.label}</legend>
+      {spec.source && <p className="meta">From {spec.source}</p>}
       {spec.hint && <p className="meta">{spec.hint}</p>}
       <div className="segmented">
         {(spec.options ?? []).map((option) => (
@@ -112,7 +115,7 @@ function PickOne({ spec, value, issues, onChange }: ChoiceProps) {
     <fieldset className="choice" id={choiceDomId(spec.key)} tabIndex={-1}>
       <legend>{spec.label}</legend>
       <Meta spec={spec} picked={value === undefined ? 0 : 1} />
-      <div className="cards">
+      <div className="cards" style={spec.columns ? { gridTemplateColumns: `repeat(${spec.columns}, minmax(0, 1fr))` } : undefined}>
         {options.map((option) => {
           const isSelected = option.value === value;
           return (
@@ -239,9 +242,26 @@ function TextChoice({ spec, value, issues, onChange }: ChoiceProps) {
     const pool = unused.length ? unused : suggestions;
     use(pool[Math.floor(Math.random() * pool.length)].text);
   };
+  if (spec.group) {
+    return (
+      <div className="compact" id={id} tabIndex={-1}>
+        <label htmlFor={`${id}-input`} className="label">{spec.label}</label>
+        <div className="compact-row">
+          <input id={`${id}-input`} className="text-input" value={text} onChange={(e) => onChange(e.target.value)} />
+          {suggestions.length > 0 && (
+            <button type="button" className="button small" onClick={suggest}>
+              Suggest<span className="sr-only"> {spec.label.toLowerCase()}{spec.source ? ` for a ${spec.source.toLowerCase()}` : ""}</span>
+            </button>
+          )}
+        </div>
+        <Issues issues={issues} />
+      </div>
+    );
+  }
   return (
     <section className="choice" id={id} tabIndex={-1}>
       <label htmlFor={`${id}-input`} className="choice-title">{spec.label}</label>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
       {spec.source && <p className="meta">Suggestions from {spec.source}</p>}
       {spec.kind === "long-text" ? (
         <textarea id={`${id}-input`} className="text-input" rows={lines ? 3 : 2} value={text} onChange={(e) => onChange(e.target.value)} />
@@ -386,6 +406,60 @@ function Quantities({ spec, value, issues, onChange }: ChoiceProps) {
   );
 }
 
+/**
+ * How many of each of a few options, all listed with their own − and +, within a budget (levels given to other
+ * classes). An option that can't be taken says why but stays usable: the file may say otherwise and a DM can allow it.
+ */
+function Steppers({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  const options = spec.options ?? [];
+  const counts = asCounts(value);
+  const budget = spec.budget;
+  const cost = (o: Option) => budget?.cost[String(o.value)] ?? 1;
+  const spent = options.reduce((total, o) => total + cost(o) * (counts[String(o.value)] ?? 0), 0);
+  const left = (budget?.total ?? 0) - spent;
+  const set = (v: string, n: number) => {
+    const next = { ...counts };
+    if (n > 0) next[v] = n;
+    else delete next[v];
+    onChange(next);
+  };
+  return (
+    <section className="choice" id={id} tabIndex={-1} aria-labelledby={`${id}-label`}>
+      <h2 id={`${id}-label`} className="choice-title">{spec.label}</h2>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
+      {budget && (
+        <p className="meta" aria-live="polite">
+          {spent} of {budget.total} given · {left >= 0 ? `${left} left` : <span className="attention">{-left} too many</span>}
+        </p>
+      )}
+      <ul className="shop">
+        {options.map((o) => {
+          const v = String(o.value);
+          const n = counts[v] ?? 0;
+          const full = budget !== undefined && cost(o) > left;
+          return (
+            <li key={v}>
+              <span className="shop-name">{o.name}</span>
+              <span className={`shop-tags ${o.unavailable ? "attention" : "dim"}`}>{o.unavailable ?? [o.summary, ...(o.tags ?? [])].filter(Boolean).join(" · ")}</span>
+              <span className="stepper">
+                <button type="button" className="button small" disabled={n === 0} onClick={() => set(v, n - 1)}>
+                  −<span className="sr-only"> one fewer for {o.name}</span>
+                </button>
+                <span className="final">{n}<span className="sr-only"> for {o.name}</span></span>
+                <button type="button" className="button small" disabled={full} onClick={() => set(v, n + 1)}>
+                  +<span className="sr-only"> one more for {o.name}{full ? " (none left to give)" : ""}</span>
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <Issues issues={issues} />
+    </section>
+  );
+}
+
 /** Tags the summary line doesn't already say (a spell's school is in it; Concentration and Ritual aren't). They all still filter. */
 const extraTags = (o: Option) => (o.tags ?? []).filter((t) => !(o.summary ?? "").toLowerCase().includes(t.toLowerCase()));
 
@@ -480,5 +554,58 @@ function ListPick({ spec, value, issues, onChange }: ChoiceProps) {
       </ul>
       <Issues issues={issues} />
     </fieldset>
+  );
+}
+
+/** The longest side of a stored picture, in pixels. */
+const IMAGE_SIZE = 256;
+
+/** Reads a picture file and shrinks it to fit IMAGE_SIZE, as a data: URL (PNG stays PNG, for transparent tokens; the rest become JPEG). */
+async function shrinkImage(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, IMAGE_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return file.type === "image/png" ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.85);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** A picture (a portrait): choose a file, see it, remove it. It is shrunk here, in the browser, before it is stored. */
+function ImageChoice({ spec, value, issues, onChange }: ChoiceProps) {
+  const id = choiceDomId(spec.key);
+  const [error, setError] = useState<string | null>(null);
+  const src = typeof value === "string" && value.startsWith("data:image/") ? value : undefined;
+  const choose = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return setError("Choose a PNG, JPEG or WebP picture.");
+    try {
+      onChange(await shrinkImage(file));
+    } catch {
+      setError("That picture couldn't be read. Try another.");
+    }
+  };
+  return (
+    <section className="choice" id={id} tabIndex={-1}>
+      <label htmlFor={`${id}-input`} className="choice-title">{spec.label}</label>
+      {spec.hint && <p className="meta">{spec.hint}</p>}
+      <div className="image-choice">
+        {src ? <img src={src} alt={`${spec.label} chosen`} className="image-preview" /> : <div className="image-preview empty" aria-hidden="true">No picture</div>}
+        <div>
+          <input id={`${id}-input`} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => void choose(e.target.files?.[0])} />
+          {src && <button type="button" className="button small" onClick={() => onChange(null)}>Remove<span className="sr-only"> {spec.label.toLowerCase()}</span></button>}
+        </div>
+      </div>
+      {error && <p className="issue error" role="alert">{error}</p>}
+      <Issues issues={issues} />
+    </section>
   );
 }

@@ -21,7 +21,8 @@ function view(choices: Record<string, ChoiceValue>) {
   return viewCharacter(dnd5e2014, doc, content);
 }
 const step = (v: ReturnType<typeof view>) => v.steps.find((s) => s.id === "background")!;
-const choice = (v: ReturnType<typeof view>, key: string) => step(v).choices.find((c) => c.key === key);
+const choice = (v: ReturnType<typeof view>, key: string) =>
+  [...step(v).choices, ...v.steps.find((s) => s.id === "details")!.choices].find((c) => c.key === key);
 
 const scores = standardArray({ str: 8, dex: 14, con: 13, int: 15, wis: 12, cha: 10 });
 const sentry = { ...scores, [BACKGROUND_KEY]: "sample-srd:sentry" };
@@ -48,7 +49,7 @@ describe("choosing a background", () => {
   });
 });
 
-describe("characteristics", () => {
+describe("characteristics (written on the Details step)", () => {
   it("are free text, with the background's tables as suggestions (traits want two lines)", () => {
     const v = view(sentry);
     const traits = choice(v, "background.traits")!;

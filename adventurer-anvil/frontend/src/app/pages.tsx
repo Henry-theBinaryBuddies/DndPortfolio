@@ -1,35 +1,128 @@
 // The Review and Licences pages: built from the core's evaluation and the loaded packs, so every system gets them.
-import type { CharacterView } from "../core";
+import { useId, useState } from "react";
+import { NAME_KEY, type CharacterDocument, type CharacterView, type ChoiceSpec, type ChoiceValue, type LevelUp, type ResolvedIssue } from "../core";
+import { coinsText } from "./format";
 import type { LoadedPack } from "./packs";
 
-export function Review({ view, stepLabel, onGoTo, onClear }: {
+const SHOWN = 6;
+
+/** A choice's answer in words: option names, slot values, the start of a text. Nothing for an unanswered choice. */
+export function answerText(spec: ChoiceSpec, value: ChoiceValue | undefined): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const nameOf = (v: unknown) => spec.options?.find((o) => o.value === v)?.name ?? String(v);
+  const list = (names: string[]) => (names.length > SHOWN ? `${names.slice(0, SHOWN).join(", ")} and ${names.length - SHOWN} more` : names.join(", "));
+  switch (spec.kind) {
+    case "pick-one":
+      return nameOf(value);
+    case "pick-many":
+      return Array.isArray(value) && value.length ? list(value.map(nameOf)) : undefined;
+    case "assign":
+    case "allocate": {
+      if (typeof value !== "object" || Array.isArray(value)) return undefined;
+      const v = value as Record<string, unknown>;
+      // Values that start from 0 (an increase) are shown as "+2", and the zeros left out.
+      const increase = spec.kind === "allocate" && (spec.range?.min ?? 0) === 0;
+      const parts = (spec.slots ?? [])
+        .filter((s) => v[s.id] !== undefined && !(increase && !v[s.id]))
+        .map((s) => `${s.name.slice(0, 3)} ${increase ? "+" : ""}${v[s.id]}`);
+      return parts.length ? parts.join(", ") : undefined;
+    }
+    case "quantities": {
+      if (typeof value !== "object" || Array.isArray(value)) return undefined;
+      // A shop's "Rope × 2"; a short list of steppers' "Wizard 1".
+      const parts = Object.entries(value).filter(([, n]) => typeof n === "number" && n > 0)
+        .map(([v, n]) => (spec.presentation === "steppers" ? `${nameOf(v)} ${n}` : n === 1 ? nameOf(v) : `${nameOf(v)} × ${n}`));
+      const spent = Object.entries(value).reduce((t, [v, n]) => t + (spec.budget?.cost[v] ?? 0) * (typeof n === "number" ? n : 0), 0);
+      return parts.length ? `${list(parts)}${spec.budget?.format === "coins" ? ` (${coinsText(spent)})` : ""}` : undefined;
+    }
+    case "text":
+    case "long-text": {
+      const t = String(value).trim().replace(/\s+/g, " ");
+      return t ? (t.length > 80 ? `${t.slice(0, 77)}…` : t) : undefined;
+    }
+    case "number":
+      return String(value);
+    case "image":
+      return "Added";
+    default:
+      return undefined;
+  }
+}
+
+/** A choice's label as a heading for its answer: "Choose a race" → "Race", "Choose your Divine Domain" → "Divine Domain". */
+export const shortLabel = (label: string) => {
+  const m = /^Choose (?:a |an |your |the )?(.+)$/.exec(label);
+  return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1) : label;
+};
+
+/** Asks for a short note, then records a DM ruling that lets one problem stand. */
+function Allow({ issue, onAllow }: { issue: ResolvedIssue; onAllow: (note: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const id = useId();
+  if (!open) {
+    return <button type="button" className="link" onClick={() => setOpen(true)}>Allow…<span className="sr-only"> {issue.message}</span></button>;
+  }
+  return (
+    <form className="allow-form" onSubmit={(e) => { e.preventDefault(); if (note.trim()) onAllow(note.trim()); }}>
+      <label htmlFor={id} className="sr-only">Why it's allowed (a short note for the sheet)</label>
+      <input id={id} className="text-input" value={note} placeholder="Why it's allowed, e.g. a gift from the DM" onChange={(e) => setNote(e.target.value)} autoFocus />
+      <button type="submit" className="button small" disabled={!note.trim()}>Allow</button>
+      <button type="button" className="button small" onClick={() => setOpen(false)}>Cancel</button>
+    </form>
+  );
+}
+
+export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload, levelUp, onLevelUp }: {
   view: CharacterView;
+  doc: CharacterDocument;
   stepLabel: (id: string) => string;
   onGoTo: (step: string, key?: string) => void;
   onClear: (keys: string[]) => void;
+  onAllow: (issueId: string, note: string) => void;
+  onDisallow: (issueId: string) => void;
+  onDownload: () => void;
+  /** Whether the character can go up a level (for systems that have levels), and doing it. */
+  levelUp?: LevelUp;
+  onLevelUp?: () => void;
 }) {
-  const errors = view.issues.filter((i) => i.severity === "error");
-  const warnings = view.issues.filter((i) => i.severity === "warning");
-  const todo = view.steps.filter((s) => s.status !== "done");
+  const open = view.issues.filter((i) => !i.override);
+  const errors = open.filter((i) => i.severity === "error");
+  const warnings = open.filter((i) => i.severity === "warning");
+  const allowed = view.issues.filter((i) => i.override);
+  const ready = view.steps.every((s) => s.status === "done") && errors.length === 0;
+  const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+
   return (
     <>
       <h1 tabIndex={-1}>Review</h1>
-      <p className="dim" style={{ marginTop: 4 }}>Everything still to settle before this character is finished.</p>
+      {ready ? (
+        <p className="ready">✓ Ready: every step is done{allowed.length ? `, with ${allowed.length} DM ruling${allowed.length > 1 ? "s" : ""}` : ""}.</p>
+      ) : (
+        <p className="dim" style={{ marginTop: 4 }}>Everything chosen so far, and what's still to settle.</p>
+      )}
 
       <section className="section" aria-labelledby="review-steps">
-        <h2 id="review-steps">Steps</h2>
-        {todo.length === 0 ? (
-          <p className="dim" style={{ marginTop: 6 }}>Every step is done.</p>
-        ) : (
-          <ul>
-            {todo.map((s) => (
-              <li key={s.id}>
-                <button type="button" className="link" onClick={() => onGoTo(s.id)}>{s.label}</button>
-                <span className="dim"> · {s.status === "problem" ? "has a problem" : "to do"}</span>
+        <h2 id="review-steps">Your choices</h2>
+        <ul className="answers">
+          {view.steps.map((step) => {
+            const answers = step.choices
+              .map((c) => ({ spec: c, label: shortLabel(c.label), text: answerText(c, c.key === NAME_KEY ? doc.name : (doc.choices[c.key] ?? c.defaultValue)) }))
+              .filter((a): a is { spec: ChoiceSpec; label: string; text: string } => Boolean(a.text));
+            return (
+              <li key={step.id}>
+                <span>
+                  {step.label}
+                  {step.status !== "done" && <span className={step.status === "problem" ? "attention" : "dim"}> · {step.status === "problem" ? "has a problem" : "to do"}</span>}
+                </span>
+                <span className="answer-list">
+                  {answers.length ? answers.map((a) => <span key={a.spec.key} style={{ display: "block" }}><span className="dim">{a.label}: </span>{a.text}</span>) : <span className="dim">Nothing chosen yet</span>}
+                </span>
+                <button type="button" className="link" onClick={() => onGoTo(step.id)}>Change<span className="sr-only"> {step.label}</span></button>
               </li>
-            ))}
-          </ul>
-        )}
+            );
+          })}
+        </ul>
       </section>
 
       {(errors.length > 0 || warnings.length > 0) && (
@@ -38,11 +131,31 @@ export function Review({ view, stepLabel, onGoTo, onClear }: {
           <ul>
             {[...errors, ...warnings].map((issue) => (
               <li key={issue.id}>
-                <span className={issue.severity === "error" ? "attention" : "dim"}>{issue.message}</span>
-                {issue.override && <span className="dim"> Allowed: {issue.override.note}</span>}{" "}
+                <span className={issue.severity === "error" ? "attention" : "dim"}>{issue.message}</span>{" "}
                 <button type="button" className="link" onClick={() => onGoTo(issue.step, issue.key)}>
                   Go to {stepLabel(issue.step)}
                 </button>
+                {issue.overridable && issue.severity === "error" && <>{" · "}<Allow issue={issue} onAllow={(note) => onAllow(issue.id, note)} /></>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {(allowed.length > 0 || view.staleOverrides.length > 0) && (
+        <section className="section" aria-labelledby="review-rulings">
+          <h2 id="review-rulings">DM rulings</h2>
+          <ul>
+            {allowed.map((issue) => (
+              <li key={issue.id}>
+                Allowed: {issue.message} <span className="dim">“{issue.override!.note}” ({when(issue.override!.at)})</span>{" "}
+                <button type="button" className="link" onClick={() => onDisallow(issue.id)}>Remove<span className="sr-only"> this ruling</span></button>
+              </li>
+            ))}
+            {view.staleOverrides.map((id) => (
+              <li key={id}>
+                <span className="dim">A ruling for something that no longer arises ({id}).</span>{" "}
+                <button type="button" className="link" onClick={() => onDisallow(id)}>Remove<span className="sr-only"> this ruling</span></button>
               </li>
             ))}
           </ul>
@@ -61,6 +174,30 @@ export function Review({ view, stepLabel, onGoTo, onClear }: {
           <button type="button" className="button" onClick={() => onClear(view.unused)}>Clear these</button>
         </section>
       )}
+
+      {levelUp && (
+        <section className="section" aria-labelledby="review-level">
+          <h2 id="review-level">Level up</h2>
+          {levelUp.ok ? (
+            <>
+              <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
+                Adds a level and opens the step where you choose what comes with it.
+              </p>
+              <button type="button" className="button" style={{ marginTop: 8 }} onClick={onLevelUp}>{levelUp.label}</button>
+            </>
+          ) : (
+            <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>{levelUp.reason}</p>
+          )}
+        </section>
+      )}
+
+      <section className="section" aria-labelledby="review-file">
+        <h2 id="review-file">A copy of your own</h2>
+        <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
+          The character is saved in this browser. Download a file to keep it safe, move it to another device, or share it.
+        </p>
+        <button type="button" className="button" style={{ marginTop: 8 }} onClick={onDownload}>Download character file</button>
+      </section>
     </>
   );
 }

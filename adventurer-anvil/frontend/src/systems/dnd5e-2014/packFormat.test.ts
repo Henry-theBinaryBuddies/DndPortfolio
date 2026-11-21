@@ -13,6 +13,7 @@ const dnd: SystemModule = {
   initialChoices: () => ({}),
   evaluate: () => ({ steps: [], derived: {}, lists: {}, issues: [], unused: [] }),
   migrate: (doc) => doc,
+  describe: () => ({ text: "" }),
 };
 
 /** A deep copy of the sample, changed by `edit`. */
@@ -40,7 +41,7 @@ describe("2014 pack format", () => {
   it("names the place and the problem for a misspelled effect type", () => {
     const data = variant((p) => (p.collections.races[0].effects[2].type = "darkvison"));
     expect(errorsFor(data)).toEqual([
-      'collections.races[0].effects[2]: unknown effect type "darkvison" (known: ability-bonus, speed, sense, proficiency, language, resistance, grant, armor-class, armor-class-bonus, hit-points, expertise, choice, resource, feature, spell, expanded-spells)',
+      'collections.races[0].effects[2]: unknown effect type "darkvison" (known: ability-bonus, speed, sense, proficiency, language, resistance, grant, armor-class, armor-class-bonus, hit-points, expertise, choice, resource, feature, spell, expanded-spells, ability-score-improvement)',
     ]);
   });
 
@@ -72,11 +73,13 @@ describe("2014 pack format", () => {
     expect(errorsFor(data)).toEqual(['collections.languages[4]: the id "elvish" is used twice.']);
   });
 
-  it("refuses collections that are not 2014 ones, and ones whose format is not written yet", () => {
+  it("refuses collections that are not 2014 ones, and checks feats like any entry", () => {
     expect(errorsFor(variant((p) => (p.collections.monsters = []))))
       .toEqual([expect.stringMatching(/^collections\.monsters: not a 2014 collection/)]);
     expect(errorsFor(variant((p) => (p.collections.feats = [{ id: "alert", name: "Alert" }]))))
-      .toEqual(["collections.feats: the format for feats arrives in a later step."]);
+      .toEqual([expect.stringMatching(/^collections\.feats\[0\]\.effects: /)]);
+    expect(errorsFor(variant((p) => (p.collections.feats = [{ id: "alert", name: "Alert", effects: [], requires: {} }]))))
+      .toEqual([expect.stringMatching(/^collections\.feats\[0\]\.requires: give "abilities", "proficiency" or "spellcasting"/)]);
   });
 
   it("checks fixed-list choices: each is required, must match the list, and only/except must be in it", () => {

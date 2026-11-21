@@ -6,6 +6,8 @@ import { ABILITIES, SKILLS, type Ability } from "../vocabulary";
 const SHORT: Record<Ability, string> = { str: "Str", dex: "Dex", con: "Con", int: "Int", wis: "Wis", cha: "Cha" };
 const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** How many a choice picks, for a chip: one counted from a class table is shown as "some". */
+const many = (pick: Extract<Effect, { type: "choice" }>["pick"]) => (typeof pick === "number" ? pick : "some");
 
 export function describeEffects(effects: Effect[]): string[] {
   const tags: string[] = [];
@@ -18,7 +20,7 @@ export function describeEffects(effects: Effect[]): string[] {
   }
   for (const e of effects) {
     if (e.type === "choice" && "list" in e.from && e.from.list === "abilities" && e.each?.type === "ability-bonus") {
-      tags.push(`${signed(e.each.amount)} to ${e.pick} of your choice`);
+      tags.push(`${signed(e.each.amount)} to ${many(e.pick)} of your choice`);
     }
   }
   for (const e of effects) if (e.type === "speed" && e.walk !== undefined) tags.push(`${e.walk} ft`);
@@ -34,9 +36,9 @@ export function describeEffects(effects: Effect[]): string[] {
   }
   for (const e of effects) {
     if (e.type !== "choice") continue;
-    if ("list" in e.from && e.from.list === "skills") tags.push(`${e.pick} skills of your choice`);
+    if ("list" in e.from && e.from.list === "skills") tags.push(`${capital(String(many(e.pick)))} skills of your choice`);
     else if ("list" in e.from && e.from.list === "damage-types") tags.push("Damage resistance of your choice");
-    else if ("collection" in e.from && e.from.collection === "languages") tags.push(`+${e.pick} language${e.pick > 1 ? "s" : ""}`);
+    else if ("collection" in e.from && e.from.collection === "languages") tags.push(`+${many(e.pick)} language${e.pick === 1 ? "" : "s"}`);
     else if ("collection" in e.from && e.from.collection === "spells") tags.push("A cantrip");
   }
   for (const e of effects) if (e.type === "feature") tags.push(e.name);

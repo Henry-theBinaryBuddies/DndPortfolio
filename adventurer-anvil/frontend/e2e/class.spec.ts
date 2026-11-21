@@ -39,7 +39,7 @@ test("a Fighter: skills and a fighting style finish the step; hit points and wha
   await group(page, /^Fighting Style/).getByText("Defense", { exact: true }).click();
   await expect(stepButton(page, /^Class, done/)).toBeVisible();
 
-  const gains = page.getByRole("region", { name: "What you get at level 1" });
+  const gains = page.getByRole("region", { name: "What you get" });
   await expect(gains.getByRole("listitem").filter({ hasText: "Second Wind" })).toContainText("1 per short rest");
   await gains.getByText("Read more about Second Wind").click();
   await expect(gains.getByText(/regain hit points equal to 1d10 \+ your fighter level/)).toBeVisible();

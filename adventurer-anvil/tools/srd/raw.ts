@@ -125,6 +125,8 @@ export interface RawFeature {
   subclass?: RawRef;
   parent?: RawRef;
   desc: string[];
+  /** An Eldritch Invocation's: a warlock level, a spell known or a feature (a Pact Boon), as API urls. */
+  prerequisites?: { type: string; level?: number; spell?: string; feature?: string }[];
   feature_specific?: {
     subfeature_options?: RawChoice;
     expertise_options?: RawChoice;

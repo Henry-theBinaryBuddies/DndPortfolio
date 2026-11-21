@@ -83,7 +83,7 @@ describe("each race matches the check table", () => {
       expect(v.derived["speed.walk"].value).toBe(facts.speed);
       expect(names(v, "senses")).toEqual(facts.darkvision ? [`Darkvision ${facts.darkvision} ft`] : []);
       expect(names(v, "languages")).toEqual(facts.languages);
-      const languageChoice = v.steps[0].choices.find((c) => c.key === `race.srd-5.1:${id}.language`);
+      const languageChoice = v.steps.find((s) => s.id === "race")!.choices.find((c) => c.key === `race.srd-5.1:${id}.language`);
       expect(languageChoice ? 1 : 0).toBe(facts.extraLanguages ?? 0);
       expect(names(v, "proficiencies", "skill")).toEqual(facts.skills ?? []);
       expect(names(v, "proficiencies", "weapon")).toEqual(facts.weapons ?? []);
@@ -105,12 +105,12 @@ describe("each subrace matches the check table", () => {
         names(sub, list, detail).filter((n) => !names(race, list, detail).includes(n));
       expect(newOnes("proficiencies", "weapon")).toEqual(facts.weapons ?? []);
       expect(newOnes("proficiencies", "tool")).toEqual(facts.tools ?? []);
-      expect(sub.steps[0].choices.some((c) => c.key === `race.srd-5.1:${id}.language`) ? 1 : 0).toBe(facts.extraLanguages ?? 0);
+      expect(sub.steps.find((s) => s.id === "race")!.choices.some((c) => c.key === `race.srd-5.1:${id}.language`) ? 1 : 0).toBe(facts.extraLanguages ?? 0);
     });
   }
 
   it("every race with a subrace in the SRD offers it, and no other race asks for one", () => {
-    const withSubrace = (race: string) => view({ race: `srd-5.1:${race}` }).steps[0].choices.some((c) => c.key.endsWith(".subrace"));
+    const withSubrace = (race: string) => view({ race: `srd-5.1:${race}` }).steps.find((s) => s.id === "race")!.choices.some((c) => c.key.endsWith(".subrace"));
     expect(Object.keys(RACES).filter(withSubrace)).toEqual(["dwarf", "elf", "halfling", "gnome"]);
   });
 });
@@ -124,16 +124,16 @@ describe("real SRD races through the engine", () => {
     expect(v.derived["ability.wis"].breakdown).toEqual([{ label: "Base", amount: 12 }, { label: "Hill Dwarf", amount: 1 }]);
     expect(v.derived["speed.walk"].value).toBe(25);
     expect(names(v, "features")).toEqual(["Dwarven Resilience", "Stonecunning", "Tool Proficiency", "Dwarven Toughness"]);
-    expect(v.steps[0].status).toBe("todo"); // the artisan's tools
-    const tools = v.steps[0].choices.find((c) => c.key === "race.srd-5.1:dwarf.tools")!;
+    expect(v.steps.find((s) => s.id === "race")!.status).toBe("todo"); // the artisan's tools
+    const tools = v.steps.find((s) => s.id === "race")!.choices.find((c) => c.key === "race.srd-5.1:dwarf.tools")!;
     expect(tools.options?.map((o) => o.name)).toEqual(["Smith's Tools", "Brewer's Supplies", "Mason's Tools"]);
     const done = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", "race.srd-5.1:dwarf.tools": "brewers-supplies", ...standardArray(STANDARD) });
-    expect(done.steps[0].status).toBe("done");
+    expect(done.steps.find((s) => s.id === "race")!.status).toBe("done");
     expect(names(done, "proficiencies", "tool")).toEqual(["Brewer's Supplies"]);
   });
 
   it("a Dragonborn: the ancestry choice gives the resistance, and Breath Weapon is tracked per short rest", () => {
-    const choice = view({ race: "srd-5.1:dragonborn" }).steps[0].choices.find((c) => c.key === "race.srd-5.1:dragonborn.ancestry")!;
+    const choice = view({ race: "srd-5.1:dragonborn" }).steps.find((s) => s.id === "race")!.choices.find((c) => c.key === "race.srd-5.1:dragonborn.ancestry")!;
     expect(choice.options?.map((o) => o.name)).toEqual(["Acid", "Cold", "Fire", "Lightning", "Poison"]);
 
     const v = view({ race: "srd-5.1:dragonborn", "race.srd-5.1:dragonborn.ancestry": "fire", ...standardArray(STANDARD) });
@@ -164,7 +164,7 @@ describe("real SRD races through the engine", () => {
 });
 
 describe("option cards for SRD races", () => {
-  const card = (name: string) => view({}).steps[0].choices[0].options!.find((o) => o.name === name)!;
+  const card = (name: string) => view({}).steps.find((s) => s.id === "race")!.choices[0].options!.find((o) => o.name === name)!;
 
   it("lead with the main bonus, then speed and size", () => {
     expect(card("Tiefling").tags?.slice(0, 4)).toEqual(["+2 Cha", "+1 Int", "30 ft", "Medium"]);
@@ -192,7 +192,7 @@ describe("each class matches the check table", () => {
       expect(cls.subclass).toEqual(facts.subclass);
       // The subclass choice is on this step only when the subclass comes at level 1.
       expect(step.choices.some((c) => c.key === `class.${ref}.subclass`)).toBe(facts.subclass.level === 1);
-      const gained = (v.lists["gains.class"] ?? []).filter((g) => g.source === facts.name).map((g) => g.name.replace(/[:(].*$/, "").trim());
+      const gained = (v.lists["gains.class"] ?? []).filter((g) => g.source === `${facts.name} 1`).map((g) => g.name.replace(/[:(].*$/, "").trim());
       for (const f of facts.level1) expect(gained, f).toContain(f);
     });
   }
@@ -211,7 +211,7 @@ describe("real SRD classes through the engine", () => {
   it("a Hill Dwarf Barbarian: d12 + Con + Dwarven Toughness, Unarmored Defense, two rages", () => {
     const v = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", ...standardArray(STANDARD), "class.class": "srd-5.1:barbarian" });
     expect(v.derived.hp.breakdown).toEqual([
-      { label: "Barbarian hit die (d12, highest at level 1)", amount: 12 }, { label: "Constitution", amount: 2 }, { label: "Hill Dwarf", amount: 1 },
+      { label: "Barbarian level 1 (d12, highest)", amount: 12 }, { label: "Constitution", amount: 2 }, { label: "Hill Dwarf", amount: 1 },
     ]);
     expect(v.derived.ac.breakdown).toEqual([{ label: "Barbarian (unarmoured)", amount: 10 }, { label: "Dexterity", amount: 2 }, { label: "Constitution", amount: 2 }]);
     expect(v.lists["gains.class"].find((g) => g.name === "Rage")?.detail).toBe("2 per long rest");
@@ -258,10 +258,11 @@ describe("each background matches the check table", () => {
       expect(names(v, "proficiencies", "skill")).toEqual(facts.skills);
       expect(step.choices.find((c) => c.key === `background.${ref}.languages`)?.count?.min).toBe(facts.languages);
       expect((v.lists["gains.background"] ?? []).map((g) => g.name)).toEqual([facts.feature]);
-      const traits = step.choices.find((c) => c.key === "background.traits")!;
-      const ideal = step.choices.find((c) => c.key === "background.ideal")!;
-      const bond = step.choices.find((c) => c.key === "background.bond")!;
-      const flaw = step.choices.find((c) => c.key === "background.flaw")!;
+      const details = v.steps.find((s) => s.id === "details")!; // personality is written on the Details step
+      const traits = details.choices.find((c) => c.key === "background.traits")!;
+      const ideal = details.choices.find((c) => c.key === "background.ideal")!;
+      const bond = details.choices.find((c) => c.key === "background.bond")!;
+      const flaw = details.choices.find((c) => c.key === "background.flaw")!;
       expect([traits, ideal, bond, flaw].map((c) => c.suggestions?.length)).toEqual([facts.tables.traits, facts.tables.ideals, facts.tables.bonds, facts.tables.flaws]);
       expect(kitFacts(entry("backgrounds", id).startingEquipment!)).toEqual(facts.kit);
     });
@@ -269,7 +270,7 @@ describe("each background matches the check table", () => {
 
   it("the Acolyte's ideals carry the SRD's one-word alignments", () => {
     const v = view({ background: "srd-5.1:acolyte" });
-    const ideal = v.steps.find((s) => s.id === "background")!.choices.find((c) => c.key === "background.ideal")!;
+    const ideal = v.steps.find((s) => s.id === "details")!.choices.find((c) => c.key === "background.ideal")!;
     expect(ideal.suggestions?.map((s) => s.note)).toEqual(["Lawful", "Good", "Chaotic", "Lawful", "Lawful", "Any"]);
   });
 
@@ -371,7 +372,7 @@ describe("real SRD spells through the engine", () => {
     const life = view({ ...pointBuy(TENS), "class.class": "srd-5.1:cleric", "class.srd-5.1:cleric.subclass": "srd-5.1:life" });
     expect(names(life, "spells")).toEqual(["Bless (always prepared)", "Cure Wounds (always prepared)"]);
     const elf = view({ race: "srd-5.1:elf", "race.srd-5.1:elf.subrace": "srd-5.1:high-elf", "race.srd-5.1:high-elf.cantrip": "srd-5.1:fire-bolt" });
-    expect(elf.lists["spell-list"]).toEqual([{ name: "Fire Bolt", source: "High Elf", detail: "Cantrip · cast with Intelligence" }]);
+    expect(elf.lists["spell-list"]).toEqual([{ name: "Fire Bolt", source: "High Elf", detail: "Cantrip · cast with Intelligence", description: expect.stringMatching(/^You hurl a mote of fire/), group: "Cantrips" }]);
     const tiefling = view({ race: "srd-5.1:tiefling", "class.class": "srd-5.1:wizard" });
     expect(tiefling.derived["spell.dc.cha"].label).toBe("Spell save DC (Charisma)");
   });

@@ -22,7 +22,8 @@ export type ChoiceKind =
   | "assign" // put given values into slots (e.g. a fixed set of scores into stats)
   | "allocate" // spend a budget across slots, with a cost per value
   | "roll" // dice whose result is logged
-  | "quantities"; // how many of each option, within an optional budget (a shop)
+  | "quantities" // how many of each option, within an optional budget (a shop)
+  | "image"; // a picture, stored as a data: URL (a portrait)
 
 export interface Option {
   /** The value stored when this option is picked: usually a content reference "pack:entry". */
@@ -57,6 +58,10 @@ export interface ChoiceSpec {
   source?: string;
   /** A sentence of help shown under the label. */
   hint?: string;
+  /** Consecutive choices with the same group are drawn together under this heading (e.g. "Appearance"), compactly. */
+  group?: string;
+  /** pick-one cards: lay them out in this many columns (e.g. 3 for an alignment grid). */
+  columns?: number;
   kind: ChoiceKind;
   options?: Option[];
   /** pick-many: how many to pick (a min of 0 makes it optional, up to max). */
@@ -65,6 +70,8 @@ export interface ChoiceSpec {
   range?: { min: number; max: number };
   /** assign and allocate: the slots to fill. */
   slots?: Slot[];
+  /** allocate: what a slot's value is called ("Base" if not given), and whether each value's cost is shown (yes if not given). */
+  slotValue?: { label: string; cost?: boolean };
   /** assign: the values to place, one per slot (values may repeat, e.g. two rolled 12s). */
   values?: number[];
   /**
@@ -81,9 +88,13 @@ export interface ChoiceSpec {
   /**
    * pick-one: "segmented" draws a short list of options as a switch rather than cards.
    * pick-one and pick-many: "list" draws a long list as rows with their details, a search and a filter by tag.
+   * quantities: "steppers" draws every option at once, each with its own − and + (a short list), rather than a shop.
+   * roll: "compact" draws one small row (label, latest total, button), for several small rolls side by side.
    */
-  presentation?: "segmented" | "list";
+  presentation?: "segmented" | "list" | "steppers" | "compact";
   required: boolean;
+  /** What counts when nothing is stored (an optional rule's default): shown as chosen, but not written to the file. */
+  defaultValue?: ChoiceValue;
   /** Set by the system: whether this choice is fully answered (e.g. all six slots filled, not just one). */
   answered?: boolean;
 }

@@ -113,16 +113,19 @@ export function Allocate({ spec, value, issues, onChange, derived }: ChoiceProps
   const leftId = useId();
 
   const change = (slot: string, by: number) => onChange({ ...current, [slot]: current[slot] + by });
+  const valueLabel = spec.slotValue?.label ?? "Base";
+  const showCost = spec.slotValue?.cost ?? true;
 
   return (
     <section className="choice" id={choiceDomId(spec.key)} tabIndex={-1} aria-labelledby={`${choiceDomId(spec.key)}-label`}>
       <h2 id={`${choiceDomId(spec.key)}-label`} className="choice-title">{spec.label}</h2>
+      {spec.source && <p className="meta">From {spec.source}</p>}
       <p className="meta">
-        Scores from {min} to {max}, before bonuses.{" "}
+        {spec.hint ?? `Scores from ${min} to ${max}, before bonuses.`}{" "}
         <span id={leftId} role="status">Points left: <span className={left < 0 ? "attention" : "final"}>{left}</span> of {total}</span>
       </p>
       <table className="slots">
-        <thead><tr><th scope="col">Ability</th><th scope="col">Base</th><th scope="col">Cost</th><th scope="col">Bonuses</th><th scope="col">Score</th></tr></thead>
+        <thead><tr><th scope="col">Ability</th><th scope="col">{valueLabel}</th>{showCost && <th scope="col">Cost</th>}<th scope="col">Bonuses</th><th scope="col">Score</th></tr></thead>
         <tbody>
           {slots.map((slot) => {
             const v = current[slot.id];
@@ -132,10 +135,10 @@ export function Allocate({ spec, value, issues, onChange, derived }: ChoiceProps
                 <th scope="row">{slot.name}</th>
                 <td className="stepper">
                   <button type="button" className="button small" aria-label={`Lower ${slot.name}`} aria-describedby={leftId} disabled={v <= min} onClick={() => change(slot.id, -1)}>−</button>
-                  <span className="final" aria-label={`${slot.name} base ${v}`}>{v}</span>
+                  <span className="final" aria-label={`${slot.name} ${valueLabel.toLowerCase()} ${v}`}>{v}</span>
                   <button type="button" className="button small" aria-label={`Raise ${slot.name}`} aria-describedby={leftId} disabled={!canRaise} onClick={() => change(slot.id, 1)}>+</button>
                 </td>
-                <td className="dim">{Number.isFinite(cost(v)) ? cost(v) : "–"}</td>
+                {showCost && <td className="dim">{Number.isFinite(cost(v)) ? cost(v) : "–"}</td>}
                 <td><Extras slot={slot} derived={derived} /></td>
                 <td><Final slot={slot} derived={derived} set /></td>
               </tr>
@@ -176,6 +179,26 @@ function RollSet({ set }: { set: RollRecord[] }) {
 }
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+/**
+ * One small roll on a row (a level's hit points): its label, the latest total, and a button. Every roll stays in the
+ * roll log and the latest counts, as with any roll.
+ */
+export function CompactRoll({ spec, issues, rollSets, onRoll }: ChoiceProps) {
+  const latest = rollSets.at(-1)?.[0];
+  const id = choiceDomId(spec.key);
+  return (
+    <div className="compact-roll" id={id} tabIndex={-1}>
+      <span className="compact-roll-label">{spec.label}</span>
+      <span className="final" aria-live="polite">{latest ? latest.total : <span className="dim">–</span>}<span className="sr-only">{latest ? "" : " not rolled yet"}</span></span>
+      <span className="dim compact-roll-dice">{spec.dice}{rollSets.length > 1 ? ` · rolled ${rollSets.length} times` : ""}</span>
+      <button type="button" className="button small" onClick={() => onRoll(spec)}>
+        {latest ? "Roll again" : "Roll"}<span className="sr-only"> for {spec.label} ({spec.dice})</span>
+      </button>
+      {issues.length > 0 && <div className="compact-roll-issues"><Issues issues={issues} /></div>}
+    </div>
+  );
+}
 
 /** Roll a set of dice; every set is kept in the roll log, and the latest is the one that counts. */
 export function Roll({ spec, issues, rollSets, onRoll }: ChoiceProps) {

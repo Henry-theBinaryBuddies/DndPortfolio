@@ -17,6 +17,10 @@ const pick = (page: Page, list: string | RegExp, spell: string) => group(page, l
 /** Optionally a race (and subrace), then a class (and subclass), then the Spells step, on a wide screen. */
 async function caster(page: Page, opts: { race?: string; subrace?: string; cls: string; subclass?: [string, string] }) {
   await page.goto("/");
+  // A character made earlier in the test is saved, so the app opens on the list: start a new one from there.
+  const newOne = page.getByRole("button", { name: "New character" });
+  await expect(group(page, "Choose a race").or(newOne)).toBeVisible();
+  if (await newOne.isVisible()) await newOne.click();
   await expect(group(page, "Choose a race")).toBeVisible();
   if (opts.race) await group(page, "Choose a race").getByText(opts.race, { exact: true }).click();
   if (opts.subrace) await group(page, /subrace/i).getByText(opts.subrace, { exact: true }).click();

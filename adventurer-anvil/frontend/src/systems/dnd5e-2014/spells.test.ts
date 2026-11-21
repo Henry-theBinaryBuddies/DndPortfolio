@@ -60,7 +60,7 @@ describe("a wizard", () => {
     const v = view(readyWizard);
     expect(choice(v, `${W}.prepared`)).toMatchObject({
       required: false, count: { min: 0, max: 3 },
-      hint: "Intelligence modifier (+2) + your level (1) = 3, at least 1. You can change these after each long rest. Choose from your spellbook.",
+      hint: "Intelligence modifier (+2) + your Wizard level (1) = 3, at least 1. You can change these after each long rest. Choose from your spellbook.",
     });
     expect(choice(v, `${W}.prepared`)?.options?.length).toBe(6);
     const prepared = view({ ...readyWizard, [`${W}.prepared`]: ["sample-srd:magic-missile", "sample-srd:shield"] });
@@ -85,7 +85,8 @@ describe("a wizard", () => {
 
   it("a High Elf wizard: the race's cantrip is on this step, and can't be taken again as a class cantrip", () => {
     const v = view({ ...wizard, race: "sample-srd:elf", "race.sample-srd:elf.subrace": "sample-srd:high-elf", "race.sample-srd:high-elf.cantrip": "sample-srd:fire-bolt" });
-    expect(step(v).choices.map((c) => c.key)).toEqual(["race.sample-srd:high-elf.cantrip", `${W}.cantrips`, `${W}.spellbook`, `${W}.prepared`]);
+    // Prepared spells come from the spellbook, so they're asked for once it has some.
+    expect(step(v).choices.map((c) => c.key)).toEqual(["race.sample-srd:high-elf.cantrip", `${W}.cantrips`, `${W}.spellbook`]);
     expect(choice(v, `${W}.cantrips`)?.options?.find((o) => o.name === "Fire Bolt")?.unavailable).toBe("Already known (High Elf)");
   });
 

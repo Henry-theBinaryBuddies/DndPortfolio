@@ -1,16 +1,16 @@
 // Turns the 5e-bits SRD 5.1 class files into the 2014 format's classes and subclasses. Pure: data in, entries and
-// notes out. Every feature of levels 1 to 20 is brought in; those at level 1 that need calculating are typed here,
-// the rest are kept as text until the step that uses them (levelling up, spells).
+// notes out. Every feature of levels 1 to 20 is brought in. Those that need calculating or choosing are typed here
+// (resources, Ability Score Improvements, choices such as Eldritch Invocations); the rest are kept as text.
 import type { Class, Effect, Subclass } from "../../frontend/src/systems/dnd5e-2014/packFormat";
 import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
 import { kitFrom } from "./items";
 import { spellcastingFor } from "./spells";
 import type { RawChoice, RawClass, RawFeature, RawLevel, RawOption, RawRef, RawSrdClasses, RawSubclass } from "./raw";
 
-/** What a written-in option can give: any effect but a choice. */
-type SimpleEffect = Exclude<Effect, { type: "choice" }>;
+/** What a written-in option can give: any effect but one that opens a choice. */
+type SimpleEffect = Exclude<Effect, { type: "choice" | "ability-score-improvement" }>;
 
-export type FeatureHow = "calculated" | "calculated, with text" | "choice" | "text for now" | "text";
+export type FeatureHow = "calculated" | "calculated, with text" | "choice" | "text";
 export interface FeatureNote {
   feature: string;
   name: string;
@@ -127,8 +127,74 @@ export function buildClasses(raw: RawSrdClasses) {
     return parts.map((p) => p.slice(common).join("-"));
   }
 
+  /** A feature's choice id: its index without the class's name ("fighter-fighting-style" → "fighting-style"). */
+  const choiceId = (f: RawFeature, classIndex: string) => kebab(f.index.startsWith(`${classIndex}-`) ? f.index.slice(classIndex.length + 1) : f.index);
+
+  /** Each feature offered as an option, by index → its choice's id and its option id ("pact-of-the-blade" → pact-boon, blade). */
+  const offeredAs = new Map<string, { choice: string; id: string }>();
+  for (const f of raw.features) {
+    const c = f.feature_specific?.subfeature_options;
+    if (!c) continue;
+    const refs = refsIn(c);
+    optionIds(refs.map((r) => r.index)).forEach((id, i) => offeredAs.set(refs[i].index, { choice: choiceId(f, f.class.index), id }));
+  }
+
+  /** The spells an Eldritch Invocation lets a warlock cast (at will, or once per long rest with a warlock slot). */
+  const INVOCATION_SPELLS: Record<string, string> = {
+    "armor-of-shadows": "mage-armor", "beast-speech": "speak-with-animals", "eldritch-sight": "detect-magic", "fiendish-vigor": "false-life",
+    "mask-of-many-faces": "disguise-self", "misty-visions": "silent-image", "thief-of-five-fates": "bane", "mire-the-mind": "slow",
+    "sign-of-ill-omen": "bestow-curse", "bewitching-whispers": "compulsion", "dreadful-word": "confusion", "sculptor-of-flesh": "polymorph",
+    "ascendant-step": "levitate", "minions-of-chaos": "conjure-elemental", "otherworldly-leap": "jump", "whispers-of-the-grave": "speak-with-dead",
+    "chains-of-carceri": "hold-monster", "master-of-myriad-forms": "alter-self", "visions-of-distant-realms": "arcane-eye",
+  };
+
+  /** Eldritch Invocations: as many as the Invocations Known column says, each with its prerequisites and what it gives. */
+  function invocations(f: RawFeature): Effect {
+    const refs = f.feature_specific!.invocations!;
+    return {
+      type: "choice", id: "eldritch-invocations", label: "Eldritch Invocations", pick: { column: "invocations-known" },
+      from: {
+        options: refs.map((r) => {
+          const inv = features.get(r.index);
+          if (!inv) throw new Error(`Eldritch Invocations offers "${r.index}", which is not in the file.`);
+          const id = r.index.replace(/^eldritch-invocation-/, "");
+          const requires: { level?: number; option?: { choice: string; id: string }; spell?: string } = {};
+          for (const p of inv.prerequisites ?? []) {
+            if (p.type === "level" && p.level) requires.level = p.level;
+            else if (p.type === "spell" && p.spell) requires.spell = p.spell.split("/").pop()!;
+            else if (p.type === "feature" && p.feature) {
+              const option = offeredAs.get(p.feature.split("/").pop()!);
+              if (!option) throw new Error(`${inv.name} needs "${p.feature}", which no choice offers.`);
+              requires.option = option;
+            } else throw new Error(`${inv.name}: an unknown prerequisite ${JSON.stringify(p)}.`);
+          }
+          const effects: SimpleEffect[] =
+            id === "beguiling-influence" ? [{ type: "proficiency", kind: "skill", id: "deception" }, { type: "proficiency", kind: "skill", id: "persuasion" }]
+            : INVOCATION_SPELLS[id] ? [{ type: "spell", id: INVOCATION_SPELLS[id], ability: "cha" as Ability }]
+            : [];
+          return {
+            id,
+            name: inv.name.replace(/^Eldritch Invocation: /, ""),
+            description: text(inv),
+            ...(Object.keys(requires).length ? { requires } : {}),
+            effects,
+          };
+        }),
+      },
+    };
+  }
+
+  /** Spells from any class: the highest level allowed where each is chosen, and whether they count among spells known. */
+  const SECRETS: Record<string, { maxLevel: number; known: boolean }> = {
+    "additional-magical-secrets": { maxLevel: 3, known: false }, // the College of Lore's, at bard level 6
+    "magical-secrets-1": { maxLevel: 5, known: true },
+    "magical-secrets-2": { maxLevel: 7, known: true },
+    "magical-secrets-3": { maxLevel: 9, known: true },
+  };
+  const ORDINAL_WORDS = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
+
   function choiceFor(f: RawFeature, classIndex: string): Effect | undefined {
-    const id = kebab(f.index.startsWith(`${classIndex}-`) ? f.index.slice(classIndex.length + 1) : f.index);
+    const id = choiceId(f, classIndex);
     const fs = f.feature_specific;
     if (fs?.subfeature_options) {
       const c = fs.subfeature_options;
@@ -161,6 +227,22 @@ export function buildClasses(raw: RawSrdClasses) {
       return {
         type: "choice", id, label: `Expertise: choose ${word(pick)} of your proficiencies`, pick,
         from: { proficient: tools ? ["skill", "tool:thieves-tools"] : ["skill"] }, each: { type: "expertise" },
+      };
+    }
+    const arcanum = /^mystic-arcanum-(\d)th-level$/.exec(f.index);
+    if (arcanum) {
+      const level = Number(arcanum[1]);
+      return {
+        type: "choice", id: `mystic-arcanum-${level}`, label: `Mystic Arcanum: choose a ${ORDINAL_WORDS[level]}-level warlock spell`, pick: 1,
+        from: { collection: "spells", where: { classes: "warlock", level } }, ability: "cha",
+      };
+    }
+    const secrets = SECRETS[f.index];
+    if (secrets) {
+      return {
+        type: "choice", id, label: `${f.name.replace(/ \(.*\)$/, "")}: choose two spells from any class`, pick: 2,
+        from: { collection: "spells", where: { level: Array.from({ length: secrets.maxLevel + 1 }, (_, l) => l) }, ...(secrets.known ? { known: true } : {}) },
+        ability: "cha",
       };
     }
     const strings = fs?.enemy_type_options ?? fs?.terrain_type_options;
@@ -207,13 +289,20 @@ export function buildClasses(raw: RawSrdClasses) {
       case "draconic-resilience":
         note("calculated, with text", "+1 hit point per level, and AC 13 + Dex without armour.");
         return [{ type: "hit-points", perLevel: 1 }, { type: "armor-class", base: 13, abilities: ["dex"] }, feature(f)];
+      case "eldritch-invocations":
+        note("choice", "As many as the Invocations Known column says. Prerequisites are checked; skills and spells are given.");
+        return [invocations(f), feature(f)];
       case "dragon-ancestor":
         note("choice", "A choice of dragon; also gives Draconic. The damage type is used by later features.");
         return [choiceFor(f, classIndex)!, { type: "language", id: "draconic" }, feature(f)];
     }
+    if (/-ability-score-improvement-\d+$/.test(f.index)) {
+      note("choice", "+2 to one score or +1 to two, none above 20.");
+      return [{ type: "ability-score-improvement", id: `asi-${f.level}` }, feature(f)];
+    }
     const choice = choiceFor(f, classIndex);
     if (choice) {
-      note("choice", f.level === 1 ? undefined : "Opens when levelling up arrives.");
+      note("choice");
       return [choice, feature(f)];
     }
     if (/^spellcasting-|^pact-magic$/.test(f.index)) {
@@ -224,8 +313,7 @@ export function buildClasses(raw: RawSrdClasses) {
       note("calculated, with text", "The subclass gives the spells, always prepared, at the levels its table says.");
       return [feature(f)];
     }
-    if (f.level > 1) note("text for now", "Typed when levelling up arrives, if there's anything to calculate.");
-    else note("text", "Nothing to calculate.");
+    note("text", "Nothing to calculate.");
     return [feature(f)];
   }
 

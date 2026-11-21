@@ -13,6 +13,7 @@
 //   equipment.shield                                  "shield" | "none"
 //
 // Starting gold replaces both packages, as in the rules.
+import { encumbrance } from "../engine/derive";
 import { rollSets, type ChoiceValue, type Option } from "../../../core";
 import { fullRef, picksOf, type Context } from "../engine/context";
 import type { Origin } from "../engine/tally";
@@ -283,6 +284,7 @@ function wear(ctx: Context): void {
         ],
       },
       picks,
+      collection: "items",
     });
     const worn = armour.find((a) => a.ref === picks[0]);
     if (worn) ctx.tally.worn.armor = { ref: worn.ref, name: worn.name, armor: worn.armor! };
@@ -325,6 +327,18 @@ export function checkEquipment(ctx: Context, scores: Record<"str", number>): voi
   const needs = armor?.armor.strength;
   if (armor && needs && scores.str < needs) warn(`armor-strength:${armor.ref}`, ARMOR_KEY, `${armor.name} needs Strength ${needs} (yours is ${scores.str}): your speed drops by 10 feet.`);
   const carried = ctx.tally.items.reduce((total, i) => total + i.weight * i.qty, 0);
+  const lb = Math.round(carried * 100) / 100;
+  if (ctx.rules.encumbrance === "variant") {
+    const load = encumbrance(scores.str, carried);
+    if (load.level === 1) {
+      ctx.issues.push({ id: "encumbered", severity: "warning", step: STEP, overridable: true, message: `Encumbered: you carry ${lb} lb, over ${load.over} lb (Strength × 5), so your speed drops by 10 feet.` });
+    } else if (load.level === 2) {
+      ctx.issues.push({
+        id: "heavily-encumbered", severity: "warning", step: STEP, overridable: true,
+        message: `Heavily encumbered: you carry ${lb} lb, over ${load.over} lb (Strength × 10), so your speed drops by 20 feet and you have disadvantage on ability checks, attack rolls and saving throws that use Strength, Dexterity or Constitution.`,
+      });
+    }
+  }
   if (carried > scores.str * 15) {
     ctx.issues.push({
       id: "over-capacity", severity: "warning", step: STEP, overridable: true,

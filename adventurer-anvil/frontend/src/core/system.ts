@@ -27,6 +27,31 @@ export type SummaryGroup =
   | { kind: "rows"; label: string; items: { key: string; format?: ValueFormat }[]; prefix?: { key: string; format?: ValueFormat } }
   | { kind: "list"; label: string; list: string };
 
+/** One fact in the sheet's identity block: a chosen value (shown as its answer) or a derived one. */
+export type SheetField = { choice: string; label?: string } | { derived: string; label?: string; format?: ValueFormat };
+
+/**
+ * A section of the character sheet. The system lays the sheet out; the app draws each kind without knowing the game:
+ * identity (name, the list's words, portrait, and facts), tiles (big numbers with a second value under them), stats
+ * (boxed numbers), checklist (derived values with their marks; `unmarked` says what no mark means), rows (label and
+ * value, perhaps every derived value whose key starts with a prefix), list (a named list; `full` lists print their
+ * long text when the reader asks for it), and text (written choices, by key, with their labels).
+ */
+export type SheetSection =
+  | { kind: "identity"; label: string; fields: SheetField[] }
+  | { kind: "tiles"; label: string; items: { key: string; short: string; note?: string }[] }
+  | { kind: "stats"; label: string; items: { key: string; label?: string; format?: ValueFormat }[] }
+  | { kind: "checklist"; label: string; items: { key: string }[]; prefix?: { key: string }; unmarked: string }
+  | { kind: "rows"; label: string; items: { key: string; format?: ValueFormat }[]; prefix?: { key: string; format?: ValueFormat } }
+  | { kind: "list"; label: string; list: string; full?: boolean }
+  | { kind: "text"; label: string; keys: string[] };
+
+/** A page of the sheet: printed on its own page, one column on a phone. */
+export interface SheetPage {
+  label: string;
+  sections: SheetSection[];
+}
+
 export interface SystemModule {
   id: string;
   /** The version of this system's character data; `migrate` brings older files up to it. */
@@ -35,6 +60,8 @@ export interface SystemModule {
   packSchema: PackSchema;
   /** The summary's layout. */
   summary: SummaryGroup[];
+  /** The character sheet, page by page. Without it, the app offers no sheet. */
+  sheet?: SheetPage[];
   /** Lists shown on a step's own page, after its choices (e.g. what the chosen class gives), by step id. */
   stepLists?: Record<string, { label: string; list: string }[]>;
   /** Choices a new character starts with. */
@@ -43,6 +70,23 @@ export interface SystemModule {
   evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation;
   /** Upgrades a file written by an older version of this system. */
   migrate(doc: CharacterDocument): CharacterDocument;
+  /** How a character appears in lists of saved characters. */
+  describe(doc: CharacterDocument, content: ContentIndex): CharacterBlurb;
+  /**
+   * For games where characters advance: the choices to change to take the next step up, and the step to show them on;
+   * or why it can't be done yet. Without it, the app offers no such button.
+   */
+  levelUp?(doc: CharacterDocument, content: ContentIndex): LevelUp;
+}
+
+/** `label`: the button's words, e.g. "Level up to 6". */
+export type LevelUp = { ok: true; label: string; choices: Record<ChoiceKey, ChoiceValue>; step: string } | { ok: false; reason: string };
+
+/** A few words, e.g. "Hill Dwarf Cleric 1" (empty when nothing is chosen yet), and the portrait, if one was added. */
+export interface CharacterBlurb {
+  text: string;
+  /** A data URL. */
+  picture?: string;
 }
 
 /** An issue as the app shell sees it: with the DM's ruling, if there is one. */
