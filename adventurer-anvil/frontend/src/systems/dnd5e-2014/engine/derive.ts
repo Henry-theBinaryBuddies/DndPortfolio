@@ -18,7 +18,19 @@ const sum = (lines: BreakdownLine[]) => lines.reduce((total, line) => total + Nu
 /** An item's name by its id ("brewers-supplies" → "Brewer's Supplies"), for naming weapon and tool proficiencies. */
 export type ItemName = (id: string) => string | undefined;
 
-export function derive(tally: Tally, base: Record<Ability, number>, itemName: ItemName = () => undefined): DerivedResult {
+/** Optional rules that change the math. */
+export interface DeriveOptions {
+  encumbrance?: "standard" | "variant";
+}
+
+/** Variant encumbrance: slower over Strength × 5 lb, slower still over Strength × 10 lb. */
+export function encumbrance(str: number, carried: number): { level: 0 | 1 | 2; over: number; slower: number } {
+  if (carried > str * 10) return { level: 2, over: str * 10, slower: 20 };
+  if (carried > str * 5) return { level: 1, over: str * 5, slower: 10 };
+  return { level: 0, over: 0, slower: 0 };
+}
+
+export function derive(tally: Tally, base: Record<Ability, number>, itemName: ItemName = () => undefined, options: DeriveOptions = {}): DerivedResult {
   const derived: Record<string, Derived> = {};
   const scores = {} as Record<Ability, number>;
 
@@ -77,9 +89,10 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
   derived["initiative"] = { value: modifier(scores.dex), label: "Initiative", breakdown: [{ label: "Dexterity", amount: modifier(scores.dex) }] };
   derived["ac"] = armorClass(tally, scores);
 
-  // Hit points and hit dice, once there is a class: the first class's whole hit die at level 1, the hit die's fixed
-  // average (half, plus 1) for every level after, Constitution for every level, and any per-level bonus (a class's
-  // counts its own levels). Rolled hit points are an optional rule for later.
+  // Hit points and hit dice, once there is a class: the first class's whole hit die at level 1, then for every level
+  // after the hit die's fixed average (half, plus 1) or, with rolled hit points, its roll (the average until rolled;
+  // each level adds at least 1 with Constitution), Constitution for every level, and any per-level bonus (a class's
+  // counts its own levels).
   const first = tally.classes[0];
   if (first) {
     const con = modifier(scores.con);
@@ -90,7 +103,18 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
       if (n <= 0) continue;
       const average = c.hitDie / 2 + 1;
       const which = n === 1 ? `level ${from}` : `levels ${from}–${c.level}`;
-      hp.push({ label: `${c.name} ${which} (d${c.hitDie}, average ${average}${n > 1 ? " each" : ""})`, amount: average * n });
+      if (!c.rolled) {
+        hp.push({ label: `${c.name} ${which} (d${c.hitDie}, average ${average}${n > 1 ? " each" : ""})`, amount: average * n });
+        continue;
+      }
+      const got = Array.from({ length: n }, (_, i) => c.rolled![from + i]).filter((r): r is number => r !== undefined);
+      const floor = 1 - con; // a roll counts as at least this, so the level adds at least 1 with Constitution
+      if (got.length) {
+        const raised = got.some((r) => r < floor);
+        hp.push({ label: `${c.name} ${which} rolled (d${c.hitDie}: ${got.join(", ")}${raised ? `; each at least ${floor}` : ""})`, amount: got.reduce((t, r) => t + Math.max(r, floor), 0) });
+      }
+      const missing = n - got.length;
+      if (missing) hp.push({ label: `${c.name}: ${missing} level${missing > 1 ? "s" : ""} not rolled yet (average ${average}${missing > 1 ? " each" : ""})`, amount: average * missing });
     }
     hp.push({ label: level > 1 ? `Constitution × ${level}` : "Constitution", amount: con * level });
     for (const h of tally.hitPoints) {
@@ -111,11 +135,14 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
   // without the Strength it needs costs 10 feet.
   const heavy = tally.worn.armor?.armor.strength;
   const slowed = heavy !== undefined && scores.str < heavy ? tally.worn.armor!.name : undefined;
+  const carried = tally.items.reduce((total, i) => total + i.weight * i.qty, 0);
+  const load = options.encumbrance === "variant" ? encumbrance(scores.str, carried) : { level: 0, over: 0, slower: 0 };
   for (const mode of ["walk", "fly", "swim", "climb", "burrow"] as const) {
     const best = tally.speeds.filter((s) => s.mode === mode).sort((a, b) => b.value - a.value)[0];
     if (!best) continue;
     const breakdown: BreakdownLine[] = [{ label: best.from.name, amount: best.value }];
     if (slowed) breakdown.push({ label: `${slowed} (Strength ${scores.str}, needs ${heavy})`, amount: -10 });
+    if (load.level) breakdown.push({ label: `${load.level === 2 ? "Heavily encumbered" : "Encumbered"} (over ${load.over} lb)`, amount: -load.slower });
     derived[`speed.${mode}`] = { value: Math.max(0, sum(breakdown)), label: `${capital(mode)} speed`, breakdown };
   }
 
@@ -145,7 +172,7 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
   const capacity = scores.str * 15;
   if (tally.items.length) derived["weight"] = {
     value: round2(sum(weights)),
-    label: `Weight carried (of ${capacity} lb)`,
+    label: options.encumbrance === "variant" ? `Weight carried (slower over ${scores.str * 5} lb, of ${capacity} lb)` : `Weight carried (of ${capacity} lb)`,
     breakdown: weights.length ? weights : [{ label: "Nothing carried", amount: 0 }],
   };
   derived["carrying-capacity"] = { value: capacity, label: "Carrying capacity", breakdown: [{ label: `Strength ${scores.str} × 15`, amount: capacity }] };

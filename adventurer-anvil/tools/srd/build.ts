@@ -1,5 +1,6 @@
 // Turns the 5e-bits SRD 5.1 files into an Adventurer Anvil pack (2014 format). Pure: data in, pack and notes out.
 // The script that reads and writes the files is tools/import-srd.ts.
+import { buildFeats } from "./feats";
 import type { PackFile } from "../../frontend/src/core";
 import type { Effect, Language, Race, Subrace } from "../../frontend/src/systems/dnd5e-2014/packFormat";
 import type { Ability } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
@@ -219,6 +220,7 @@ export function buildSrdPack(raw: RawSrd): BuildResult {
       classes,
       subclasses,
       backgrounds,
+      feats: buildFeats(),
       items: buildItems(raw.equipment),
       spells: buildSpells(raw.spells),
       languages: raw.languages.map(language),

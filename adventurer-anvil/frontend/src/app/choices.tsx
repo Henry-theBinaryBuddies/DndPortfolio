@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import type { ChoiceSpec, ChoiceValue, Derived, ListItem, Option, ResolvedIssue, RollRecord } from "../core";
 import { coinsText } from "./format";
-import { Allocate, Assign, Roll } from "./slots";
+import { Allocate, Assign, CompactRoll, Roll } from "./slots";
 
 export interface ChoiceProps {
   spec: ChoiceSpec;
@@ -31,7 +31,7 @@ export function ChoiceView(props: ChoiceProps) {
     case "allocate":
       return <Allocate {...props} />;
     case "roll":
-      return <Roll {...props} />;
+      return props.spec.presentation === "compact" ? <CompactRoll {...props} /> : <Roll {...props} />;
     case "text":
     case "long-text":
       return <TextChoice {...props} />;
@@ -57,6 +57,7 @@ function Segmented({ spec, value, issues, onChange }: ChoiceProps) {
   return (
     <fieldset className="choice" id={choiceDomId(spec.key)} tabIndex={-1}>
       <legend>{spec.label}</legend>
+      {spec.source && <p className="meta">From {spec.source}</p>}
       {spec.hint && <p className="meta">{spec.hint}</p>}
       <div className="segmented">
         {(spec.options ?? []).map((option) => (

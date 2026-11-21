@@ -24,7 +24,7 @@ function applyEffect(ctx: Context, source: Source, effect: Effect, choice: strin
   const { tally } = ctx;
   switch (effect.type) {
     case "ability-bonus":
-      tally.abilityBonuses.push({ ability: effect.ability, amount: effect.amount, from });
+      tally.abilityBonuses.push({ ability: effect.ability, amount: effect.amount, from, ...(source.abilityCap ? { cap: source.abilityCap } : {}) });
       return;
     case "speed":
       for (const mode of ["walk", "fly", "swim", "climb", "burrow"] as const) {
@@ -102,23 +102,49 @@ function readImprovement(value: unknown): Partial<Record<Ability, number>> | nul
   return out;
 }
 
-/** Opens an Ability Score Improvement as points to spend on the six scores, and applies what is spent. */
+/**
+ * Opens an Ability Score Improvement as points to spend on the six scores, and applies what is spent. With the feats
+ * rule, a switch comes first: increase scores (as without it) or take a feat, chosen from the feats collection.
+ *
+ *   class.srd-5.1:fighter.asi-4         { "str": 2 }               the increases
+ *   class.srd-5.1:fighter.asi-4.take    "scores" | "feat"          feats rule only
+ *   class.srd-5.1:fighter.asi-4.feat    "srd-5.1:grappler"         the feat; its own choices follow its id
+ */
 function openImprovement(ctx: Context, source: Source, id: string): void {
   const key = `${source.key}.${id}`;
+  const where = sourceText(source);
+  const owner = { key: source.key, name: source.name, pack: source.pack, classLevel: source.classLevel };
+  if (ctx.rules.feats) {
+    const takeKey = `${key}.take`;
+    const feat = picksOf(ctx.doc.choices[takeKey])[0] === "feat";
+    ctx.open.push({
+      spec: {
+        key: takeKey, step: source.step, label: "Ability Score Improvement", source: where, kind: "pick-one", presentation: "segmented", required: false,
+        hint: "Increase your scores, or take a feat instead.", defaultValue: "scores",
+        options: [{ value: "scores", name: "Increase scores" }, { value: "feat", name: "Take a feat" }],
+      },
+      picks: feat ? ["feat"] : [],
+      answered: true,
+      source: owner,
+    });
+    if (feat) {
+      openChoice(ctx, { ...source, key }, { type: "choice", id: "feat", label: "Choose a feat", pick: 1, from: { collection: "feats" } });
+      return;
+    }
+  }
   const value = ctx.doc.choices[key];
   const stored = value === undefined ? {} : readImprovement(value);
   const spent = Object.values(stored ?? {}).reduce((t, v) => t + v, 0);
-  const where = sourceText(source);
   const cost = Object.fromEntries(Array.from({ length: IMPROVEMENT.max + 1 }, (_, v) => [String(v), v]));
   ctx.open.push({
     spec: {
-      key, step: source.step, label: "Ability Score Improvement", source: where, kind: "allocate", required: true,
+      key, step: source.step, label: ctx.rules.feats ? "Increase your scores" : "Ability Score Improvement", source: where, kind: "allocate", required: true,
       hint: `Add 2 to one score, or 1 to two. This can't raise a score above ${IMPROVEMENT.cap}.`,
       slots: ABILITY_SLOTS, range: { min: 0, max: IMPROVEMENT.max }, budget: { total: IMPROVEMENT.points, cost }, slotValue: { label: "Increase", cost: false },
     },
     picks: [],
     answered: stored !== null && spent === IMPROVEMENT.points,
-    source: { key: source.key, name: source.name, pack: source.pack, classLevel: source.classLevel },
+    source: owner,
   });
   if (stored === null || spent > IMPROVEMENT.points) {
     ctx.issues.push({
@@ -146,7 +172,11 @@ export function grant(ctx: Context, source: Source, collection: Collection, ref:
 
   const effects = (entry as { effects?: unknown }).effects;
   if (Array.isArray(effects) && depth < MAX_DEPTH) {
-    expandSource(ctx, { key: `${source.key}.${entry.id}`, name: entry.name, step: source.step, pack: entry.pack, effects: effects as Effect[] }, depth + 1);
+    // A feat's ability bonuses stop at 20; what it gives says where it came from ("Grappler (Fighter 4)").
+    expandSource(ctx, {
+      key: `${source.key}.${entry.id}`, name: entry.name, step: source.step, pack: entry.pack, effects: effects as Effect[],
+      ...(source.at ? { at: source.at } : {}), ...(collection === "feats" ? { abilityCap: 20 } : {}),
+    }, depth + 1);
   }
 }
 
@@ -225,7 +255,11 @@ function optionsFor(ctx: Context, from: ChoiceEffect["from"]): Option[] {
   if ("proficient" in from) return []; // filled in by the check stage
   const entries = ctx.content.list(from.collection).filter((entry) => matchesWhere(entry, from.where));
   if (from.collection === "spells") return entries.map((entry) => spellOption(entry as unknown as Spell & { ref: string }));
-  return entries.map((entry) => ({ value: entry.ref, name: entry.name, summary: typeof entry.summary === "string" ? entry.summary : undefined }));
+  return entries.map((entry) => ({
+    value: entry.ref, name: entry.name,
+    summary: typeof entry.summary === "string" ? entry.summary : undefined,
+    description: typeof entry.description === "string" ? entry.description : undefined,
+  }));
 }
 
 const ORDINALS = ["cantrip", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];

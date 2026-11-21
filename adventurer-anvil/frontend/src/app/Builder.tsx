@@ -65,7 +65,11 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
   const save = useAutosave({ doc, store, system, content, startSaved: opening.saved, onReplace: (d) => dispatch({ type: "replace", doc: d }) });
   const [notes, setNotes] = useState(opening.notes);
   const view = useMemo(() => viewCharacter(system, doc, content), [system, doc, content]);
-  const [page, setPage] = useState<Page>(() => ({ kind: "step", id: (opening.step && view.steps.some((s) => s.id === opening.step) ? opening.step : view.steps[0]?.id) ?? "review" }));
+  // Open at the step asked for, else the first that still needs something (a new character skips steps already done, such as rules with defaults).
+  const [page, setPage] = useState<Page>(() => ({
+    kind: "step",
+    id: (opening.step && view.steps.some((s) => s.id === opening.step) ? opening.step : (view.steps.find((s) => s.status !== "done") ?? view.steps[0])?.id) ?? "review",
+  }));
   const levelUp = useMemo(() => system.levelUp?.(doc, content), [system, doc, content]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const focusTarget = useRef<string | null>(null);
@@ -188,7 +192,7 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
                   <ChoiceView
                     key={spec.key}
                     spec={spec}
-                    value={spec.key === NAME_KEY ? doc.name : doc.choices[spec.key]}
+                    value={spec.key === NAME_KEY ? doc.name : (doc.choices[spec.key] ?? spec.defaultValue)}
                     issues={view.issues.filter((i) => i.key === spec.key && !i.id.startsWith("no-options:"))}
                     onChange={(value) => dispatch({ type: "set", key: spec.key, value })}
                     derived={view.derived}

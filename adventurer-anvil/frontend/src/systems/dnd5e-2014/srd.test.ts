@@ -83,7 +83,7 @@ describe("each race matches the check table", () => {
       expect(v.derived["speed.walk"].value).toBe(facts.speed);
       expect(names(v, "senses")).toEqual(facts.darkvision ? [`Darkvision ${facts.darkvision} ft`] : []);
       expect(names(v, "languages")).toEqual(facts.languages);
-      const languageChoice = v.steps[0].choices.find((c) => c.key === `race.srd-5.1:${id}.language`);
+      const languageChoice = v.steps.find((s) => s.id === "race")!.choices.find((c) => c.key === `race.srd-5.1:${id}.language`);
       expect(languageChoice ? 1 : 0).toBe(facts.extraLanguages ?? 0);
       expect(names(v, "proficiencies", "skill")).toEqual(facts.skills ?? []);
       expect(names(v, "proficiencies", "weapon")).toEqual(facts.weapons ?? []);
@@ -105,12 +105,12 @@ describe("each subrace matches the check table", () => {
         names(sub, list, detail).filter((n) => !names(race, list, detail).includes(n));
       expect(newOnes("proficiencies", "weapon")).toEqual(facts.weapons ?? []);
       expect(newOnes("proficiencies", "tool")).toEqual(facts.tools ?? []);
-      expect(sub.steps[0].choices.some((c) => c.key === `race.srd-5.1:${id}.language`) ? 1 : 0).toBe(facts.extraLanguages ?? 0);
+      expect(sub.steps.find((s) => s.id === "race")!.choices.some((c) => c.key === `race.srd-5.1:${id}.language`) ? 1 : 0).toBe(facts.extraLanguages ?? 0);
     });
   }
 
   it("every race with a subrace in the SRD offers it, and no other race asks for one", () => {
-    const withSubrace = (race: string) => view({ race: `srd-5.1:${race}` }).steps[0].choices.some((c) => c.key.endsWith(".subrace"));
+    const withSubrace = (race: string) => view({ race: `srd-5.1:${race}` }).steps.find((s) => s.id === "race")!.choices.some((c) => c.key.endsWith(".subrace"));
     expect(Object.keys(RACES).filter(withSubrace)).toEqual(["dwarf", "elf", "halfling", "gnome"]);
   });
 });
@@ -124,16 +124,16 @@ describe("real SRD races through the engine", () => {
     expect(v.derived["ability.wis"].breakdown).toEqual([{ label: "Base", amount: 12 }, { label: "Hill Dwarf", amount: 1 }]);
     expect(v.derived["speed.walk"].value).toBe(25);
     expect(names(v, "features")).toEqual(["Dwarven Resilience", "Stonecunning", "Tool Proficiency", "Dwarven Toughness"]);
-    expect(v.steps[0].status).toBe("todo"); // the artisan's tools
-    const tools = v.steps[0].choices.find((c) => c.key === "race.srd-5.1:dwarf.tools")!;
+    expect(v.steps.find((s) => s.id === "race")!.status).toBe("todo"); // the artisan's tools
+    const tools = v.steps.find((s) => s.id === "race")!.choices.find((c) => c.key === "race.srd-5.1:dwarf.tools")!;
     expect(tools.options?.map((o) => o.name)).toEqual(["Smith's Tools", "Brewer's Supplies", "Mason's Tools"]);
     const done = view({ race: "srd-5.1:dwarf", "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf", "race.srd-5.1:dwarf.tools": "brewers-supplies", ...standardArray(STANDARD) });
-    expect(done.steps[0].status).toBe("done");
+    expect(done.steps.find((s) => s.id === "race")!.status).toBe("done");
     expect(names(done, "proficiencies", "tool")).toEqual(["Brewer's Supplies"]);
   });
 
   it("a Dragonborn: the ancestry choice gives the resistance, and Breath Weapon is tracked per short rest", () => {
-    const choice = view({ race: "srd-5.1:dragonborn" }).steps[0].choices.find((c) => c.key === "race.srd-5.1:dragonborn.ancestry")!;
+    const choice = view({ race: "srd-5.1:dragonborn" }).steps.find((s) => s.id === "race")!.choices.find((c) => c.key === "race.srd-5.1:dragonborn.ancestry")!;
     expect(choice.options?.map((o) => o.name)).toEqual(["Acid", "Cold", "Fire", "Lightning", "Poison"]);
 
     const v = view({ race: "srd-5.1:dragonborn", "race.srd-5.1:dragonborn.ancestry": "fire", ...standardArray(STANDARD) });
@@ -164,7 +164,7 @@ describe("real SRD races through the engine", () => {
 });
 
 describe("option cards for SRD races", () => {
-  const card = (name: string) => view({}).steps[0].choices[0].options!.find((o) => o.name === name)!;
+  const card = (name: string) => view({}).steps.find((s) => s.id === "race")!.choices[0].options!.find((o) => o.name === name)!;
 
   it("lead with the main bonus, then speed and size", () => {
     expect(card("Tiefling").tags?.slice(0, 4)).toEqual(["+2 Cha", "+1 Int", "30 ft", "Medium"]);

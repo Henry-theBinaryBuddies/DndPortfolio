@@ -9,7 +9,9 @@
 //   class.srd-5.1:fighter.asi-4        { "str": 2 }                 an Ability Score Improvement, by the class level it comes at
 //   class.srd-5.1:fighter.subclass     "srd-5.1:champion"           its subclass, once its level is reached
 //   class.srd-5.1:champion.<choice>    ...                          the subclass's own choices
-import type { ContentEntry, Option } from "../../../core";
+//   class.srd-5.1:fighter.hp-2         (rolls in the roll log)      rolled hit points for Fighter level 2 (that rule only)
+import { rollSets, type ContentEntry, type Option } from "../../../core";
+import type { OpenChoice } from "../engine/context";
 import { fullRef, picksOf, type Context, type Source } from "../engine/context";
 import { expandSource } from "../engine/expand";
 import type { Class, Effect, Subclass } from "../packFormat";
@@ -123,8 +125,9 @@ export function classStep(ctx: Context): void {
   }
 
   const spare = level - 1;
-  const others = storedOtherLevels(doc.choices).filter(([r]) => r !== ref);
-  ctx.open.push({
+  // With multiclassing off, levels given to other classes stop counting (Review lists them as unused).
+  const others = ctx.rules.multiclassing ? storedOtherLevels(doc.choices).filter(([r]) => r !== ref) : [];
+  if (ctx.rules.multiclassing) ctx.open.push({
     spec: {
       key: MULTI_KEY, step: "class", label: "Other classes (multiclassing)", kind: "quantities", presentation: "steppers", required: false,
       hint: spare
@@ -152,6 +155,37 @@ export function classStep(ctx: Context): void {
     if (cls) levels.push([cls, n]);
   }
   levels.forEach(([cls, classLevel], i) => expandClass(ctx, cls, classLevel, i === 0));
+  if (ctx.rules.hitPoints === "rolled") rollHitPoints(ctx);
+}
+
+/**
+ * Rolled hit points: one roll of the class's hit die for each class level after the character's first, drawn
+ * together at the end of the step. Every roll stays in the log and the latest counts; a level rolled more than once
+ * is noted, for the DM to see.
+ */
+function rollHitPoints(ctx: Context): void {
+  const rolls: OpenChoice[] = [];
+  ctx.tally.classes.forEach((c, i) => {
+    c.rolled = {};
+    for (let l = i === 0 ? 2 : 1; l <= c.level; l++) {
+      const key = `class.${c.ref}.hp-${l}`;
+      const sets = rollSets(ctx.doc, key);
+      const latest = sets.at(-1)?.[0]?.total;
+      if (latest !== undefined) c.rolled[l] = latest;
+      rolls.push({
+        spec: { key, step: "class", label: `${c.name} ${l}`, group: "Hit points (rolled)", kind: "roll", presentation: "compact", dice: `1d${c.hitDie}`, times: 1, required: true },
+        picks: [],
+        answered: latest !== undefined,
+      });
+      if (sets.length > 1) {
+        ctx.issues.push({
+          id: `rerolled:${key}`, severity: "warning", step: "class", key, overridable: true,
+          message: `Hit points: ${c.name} ${l} was rolled ${sets.length} times; the latest counts.`,
+        });
+      }
+    }
+  });
+  ctx.open.push(...rolls);
 }
 
 /** One class at its level: proficiencies (the full set for the first class, the multiclass set for others), then each level's effects, with the subclass's from the level it's chosen. */

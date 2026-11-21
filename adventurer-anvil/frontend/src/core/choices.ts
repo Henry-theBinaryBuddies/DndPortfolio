@@ -89,9 +89,12 @@ export interface ChoiceSpec {
    * pick-one: "segmented" draws a short list of options as a switch rather than cards.
    * pick-one and pick-many: "list" draws a long list as rows with their details, a search and a filter by tag.
    * quantities: "steppers" draws every option at once, each with its own − and + (a short list), rather than a shop.
+   * roll: "compact" draws one small row (label, latest total, button), for several small rolls side by side.
    */
-  presentation?: "segmented" | "list" | "steppers";
+  presentation?: "segmented" | "list" | "steppers" | "compact";
   required: boolean;
+  /** What counts when nothing is stored (an optional rule's default): shown as chosen, but not written to the file. */
+  defaultValue?: ChoiceValue;
   /** Set by the system: whether this choice is fully answered (e.g. all six slots filled, not just one). */
   answered?: boolean;
 }

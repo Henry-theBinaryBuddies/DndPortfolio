@@ -1,9 +1,10 @@
 // ⑤ Check: mark options already owned, report rule problems, work out each step's status, and find
 // choices left behind.
 import type { ChoiceKey, ContentEntry, Option, StepReport } from "../../../core";
-import type { Effect } from "../packFormat";
+import type { Effect, Feat } from "../packFormat";
 import { ABILITIES, ABILITY_NAMES, type Ability } from "../vocabulary";
 import { fullRef, picksOf, type Context, type OpenChoice } from "./context";
+import { originText } from "./tally";
 import { listName } from "./expand";
 
 /** For one open choice: option value → the source that already gives it (from anywhere but this choice). */
@@ -44,8 +45,13 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
   } else if (effect.from.collection === "languages") {
     for (const l of ctx.tally.languages) if (notThis(l.from)) map.set(l.ref, { verb: "Already known", from: l.from.name });
   } else {
+    // Had already, from elsewhere; a repeatable feat may be taken again.
     const collection = effect.from.collection;
-    for (const g of ctx.tally.grants) if (g.collection === collection && notThis(g.from)) map.set(g.ref, { verb: "Already have", from: g.from.name });
+    for (const g of ctx.tally.grants) {
+      if (g.collection !== collection || !notThis(g.from)) continue;
+      if (collection === "feats" && ctx.content.get("feats", g.ref)?.repeatable === true) continue;
+      map.set(g.ref, { verb: "Already have", from: originText(g.from) });
+    }
   }
   return map;
 }
@@ -64,8 +70,9 @@ function findChoice(ctx: Context, sourceKey: string, id: string): Extract<Effect
  * For a choice of written-in options: option id → what it still needs (an Eldritch Invocation's warlock level, its
  * Pact Boon, a cantrip known).
  */
-function unmet(ctx: Context, choice: OpenChoice): Map<string, string> {
+function unmet(ctx: Context, choice: OpenChoice, scores: Record<Ability, number>): Map<string, string> {
   const map = new Map<string, string>();
+  if (choice.collection === "feats") return featsUnmet(ctx, choice, scores);
   const effect = choice.effect;
   const source = choice.source;
   if (!effect || !source || !("options" in effect.from)) return map;
@@ -94,6 +101,25 @@ function unmet(ctx: Context, choice: OpenChoice): Map<string, string> {
   return map;
 }
 
+/** For a choice of feats: feat → what it still needs (scores, a proficiency, being able to cast a spell). */
+function featsUnmet(ctx: Context, choice: OpenChoice, scores: Record<Ability, number>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const option of choice.spec.options ?? []) {
+    const feat = ctx.content.get("feats", String(option.value)) as (ContentEntry & { requires?: Feat["requires"] }) | undefined;
+    const r = feat?.requires;
+    if (!r) continue;
+    const needs: string[] = [];
+    for (const a of r.abilities ?? []) if (scores[a.ability] < a.min) needs.push(`${ABILITY_NAMES[a.ability]} ${a.min} (you have ${scores[a.ability]})`);
+    if (r.proficiency && !ctx.tally.proficiencies.some((p) => p.kind === r.proficiency!.kind && p.id === r.proficiency!.id && !p.replaced)) {
+      needs.push(`proficiency with ${r.proficiency.kind === "armor" ? `${r.proficiency.id} armour` : r.proficiency.id.replace(/-/g, " ")}`);
+    }
+    // A class that casts counts even before its spells are picked.
+    if (r.spellcasting && ctx.tally.casting.length === 0 && ctx.tally.spells.length === 0) needs.push("the ability to cast at least one spell");
+    if (needs.length) map.set(String(option.value), `Needs ${needs.join(" and ")}`);
+  }
+  return map;
+}
+
 /** The options of a pick among your proficiencies: every matching one you have, from anywhere but this choice. */
 function proficientOptions(ctx: Context, choice: OpenChoice): Option[] {
   const wanted = choice.proficient ?? [];
@@ -117,7 +143,7 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
   for (const choice of ctx.open) {
     const { spec, picks } = choice;
     const have = owned(ctx, choice);
-    const needs = unmet(ctx, choice);
+    const needs = unmet(ctx, choice, scores);
     spec.options = spec.options?.map((option): Option => {
       const o = have.get(String(option.value));
       if (o) return { ...option, unavailable: `${o.verb} (${o.from})` };
@@ -177,10 +203,10 @@ export function check(ctx: Context, scores: Record<Ability, number>): void {
   // A bonus that may not raise a score above a cap (an Ability Score Improvement's 20).
   const capped = new Set<Ability>();
   for (const b of ctx.tally.abilityBonuses) {
-    if (b.cap === undefined || scores[b.ability] <= b.cap || !b.from.choice) continue;
+    if (b.cap === undefined || scores[b.ability] <= b.cap) continue;
     capped.add(b.ability);
     ctx.issues.push({
-      id: `above-cap:${b.from.choice}:${b.ability}`, severity: "error", step: b.from.step ?? "abilities", key: b.from.choice, overridable: true,
+      id: `above-cap:${b.from.choice ?? b.from.name}:${b.ability}`, severity: "error", step: b.from.step ?? "abilities", key: b.from.choice, overridable: true,
       message: `${b.from.name}: ${ABILITY_NAMES[b.ability]} would be ${scores[b.ability]}, but this can't raise a score above ${b.cap}.`,
     });
   }

@@ -40,7 +40,7 @@ writeFileSync(join(ROOT, "data/srd-5.1/IMPORT-REPORT.md"), report(result));
 const c = result.pack.collections;
 console.log(
   `Imported ${c.races.length} races, ${c.subraces.length} subraces, ${c.classes.length} classes, ${c.subclasses.length} subclasses, ` +
-    `${c.backgrounds.length} background, ${c.items.length} items, ${c.spells.length} spells, ${c.languages.length} languages; ${result.corrections.length} corrections.`,
+    `${c.backgrounds.length} background, ${c.feats.length} feat, ${c.items.length} items, ${c.spells.length} spells, ${c.languages.length} languages; ${result.corrections.length} corrections.`,
 );
 
 function report({ pack, traits, features, corrections }: BuildResult): string {
@@ -133,7 +133,8 @@ SRD 5.1 has no name lists; the name syllables in the same file are Adventurer An
 
 ## Not in SRD 5.1, so not shipped
 
-Variant Human, and every subrace beyond the four above: these belong in private packs. Random height and weight tables
+Variant Human, every subrace beyond the four above, and every feat but Grappler: these belong in private packs.
+Grappler is entered by hand from the SRD's text (\`tools/srd/feats.ts\`), as the pinned files have no feats. Random height and weight tables
 and example names are not in SRD 5.1.
 `;
 }

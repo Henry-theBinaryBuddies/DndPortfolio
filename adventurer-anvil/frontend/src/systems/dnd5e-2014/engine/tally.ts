@@ -44,8 +44,11 @@ export interface Tally {
   acBonuses: { amount: number; while?: "armored" | "unarmored"; from: Origin }[];
   /** `classLevel`: given by a class or subclass, so counted per level in that class rather than per character level. */
   hitPoints: { perLevel: number; from: Origin; classLevel?: number }[];
-  /** Class levels, the first class first, with the subclass's name once chosen. */
-  classes: { ref: string; name: string; hitDie: number; level: number; subclass?: string }[];
+  /**
+   * Class levels, the first class first, with the subclass's name once chosen. `rolled`: with rolled hit points, the
+   * latest roll for each class level after the first ever taken (missing until rolled).
+   */
+  classes: { ref: string; name: string; hitDie: number; level: number; subclass?: string; rolled?: Record<number, number> }[];
   /**
    * What the character carries. `ref` is missing for things named only in starting equipment ("vestments");
    * `weight` is per item (a bundle's weight already shared out); `in` names the pack it came in.

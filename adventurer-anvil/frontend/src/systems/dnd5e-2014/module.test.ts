@@ -34,10 +34,10 @@ const highElf = {
 };
 
 describe("a new character", () => {
-  it("has Race, Abilities, Class, Background and Equipment steps to do, Spells with nothing yet, and Details waiting for a name, with 10s until scores are set", () => {
+  it("has Rules done (every rule has a default), Race, Abilities, Class, Background and Equipment to do, Spells with nothing yet, and Details waiting for a name, with 10s until scores are set", () => {
     const v = view({});
-    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["race", "todo"], ["abilities", "todo"], ["class", "todo"], ["background", "todo"], ["equipment", "todo"], ["spells", "done"], ["details", "todo"]]);
-    expect(v.steps[0].choices[0].options?.map((o) => o.name)).toEqual(["Elf", "Half-Elf"]);
+    expect(v.steps.map((s) => [s.id, s.status])).toEqual([["rules", "done"], ["race", "todo"], ["abilities", "todo"], ["class", "todo"], ["background", "todo"], ["equipment", "todo"], ["spells", "done"], ["details", "todo"]]);
+    expect(v.steps.find((s) => s.id === "race")!.choices[0].options?.map((o) => o.name)).toEqual(["Elf", "Half-Elf"]);
     expect(value(v, "ability.str")).toBe(10);
     expect(value(v, "ac")).toBe(10);
   });
@@ -73,14 +73,14 @@ describe("the worked example: a High Elf with the standard array", () => {
   });
 
   it("opens the High Elf's choices keyed by their source: the cantrip on the Spells step, drawn as a spell list", () => {
-    const keys = v.steps[0].choices.map((c) => c.key);
+    const keys = v.steps.find((s) => s.id === "race")!.choices.map((c) => c.key);
     expect(keys).toEqual(["race", "race.sample-srd:elf.subrace", "race.sample-srd:high-elf.language"]);
     const spells = v.steps.find((s) => s.id === "spells")!;
     expect(spells.choices.map((c) => [c.key, c.source, c.presentation])).toEqual([["race.sample-srd:high-elf.cantrip", "High Elf", "list"]]);
   });
 
   it("marks languages already known, with the reason", () => {
-    const language = v.steps[0].choices.find((c) => c.key === "race.sample-srd:high-elf.language")!;
+    const language = v.steps.find((s) => s.id === "race")!.choices.find((c) => c.key === "race.sample-srd:high-elf.language")!;
     expect(language.options?.map((o) => [o.name, o.unavailable])).toEqual([
       ["Common", "Already known (Elf)"],
       ["Dwarvish", undefined],
@@ -104,11 +104,11 @@ describe("fixed-list choices: the Half-Elf", () => {
 
   it("offers abilities except Charisma, and every skill", () => {
     const v = view(halfElf);
-    const abilities = v.steps[0].choices.find((c) => c.key === "race.sample-srd:half-elf.abilities")!;
+    const abilities = v.steps.find((s) => s.id === "race")!.choices.find((c) => c.key === "race.sample-srd:half-elf.abilities")!;
     expect(abilities.kind).toBe("pick-many");
     expect(abilities.count).toEqual({ min: 2, max: 2 });
     expect(abilities.options?.map((o) => o.value)).toEqual(["str", "dex", "con", "int", "wis"]);
-    expect(v.steps[0].choices.find((c) => c.key === "race.sample-srd:half-elf.skills")!.options).toHaveLength(18);
+    expect(v.steps.find((s) => s.id === "race")!.choices.find((c) => c.key === "race.sample-srd:half-elf.skills")!.options).toHaveLength(18);
   });
 
   it("fills each pick into the effect it names", () => {
@@ -138,10 +138,10 @@ describe("rule problems and rulings", () => {
     const v = viewCharacter(dnd5e2014, doc, content);
     const issue = v.issues.find((i) => i.id === "already-have:race.sample-srd:high-elf.language:sample-srd:elvish")!;
     expect(issue.message).toBe("Choose one extra language: Elvish: already known (Elf).");
-    expect(v.steps[0].status).toBe("problem");
+    expect(v.steps.find((s) => s.id === "race")!.status).toBe("problem");
 
     const ruled = viewCharacter(dnd5e2014, addOverride(doc, issue.id, "DM allows it", T), content);
-    expect(ruled.steps[0].status).toBe("done");
+    expect(ruled.steps.find((s) => s.id === "race")!.status).toBe("done");
   });
 
   it("reports content from a pack that is not loaded, and that cannot be overridden", () => {

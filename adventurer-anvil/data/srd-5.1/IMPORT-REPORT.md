@@ -228,5 +228,6 @@ SRD 5.1 has no name lists; the name syllables in the same file are Adventurer An
 
 ## Not in SRD 5.1, so not shipped
 
-Variant Human, and every subrace beyond the four above: these belong in private packs. Random height and weight tables
+Variant Human, every subrace beyond the four above, and every feat but Grappler: these belong in private packs.
+Grappler is entered by hand from the SRD's text (`tools/srd/feats.ts`), as the pinned files have no feats. Random height and weight tables
 and example names are not in SRD 5.1.

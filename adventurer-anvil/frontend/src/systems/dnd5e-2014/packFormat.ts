@@ -189,9 +189,14 @@ const entryBase = {
 const range = z.strictObject({ min: z.number().positive(), max: z.number().positive() }).refine((r) => r.min <= r.max, "min must not be above max");
 const syllables = z.array(z.string().min(1)).min(1);
 
+/** An optional rule an entry belongs to: it is offered only while the character uses that rule (Variant Human: "feats"). */
+const ruleField = { rule: z.enum(["feats"]).optional() };
+
 export const raceSchema = z.strictObject({
   ...entryBase,
-  size: z.enum(SIZES),
+  ...ruleField,
+  /** One size, or the sizes to choose from (a custom lineage: small or medium). */
+  size: z.union([z.enum(SIZES), z.array(z.enum(SIZES)).min(2)]),
   effects: z.array(effectSchema),
   /** Feeds suggestions on the Details step: ages, a height range in inches, a weight range in pounds, and names. */
   suggestions: z
@@ -216,7 +221,25 @@ export const raceSchema = z.strictObject({
     .optional(),
 });
 
-export const subraceSchema = z.strictObject({ ...entryBase, race: ref, effects: z.array(effectSchema) });
+export const subraceSchema = z.strictObject({ ...entryBase, ...ruleField, race: ref, effects: z.array(effectSchema) });
+
+/**
+ * A feat, taken in place of an Ability Score Improvement (with the feats rule) or given by a race. `requires`: scores
+ * it needs (all of them), a proficiency, or being able to cast at least one spell. `repeatable`: may be taken again.
+ */
+export const featSchema = z.strictObject({
+  ...entryBase,
+  requires: z
+    .strictObject({
+      abilities: z.array(z.strictObject({ ability: z.enum(ABILITIES), min: z.int().min(1).max(30) })).min(1).optional(),
+      proficiency: z.strictObject({ kind: z.enum(PROFICIENCY_KINDS), id }).optional(),
+      spellcasting: z.literal(true).optional(),
+    })
+    .refine((r) => r.abilities || r.proficiency || r.spellcasting, 'give "abilities", "proficiency" or "spellcasting"')
+    .optional(),
+  repeatable: z.boolean().optional(),
+  effects: z.array(effectSchema),
+});
 
 export const languageSchema = z.strictObject({ ...entryBase, exotic: z.boolean().optional(), script: z.string().optional() });
 
@@ -403,6 +426,7 @@ export type Background = z.infer<typeof backgroundSchema>;
 export type Class = z.infer<typeof classSchema>;
 export type Subclass = z.infer<typeof subclassSchema>;
 export type Subrace = z.infer<typeof subraceSchema>;
+export type Feat = z.infer<typeof featSchema>;
 export type Language = z.infer<typeof languageSchema>;
 export type ClassStartingEquipment = NonNullable<Class["startingEquipment"]>;
 
@@ -413,6 +437,7 @@ export const COLLECTION_SCHEMAS = {
   classes: classSchema,
   subclasses: subclassSchema,
   backgrounds: backgroundSchema,
+  feats: featSchema,
   items: itemSchema,
   spells: spellSchema,
   languages: languageSchema,
@@ -627,6 +652,7 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
     checkKit(bg.startingEquipment, `collections.backgrounds[${i}].startingEquipment`);
   });
   races.forEach((race, i) => checkEffects(race.effects, `collections.races[${i}].effects`));
+  ((pack.collections.feats ?? []) as Feat[]).forEach((feat, i) => checkEffects(feat.effects, `collections.feats[${i}].effects`));
   subraces.forEach((sub, i) => {
     resolves(sub.race, "races", `collections.subraces[${i}].race`);
     checkEffects(sub.effects, `collections.subraces[${i}].effects`);

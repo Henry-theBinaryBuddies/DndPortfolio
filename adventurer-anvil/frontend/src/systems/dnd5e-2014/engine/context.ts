@@ -1,6 +1,7 @@
 // The state one evaluation builds up as it runs through the pipeline (sources → expand → tally → derive → check).
 import type { CharacterDocument, ChoiceSpec, ChoiceValue, ContentIndex, Issue } from "../../../core";
 import type { Effect } from "../packFormat";
+import { DEFAULT_RULES, type Rules } from "../steps/rules";
 import type { Collection } from "../vocabulary";
 import { emptyTally, type Tally } from "./tally";
 
@@ -20,6 +21,8 @@ export interface Source {
   columns?: Record<string, number | string>;
   /** For a class or subclass: the class level these effects come at, for people ("Fighter 3"). */
   at?: string;
+  /** Ability bonuses from it may not raise a score above this (a feat's 20). */
+  abilityCap?: number;
 }
 
 /** A choice on screen, with what has been picked so far. */
@@ -47,10 +50,18 @@ export interface Context {
   issues: Issue[];
   /** Step ids in order, with labels. */
   steps: { id: string; label: string }[];
+  /** The optional rules in use, set by the Rules step. */
+  rules: Rules;
 }
 
 export function newContext(doc: CharacterDocument, content: ContentIndex): Context {
-  return { doc, content, tally: emptyTally(), open: [], issues: [], steps: [] };
+  return { doc, content, tally: emptyTally(), open: [], issues: [], steps: [], rules: { ...DEFAULT_RULES } };
+}
+
+/** Whether an entry is offered under the rules in use: one that names an optional rule needs it on. */
+export function allowedByRules(entry: object, rules: Rules): boolean {
+  const rule = (entry as { rule?: unknown }).rule;
+  return rule === undefined || (rule === "feats" && rules.feats);
 }
 
 /** A stored choice as a list of picks: "x" → ["x"], ["x","y"] → as is, anything else → []. */

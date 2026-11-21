@@ -180,6 +180,26 @@ function RollSet({ set }: { set: RollRecord[] }) {
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+/**
+ * One small roll on a row (a level's hit points): its label, the latest total, and a button. Every roll stays in the
+ * roll log and the latest counts, as with any roll.
+ */
+export function CompactRoll({ spec, issues, rollSets, onRoll }: ChoiceProps) {
+  const latest = rollSets.at(-1)?.[0];
+  const id = choiceDomId(spec.key);
+  return (
+    <div className="compact-roll" id={id} tabIndex={-1}>
+      <span className="compact-roll-label">{spec.label}</span>
+      <span className="final" aria-live="polite">{latest ? latest.total : <span className="dim">–</span>}<span className="sr-only">{latest ? "" : " not rolled yet"}</span></span>
+      <span className="dim compact-roll-dice">{spec.dice}{rollSets.length > 1 ? ` · rolled ${rollSets.length} times` : ""}</span>
+      <button type="button" className="button small" onClick={() => onRoll(spec)}>
+        {latest ? "Roll again" : "Roll"}<span className="sr-only"> for {spec.label} ({spec.dice})</span>
+      </button>
+      {issues.length > 0 && <div className="compact-roll-issues"><Issues issues={issues} /></div>}
+    </div>
+  );
+}
+
 /** Roll a set of dice; every set is kept in the roll log, and the latest is the one that counts. */
 export function Roll({ spec, issues, rollSets, onRoll }: ChoiceProps) {
   const latest = rollSets.at(-1);

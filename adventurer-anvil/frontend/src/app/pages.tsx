@@ -107,7 +107,7 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
         <ul className="answers">
           {view.steps.map((step) => {
             const answers = step.choices
-              .map((c) => ({ spec: c, label: shortLabel(c.label), text: answerText(c, c.key === NAME_KEY ? doc.name : doc.choices[c.key]) }))
+              .map((c) => ({ spec: c, label: shortLabel(c.label), text: answerText(c, c.key === NAME_KEY ? doc.name : (doc.choices[c.key] ?? c.defaultValue)) }))
               .filter((a): a is { spec: ChoiceSpec; label: string; text: string } => Boolean(a.text));
             return (
               <li key={step.id}>

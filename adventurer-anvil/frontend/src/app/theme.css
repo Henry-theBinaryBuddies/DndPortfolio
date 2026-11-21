@@ -236,3 +236,10 @@ select { font: inherit; color: var(--ink); background: var(--panel); border: 1px
   .character-list > li { grid-template-columns: 48px minmax(0, 1fr); }
   .row-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* A small roll on one row (rolled hit points). */
+.compact-roll { display: grid; grid-template-columns: minmax(0, 1fr) 2.5ch auto; align-items: center; gap: 2px 10px; font-size: 15px; padding: 4px 0; }
+.compact-roll .final { text-align: right; }
+.compact-roll-dice { grid-column: 1; grid-row: 2; font-size: 13px; }
+.compact-roll .button { grid-column: 3; grid-row: 1 / span 2; }
+.compact-roll-issues { grid-column: 1 / -1; }

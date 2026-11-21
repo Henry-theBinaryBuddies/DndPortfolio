@@ -13,11 +13,13 @@ import { spellsStep } from "./steps/spells";
 import { detailsStep, goodPortrait, PORTRAIT_KEY } from "./steps/details";
 import { replaceDuplicateSkills } from "./engine/duplicates";
 import { RACE_KEY, raceStep } from "./steps/race";
+import { rulesStep } from "./steps/rules";
 import { picksOf } from "./engine/context";
 
 export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation {
   const ctx = newContext(doc, content);
-  // ① + ② Each step collects its sources and expands their effects into the tally (③).
+  // ① + ② Each step collects its sources and expands their effects into the tally (③). The rules come first.
+  rulesStep(ctx);
   raceStep(ctx);
   const base = abilitiesStep(ctx);
   classStep(ctx);
@@ -31,7 +33,7 @@ export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluat
   // Items by local id, for proficiency names: the first loaded pack that has the id names it.
   const items = new Map<string, string>();
   for (const e of content.list("items")) if (!items.has(e.id)) items.set(e.id, e.name);
-  const { derived, lists, scores } = derive(ctx.tally, base, (id) => items.get(id));
+  const { derived, lists, scores } = derive(ctx.tally, base, (id) => items.get(id), { encumbrance: ctx.rules.encumbrance });
   // ⑤
   check(ctx, scores);
   checkMulticlass(ctx, scores);
@@ -70,6 +72,7 @@ export const dnd5e2014: SystemModule = {
     { kind: "list", label: "Senses", list: "senses" },
     { kind: "list", label: "Languages", list: "languages" },
     { kind: "list", label: "Resistances", list: "resistances" },
+    { kind: "list", label: "Feats", list: "feats" },
     { kind: "list", label: "Cantrips", list: "cantrips" },
     { kind: "list", label: "Spells", list: "spells" },
   ],
