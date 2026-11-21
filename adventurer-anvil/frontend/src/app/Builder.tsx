@@ -6,12 +6,13 @@ import { ChoiceView, choiceDomId, StepList } from "./choices";
 import { downloadCharacter } from "./files";
 import type { LoadedPack } from "./packs";
 import { Licences, Review } from "./pages";
+import { Sheet } from "./Sheet";
 import { reducer } from "./state";
 import type { CharacterStore } from "./store";
 import { Summary, type TodoItem } from "./Summary";
 import { useAutosave, type SaveStatus } from "./useAutosave";
 
-type Page = { kind: "step"; id: string } | { kind: "review" } | { kind: "licences" };
+type Page = { kind: "step"; id: string } | { kind: "review" } | { kind: "sheet" } | { kind: "licences" };
 
 /** Runs of choices sharing a group become one part, drawn together; every other choice is a part of its own. */
 function groupChoices(specs: ChoiceSpec[]): { group?: string; specs: ChoiceSpec[] }[] {
@@ -49,6 +50,8 @@ export interface Opening {
   saved: boolean;
   notes: string[];
   step?: string;
+  /** Open on the sheet rather than a step. */
+  sheet?: boolean;
 }
 
 export function Builder({ system, packs, content, store, opening, onLeave, focusHeading }: {
@@ -66,7 +69,7 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
   const [notes, setNotes] = useState(opening.notes);
   const view = useMemo(() => viewCharacter(system, doc, content), [system, doc, content]);
   // Open at the step asked for, else the first that still needs something (a new character skips steps already done, such as rules with defaults).
-  const [page, setPage] = useState<Page>(() => ({
+  const [page, setPage] = useState<Page>(() => opening.sheet && system.sheet ? { kind: "sheet" } : ({
     kind: "step",
     id: (opening.step && view.steps.some((s) => s.id === opening.step) ? opening.step : (view.steps.find((s) => s.status !== "done") ?? view.steps[0])?.id) ?? "review",
   }));
@@ -75,9 +78,9 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
   const focusTarget = useRef<string | null>(null);
 
   const stepLabel = (id: string) => view.steps.find((s) => s.id === id)?.label ?? id;
-  const order: Page[] = [...view.steps.map((s): Page => ({ kind: "step", id: s.id })), { kind: "review" }];
+  const order: Page[] = [...view.steps.map((s): Page => ({ kind: "step", id: s.id })), { kind: "review" }, ...(system.sheet ? [{ kind: "sheet" } as Page] : [])];
   const at = order.findIndex((p) => p.kind === page.kind && (p.kind !== "step" || (page.kind === "step" && p.id === page.id)));
-  const pageName = (p: Page) => (p.kind === "step" ? stepLabel(p.id) : p.kind === "review" ? "Review" : "Licences");
+  const pageName = (p: Page) => (p.kind === "step" ? stepLabel(p.id) : p.kind === "review" ? "Review" : p.kind === "sheet" ? "Sheet" : "Licences");
 
   // Dice are rolled here, in the click, and the results logged: never inside the reducer, which React may run twice.
   const roll = (spec: ChoiceSpec) => {
@@ -159,6 +162,13 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
                 <span className="mark" aria-hidden="true">≡</span>Review
               </button>
             </li>
+            {system.sheet && (
+              <li>
+                <button type="button" aria-current={page.kind === "sheet" ? "step" : undefined} onClick={() => go({ kind: "sheet" })}>
+                  <span className="mark" aria-hidden="true">▤</span>Sheet
+                </button>
+              </li>
+            )}
           </ol>
         </nav>
 
@@ -236,6 +246,9 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
                 goTo(levelUp.step);
               }}
             />
+          )}
+          {page.kind === "sheet" && (
+            <Sheet system={system} view={view} doc={doc} content={content} attributions={attributions} onReview={() => go({ kind: "review" })} />
           )}
           {page.kind === "licences" && <Licences packs={packs} />}
 

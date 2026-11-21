@@ -56,6 +56,7 @@ describe("the worked example: a High Elf with the standard array", () => {
   it("works out Perception, passive Perception, AC, initiative, speed and proficiency bonus", () => {
     expect(v.derived["skill.perception"]).toEqual({
       value: 3, label: "Perception", breakdown: [{ label: "Wisdom", amount: 1 }, { label: "Proficient (Elf)", amount: 2 }],
+      mark: { level: 1, label: "Proficient" },
     });
     expect(value(v, "passive.perception")).toBe(13);
     expect(value(v, "ac")).toBe(13);

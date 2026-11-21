@@ -167,7 +167,8 @@ export function grant(ctx: Context, source: Source, collection: Collection, ref:
   if (collection === "languages") ctx.tally.languages.push({ ref, name: entry.name, from });
   else ctx.tally.grants.push({ collection, ref, name: entry.name, from });
   if (collection === "spells" && !ctx.tally.spells.some((s) => s.ref === ref)) {
-    ctx.tally.spells.push({ ref, name: entry.name, level: Number(entry.level) || 0, from, ...spell });
+    const description = typeof entry.description === "string" ? entry.description : undefined;
+    ctx.tally.spells.push({ ref, name: entry.name, level: Number(entry.level) || 0, from, ...spell, ...(description ? { description } : {}) });
   }
 
   const effects = (entry as { effects?: unknown }).effects;

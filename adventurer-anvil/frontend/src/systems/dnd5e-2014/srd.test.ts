@@ -372,7 +372,7 @@ describe("real SRD spells through the engine", () => {
     const life = view({ ...pointBuy(TENS), "class.class": "srd-5.1:cleric", "class.srd-5.1:cleric.subclass": "srd-5.1:life" });
     expect(names(life, "spells")).toEqual(["Bless (always prepared)", "Cure Wounds (always prepared)"]);
     const elf = view({ race: "srd-5.1:elf", "race.srd-5.1:elf.subrace": "srd-5.1:high-elf", "race.srd-5.1:high-elf.cantrip": "srd-5.1:fire-bolt" });
-    expect(elf.lists["spell-list"]).toEqual([{ name: "Fire Bolt", source: "High Elf", detail: "Cantrip · cast with Intelligence" }]);
+    expect(elf.lists["spell-list"]).toEqual([{ name: "Fire Bolt", source: "High Elf", detail: "Cantrip · cast with Intelligence", description: expect.stringMatching(/^You hurl a mote of fire/), group: "Cantrips" }]);
     const tiefling = view({ race: "srd-5.1:tiefling", "class.class": "srd-5.1:wizard" });
     expect(tiefling.derived["spell.dc.cha"].label).toBe("Spell save DC (Charisma)");
   });

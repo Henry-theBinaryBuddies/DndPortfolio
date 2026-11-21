@@ -28,6 +28,8 @@ export interface Derived {
   value: number | string | boolean;
   label: string;
   breakdown: BreakdownLine[];
+  /** A mark for the sheet's checklists: level 1 (●) or 2 (◆), and what it means in words ("Trained", "Expert"). */
+  mark?: { level: 1 | 2; label: string };
 }
 
 export interface Issue {
@@ -48,6 +50,8 @@ export interface ListItem {
   detail?: string;
   /** Longer text, shown on request. */
   description?: string;
+  /** Consecutive items with the same group are shown under it as a heading (a level, a category). */
+  group?: string;
 }
 
 export interface Evaluation {

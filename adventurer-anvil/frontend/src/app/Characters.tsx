@@ -68,6 +68,13 @@ export function Characters({ store, system, content, onOpen, onNew, focusHeading
     }
   };
 
+  const sheet = async (id: string) => {
+    setMessage(null);
+    const result = readCharacter(await store.load(id), system, content.packs());
+    if (!result.ok) return setMessage(`That character couldn't be opened. ${result.error}`);
+    onOpen({ doc: result.doc, saved: true, notes: result.notes, sheet: true });
+  };
+
   const download = async (id: string) => {
     const result = readCharacter(await store.load(id), system, content.packs());
     if (!result.ok) return setMessage(`That character couldn't be read. ${result.error}`);
@@ -159,6 +166,7 @@ export function Characters({ store, system, content, onOpen, onNew, focusHeading
                 ) : (
                   <span className="row-actions">
                     <button type="button" className="button small primary" onClick={() => void open(c.id)}>Open<span className="sr-only"> {nameOf(c)}</span></button>
+                    {system.sheet && <button type="button" className="button small" onClick={() => void sheet(c.id)}>Sheet<span className="sr-only"> for {nameOf(c)}</span></button>}
                     {system.levelUp && <button type="button" className="button small" onClick={() => void levelUp(c)}>Level up<span className="sr-only"> {nameOf(c)}</span></button>}
                     <button type="button" className="button small" onClick={() => void download(c.id)}>Download<span className="sr-only"> {nameOf(c)}</span></button>
                     <button type="button" className="button small" onClick={() => setConfirming(c.id)}>Delete<span className="sr-only"> {nameOf(c)}</span></button>

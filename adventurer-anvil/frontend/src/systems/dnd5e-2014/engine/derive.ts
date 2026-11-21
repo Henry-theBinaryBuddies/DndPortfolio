@@ -66,7 +66,7 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
     const breakdown: BreakdownLine[] = [{ label: ABILITY_NAMES[ability], amount: modifier(scores[ability]) }];
     const by = proficientFrom("saving-throw", ability);
     if (by) breakdown.push({ label: `Proficient (${by})`, amount: prof });
-    derived[`save.${ability}`] = { value: sum(breakdown), label: `${ABILITY_NAMES[ability]} saving throw`, breakdown };
+    derived[`save.${ability}`] = { value: sum(breakdown), label: `${ABILITY_NAMES[ability]} saving throw`, breakdown, ...(by ? { mark: PROFICIENT } : {}) };
   }
 
   // Skills.
@@ -77,7 +77,7 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
     // Expertise doubles the bonus, and only for a skill you are proficient in (the check stage reports any other).
     const expert = by ? expertFrom(skill) : undefined;
     if (expert) breakdown.push({ label: `Expertise (${expert})`, amount: prof });
-    derived[`skill.${skill}`] = { value: sum(breakdown), label: info.name, breakdown };
+    derived[`skill.${skill}`] = { value: sum(breakdown), label: info.name, breakdown, ...(expert ? { mark: EXPERT } : by ? { mark: PROFICIENT } : {}) };
   }
 
   const perception = Number(derived["skill.perception"].value);
@@ -202,6 +202,8 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+const PROFICIENT = { level: 1, label: "Proficient" } as const;
+const EXPERT = { level: 2, label: "Expertise" } as const;
 const ORDINAL = ["cantrip", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
 
 /**
@@ -284,7 +286,7 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
     `${usesOf(r.uses)} per ${r.recharge === "short" ? "short rest" : r.recharge === "long" ? "long rest" : "dawn"}`;
   for (const f of tally.features) {
     const page = f.source ? ` (${f.source.book}${f.source.page ? ` p. ${f.source.page}` : ""})` : "";
-    add("features", { name: f.name, source: originText(f.from), detail: f.summary ? `${f.summary}${page}` : page.trim() || undefined }, false);
+    add("features", { name: f.name, source: originText(f.from), detail: f.summary ? `${f.summary}${page}` : page.trim() || undefined, description: f.description }, false);
   }
   for (const r of tally.resources) add("resources", { name: r.name, source: r.from.name, detail: per(r) }, false);
 
@@ -312,7 +314,7 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
     add(s.level === 0 ? "cantrips" : "spells", { name: `${s.name}${s.level > 0 ? mark : ""}`, source: s.from.name });
     const detail = [s.level === 0 ? "Cantrip" : `${ORDINAL[s.level]} level`, s.ability ? `cast with ${ABILITY_NAMES[s.ability]}` : undefined, mark.trim().replace(/[()]/g, "") || undefined]
       .filter(Boolean).join(" · ");
-    add("spell-list", { name: s.name, source: s.from.name, detail });
+    add("spell-list", { name: s.name, source: s.from.name, detail, description: s.description, group: s.level === 0 ? "Cantrips" : `${ORDINAL[s.level]} level` });
   }
 
   // The inventory: the same thing from the same place (and pack) is one line.

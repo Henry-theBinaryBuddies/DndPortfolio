@@ -1,6 +1,6 @@
 // The 2014 system module: the pipeline from step 5 (sources → expand → tally → derive → check), assembled
 // into the SystemModule the core expects.
-import type { CharacterBlurb, CharacterDocument, ContentIndex, Evaluation, LevelUp, SystemModule } from "../../core";
+import type { CharacterBlurb, CharacterDocument, ContentIndex, Evaluation, LevelUp, SheetPage, SystemModule } from "../../core";
 import { check, stepReports, unusedChoices } from "./engine/check";
 import { newContext } from "./engine/context";
 import { derive } from "./engine/derive";
@@ -10,7 +10,8 @@ import { backgroundStep } from "./steps/background";
 import { CLASS_KEY, checkMulticlass, classStep, LEVEL_KEY, levelOf, MAX_LEVEL, storedOtherLevels } from "./steps/class";
 import { checkEquipment, equipmentStep } from "./steps/equipment";
 import { spellsStep } from "./steps/spells";
-import { detailsStep, goodPortrait, PORTRAIT_KEY } from "./steps/details";
+import { ALIGNMENT_KEY, detailsStep, goodPortrait, PORTRAIT_KEY } from "./steps/details";
+import { BACKGROUND_KEY } from "./steps/background";
 import { replaceDuplicateSkills } from "./engine/duplicates";
 import { RACE_KEY, raceStep } from "./steps/race";
 import { rulesStep } from "./steps/rules";
@@ -40,6 +41,56 @@ export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluat
   checkEquipment(ctx, scores);
   return { steps: stepReports(ctx), derived, lists, issues: ctx.issues, unused: unusedChoices(ctx) };
 }
+
+const ABILITY_KEYS = ["str", "dex", "con", "int", "wis", "cha"] as const;
+const SHORT = { str: "Str", dex: "Dex", con: "Con", int: "Int", wis: "Wis", cha: "Cha" } as const;
+
+/** The character sheet: the character and its numbers on page 1; spells and story on page 2. */
+export const SHEET: SheetPage[] = [
+  {
+    label: "Character",
+    sections: [
+      {
+        kind: "identity", label: "Character",
+        fields: [
+          { choice: BACKGROUND_KEY, label: "Background" }, { choice: ALIGNMENT_KEY, label: "Alignment" },
+          { derived: "level", label: "Level" }, { derived: "proficiency-bonus", label: "Proficiency bonus", format: "signed" },
+        ],
+      },
+      { kind: "tiles", label: "Ability scores", items: ABILITY_KEYS.map((a) => ({ key: `ability.${a}`, short: SHORT[a], note: `ability.${a}.mod` })) },
+      {
+        kind: "stats", label: "Combat",
+        items: [
+          { key: "ac", label: "Armor Class" }, { key: "hp", label: "Hit points" }, { key: "hit-dice", label: "Hit dice" },
+          { key: "speed.walk", label: "Speed", format: "feet" }, { key: "initiative", label: "Initiative", format: "signed" },
+          { key: "passive.perception", label: "Passive Perception" },
+        ],
+      },
+      { kind: "checklist", label: "Saving throws", items: ABILITY_KEYS.map((a) => ({ key: `save.${a}` })), unmarked: "Not proficient" },
+      { kind: "checklist", label: "Skills", items: [], prefix: { key: "skill." }, unmarked: "Not proficient" },
+      { kind: "rows", label: "Attacks", items: [], prefix: { key: "attack." } },
+      { kind: "list", label: "Features and traits", list: "features", full: true },
+      { kind: "list", label: "Feats", list: "feats" },
+      { kind: "list", label: "Limited uses", list: "resources" },
+      { kind: "list", label: "Armour, weapons and tools", list: "other-proficiencies" },
+      { kind: "list", label: "Languages", list: "languages" },
+      { kind: "list", label: "Senses", list: "senses" },
+      { kind: "list", label: "Resistances", list: "resistances" },
+      { kind: "rows", label: "Money and weight", items: [{ key: "coins", format: "coins" }, { key: "weight", format: "pounds" }] },
+      { kind: "list", label: "Equipment", list: "inventory" },
+    ],
+  },
+  {
+    label: "Spells and story",
+    sections: [
+      { kind: "rows", label: "Spellcasting", items: [], prefix: { key: "spell." } },
+      { kind: "list", label: "Spells", list: "spell-list", full: true },
+      { kind: "text", label: "Appearance", keys: ["details.age", "details.height", "details.weight", "details.eyes", "details.skin", "details.hair"] },
+      { kind: "text", label: "Personality", keys: ["background.traits", "background.ideal", "background.bond", "background.flaw"] },
+      { kind: "text", label: "Story", keys: ["details.backstory", "details.allies", "details.notes"] },
+    ],
+  },
+];
 
 export const dnd5e2014: SystemModule = {
   id: SYSTEM_ID,
@@ -76,6 +127,7 @@ export const dnd5e2014: SystemModule = {
     { kind: "list", label: "Cantrips", list: "cantrips" },
     { kind: "list", label: "Spells", list: "spells" },
   ],
+  sheet: SHEET,
   stepLists: {
     class: [{ label: "What you get", list: "gains.class" }],
     background: [{ label: "What you get", list: "gains.background" }],
