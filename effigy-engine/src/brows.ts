@@ -28,14 +28,15 @@ export interface BrowShape {
   slope: number; // how steeply its centre line rises (+) or falls (-) going outward
 }
 
-// m: 1 masculine, 0 feminine. bushy: the Eyebrows slider.
-export function browShape(ax: number, m: number, bushy: number): BrowShape {
+// m: 1 masculine, 0 feminine. bushy: the Eyebrows slider. width and archLift: the race's (see Skeleton): a finer or
+// bushier brow, and a higher or flatter arch.
+export function browShape(ax: number, m: number, bushy: number, width = 1, archLift = 0): BrowShape {
   const t = (ax - HEAD) / (TAIL - HEAD);
-  const arch = 0.026 + 0.022 * (1 - m);
+  const arch = Math.max(0, 0.026 + 0.022 * (1 - m) + archLift);
   const lift = (u: number) => 0.088 - 0.008 * m + arch * Math.sin(Math.PI * Math.min(1, Math.max(0, u)) * 0.82) - 0.028 * smooth((u - 0.72) / 0.28);
   const centre = lift(t);
   const slope = (lift(t + 0.02) - lift(t - 0.02)) / (0.04 * (TAIL - HEAD));
-  const half = 0.024 * (0.75 + 0.45 * m) * (0.75 + 0.5 * bushy) * (1 - 0.7 * smooth((t - 0.35) / 0.65)) * (1 - 0.15 * smooth((0.12 - t) / 0.12));
+  const half = 0.024 * width * (0.75 + 0.45 * m) * (0.75 + 0.5 * bushy) * (1 - 0.7 * smooth((t - 0.35) / 0.65)) * (1 - 0.15 * smooth((0.12 - t) / 0.12));
   return { t, centre, half, slope };
 }
 
@@ -145,7 +146,7 @@ export function buildBrows(p: Params, positions: Float32Array, normals: Float32A
   if (bushy < 0.03) return null;
   const m = masculinity(p);
   const lookup = frontLookup(base);
-  const { browHeight, browCarve } = RACE_INFO[p.race].skeleton;
+  const { browHeight, browCarve, browWidth, browArch } = RACE_INFO[p.race].skeleton;
   const peak = (0.35 + 0.5 * bushy) * MM * browHeight;
   const { pitch, grooveWidth, depth, minWidth } = BROW_CARVING;
   const rows = ACROSS + 1;
@@ -160,7 +161,7 @@ export function buildBrows(p: Params, positions: Float32Array, normals: Float32A
     for (let i = 0; i <= ALONG; i++) {
       const t = i / ALONG;
       const ax = HEAD + t * (TAIL - HEAD);
-      const shape = browShape(ax, m, bushy);
+      const shape = browShape(ax, m, bushy, browWidth, browArch);
       const half = Math.max(shape.half, minWidth / 2);
       // The way the hair lies, as an angle above the line of the brow: up at its head, outward along it,
       // turning down at the tail

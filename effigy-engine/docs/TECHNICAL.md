@@ -127,7 +127,7 @@ Everything lives under `effigy-engine/`.
 | `hair.ts`, `hairShell.ts`, `shellRegion.ts` | where hair grows; the hair shell, with long hair's curtain and locks |
 | `beard.ts` | where beards grow, and their shells |
 | `brows.ts` | sculpted eyebrows |
-| `locks.ts` | dreadlocks: tubes that fall until their tips rest on the body |
+| `locks.ts` | dreadlocks, a topknot's bun, a ponytail and a beard's braids: tubes; all but the bun fall until their tips rest on the body |
 | `carve.ts`, `hairCarve.ts`, `beardCarve.ts` | subdividing a shell and carving the hair or beard groove pattern into it |
 | `teeth.ts`, `tusk.ts`, `mouthFill.ts` | teeth, the half-orc's tusks, filling the mouth's hidden pocket for print |
 
@@ -230,6 +230,7 @@ The human head could not be pushed into a convincing Dragonborn: that was tried 
 - The file also carries a coarser copy of the skin, which clothing is fitted to: its skin is about 330,000 triangles, and a tunic fitted to it was too heavy to merge.
 - It is loaded only the first time the Dragonborn is chosen. If that fails, the app goes back to the humanoid and says why.
 - Its sliders are smooth warps of its own sculpt: muzzle, jaw, brow plates, neck, horns, spines, plus Torso size and the expressions.
+- The warps and expressions are placed by positions on the sculpt (the eyes, the brow plate, the line of the lips, the jaw's hinge, the roots of the horns and spines). A change to the sculpt must leave those where they are, or move the matching numbers in `dragonborn.ts`. The revision of 16 Nov 2026 (eyelids, a reshaped muzzle, brow horns, lip scales; see `assets/dragonborn/README.md`) kept them all.
 - Horns and spines move with the skin they grow from.
 
 ## 6. Hair, beards, brows and locks
@@ -257,6 +258,16 @@ These rules come from the first print: any texture that is to print has to be ge
 
 - Each lock is a closed tube that falls under gravity and keeps falling until its tip rests on the body.
 - The first print showed tips over open air turn to spaghetti, because a printer lays the tip first.
+
+**Braided beard** (`locks.ts`, added 19 Nov 2026; the dwarf's default) is a full beard, a little shorter at the chin, with two braids. Each braid is a tube rooted inside the beard under the chin, at a fixed vertex of the undeformed head (`BRAID.at`). It falls out through the beard's underside and on until it rests against the throat or chest, or on whatever is worn there, the way the dreadlocks land. It is carved as a plait: grooves slant from each side to a groove down the middle, the two sides half a crossing apart. A plain band sits near the end with a short carved tuft below it. The braids are their own part, `braids`, and the tunic's collar drops under them as it does under a full beard (`garments.ts`).
+
+**Curls** (`hairShell.ts`, `hairCarve.ts`, added 19 Nov 2026; the halfling's default) are a fuller cap raised into domed knobs, one per curl, each carved with a groove spiralling in to its middle and parted from the next. The curls are cells round points scattered over the undeformed head (`curlCell`), read there by both the knobs and the carving so they stay together however the head is reshaped. A curl is about 5 mm across at full size with a 1.6 mm spiral pitch, which leaves a 1.2 mm ridge between turns.
+
+**Topknot and ponytail** (`locks.ts`, added 18 Nov 2026) are built the same way, over a close cap whose carving runs to where the hair is gathered (`hairCarve.ts`):
+
+- The topknot's bun is one short tube standing up off the crown, its side leaning out by about 18 degrees at most from its axis so it needs no supports, with 7 grooves winding gently round it and fading out over the top of its dome.
+- The ponytail is one thick tube tied at the back of the head, bound by a band standing about 0.6 mm proud, with 5 locks down it. It falls plumb past the skull, then leans in to rest on the back of the neck, the way the dreadlocks land. Its cap's locks are a whole number round the tie, so they meet without a seam below it.
+- The tubes' grooves are sized by how fast their pattern changes across the surface, not along it alone, so none is under 0.4 mm or leaves a ridge under 0.6 mm at full size (a test measures them). Both are rooted at a fixed vertex of the undeformed head (`BUN.at`, `TAIL.at`), so they stay put however the head is reshaped. Their parts are `bun` and `tail` (`parts.ts`).
 
 ## 7. Clothing
 
@@ -671,3 +682,7 @@ The built site was checked under exactly these headers before the first deploy (
   - the clothing test print stopped by bed adhesion; nothing deprecated, unproven features labelled;
   - horn-tip warnings for the ram and Dragonborn;
   - deployed to Cloudflare Pages at effigy.creaturecauldron.com.
+- **16 Nov:**
+  - the Dragonborn's sculpt revised: eyelids, a lower and narrower muzzle with sideways nostrils, brow horns, longer crest fins, rows of lip scales.
+- **17 Nov:**
+  - the Dragonborn's mouth rebuilt: a predator's uneven, back-curving teeth, fangs showing with the mouth shut, gums, a grooved tongue.

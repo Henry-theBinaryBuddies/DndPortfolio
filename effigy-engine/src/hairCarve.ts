@@ -64,6 +64,102 @@ const crop: Pattern = (x, _y, z) => {
 
 // The carving at a point of the scalp, in the undeformed head's coordinates (so it stays with the head
 // however it is reshaped), for each style
+// Drawn up to a topknot: the locks run straight up from the hairline to the bun on the crown, which hides where they
+// meet (as the crop's, a whole number of them round the head)
+const TOPKNOT_Z = -0.42; // the bun's place on the crown (see locks.ts)
+const drawnUp: Pattern = (x, _y, z) => {
+  const angle = Math.atan2(x, z - TOPKNOT_Z);
+  const r = Math.hypot(x, z - TOPKNOT_Z);
+  const across = ((angle + 0.015 * Math.sin(r * 13)) / (2 * Math.PI)) * CROP_LOCKS * HAIR_CARVING.lockPitch;
+  return locks(across, r) * smooth((r - 0.12) / 0.08);
+};
+
+// Drawn back to a ponytail: the locks run back over the head and converge where it is tied, at the back of the head
+// (the line they run round lies lower toward the front, or the locks would crowd at the forehead too). A whole number of
+// them round that line, numbered round it, so they meet without a seam where the angle round it wraps, down the middle
+// of the back of the head below the tie (numbered without wrapping, the grooves stepped there).
+const TAIL_Y = 0.15; // where it is tied (see locks.ts)
+// (24 round it, a lock's width apart 0.3 from the line, and fading out nearer it: 42, as close as the swept hair's, came
+// together over the sides of the head a millimetre apart, finer than the carving could draw, and showed as a stippling)
+const TAIL_LOCKS = 24;
+const drawnBack: Pattern = (x, y, z) => {
+  const axisY = TAIL_Y - 0.25 * (1 - smooth((-z - 0.2) / 0.5));
+  const radius = Math.hypot(x, y - axisY);
+  const across = (Math.atan2(x, y - axisY) / (2 * Math.PI)) * TAIL_LOCKS * HAIR_CARVING.lockPitch + 0.01 * Math.sin(z * 9 + x * 5);
+  return locks(across, z, TAIL_LOCKS) * smooth((radius - 0.2) / 0.1);
+};
+
+// Curls: a cap of round curls, each a knob of hair with a groove spiralling in to its middle, parted from the next by a
+// groove. They are laid out as cells round points scattered evenly over the head (the same ones always, by a jittered
+// grid), sized for the printer (a curl about 4 mm across at full size: smaller, its spiral would be finer than a
+// nozzle can draw).
+// (about 5 mm across, for a turn and a half of spiral: smaller, each showed only a crescent of one)
+export const CURL = { cell: 0.15, pitch: 1.6 * MM }; // (a 1.2 mm ridge left between the turns of the spiral)
+const HEAD_MIDDLE = [0, 0.05, -0.35] as const;
+
+// The two nearest curl centres to a point: how far off each is, and the nearest one
+export function curlCell(x: number, y: number, z: number): { d1: number; d2: number; cx: number; cy: number; cz: number } {
+  const c = CURL.cell;
+  const gx = Math.floor(x / c);
+  const gy = Math.floor(y / c);
+  const gz = Math.floor(z / c);
+  let d1 = Infinity;
+  let d2 = Infinity;
+  let cx = 0;
+  let cy = 0;
+  let cz = 0;
+  for (let i = -1; i <= 1; i++)
+    for (let j = -1; j <= 1; j++)
+      for (let k = -1; k <= 1; k++) {
+        const key = (gx + i) * 7919 + (gy + j) * 104729 + (gz + k) * 1299709;
+        const px = (gx + i + 0.15 + 0.7 * hash(key)) * c;
+        const py = (gy + j + 0.15 + 0.7 * hash(key + 1)) * c;
+        const pz = (gz + k + 0.15 + 0.7 * hash(key + 2)) * c;
+        const d = Math.hypot(x - px, y - py, z - pz);
+        if (d < d1) {
+          d2 = d1;
+          d1 = d;
+          cx = px;
+          cy = py;
+          cz = pz;
+        } else if (d < d2) d2 = d;
+      }
+  return { d1, d2, cx, cy, cz };
+}
+
+const curls: Pattern = (x, y, z) => {
+  const { d1, d2, cx, cy, cz } = curlCell(x, y, z);
+  // The parting round each curl
+  const parting = 1 - smooth((d2 - d1) / (1.2 * HAIR_CARVING.lockGroove));
+  // ...and its spiral, measured round the curl in the plane of the scalp under it (across the line from the middle
+  // of the head out through the curl)
+  let rx = cx - HEAD_MIDDLE[0];
+  let ry = cy - HEAD_MIDDLE[1];
+  let rz = cz - HEAD_MIDDLE[2];
+  const rl = Math.hypot(rx, ry, rz) || 1;
+  rx /= rl;
+  ry /= rl;
+  rz /= rl;
+  // (a direction across it: up, or forward where the curl faces up)
+  let ux = -rz;
+  let uy = 0;
+  let uz = rx;
+  if (Math.hypot(ux, uz) < 0.3) [ux, uy, uz] = [0, rz, -ry];
+  const ul = Math.hypot(ux, uy, uz);
+  ux /= ul;
+  uy /= ul;
+  uz /= ul;
+  const vx = ry * uz - rz * uy;
+  const vy = rz * ux - rx * uz;
+  const vz = rx * uy - ry * ux;
+  const dx = x - cx;
+  const dy = y - cy;
+  const dz = z - cz;
+  const angle = Math.atan2(dx * vx + dy * vy + dz * vz, dx * ux + dy * uy + dz * uz);
+  const spiral = vee(d1 / CURL.pitch - angle / (2 * Math.PI), HAIR_CARVING.fineGroove / CURL.pitch / 2) * smooth((d1 - 0.35 * CURL.pitch) / (0.4 * CURL.pitch));
+  return HAIR_CARVING.lockDepth * Math.max(parting, spiral);
+};
+
 const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   swept,
   long: swept,
@@ -72,6 +168,9 @@ const PATTERNS: Record<Exclude<HairStyle, "none">, Pattern> = {
   mohawk: (x, y, z) => locks(x + 0.008 * Math.sin(z * 11 + y * 5), z),
   // (dreadlocks grow from a close crop)
   dreadlocks: crop,
+  topknot: drawnUp,
+  ponytail: drawnBack,
+  curls,
 };
 
 export function hairPattern(style: Exclude<HairStyle, "none">): Pattern {
