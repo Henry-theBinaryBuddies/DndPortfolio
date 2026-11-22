@@ -237,7 +237,8 @@ export function shapeDragonborn(asset: DragonbornAsset, p: Params): Shaped {
     // Expressions (see EXPRESSION). A scowl draws the brow plates down, forward and in toward the nose.
     dy -= EXPRESSION.scowl * p.scowl * plate;
     dz += 0.4 * EXPRESSION.scowl * p.scowl * plate;
-    dx -= Math.sign(hx) * 0.5 * EXPRESSION.scowl * p.scowl * plate;
+    // (in toward the nose by less the nearer the middle: a full step either way of it crossed the skin over itself there)
+    dx -= (hx / Math.max(ax, 0.012)) * 0.5 * EXPRESSION.scowl * p.scowl * plate;
     // A snarl lifts the upper lip along the front of the muzzle and draws it back, baring the teeth, and wrinkles the
     // bridge of the nose
     const upperLip = (1 - lowerJaw) * smooth((hz - 0.02) / 0.05) * Math.exp(-(((hy - LIP) / 0.018) ** 2)) * eyeClear;

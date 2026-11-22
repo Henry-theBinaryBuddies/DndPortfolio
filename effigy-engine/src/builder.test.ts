@@ -10,8 +10,8 @@ import { MIN_FEATURE, MIN_GROOVE, MM } from "./print";
 import { deformHead } from "./deform";
 import { frontPoint, sculptBust } from "./face";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
-import { HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
-import { buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS } from "./locks";
+import { CURL, HAIR_CARVING, hairPattern, hangingPattern } from "./hairCarve";
+import { BRAID, braidPattern, BUN, bunPattern, buildBraidShell, buildBraids, buildLockShell, buildLocks, dreadPattern, dreadRoots, LOCKS, TAIL, tailPattern } from "./locks";
 import { scalp } from "./hair";
 import { JAW, jawWeights, turnWithJaw } from "./jaw";
 import { buildTeeth, lowerCanine } from "./teeth";
@@ -448,13 +448,13 @@ describe("buildBust", () => {
 
   it("grows hair for each style, and none for none", () => {
     const none = countObjects(bust({ hairStyle: "none" }));
-    for (const style of ["cropped", "swept", "mohawk", "long"] as const) {
+    for (const style of ["cropped", "swept", "mohawk", "long", "curls", "topknot", "ponytail"] as const) {
       expect(countObjects(bust({ hairStyle: style })), style).toBeGreaterThan(none);
     }
   });
 
   it("keeps hair off the face: the hair shell lies on the skin in front of the brow and below the hairline", () => {
-    for (const style of ["cropped", "swept", "mohawk", "long"] as const) {
+    for (const style of ["cropped", "swept", "mohawk", "long", "curls", "topknot", "ponytail"] as const) {
       const p = params({ hairStyle: style });
       const bust = sculptBust(p, base);
       const shell = buildHairShell(p, bust.positions, bust.normals, base)!;
@@ -509,7 +509,7 @@ describe("buildBust", () => {
     };
     expect(beardOf("none")).toBeNull();
     const sizes: Record<string, number> = {};
-    for (const style of ["goatee", "short", "full"] as const) {
+    for (const style of ["goatee", "short", "full", "braided"] as const) {
       const beard = beardOf(style)!;
       expect(beard, style).not.toBeNull();
       const pos = beard.attributes.position;
@@ -882,7 +882,7 @@ describe("hair round the ears", () => {
   it("keeps off the ears, whatever the race's ears are like: the hairline tucks round and behind them", () => {
     for (const race of ["human", "elf", "gnome", "halfling", "tiefling"] as const) {
       for (const body of ["masculine", "feminine"] as const) {
-        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks"] as const) {
+        for (const hairStyle of ["cropped", "swept", "long", "dreadlocks", "topknot", "ponytail", "curls"] as const) {
           const p = { ...applyRace(defaultParams(), race), body, hairStyle };
           const { positions, normals } = sculptBust(p, base);
           const shell = buildHairShell(p, positions, normals, base)!;
@@ -891,9 +891,10 @@ describe("hair round the ears", () => {
           expect(covered(positions, normals, shell, 1 * MM), `${race} ${body} ${hairStyle}: cap`).toBeLessThan(0.03);
           if (hairStyle === "dreadlocks") {
             // the locks pass over the top of the ear and down behind it: little of it has one lying on it (an elf's
-            // point reaches up among the locks, so a little of its tip has one close above: 6% of the ear; a human's 3%)
+            // point reaches up among the locks, so a little of its tip has one close above: 8% of the ear since its ears were
+            // lengthened, on 17 Nov 2026, from 6%; a human's 3%)
             const share = covered(positions, normals, buildLockShell(p, positions, normals, base)!, 0.6 * MM);
-            expect(share, `${race} ${body}: locks`).toBeLessThan(0.08);
+            expect(share, `${race} ${body}: locks`).toBeLessThan(0.09);
           }
         }
       }
@@ -902,7 +903,7 @@ describe("hair round the ears", () => {
 
   it("keeps beards off the ears too: the sideburns stop at the ear, never over its lobe", () => {
     for (const race of ["human", "dwarf", "half-orc", "elf", "gnome"] as const) {
-      for (const beardStyle of ["short", "full"] as const) {
+      for (const beardStyle of ["short", "full", "braided"] as const) {
         const p = { ...applyRace(defaultParams(), race), beardStyle };
         const { positions, normals } = sculptBust(p, base);
         // (the beard ends at the lobe's edge, so a little of the lobe's rim has beard close beside it: 3%)
@@ -913,13 +914,24 @@ describe("hair round the ears", () => {
 });
 
 describe("carved hair", () => {
-  const styles = ["cropped", "swept", "mohawk", "long"] as const;
+  const styles = ["cropped", "swept", "mohawk", "long", "topknot", "ponytail", "curls"] as const;
 
   it("is carved no finer than the printer can make, with ridges left between the grooves wide enough to print", () => {
     expect(HAIR_CARVING.lockGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
     expect(HAIR_CARVING.fineGroove).toBeGreaterThanOrEqual(MIN_GROOVE);
     expect(HAIR_CARVING.lockDepth).toBeGreaterThanOrEqual(0.3 * MM);
     expect(HAIR_CARVING.lockPitch / 2 - (HAIR_CARVING.lockGroove + HAIR_CARVING.fineGroove) / 2).toBeGreaterThanOrEqual(MIN_FEATURE);
+    // (a curl's spiral: the ridge between its turns)
+    expect(CURL.pitch - HAIR_CARVING.fineGroove).toBeGreaterThanOrEqual(MIN_FEATURE);
+  });
+
+  it("carves a ponytail's cap without a seam down the back of the head below the tie, where the locks meet", () => {
+    const pattern = hairPattern("ponytail");
+    let worst = 0;
+    for (let y = -0.4; y <= 0.03; y += 0.01) {
+      for (let z = -0.95; z <= -0.5; z += 0.01) worst = Math.max(worst, Math.abs(pattern(1e-7, y, z) - pattern(-1e-7, y, z)));
+    }
+    expect(worst).toBeLessThan(0.001 * MM);
   });
 
   it("is subdivided into sixteen times the shell's triangles, and stays a closed solid, for every style", () => {
@@ -1013,12 +1025,15 @@ describe("carved hair", () => {
   }, 300000);
 });
 
+// (and the other styles built from tubes: a topknot's bun and a ponytail's tail)
 describe("dreadlocks", () => {
-  const styles = ["dreadlocks"] as const;
-  const shellOf = (hairStyle: (typeof styles)[number], overrides: Partial<Params> = {}) => {
-    const p = params({ hairStyle, ...overrides });
+  // (and a braided beard's braids: "braided" here is the beard, over the default hair)
+  const styles = ["dreadlocks", "topknot", "ponytail", "braided"] as const;
+  const shellOf = (style: (typeof styles)[number], overrides: Partial<Params> = {}) => {
+    const p = params(style === "braided" ? { beardStyle: style, ...overrides } : { hairStyle: style, ...overrides });
     const bust = sculptBust(p, base);
-    return { p, bust, shell: buildLockShell(p, bust.positions, bust.normals, base)! };
+    const build = style === "braided" ? buildBraidShell : buildLockShell;
+    return { p, bust, shell: build(p, bust.positions, bust.normals, base)! };
   };
   const edgeUses = (index: THREE.BufferAttribute) => {
     const uses = new Map<number, number>();
@@ -1116,7 +1131,8 @@ describe("dreadlocks", () => {
   }, 120000);
 
   it("end on the body: the tip of every lock rests on the head, neck or shoulders, so it prints without supports", () => {
-    for (const style of styles) {
+    // (not the bun: it stands up off the crown, and its top is printed last)
+    for (const style of ["dreadlocks", "ponytail", "braided"] as const) {
       const { shell, bust } = shellOf(style);
       const pos = shell.attributes.position;
       const along = shell.attributes.headPos;
@@ -1129,12 +1145,18 @@ describe("dreadlocks", () => {
         if (!grid.has(key)) grid.set(key, []);
         grid.get(key)!.push(i);
       }
+      // (each tube's own size: how thick it is as it falls, and the thickest a lock of it may be; a tolerance sized for
+      // a 1.4 mm dreadlock let a ponytail's or a braid's tip hover millimetres clear of the body)
+      const r = { dreadlocks: LOCKS.dreadRadius, ponytail: TAIL.radius, braided: BRAID.radius }[style];
+      const most = style === "dreadlocks" ? 1.15 * r : r;
       // (the middle of the cap at the far end of each tube: zero thick, some way along it)
       let tips = 0;
       const floating: number[] = [];
+      const hovering: number[] = [];
       for (let v = 0; v < pos.count; v++) {
         if (thick.getX(v) !== 0 || along.getZ(v) < 0.1) continue;
         tips++;
+        let nearest = Infinity;
         const cx = Math.floor(pos.getX(v) / cell);
         const cy = Math.floor(pos.getY(v) / cell);
         const cz = Math.floor(pos.getZ(v) / cell);
@@ -1144,27 +1166,33 @@ describe("dreadlocks", () => {
             for (let z = -1; z <= 1; z++) {
               for (const i of grid.get(`${cx + x},${cy + y},${cz + z}`) ?? []) {
                 const dx = pos.getX(v) - bust.positions[i];
-                const dy = pos.getY(v) - 1.45 * LOCKS.dreadRadius - bust.positions[i + 1];
+                const dy = pos.getY(v) - 1.45 * r - bust.positions[i + 1];
                 const dz = pos.getZ(v) - bust.positions[i + 2];
                 const d = Math.hypot(dx, dy, dz);
                 // body within a lock's thickness of a point just under the tip (a wall that falls away
                 // below it would not hold it up)
-                if (d < 1.9 * LOCKS.dreadRadius) rests = true;
+                if (d < 1.9 * r) rests = true;
+                nearest = Math.min(nearest, Math.hypot(dx, dy + 1.45 * r, dz));
               }
             }
           }
         }
-        if (!rests && pos.getY(v) > bottom + 0.05) floating.push(v);
+        if (pos.getY(v) <= bottom + 0.05) continue;
+        if (!rests) floating.push(v);
+        // ...and pressed against it: a tube comes to rest within 1.43 of its radius of the body and its end is drawn
+        // half way to it (see fall in locks.ts), so the middle of its end is within three quarters of its radius
+        if (nearest > 0.75 * most) hovering.push(v);
       }
-      expect(tips, style).toBeGreaterThan(2);
+      expect(tips, style).toBeGreaterThan({ dreadlocks: 2, ponytail: 0, braided: 1 }[style]);
       expect(floating.length, `${style}: tips with nothing under them`).toBe(0);
+      expect(hovering.length, `${style}: tips not pressed against the body`).toBe(0);
     }
   }, 120000);
 
   it("carve their grooves with every triangle quartered twice, still closed, cutting only inward", () => {
     for (const style of styles) {
       const { p, bust, shell } = shellOf(style);
-      const carved = buildLocks(p, bust.positions, bust.normals, base)!;
+      const carved = (style === "braided" ? buildBraids : buildLocks)(p, bust.positions, bust.normals, base)!;
       expect(carved.index!.count, style).toBe(shell.index!.count * 16);
       expect(edgeUses(carved.index!), style).toBe(0);
       const a = new THREE.Box3().setFromBufferAttribute(shell.attributes.position as THREE.BufferAttribute);
@@ -1183,11 +1211,97 @@ describe("dreadlocks", () => {
     }
   });
 
+  it("carve the bun, the ponytail and the braids no finer than the printer can make, measured across the grooves on the tube", () => {
+    // The widths of the grooves and of the ridges between them, as cut into the surface of a tube of radius rho: along
+    // straight lines over the surface (round it and along it, unrolled flat) in every direction, each groove and ridge a
+    // run of points cut or not cut; the narrowest a groove or ridge is in any direction is its width across it. Each line
+    // is kept to the stretch measured (where the carving fades, a fading groove's shallow edge reads as a narrow one).
+    // Runs cut short by the end of a line are left out, and the few narrowest in each direction, where a line only
+    // grazes the end of a groove or the corner where two meet; and a groove counts only where it is at least half as
+    // deep as the fine groove, and a ridge only between two such (each groove's depth rises and falls along it, and
+    // where it falls to nothing its shallow end is as narrow as you like, and parts in two, but cuts nothing a printer
+    // would show).
+    const DEEP = 0.5 * HAIR_CARVING.fineDepth;
+    const STEP = 0.01 * MM;
+    const widths = (pattern: typeof bunPattern, rho: number, from: number, to: number, ridges = true) => {
+      const depth = (a: number, v: number) => pattern(Math.cos(a / rho), Math.sin(a / rho), v);
+      let groove = Infinity;
+      let ridge = Infinity;
+      for (let k = 0; k < 36; k++) {
+        const [dx, dy] = [Math.cos((k * Math.PI) / 36), Math.sin((k * Math.PI) / 36)];
+        const cut: number[] = [];
+        const uncut: number[] = [];
+        for (let o = 0; o < 8; o++) {
+          // a line 6 mm long through a point of the carved stretch
+          let a = 2 * Math.PI * rho * (o / 8) - 3 * MM * dx;
+          let v = from + ((to - from) * (o + 0.5)) / 8 - 3 * MM * dy;
+          // the runs along the line, in order (the last, cut short by the line's end, is never closed)
+          const runs: { cut: boolean; length: number; deepest: number }[] = [];
+          let current: { cut: boolean; length: number; deepest: number } | null = null;
+          for (let i = 0; i <= 600; i++, a += STEP * dx, v += STEP * dy) {
+            if (v < from || v > to) {
+              if (current) break;
+              continue;
+            }
+            const d = depth(a, v);
+            const inGroove = d > 1e-7;
+            if (current && current.cut === inGroove) {
+              current.length += STEP;
+              current.deepest = Math.max(current.deepest, d);
+              continue;
+            }
+            if (current) runs.push(current);
+            current = { cut: inGroove, length: STEP, deepest: d };
+          }
+          // (the first run, cut short by the line's start, is left out)
+          for (let j = 1; j < runs.length; j++) {
+            if (runs[j].cut && runs[j].deepest >= DEEP) cut.push(runs[j].length);
+            const deepBeside = (q: number) => q >= 0 && q < runs.length && runs[q].deepest >= DEEP;
+            if (!runs[j].cut && deepBeside(j - 1) && deepBeside(j + 1)) uncut.push(runs[j].length);
+          }
+        }
+        const low = (runs: number[]) => (runs.length ? runs.sort((p, q) => p - q)[Math.floor(runs.length * 0.05)] : Infinity);
+        groove = Math.min(groove, low(cut));
+        ridge = Math.min(ridge, low(uncut));
+      }
+      return { groove, ridge: ridges ? ridge : Infinity };
+    };
+    const cases: [string, typeof bunPattern, number, number, number, boolean?][] = [
+      // the bun at its root (where it is narrowest) and up its side, short of the top of its dome, where the grooves fade
+      ["bun", bunPattern, 0.82 * BUN.radius, 0.05, 0.13],
+      ["bun's dome", bunPattern, 0.87 * BUN.radius, 0.13, 0.8 * BUN.height - 0.1 * BUN.height],
+      // the ponytail where it is thinnest, near its end
+      ["ponytail", tailPattern, 0.7 * TAIL.radius, 0.5, 0.7],
+      // the plait where it is thinnest, between the swellings where its strands cross (its ridges come to points where
+      // the crossings meet the groove down its middle, as a plait's do, so only its grooves are measured)
+      ["plait", braidPattern, 0.94 * BRAID.radius, 0.15, 0.35, false],
+      ["tuft", braidPattern, BRAID.radius, BRAID.band + BRAID.bandWidth + 0.03, BRAID.band + BRAID.bandWidth + 0.1],
+    ];
+    for (const [label, pattern, rho, from, to, ridges] of cases) {
+      const { groove, ridge } = widths(pattern, rho, from, to, ridges ?? true);
+      expect(groove, `${label}: grooves`).toBeGreaterThanOrEqual(0.95 * MIN_GROOVE);
+      expect(groove, `${label}: grooves`).toBeLessThan(Infinity);
+      expect(ridge, `${label}: ridges`).toBeGreaterThanOrEqual(0.95 * MIN_FEATURE);
+    }
+  });
+
+  it("carve a braid's plait continuously round it, where its two sides meet down the middle at the back", () => {
+    const at = (angle: number, length: number) => [Math.cos(angle), Math.sin(angle), length] as const;
+    for (const length of [0.13, 0.21, 0.31]) {
+      expect(Math.abs(braidPattern(...at(Math.PI - 1e-4, length)) - braidPattern(...at(-Math.PI + 1e-4, length)))).toBeLessThan(0.0005);
+    }
+  });
+
   it("are only for the styles that have them", () => {
-    for (const hairStyle of ["none", "cropped", "swept", "mohawk", "long"] as const) {
+    for (const hairStyle of ["none", "cropped", "swept", "mohawk", "long", "curls"] as const) {
       const p = params({ hairStyle });
       const bust = sculptBust(p, base);
       expect(buildLockShell(p, bust.positions, bust.normals, base), hairStyle).toBeNull();
+    }
+    for (const beardStyle of ["none", "goatee", "short", "full"] as const) {
+      const p = params({ beardStyle });
+      const bust = sculptBust(p, base);
+      expect(buildBraidShell(p, bust.positions, bust.normals, base), beardStyle).toBeNull();
     }
   }, 120000);
 });

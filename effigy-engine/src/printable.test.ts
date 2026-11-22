@@ -276,12 +276,15 @@ describe("merging a bust into one printable solid", () => {
     expect(Math.abs(file.volume - report.volume) / report.volume).toBeLessThan(0.002);
   }, 600000);
 
-  it("merges dreadlocks and long hair's side locks, each lock joined to the head", async () => {
+  it("merges dreadlocks, long hair's side locks, a bun, a ponytail and a beard's braids, each joined to the head", async () => {
+    // (a dwarf's beard is braided)
     const dwarf = applyRace(defaultParams(), "dwarf");
     dwarf.hairStyle = "dreadlocks";
     const elf = applyRace({ ...defaultParams(), body: "feminine" }, "elf");
     elf.hairStyle = "long";
-    for (const [label, p] of [["dreadlocks", dwarf], ["long hair", elf]] as const) {
+    const topknot = { ...defaultParams(), hairStyle: "topknot" as const };
+    const ponytail = { ...applyRace({ ...defaultParams(), body: "feminine" }, "half-elf"), hairStyle: "ponytail" as const };
+    for (const [label, p] of [["dreadlocks and braids", dwarf], ["long hair", elf], ["topknot", topknot], ["ponytail", ponytail]] as const) {
       const { report } = await merge(p);
       expectOneSolid(label, report);
     }
