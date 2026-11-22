@@ -1,6 +1,9 @@
 Artifact 5:
+
 Reflection
+
 Week 1:
+
 This week was mostly planning and delegation. Since we didn't get started on building until more than halfway through the week we didn't resolve most of Milestone 0 issues.
 I went ahead and posted Milestone 1 issues, and we will see how it goes. Overall, seems like we have a pretty good workflow moving forward.
 Project is split into 4 Milestones:
@@ -16,6 +19,7 @@ M4: 3D dice, health states, deployment, demo rehearsal.
     Tested over the real deployment
 
 Week 2:
+
 Incredibly productive week. The extra effort we put into planning, scheduling, and decoupling every team members portions paid off this week. We were able to really
 run through our delegated issues and ended up finishing all of Milestone 1, and getting significant headway into Milestone 2. We're nearly at the point where we can
 start merging the pieces of other artifacts into the moonshot, and afterward should be able to start live testing the application.
