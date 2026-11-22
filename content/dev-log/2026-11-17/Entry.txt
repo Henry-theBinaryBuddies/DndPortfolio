@@ -1,3 +1,7 @@
+Artifact 5 (Tome & Tile):
+
+John's map and my renderer fix merged together, so for the first time the map and the chat share one web page, and a token dragged in one browser moves in the other. Claude reviewed John's change by running it in a browser against the mock server, not only by reading it. Adrian filed an issue the same day because CI had stopped running on his two pull requests.
+
 Side Quest (Effigy Engine):
 
 I told Claude to keep refining: improve the teeth inside the Dragonborn's jaw and polish the other races. I also asked it to ask me what I wanted first, so it would not be working aimlessly. Over two rounds of questions I chose predator teeth, big and uneven, with front teeth, gums, a tongue and bigger fangs. For the races I chose more distinct races, better faces, hair and beards, and a painted look, and then a subtle, realistic touch, a big bulbous nose for the gnome, a signature look for each race, and all four of the hair ideas Claude offered.

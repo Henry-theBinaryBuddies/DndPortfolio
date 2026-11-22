@@ -1,3 +1,7 @@
+Artifact 5 (Tome & Tile):
+
+I merged the refreshed weekly report and the fix for blank pictures on the WebGL2 path, the bug the portfolio screenshots had turned up. Adrian's Creature Cauldron field map went in after review. I also widened the web checks to include Adrian's media folder, which the type checker and the test runner had been skipping, so his tests now run in CI. John opened the pull request that puts the map on the web page, and I opened a renderer fix to go with it: the map now frames itself as soon as the first snapshot arrives, and it only reports refusals of its own token moves, not of chat or dice.
+
 Side Quest (Effigy Engine):
 
 With the site live, I asked Claude to see whether it could improve the Blender models. It worked on a branch of its own, in a separate copy of the project, so the live site and my other work were not touched. The Dragonborn is built by a script that describes every form as numbers, so the changes went into that script rather than into sculpting by hand.

@@ -1,3 +1,7 @@
+Artifact 5 (Tome & Tile):
+
+A decision day. The map upload needed a home, and the code that checks pictures lives in Adrian's part of the project, which the server is normally not allowed to use. Claude drafted a short design record: the server may use that one picture-checking library and nothing else of Adrian's, the GM uploads through the server, files are stored under their content hash, and changing the map only names the file. I accepted it, and Claude filed the four issues to build it, one of them John's upload control.
+
 Side Quest (Effigy Engine):
 
 Hair day. The eyebrows are finer on everyone now, and each race has its own: elves, half-elves and tieflings get fine, high-arched brows, and dwarves and half-orcs bushy, flat ones. The hairline had a stair-step pattern across the forehead that followed the rows of the head's mesh. Claude traced it to where the hair comes up out of the skin, which followed a sharp edge on the mesh, and made it follow a smoothed edge instead, so the hair now meets the skin along a smooth curve on every race and style. It also tried breaking the edge up with paint so it would fade rather than stop, but that made no visible difference, so it came back out.
