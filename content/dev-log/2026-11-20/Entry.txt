@@ -1,0 +1,3 @@
+Side Quest (Adventurer Anvil):
+
+The Details step: a name with suggestions flavoured by the race, an alignment grid, appearance with age, height and weight suggested from the race's ranges, personality with the background's tables as suggestions, backstory, allies, notes and a portrait, shrunk in the browser to 256 by 256. The SRD describes ages and sizes only in words, so Claude turned them into numbers by hand and kept the words beside each one. Review now lists every answer in words with a link back to its step, and a DM can allow a rule problem with a short note that stays on the character.
