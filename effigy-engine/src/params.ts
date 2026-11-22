@@ -60,7 +60,8 @@ export const HAIR_STYLES = ["none", "cropped", "swept", "mohawk", "long", "dread
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
 // Beards are sculpted like the hair (see beard.ts)
-export const BEARD_STYLES = ["none", "goatee", "short", "full"] as const;
+// (a braided beard is a full one with two braids hanging from the chin, built from tubes: see locks.ts)
+export const BEARD_STYLES = ["none", "goatee", "short", "full", "braided"] as const;
 export type BeardStyle = (typeof BEARD_STYLES)[number];
 
 // Clothing, built over the body of either family (see garments.ts): a thick tunic; a leather jerkin and spaulders over
@@ -236,7 +237,7 @@ export const RACE_INFO: Record<Race, RaceInfo> = {
     skeleton: { ...HUMAN, planes: 0.25, angularity: 0.7, headWidth: 1.1, headHeight: 0.95, earSize: 0.25, noseLength: 0.5, noseWidth: 1.32, noseBridge: 0.3, noseBulb: 0.35, jaw: 1.2, chin: 0.55, browBase: 0.5, browWidth: 1.25, browArch: -0.012, cheekBase: 0.1, gaunt: 0, socketDepth: 0.5, shoulders: 1.25 },
     hornStyle: "none",
     hairStyle: "cropped",
-    beardStyle: "full",
+    beardStyle: "braided",
     defaults: { eyebrows: 0.85, muscle: 0.7, weight: 0.6 },
   },
   // Round, soft face: full cheeks, a small button nose, a gentle brow

@@ -294,7 +294,7 @@ export function fit(p: Params, body: BodySurface): Fitted {
   let dressed = body.fitting.positions;
 
   // The tunic: everything below the collar
-  const drop = p.family === "humanoid" && p.beardStyle === "full" ? COLLAR.frontUnderBeard : COLLAR.front;
+  const drop = p.family === "humanoid" && (p.beardStyle === "full" || p.beardStyle === "braided") ? COLLAR.frontUnderBeard : COLLAR.front;
   const neckline = (x: number, z: number) => neckBase - COLLAR.back - drop * front(x, z);
   // (round where the arm leaves the body: out past the top of the shoulder and below it, as deep as the body's middle)
   const arms = [shoulders.right, shoulders.left].map((s) => [s.position.x * 1.35, s.position.y - 0.25, (s.position.z + axisZ) / 2]);

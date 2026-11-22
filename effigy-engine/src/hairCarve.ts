@@ -75,12 +75,18 @@ const drawnUp: Pattern = (x, _y, z) => {
 };
 
 // Drawn back to a ponytail: the locks run back over the head and converge where it is tied, at the back of the head
-// (the line they run round lies lower toward the front, or the locks would crowd at the forehead too)
+// (the line they run round lies lower toward the front, or the locks would crowd at the forehead too). A whole number of
+// them round that line, numbered round it, so they meet without a seam where the angle round it wraps, down the middle
+// of the back of the head below the tie (numbered without wrapping, the grooves stepped there).
 const TAIL_Y = 0.15; // where it is tied (see locks.ts)
+// (24 round it, a lock's width apart 0.3 from the line, and fading out nearer it: 42, as close as the swept hair's, came
+// together over the sides of the head a millimetre apart, finer than the carving could draw, and showed as a stippling)
+const TAIL_LOCKS = 24;
 const drawnBack: Pattern = (x, y, z) => {
   const axisY = TAIL_Y - 0.25 * (1 - smooth((-z - 0.2) / 0.5));
   const radius = Math.hypot(x, y - axisY);
-  return locks(0.5 * Math.atan2(x, y - axisY) + 0.01 * Math.sin(z * 9 + x * 5), z) * smooth((radius - 0.12) / 0.08);
+  const across = (Math.atan2(x, y - axisY) / (2 * Math.PI)) * TAIL_LOCKS * HAIR_CARVING.lockPitch + 0.01 * Math.sin(z * 9 + x * 5);
+  return locks(across, z, TAIL_LOCKS) * smooth((radius - 0.2) / 0.1);
 };
 
 // Curls: a cap of round curls, each a knob of hair with a groove spiralling in to its middle, parted from the next by a

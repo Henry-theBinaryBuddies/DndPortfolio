@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { carveShell, hash, type Pattern } from "./carve";
+import { carveShell, hash, vee, type Pattern } from "./carve";
 import { scalp } from "./hair";
 import { HAIR_CARVING, locks } from "./hairCarve";
 import type { HeadBase } from "./headMesh";
@@ -382,9 +382,11 @@ function nearestVertex(base: HeadBase, x: number, y: number, z: number): number 
 
 // A topknot: the hair drawn up to the crown (see the topknot cap in hairShell.ts) and wound into a bun there. The bun
 // is a short tube standing up off the crown, rooted under the cap, swelling a little to its widest and closing in a
-// dome: it widens by no more than about 15 degrees from its root, so it prints without supports. Its grooves wind
-// round it, as hair wound into a bun does.
-export const BUN = { at: [0, 0.563, -0.42] as const, radius: 0.15, height: 0.3, coils: 9 };
+// dome: its side leans out by no more than about 18 degrees from its axis, so it prints without supports. Its grooves
+// wind round it, as hair wound into a bun does.
+// (7 locks round it, winding gently: with 9 winding steeply, the grooves crossed it at a slant only a millimetre apart,
+// finer than the printer can make)
+export const BUN = { at: [0, 0.563, -0.42] as const, radius: 0.15, height: 0.3, coils: 7, wind: 0.6 };
 
 function bunShell(positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry {
   const v = nearestVertex(base, ...BUN.at);
@@ -407,14 +409,16 @@ function bunShell(positions: Float32Array, normals: Float32Array, base: HeadBase
 
 export const bunPattern: Pattern = (c, s, length) => {
   const angle = Math.atan2(s, c);
-  const across = (angle / (2 * Math.PI)) * BUN.coils * HAIR_CARVING.lockPitch + 2.2 * length;
-  return locks(across, length, BUN.coils);
+  const across = (angle / (2 * Math.PI)) * BUN.coils * HAIR_CARVING.lockPitch + BUN.wind * length;
+  // (fading out over the top of the dome, where the grooves close in on one another as it narrows)
+  return locks(across, length, BUN.coils) * smooth01((0.8 * BUN.height - length) / (0.1 * BUN.height));
 };
 
 // A ponytail: the hair drawn back (see the ponytail cap in hairShell.ts) and tied at the back of the head, falling
 // from there down the back of the neck until it rests on it, so it prints without supports. A thick rope, bound
 // near its root, fuller below the tie and thinning to its end, carved with locks down its length.
-export const TAIL = { at: [0, 0.15, -0.86] as const, radius: 0.095, coils: 9, tie: 0.065 };
+// (5 locks round it: as many as there is room for, a lock's width apart, where it is thinnest)
+export const TAIL = { at: [0, 0.15, -0.86] as const, radius: 0.095, coils: 5, tie: 0.065, rings: 64 };
 
 function tailShell(positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry {
   const cloud = new Cloud(positions);
@@ -423,7 +427,7 @@ function tailShell(positions: Float32Array, normals: Float32Array, base: HeadBas
   const start = new THREE.Vector3(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]).addScaledVector(n, -0.03);
   const step = 0.04;
   const toNeck = new THREE.Vector3();
-  const path = fall(cloud, {
+  const fallen = fall(cloud, {
     start,
     direction: n,
     steps: 14,
@@ -438,17 +442,22 @@ function tailShell(positions: Float32Array, normals: Float32Array, base: HeadBas
     endY: -0.8,
     rest: base.neck,
   });
+  // (in finer rings than it fell in, always as many, so the band at the tie is drawn: between rings 1.5 mm apart, it
+  // came out as a waist or a bulge depending on where the nearest ring fell)
+  const path = resample(fallen, TAIL.rings);
   const total = path.reduce((sum, point, i) => (i ? sum + point.distanceTo(path[i - 1]) : 0), 0);
-  const tieAt = (TAIL.tie + 0.03) / total; // (just clear of the cap)
+  const tie = TAIL.tie + 0.03; // (just clear of the cap)
   const cap = Math.min(0.3, 0.1 / total);
   const tubes = new Tubes();
   tubes.add(
     path,
     (t) => {
-      // bound at the tie, full just below it, thinning to its end, which closes in a rounded tip
-      const body = TAIL.radius * (t < tieAt ? 0.85 + 0.15 * smooth01(t / tieAt) : 1.3 - 0.6 * smooth01((t - tieAt) / (1 - tieAt)));
-      const band = 0.12 * Math.exp(-((((t - tieAt) * total) / 0.012) ** 2));
-      return (body + TAIL.radius * band) * (t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1);
+      const along = t * total;
+      // gathered into the tie, bound by a band standing proud of the hair either side of it, swelling out below it,
+      // thinning to its end, which closes in a rounded tip
+      const gathered = along < tie ? 0.85 + 0.15 * smooth01(along / tie) : (1 + 0.3 * smooth01((along - tie) / 0.08)) * (1 - 0.46 * smooth01((along - tie) / Math.max(0.1, total - tie)));
+      const band = 0.2 * smooth01((along - tie + 0.022) / 0.008) * (1 - smooth01((along - tie - 0.014) / 0.008));
+      return TAIL.radius * (gathered + band) * (t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1);
     },
     20,
     () => null,
@@ -460,13 +469,99 @@ export const tailPattern: Pattern = (c, s, length) => {
   const angle = Math.atan2(s, c);
   const across = (angle / (2 * Math.PI)) * TAIL.coils * HAIR_CARVING.lockPitch + 0.25 * length;
   // (the tie, and the hair gathered into it, left plain)
-  return locks(across, length, TAIL.coils) * smooth01((length - TAIL.tie - 0.05) / 0.03);
+  return locks(across, length, TAIL.coils) * smooth01((length - TAIL.tie - 0.055) / 0.03);
 };
 
 const smooth01 = (t: number) => {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
 };
+
+// A braided beard: a full beard (hairShell.ts) with two braids, one either side of the middle of the chin. Each is rooted
+// inside the beard under the chin, falls out through its underside and on down until it rests against the throat or the
+// chest (or on what is worn over them), so it prints without supports. A plaited rope, bound by a plain band near its
+// end, with a short tuft of hair below the band.
+// (in finer rings than it fell in, always as many, so its plait and its band are drawn; 4 locks round its tuft, as many
+// as there is room for)
+export const BRAID = { at: [0.075, -0.58, 0.02] as const, radius: 0.055, pitch: 3 * MM, slant: 0.9, band: 0.42, bandWidth: 0.045, rings: 48, tuft: 4 };
+
+function braidShell(positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry {
+  const cloud = new Cloud(positions);
+  const tubes = new Tubes();
+  for (const side of [-1, 1]) {
+    const v = nearestVertex(base, side * BRAID.at[0], BRAID.at[1], BRAID.at[2]);
+    const n = new THREE.Vector3(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]);
+    // (out from the skin into the beard, where it starts: the beard hides its root)
+    const start = new THREE.Vector3(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]).addScaledVector(n, 0.03);
+    const fallen = fall(cloud, {
+      start,
+      direction: PLUMB,
+      steps: 12,
+      step: 0.04,
+      radius: BRAID.radius,
+      // (a little apart as they fall, as braids hang from either side of the chin)
+      target: () => new THREE.Vector3(side * 0.08, -1, 0),
+      rate: 0.3,
+      land: LAND_STEPS,
+      endY: -0.98,
+      rest: base.neck,
+    });
+    const path = resample(fallen, BRAID.rings);
+    const total = path.reduce((sum, point, i) => (i ? sum + point.distanceTo(path[i - 1]) : 0), 0);
+    const cap = Math.min(0.3, 0.06 / total);
+    tubes.add(
+      path,
+      (t) => {
+        const along = t * total;
+        // plaited: a swelling at each crossing of its strands; then the band, a little proud; then the tuft, flaring
+        // a little and closing in a rounded tip
+        const plait = along < BRAID.band ? 1 + 0.06 * Math.cos((2 * Math.PI * along) / BRAID.pitch) : 1;
+        // (the band as wide as several of the tube's rings, or it hardly showed, and 0.5 mm proud at full size)
+        const band = 0.3 * smooth01((along - BRAID.band + 0.012) / 0.008) * (1 - smooth01((along - BRAID.band - BRAID.bandWidth) / 0.008));
+        const tuft = along > BRAID.band + BRAID.bandWidth ? 0.1 * smooth01((along - BRAID.band - BRAID.bandWidth) / 0.05) : 0;
+        const tip = t > 1 - cap ? Math.sqrt(Math.max(0, 1 - ((t - (1 - cap)) / cap) ** 2)) : 1;
+        return BRAID.radius * (plait + band + tuft) * tip;
+      },
+      16,
+      () => null,
+    );
+  }
+  return tubes.geometry();
+}
+
+// The plait: each strand's crossing a groove running down from the side to the middle, those on one side half a crossing
+// along from those on the other, and a groove down the middle where they meet; the band plain; the tuft carved in locks
+// down its length. (The middle of the front is the side the tube's frame starts on, toward the viewer: see Tubes.add.)
+export const braidPattern: Pattern = (c, s, length) => {
+  const l = Math.hypot(c, s) || 1;
+  const across = Math.abs(s / l);
+  if (length > BRAID.band + BRAID.bandWidth) {
+    const angle = Math.atan2(s, c);
+    return locks((angle / (2 * Math.PI)) * BRAID.tuft * HAIR_CARVING.lockPitch, length, BRAID.tuft) * smooth01((length - BRAID.band - BRAID.bandWidth - 0.015) / 0.015);
+  }
+  if (length > BRAID.band - 0.015) return 0;
+  const u = length / BRAID.pitch;
+  // (a groove's width is what it is across the groove: the crossings slant round the braid as well as along it, more
+  // steeply toward its front and back, so their width in phase is the groove's times the phase's whole rate of change
+  // there; sized by its rate along the braid alone, they were a third too narrow to print across its front)
+  const rate = Math.hypot(1 / BRAID.pitch, (BRAID.slant * Math.abs(c / l)) / BRAID.radius);
+  const halfWidth = (HAIR_CARVING.lockGroove / 2) * rate;
+  const crossing = vee(u + BRAID.slant * across + (s >= 0 ? 0 : 0.5), halfWidth);
+  const middle = 1 - smooth01(across / 0.14);
+  // (from where it leaves the beard: inside it nothing shows)
+  return HAIR_CARVING.lockDepth * Math.max(crossing, middle) * smooth01((length - 0.05) / 0.03);
+};
+
+// A braided beard's braids, as a closed solid made of tubes; null for any other beard
+export function buildBraidShell(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+  return p.beardStyle === "braided" ? braidShell(positions, normals, base) : null;
+}
+
+// ...and as they print: subdivided, with the plait carved in
+export function buildBraids(p: Params, positions: Float32Array, normals: Float32Array, base: HeadBase): THREE.BufferGeometry | null {
+  const shell = buildBraidShell(p, positions, normals, base);
+  return shell ? carveShell(shell, base, "braids", braidPattern) : null;
+}
 
 // The part a style's tubes make (see parts.ts), for its name in warnings
 export function lockPart(p: Params): string {

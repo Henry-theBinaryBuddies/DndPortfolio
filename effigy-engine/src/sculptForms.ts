@@ -46,7 +46,7 @@ export function scalpContour(x: number, y: number, z: number): number {
   return smooth((y - threshold + 0.03) / 0.12);
 }
 
-export function beardVolume(x: number, y: number, z: number, style: "short" | "full" | "goatee"): number {
+export function beardVolume(x: number, y: number, z: number, style: "short" | "full" | "goatee" | "braided"): number {
   const ax = Math.abs(x);
   const lower = smooth((-0.36 - y) / 0.22);
   const chin = (1 - smooth((ax - 0.13) / 0.18)) * smooth((z + 0.08) / 0.18);
@@ -54,7 +54,8 @@ export function beardVolume(x: number, y: number, z: number, style: "short" | "f
   if (style === "short") return 0.013 + 0.014 * lower + 0.014 * moustache;
   if (style === "goatee") return 0.014 + 0.065 * lower * chin + 0.018 * moustache;
   const fullChin = smooth((-0.45 - y) / 0.15) * (1 - 0.5 * smooth((ax - 0.18) / 0.15));
-  return 0.024 + 0.1 * fullChin + 0.018 * moustache;
+  // (braided: shorter at the chin, since the braids carry its length on)
+  return 0.024 + (style === "braided" ? 0.075 : 0.1) * fullChin + 0.018 * moustache;
 }
 
 export function beardMasses(x: number, y: number, z: number): number {

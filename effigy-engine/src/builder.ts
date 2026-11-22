@@ -9,7 +9,7 @@ import { frontPoint, sculptBust, topPoint, type Bust } from "./face";
 import { buildOutfit, dressedAtAll, type Dressed } from "./garments";
 import { buildBeard, buildBeardShell, buildHair, buildHairShell, buildHanging, buildHangingHair } from "./hairShell";
 import { LANDMARK } from "./headMesh";
-import { buildLockShell, buildLocks, lockPart } from "./locks";
+import { buildBraidShell, buildBraids, buildLockShell, buildLocks, lockPart } from "./locks";
 import { buildThroatGusset } from "./gusset";
 import { buildMouthFill, pocketWalls } from "./mouthFill";
 import { buildTeeth, lowerCanine } from "./teeth";
@@ -275,6 +275,7 @@ export function buildBust(p: Params, assets: Assets, detail = true, gusset = fal
     ["curtain", detail ? buildHanging(p, worn, base) : buildHangingHair(p, worn, base)],
     ["beard", beard],
     [lockPart(p), (detail ? buildLocks : buildLockShell)(p, worn, bust.normals, base)],
+    ["braids", (detail ? buildBraids : buildBraidShell)(p, worn, bust.normals, base)],
   ];
   for (const [name, form] of forms) {
     if (!form) continue;

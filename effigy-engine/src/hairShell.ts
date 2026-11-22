@@ -583,8 +583,8 @@ export function buildBeardShell(p: Params, positions: Float32Array, normals: Flo
       return beardVolume(x / frame.headWidth, (y + 0.59) / frame.headHeight - 0.59, z, kind);
     },
     clumps: beardMasses,
-    lean: kind === "full" ? 0.95 : kind === "goatee" ? 0.75 : 0.2,
-    flow: [0, -1, kind === "full" ? 0.03 : kind === "goatee" ? 0.25 : 0.2],
+    lean: kind === "full" || kind === "braided" ? 0.95 : kind === "goatee" ? 0.75 : 0.2,
+    flow: [0, -1, kind === "full" || kind === "braided" ? 0.03 : kind === "goatee" ? 0.25 : 0.2],
   };
   return raiseShell(positions, normals, base, grow, style, scale, floor);
 }
