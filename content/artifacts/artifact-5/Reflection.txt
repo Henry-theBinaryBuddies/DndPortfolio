@@ -1,3 +1,21 @@
 Artifact 5:
 Reflection
-To be continued...
+Week 1:
+This week was mostly planning and delegation. Since we didn't get started on building until more than halfway through the week we didn't resolve most of Milestone 0 issues.
+I went ahead and posted Milestone 1 issues, and we will see how it goes. Overall, seems like we have a pretty good workflow moving forward.
+Project is split into 4 Milestones:
+M0: Repository, contracts, CI, ownership, CLAUDE.md files, ADRs, onboarding, and mock server.
+    Join-token messages defined in the contracts; LiveKit Cloud project created
+M1: map image upload, grid, tokens, synced movement, chat and dice in two browsers.
+    Server mints LiveKit join tokens; a bare call works in two browsers
+M2: pregenerated characters, sheet screen, clickable abilities, targeting, and attack rolls.
+    Docked video panel with mute, camera toggle and device picker
+M3: Saves, Damage conditions, GM undo and override, Creature Cauldron imports
+    Phone layout, reconnect handling
+M4: 3D dice, health states, deployment, demo rehearsal.
+    Tested over the real deployment
+
+Week 2:
+Incredibly productive week. The extra effort we put into planning, scheduling, and decoupling every team members portions paid off this week. We were able to really
+run through our delegated issues and ended up finishing all of Milestone 1, and getting significant headway into Milestone 2. We're nearly at the point where we can
+start merging the pieces of other artifacts into the moonshot, and afterward should be able to start live testing the application.
