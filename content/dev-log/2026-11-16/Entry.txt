@@ -1,0 +1,7 @@
+Side Quest (Effigy Engine):
+
+With the site live, I asked Claude to see whether it could improve the Blender models. It worked on a branch of its own, in a separate copy of the project, so the live site and my other work were not touched. The Dragonborn is built by a script that describes every form as numbers, so the changes went into that script rather than into sculpting by hand.
+
+The eyes got upper and lower lids. The upper lid comes down lower toward the nose, so the Dragonborn scowls instead of staring like a marble. The muzzle is lower and narrower toward the tip, with a faint ridge from each brow to its nostril, and the nostrils now flare out to the sides. There are three short swept-back horns along each brow, a bony plate between the brows, a swelling over each fang's root, an edge along the lower jaw and longer fins on the crest. The scales gained a row of squarish scales along each lip, bigger shields on top of the muzzle and a ring of fine scales round each eye.
+
+Some things had to stay exactly where they were: the eyes, the line of the lips, the jaw hinge, the brow plate and the roots of the horns and spines. The app's sliders and expressions are placed by those points, so moving them would have broken the shape controls. All the tests passed. None of this is merged, so the live site still has the old model.

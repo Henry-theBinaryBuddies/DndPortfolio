@@ -17,3 +17,12 @@ Next came the optional rules, on a new Rules step: a feat instead of an Ability 
 Last, the character sheet, on screen and for printing: two pages with the ability scores, saves and skills marked for proficiency, the combat numbers, features with the level they come from, spells by level and the character's story, then any DM rulings and the SRD credit. It prints black on white without the app around it. Its tests caught two things on the way: the features list had no text for the full-text print option, and some comments in the core used game words, which a test forbids so that the core stays game-agnostic.
 
 I merged all of it to master. 263 unit tests and 43 browser tests pass, with accessibility checked at desktop and phone sizes. Three smaller pieces of the first milestone are left: an inventory editor, a session journal and a written guide to the pack format.
+A big day for the character builder, in four steps, each done by Claude and merged by me as one pull request.
+
+Saving. A character now saves itself in the browser half a second after each change, and can be downloaded as a file and opened again. A file is checked before it opens: files that are not characters, come from a newer version or are damaged are refused with a reason, and older ones are upgraded. If the same character is open in two tabs, saving pauses until I choose which copy to keep.
+
+Levels one to twenty. A character can now be any level, take levels in other classes, and level up from Review or the list. That meant teaching the content format about ability score improvements, other classes' prerequisites and each class's spell progression, and re-reading the SRD for every class's invocations and secrets. Hit points, spell slots for mixed casters and the multiclass rules all follow from it.
+
+Optional rules. Each character picks its own: multiclassing, feats, rolled hit points, variant encumbrance and a custom origin. Turning a rule off deletes nothing; its choices just stop counting, and Review lists them.
+
+The character sheet. A sheet on screen that prints: abilities, saves, skills with proficiency marks, attacks, features with the level they came at, spells grouped by level with the prepared ones marked, and the story on the second page. Printing leaves out the app's frame and gives one sheet per page. It adds the DM's rulings and the credits for the content to every sheet.
