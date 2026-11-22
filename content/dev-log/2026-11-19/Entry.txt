@@ -1,3 +1,7 @@
+Artifact 5 (Tome & Tile):
+
+The upload message and the mock server's version of it went in, so John could build his upload control without waiting for the real server. Adrian's CI problem turned out to be merge conflicts in a dev log file: GitHub quietly runs no checks on a pull request while its branch conflicts. Merging the main branch into his two branches brought the checks back.
+
 Side Quest (Scenic Sorcerer):
 
 I decided the map maker was good enough for a first release and asked Claude to walk me through putting it online with Cloudflare Pages. Claude gave me the settings: build the scenic-sorcerer folder, publish its dist folder, and use Node 22. I connected my own domain, scenic.creaturecauldron.com. Cloudflare said the address was active, but the page did not load. My first browser said the server's address could not be found, so I asked Claude to look.

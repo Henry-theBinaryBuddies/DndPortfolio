@@ -1,3 +1,7 @@
+Artifact 5 (Tome & Tile):
+
+A long day. Adrian's picture checker and LiveKit module merged after review, and the real server got its upload endpoint. That one came with a scare: one of its tests listened on every network address, and Windows asked me whether to let an unknown program through the firewall. I asked Claude what it was; the test was replaced, and every test now listens on the local machine only. With the first milestone's pieces in, Claude filed the thirteen second-milestone issues for the three of us, and I started mine: the pregenerated characters standing on the map, the rule for an ability that makes several attacks, the attack roll against armour class with damage on a hit, and warnings for range, target count and resources. John's map upload control merged in the evening, and he opened five more pull requests for the character sheet, the video panel and two fixes.
+
 Side Quest (Adventurer Anvil):
 
 The Details step: a name with suggestions flavoured by the race, an alignment grid, appearance with age, height and weight suggested from the race's ranges, personality with the background's tables as suggestions, backstory, allies, notes and a portrait, shrunk in the browser to 256 by 256. The SRD describes ages and sizes only in words, so Claude turned them into numbers by hand and kept the words beside each one. Review now lists every answer in words with a link back to its step, and a DM can allow a rule problem with a short note that stays on the character.
