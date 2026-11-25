@@ -1,0 +1,401 @@
+{
+  "kind": "CREATURE_KIND_PLAYER_CHARACTER",
+  "name": "Mordecai Ash",
+  "edition": "RULES_EDITION_2014",
+  "size": "CREATURE_SIZE_MEDIUM",
+  "scores": {
+    "strength": 8,
+    "dexterity": 14,
+    "constitution": 13,
+    "intelligence": 11,
+    "wisdom": 12,
+    "charisma": 17
+  },
+  "proficiencyBonus": 2,
+  "armorClass": 13,
+  "hpCurrent": 21,
+  "hpMax": 21,
+  "speedFeet": 30,
+  "initiativeBonus": 2,
+  "saveProficiencies": [
+    "ABILITY_SCORE_WISDOM",
+    "ABILITY_SCORE_CHARISMA"
+  ],
+  "resistances": [
+    "DAMAGE_TYPE_FIRE"
+  ],
+  "resources": [
+    {
+      "key": "pact_slot_2",
+      "label": "Pact Magic (2nd level)",
+      "current": 2,
+      "max": 2
+    },
+    {
+      "key": "hit_dice_d8",
+      "label": "Hit dice (d8)",
+      "current": 3,
+      "max": 3
+    }
+  ],
+  "abilities": [
+    {
+      "abilityId": "weapon-dagger",
+      "name": "Dagger",
+      "description": "Properties: finesse, light, thrown, monk.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 5,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 4,
+            "damage": [
+              {
+                "dice": "1d4+2",
+                "type": "DAMAGE_TYPE_PIERCING"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "weapon-crossbow-light",
+      "name": "Crossbow, light",
+      "description": "Properties: ammunition, loading, two-handed.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 80,
+        "longRangeFeet": 320,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 4,
+            "damage": [
+              {
+                "dice": "1d8+2",
+                "type": "DAMAGE_TYPE_PIERCING"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-thaumaturgy",
+      "name": "Thaumaturgy",
+      "description": "Cantrip. 1 action, 30 feet, 1 minute.\n\nYou manifest a minor wonder, a sign of supernatural power, within range. You create one of the following magical effects within range.\n\n- Your voice booms up to three times as loud as normal for 1 minute.\n\n- You cause flames to flicker, brighten, dim, or change color for 1 minute.\n\n- You cause harmless tremors in the ground for 1 minute.\n\n- You create an instantaneous sound that originates from a point of your choice within range, such as a rumble of thunder, the cry of a raven, or ominous whispers.\n\n- You instantaneously cause an unlocked door or window to fly open or slam shut.\n\n- You alter the appearance of your eyes for 1 minute.\n\nIf you cast this spell multiple times, you can have up to three of its 1-minute effects active at a time, and you can dismiss such an effect as an action.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 30,
+        "maxTargets": 1
+      },
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-mage-armor",
+      "name": "Mage Armor",
+      "description": "1st-level abjuration. 1 action, Touch, 8 hours.\n\nYou touch a willing creature who isn't wearing armor, and a protective magical force surrounds it until the spell ends. The target's base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss the spell as an action.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "maxTargets": 1
+      },
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-eldritch-blast",
+      "name": "Eldritch Blast",
+      "description": "Cantrip. 1 action, 120 feet, Instantaneous.\n\nA beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage. The spell creates more than one beam when you reach higher levels: two beams at 5th level, three beams at 11th level, and four beams at 17th level. You can direct the beams at the same target or at different ones. Make a separate attack roll for each beam.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 120,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "1d10",
+                "type": "DAMAGE_TYPE_FORCE"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-minor-illusion",
+      "name": "Minor Illusion",
+      "description": "Cantrip. 1 action, 30 feet, 1 minute.\n\nYou create a sound or an image of an object within range that lasts for the duration. The illusion also ends if you dismiss it as an action or cast this spell again.\n\nIf you create a sound, its volume can range from a whisper to a scream. It can be your voice, someone else's voice, a lion's roar, a beating of drums, or any other sound you choose. The sound continues unabated throughout the duration, or you can make discrete sounds at different times before the spell ends.\n\nIf you create an image of an object--such as a chair, muddy footprints, or a small chest--it must be no larger than a 5-foot cube. The image can't create sound, light, smell, or any other sensory effect. Physical interaction with the image reveals it to be an illusion, because things can pass through it.\n\nIf a creature uses its action to examine the sound or image, the creature can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC. If a creature discerns the illusion for what it is, the illusion becomes faint to the creature.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 30,
+        "maxTargets": 1
+      },
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-charm-person",
+      "name": "Charm Person",
+      "description": "1st-level enchantment. 1 action, 30 feet, 1 hour.\n\nYou attempt to charm a humanoid you can see within range. It must make a wisdom saving throw, and does so with advantage if you or your companions are fighting it. If it fails the saving throw, it is charmed by you until the spell ends or until you or your companions do anything harmful to it. The charmed creature regards you as a friendly acquaintance. When the spell ends, the creature knows it was charmed by you.",
+      "cost": "ACTION_COST_ACTION",
+      "resourceKey": "pact_slot_2",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 30,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "save": {
+            "ability": "ABILITY_SCORE_WISDOM",
+            "dc": 13
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-burning-hands",
+      "name": "Burning Hands",
+      "description": "1st-level evocation. 1 action, Self, Instantaneous.\n\nAs you hold your hands with thumbs touching and fingers spread, a thin sheet of flames shoots forth from your outstretched fingertips. Each creature in a 15-foot cone must make a dexterity saving throw. A creature takes 3d6 fire damage on a failed save, or half as much damage on a successful one.\n\nThe fire ignites any flammable objects in the area that aren't being worn or carried.",
+      "cost": "ACTION_COST_ACTION",
+      "resourceKey": "pact_slot_2",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_CONE",
+        "sizeFeet": 15
+      },
+      "steps": [
+        {
+          "save": {
+            "ability": "ABILITY_SCORE_DEXTERITY",
+            "dc": 13,
+            "damage": [
+              {
+                "dice": "3d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ],
+            "halfOnSuccess": true
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-hold-person",
+      "name": "Hold Person",
+      "description": "2nd-level enchantment. 1 action, 60 feet, Up to 1 minute.\n\nChoose a humanoid that you can see within range. The target must succeed on a wisdom saving throw or be paralyzed for the duration. At the end of each of its turns, the target can make another wisdom saving throw. On a success, the spell ends on the target.",
+      "cost": "ACTION_COST_ACTION",
+      "resourceKey": "pact_slot_2",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 60,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "save": {
+            "ability": "ABILITY_SCORE_WISDOM",
+            "dc": 13
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-scorching-ray",
+      "name": "Scorching Ray",
+      "description": "2nd-level evocation. 1 action, 120 feet, Instantaneous.\n\nYou create three rays of fire and hurl them at targets within range. You can hurl them at one target or several.\n\nMake a ranged spell attack for each ray. On a hit, the target takes 2d6 fire damage.",
+      "cost": "ACTION_COST_ACTION",
+      "resourceKey": "pact_slot_2",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 120,
+        "maxTargets": 3
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "2d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ]
+          }
+        },
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "2d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ]
+          }
+        },
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "2d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-infernal-legacy",
+      "name": "Infernal Legacy",
+      "description": "You know the thaumaturgy cantrip. When you reach 3rd level, you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the darkness spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-otherworldly-patron",
+      "name": "Otherworldly Patron",
+      "description": "At 1st level, you have struck a bargain with an otherworldly being of your choice, such as the Fiend. Your choice grants you features at 1st level and again at 6th, 10th, and 14th level.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-pact-magic",
+      "name": "Pact Magic",
+      "description": "Your arcane research and the magic bestowed on you by your patron have given you facility with spells.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-dark-one-s-blessing",
+      "name": "Dark One's Blessing",
+      "description": "Starting at 1st level, when you reduce a hostile creature to 0 hit points, you gain temporary hit points equal to your Charisma modifier + your warlock level (minimum of 1).",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-eldritch-invocations",
+      "name": "Eldritch Invocations",
+      "description": "In your study of occult lore, you have unearthed eldritch invocations, fragments of forbidden knowledge that imbue you with an abiding magical ability.\n\nAt 2nd level, you gain two eldritch invocations of your choice. Your invocation options are detailed at the end of the class description. When you gain certain warlock levels, you gain additional invocations of your choice, as shown in the Invocations Known column of the Warlock table.\n\nAdditionally, when you gain a level in this class, you can choose one of the invocations you know and replace it with another invocation that you could learn at that level.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-pact-boon",
+      "name": "Pact Boon",
+      "description": "At 3rd level, your otherworldly patron bestows a gift upon you for your loyal service. You gain one of the following features of your choice.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-shelter-of-the-faithful",
+      "name": "Shelter of the Faithful",
+      "description": "As an acolyte, you command the respect of those who share your faith, and you can perform the religious ceremonies of your deity. You and your adventuring companions can expect to receive free healing and care at a temple, shrine, or other established presence of your faith, though you must provide any material components needed for spells. Those who share your religion will support you (but only you) at a modest lifestyle.\n\nYou might also have ties to a specific temple dedicated to your chosen deity or pantheon, and you have a residence there. This could be the temple where you used to serve, if you remain on good terms with it, or a temple where you have found a new home. While near your temple, you can call upon the priests for assistance, provided the assistance you ask for is not hazardous and you remain in good standing with your temple.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    }
+  ],
+  "summary": "Tiefling Warlock 3",
+  "provenance": {
+    "source": "adventurers-anvil",
+    "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
+    "externalId": "7b1f0c0e-0006-4000-8000-000000000006",
+    "originNotes": "Exported from Adventurer Anvil with srd-5.1 0.6.0."
+  },
+  "skills": [
+    {
+      "skill": "arcana",
+      "bonus": 2
+    },
+    {
+      "skill": "deception",
+      "bonus": 5
+    },
+    {
+      "skill": "insight",
+      "bonus": 3
+    },
+    {
+      "skill": "religion",
+      "bonus": 2
+    }
+  ],
+  "passivePerception": 11
+}

@@ -1,0 +1,73 @@
+{
+  "format": "adventurer-anvil-character",
+  "formatVersion": 1,
+  "id": "7b1f0c0e-0003-4000-8000-000000000003",
+  "name": "Bronna Ironhearth",
+  "system": {
+    "id": "dnd5e-2014",
+    "version": 1
+  },
+  "packs": [
+    {
+      "id": "srd-5.1",
+      "version": "0.6.0"
+    }
+  ],
+  "choices": {
+    "race": "srd-5.1:dwarf",
+    "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf",
+    "race.srd-5.1:dwarf.tools": "masons-tools",
+    "abilities.method": "standard-array",
+    "abilities.standard-array": {
+      "str": 14,
+      "dex": 10,
+      "con": 13,
+      "int": 8,
+      "wis": 15,
+      "cha": 12
+    },
+    "class.class": "srd-5.1:cleric",
+    "class.level": 3,
+    "class.srd-5.1:cleric.skills": [
+      "medicine",
+      "persuasion"
+    ],
+    "class.srd-5.1:cleric.subclass": "srd-5.1:life",
+    "background": "srd-5.1:acolyte",
+    "background.srd-5.1:acolyte.languages": [
+      "srd-5.1:elvish",
+      "srd-5.1:giant"
+    ],
+    "equipment.method": "packages",
+    "equipment.background.srd-5.1:acolyte.items.0": "srd-5.1:amulet",
+    "equipment.background.srd-5.1:acolyte.prayer-book-or-prayer-wheel": "a",
+    "equipment.class.srd-5.1:cleric.items.1": "srd-5.1:emblem",
+    "equipment.class.srd-5.1:cleric.mace-or-warhammer": "a",
+    "equipment.class.srd-5.1:cleric.scale-mail-or-leather-armor-or-chain-mail": "c",
+    "equipment.class.srd-5.1:cleric.crossbow-light-or-simple-weapons": "a",
+    "equipment.class.srd-5.1:cleric.priests-pack-or-explorers-pack": "a",
+    "equipment.armor": "srd-5.1:chain-mail",
+    "equipment.shield": "shield",
+    "spells.srd-5.1:cleric.cantrips": [
+      "srd-5.1:sacred-flame",
+      "srd-5.1:guidance",
+      "srd-5.1:light"
+    ],
+    "spells.srd-5.1:cleric.prepared": [
+      "srd-5.1:healing-word",
+      "srd-5.1:shield-of-faith",
+      "srd-5.1:sanctuary",
+      "srd-5.1:aid",
+      "srd-5.1:guiding-bolt"
+    ],
+    "details.alignment": "lawful-good",
+    "details.age": "96",
+    "background.traits": "Nobody leaves my table hungry or my care hurt.",
+    "details.backstory": "A forge-priest who carries her clan's hearth-blessing on the road."
+  },
+  "overrides": [],
+  "rolls": [],
+  "state": {},
+  "createdAt": "2026-11-24T12:00:00.000Z",
+  "updatedAt": "2026-11-24T12:00:00.000Z"
+}

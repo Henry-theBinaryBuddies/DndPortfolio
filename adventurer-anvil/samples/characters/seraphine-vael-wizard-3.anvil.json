@@ -1,0 +1,82 @@
+{
+  "format": "adventurer-anvil-character",
+  "formatVersion": 1,
+  "id": "7b1f0c0e-0002-4000-8000-000000000002",
+  "name": "Seraphine Vael",
+  "system": {
+    "id": "dnd5e-2014",
+    "version": 1
+  },
+  "packs": [
+    {
+      "id": "srd-5.1",
+      "version": "0.6.0"
+    }
+  ],
+  "choices": {
+    "race": "srd-5.1:elf",
+    "race.srd-5.1:elf.subrace": "srd-5.1:high-elf",
+    "race.srd-5.1:high-elf.language": "srd-5.1:draconic",
+    "race.srd-5.1:high-elf.cantrip": "srd-5.1:prestidigitation",
+    "abilities.method": "standard-array",
+    "abilities.standard-array": {
+      "str": 8,
+      "dex": 14,
+      "con": 13,
+      "int": 15,
+      "wis": 12,
+      "cha": 10
+    },
+    "class.class": "srd-5.1:wizard",
+    "class.level": 3,
+    "class.srd-5.1:wizard.skills": [
+      "arcana",
+      "investigation"
+    ],
+    "class.srd-5.1:wizard.subclass": "srd-5.1:evocation",
+    "background": "srd-5.1:acolyte",
+    "background.srd-5.1:acolyte.languages": [
+      "srd-5.1:dwarvish",
+      "srd-5.1:giant"
+    ],
+    "equipment.method": "packages",
+    "equipment.background.srd-5.1:acolyte.items.0": "srd-5.1:amulet",
+    "equipment.background.srd-5.1:acolyte.prayer-book-or-prayer-wheel": "a",
+    "equipment.class.srd-5.1:wizard.quarterstaff-or-dagger": "a",
+    "equipment.class.srd-5.1:wizard.component-pouch-or-arcane-foci": "a",
+    "equipment.class.srd-5.1:wizard.scholars-pack-or-explorers-pack": "a",
+    "spells.srd-5.1:wizard.cantrips": [
+      "srd-5.1:fire-bolt",
+      "srd-5.1:light",
+      "srd-5.1:mage-hand"
+    ],
+    "spells.srd-5.1:wizard.spellbook": [
+      "srd-5.1:magic-missile",
+      "srd-5.1:shield",
+      "srd-5.1:burning-hands",
+      "srd-5.1:sleep",
+      "srd-5.1:detect-magic",
+      "srd-5.1:mage-armor",
+      "srd-5.1:scorching-ray",
+      "srd-5.1:misty-step",
+      "srd-5.1:thunderwave",
+      "srd-5.1:comprehend-languages"
+    ],
+    "spells.srd-5.1:wizard.prepared": [
+      "srd-5.1:magic-missile",
+      "srd-5.1:shield",
+      "srd-5.1:burning-hands",
+      "srd-5.1:scorching-ray",
+      "srd-5.1:misty-step"
+    ],
+    "details.alignment": "neutral-good",
+    "details.age": "140",
+    "background.traits": "I collect the true names of small fires.",
+    "details.backstory": "Raised in a temple library, she learned magic from its oldest books."
+  },
+  "overrides": [],
+  "rolls": [],
+  "state": {},
+  "createdAt": "2026-11-24T12:00:00.000Z",
+  "updatedAt": "2026-11-24T12:00:00.000Z"
+}

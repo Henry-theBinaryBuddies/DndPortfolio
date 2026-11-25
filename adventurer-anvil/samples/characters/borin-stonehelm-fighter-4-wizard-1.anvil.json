@@ -1,0 +1,85 @@
+{
+  "format": "adventurer-anvil-character",
+  "formatVersion": 1,
+  "id": "7b1f0c0e-0007-4000-8000-000000000007",
+  "name": "Borin Stonehelm",
+  "system": {
+    "id": "dnd5e-2014",
+    "version": 1
+  },
+  "packs": [
+    {
+      "id": "srd-5.1",
+      "version": "0.6.0"
+    }
+  ],
+  "choices": {
+    "race": "srd-5.1:dwarf",
+    "race.srd-5.1:dwarf.subrace": "srd-5.1:hill-dwarf",
+    "race.srd-5.1:dwarf.tools": "smiths-tools",
+    "abilities.method": "standard-array",
+    "abilities.standard-array": {
+      "str": 15,
+      "dex": 12,
+      "con": 14,
+      "int": 13,
+      "wis": 10,
+      "cha": 8
+    },
+    "class.class": "srd-5.1:fighter",
+    "class.level": 5,
+    "class.multi": {
+      "srd-5.1:wizard": 1
+    },
+    "class.srd-5.1:fighter.skills": [
+      "athletics",
+      "perception"
+    ],
+    "class.srd-5.1:fighter.fighting-style": "defense",
+    "class.srd-5.1:fighter.subclass": "srd-5.1:champion",
+    "class.srd-5.1:fighter.asi-4": {
+      "str": 2
+    },
+    "background": "srd-5.1:acolyte",
+    "background.srd-5.1:acolyte.languages": [
+      "srd-5.1:elvish",
+      "srd-5.1:giant"
+    ],
+    "equipment.method": "packages",
+    "equipment.background.srd-5.1:acolyte.items.0": "srd-5.1:amulet",
+    "equipment.background.srd-5.1:acolyte.prayer-book-or-prayer-wheel": "a",
+    "equipment.class.srd-5.1:fighter.chain-mail-or-leather-armor": "a",
+    "equipment.class.srd-5.1:fighter.martial-weapons-and-shield-or-martial-weapons": "a",
+    "equipment.class.srd-5.1:fighter.crossbow-light-or-handaxe": "a",
+    "equipment.class.srd-5.1:fighter.dungeoneers-pack-or-explorers-pack": "b",
+    "equipment.class.srd-5.1:fighter.martial-weapons-and-shield-or-martial-weapons.a.0": "srd-5.1:warhammer",
+    "equipment.armor": "srd-5.1:chain-mail",
+    "equipment.shield": "shield",
+    "spells.srd-5.1:wizard.cantrips": [
+      "srd-5.1:fire-bolt",
+      "srd-5.1:light",
+      "srd-5.1:mage-hand"
+    ],
+    "spells.srd-5.1:wizard.spellbook": [
+      "srd-5.1:magic-missile",
+      "srd-5.1:shield",
+      "srd-5.1:sleep",
+      "srd-5.1:detect-magic",
+      "srd-5.1:burning-hands",
+      "srd-5.1:thunderwave"
+    ],
+    "spells.srd-5.1:wizard.prepared": [
+      "srd-5.1:magic-missile",
+      "srd-5.1:shield"
+    ],
+    "details.alignment": "lawful-good",
+    "details.age": "87",
+    "background.traits": "I quote old sagas at every meal.",
+    "details.backstory": "Grew up in the Iron Hills, then left to see what lies past the mountains."
+  },
+  "overrides": [],
+  "rolls": [],
+  "state": {},
+  "createdAt": "2026-11-24T12:00:00.000Z",
+  "updatedAt": "2026-11-24T12:00:00.000Z"
+}

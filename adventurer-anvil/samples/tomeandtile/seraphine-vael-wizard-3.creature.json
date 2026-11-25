@@ -1,0 +1,444 @@
+{
+  "kind": "CREATURE_KIND_PLAYER_CHARACTER",
+  "name": "Seraphine Vael",
+  "edition": "RULES_EDITION_2014",
+  "size": "CREATURE_SIZE_MEDIUM",
+  "scores": {
+    "strength": 8,
+    "dexterity": 16,
+    "constitution": 13,
+    "intelligence": 16,
+    "wisdom": 12,
+    "charisma": 10
+  },
+  "proficiencyBonus": 2,
+  "armorClass": 13,
+  "hpCurrent": 17,
+  "hpMax": 17,
+  "speedFeet": 30,
+  "initiativeBonus": 3,
+  "saveProficiencies": [
+    "ABILITY_SCORE_INTELLIGENCE",
+    "ABILITY_SCORE_WISDOM"
+  ],
+  "resources": [
+    {
+      "key": "spell_slot_1",
+      "label": "1st-level slots",
+      "current": 4,
+      "max": 4
+    },
+    {
+      "key": "spell_slot_2",
+      "label": "2nd-level slots",
+      "current": 2,
+      "max": 2
+    },
+    {
+      "key": "hit_dice_d6",
+      "label": "Hit dice (d6)",
+      "current": 3,
+      "max": 3
+    }
+  ],
+  "abilities": [
+    {
+      "abilityId": "weapon-quarterstaff",
+      "name": "Quarterstaff",
+      "description": "Properties: versatile, monk.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 5,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 1,
+            "damage": [
+              {
+                "dice": "1d6-1",
+                "type": "DAMAGE_TYPE_BLUDGEONING"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "weapon-quarterstaff-two-handed",
+      "name": "Quarterstaff (two-handed)",
+      "description": "Properties: versatile, monk.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 5,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 1,
+            "damage": [
+              {
+                "dice": "1d8-1",
+                "type": "DAMAGE_TYPE_BLUDGEONING"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-prestidigitation",
+      "name": "Prestidigitation",
+      "description": "Cantrip. 1 action, 10 feet, 1 hour.\n\nThis spell is a minor magical trick that novice spellcasters use for practice. You create one of the following magical effects within 'range':\n\nYou create an instantaneous, harmless sensory effect, such as a shower of sparks, a puff of wind, faint musical notes, or an odd odor.\n\nYou instantaneously light or snuff out a candle, a torch, or a small campfire.\n\nYou instantaneously clean or soil an object no larger than 1 cubic foot.\n\nYou chill, warm, or flavor up to 1 cubic foot of nonliving material for 1 hour.\n\nYou make a color, a small mark, or a symbol appear on an object or a surface for 1 hour.\n\nYou create a nonmagical trinket or an illusory image that can fit in your hand and that lasts until the end of your next turn.\n\nIf you cast this spell multiple times, you can have up to three of its non-instantaneous effects active at a time, and you can dismiss such an effect as an action.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 10,
+        "maxTargets": 1
+      },
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-fire-bolt",
+      "name": "Fire Bolt",
+      "description": "Cantrip. 1 action, 120 feet, Instantaneous.\n\nYou hurl a mote of fire at a creature or object within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 fire damage. A flammable object hit by this spell ignites if it isn't being worn or carried.\n\nThis spell's damage increases by 1d10 when you reach 5th level (2d10), 11th level (3d10), and 17th level (4d10).",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 120,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "1d10",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-light",
+      "name": "Light",
+      "description": "Cantrip. 1 action, Touch, 1 hour.\n\nYou touch one object that is no larger than 10 feet in any dimension. Until the spell ends, the object sheds bright light in a 20-foot radius and dim light for an additional 20 feet. The light can be colored as you like. Completely covering the object with something opaque blocks the light. The spell ends if you cast it again or dismiss it as an action.\n\nIf you target an object held or worn by a hostile creature, that creature must succeed on a dexterity saving throw to avoid the spell.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "save": {
+            "ability": "ABILITY_SCORE_DEXTERITY",
+            "dc": 13
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-mage-hand",
+      "name": "Mage Hand",
+      "description": "Cantrip. 1 action, 30 feet, 1 minute.\n\nA spectral, floating hand appears at a point you choose within range. The hand lasts for the duration or until you dismiss it as an action. The hand vanishes if it is ever more than 30 feet away from you or if you cast this spell again.\n\nYou can use your action to control the hand. You can use the hand to manipulate an object, open an unlocked door or container, stow or retrieve an item from an open container, or pour the contents out of a vial. You can move the hand up to 30 feet each time you use it.\n\nThe hand can't attack, activate magic items, or carry more than 10 pounds.",
+      "cost": "ACTION_COST_ACTION",
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 30,
+        "maxTargets": 1
+      },
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-magic-missile",
+      "name": "Magic Missile",
+      "description": "1st-level evocation. 1 action, 120 feet, Instantaneous.\n\nYou create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.",
+      "cost": "ACTION_COST_ACTION",
+      "resourceKey": "spell_slot_1",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 120,
+        "maxTargets": 1
+      },
+      "steps": [
+        {
+          "flat": {
+            "damage": [
+              {
+                "dice": "3d4+3",
+                "type": "DAMAGE_TYPE_FORCE"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-shield",
+      "name": "Shield",
+      "description": "1st-level abjuration. 1 reaction, Self, 1 round.\n\nAn invisible barrier of magical force appears and protects you. Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack, and you take no damage from magic missile.",
+      "cost": "ACTION_COST_REACTION",
+      "resourceKey": "spell_slot_1",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_SELF"
+      },
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-burning-hands",
+      "name": "Burning Hands",
+      "description": "1st-level evocation. 1 action, Self, Instantaneous.\n\nAs you hold your hands with thumbs touching and fingers spread, a thin sheet of flames shoots forth from your outstretched fingertips. Each creature in a 15-foot cone must make a dexterity saving throw. A creature takes 3d6 fire damage on a failed save, or half as much damage on a successful one.\n\nThe fire ignites any flammable objects in the area that aren't being worn or carried.",
+      "cost": "ACTION_COST_ACTION",
+      "resourceKey": "spell_slot_1",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_CONE",
+        "sizeFeet": 15
+      },
+      "steps": [
+        {
+          "save": {
+            "ability": "ABILITY_SCORE_DEXTERITY",
+            "dc": 13,
+            "damage": [
+              {
+                "dice": "3d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ],
+            "halfOnSuccess": true
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-scorching-ray",
+      "name": "Scorching Ray",
+      "description": "2nd-level evocation. 1 action, 120 feet, Instantaneous.\n\nYou create three rays of fire and hurl them at targets within range. You can hurl them at one target or several.\n\nMake a ranged spell attack for each ray. On a hit, the target takes 2d6 fire damage.",
+      "cost": "ACTION_COST_ACTION",
+      "resourceKey": "spell_slot_2",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_CREATURES",
+        "rangeFeet": 120,
+        "maxTargets": 3
+      },
+      "steps": [
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "2d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ]
+          }
+        },
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "2d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ]
+          }
+        },
+        {
+          "attack": {
+            "toHitBonus": 5,
+            "damage": [
+              {
+                "dice": "2d6",
+                "type": "DAMAGE_TYPE_FIRE"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "spell-misty-step",
+      "name": "Misty Step",
+      "description": "2nd-level conjuration. 1 bonus action, Self, Instantaneous.\n\nBriefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see.",
+      "cost": "ACTION_COST_BONUS_ACTION",
+      "resourceKey": "spell_slot_2",
+      "resourceAmount": 1,
+      "targeting": {
+        "shape": "TARGET_SHAPE_SELF"
+      },
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-fey-ancestry",
+      "name": "Fey Ancestry",
+      "description": "You have advantage on saving throws against being charmed, and magic cannot put you to sleep.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-trance",
+      "name": "Trance",
+      "description": "Elves do not need to sleep. Instead, they meditate deeply, remaining semiconscious, for 4 hours a day. (The Common word for such meditation is \"trance.\") While meditating, you can dream after a fashion; such dreams are actually mental exercises that have become reflexive through years of practice. After resting this way, you gain the same benefit that a human does from 8 hours of sleep.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-high-elf-cantrip",
+      "name": "High Elf Cantrip",
+      "description": "You know one cantrip of your choice from the wizard spell list. Intelligence is your spellcasting ability for it.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-spellcasting-wizard",
+      "name": "Spellcasting: Wizard",
+      "description": "As a student of arcane magic, you have a spellbook containing spells that show the first glimmerings of your true power.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-arcane-recovery",
+      "name": "Arcane Recovery",
+      "description": "You have learned to regain some of your magical energy by studying your spellbook. Once per day when you finish a short rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your wizard level (rounded up), and none of the slots can be 6th level or higher.\n\nFor example, if you're a 4th-level wizard, you can recover up to two levels worth of spell slots. You can recover either a 2nd-level spell slot or two 1st-level spell slots.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-arcane-tradition",
+      "name": "Arcane Tradition",
+      "description": "When you reach 2nd level, you choose an arcane tradition, shaping your practice of magic through one of eight schools, such as Evocation.\n\nYour choice grants you features at 2nd level and again at 6th, 10th, and 14th level.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-evocation-savant",
+      "name": "Evocation Savant",
+      "description": "Beginning when you select this school at 2nd level, the gold and time you must spend to copy an evocation spell into your spellbook is halved.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-sculpt-spells",
+      "name": "Sculpt Spells",
+      "description": "Beginning at 2nd level, you can create pockets of relative safety within the effects of your evocation spells. When you cast an evocation spell that affects other creatures that you can see, you can choose a number of them equal to 1 + the spell's level. The chosen creatures automatically succeed on their saving throws against the spell, and they take no damage if they would normally take half damage on a successful save.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    },
+    {
+      "abilityId": "feature-shelter-of-the-faithful",
+      "name": "Shelter of the Faithful",
+      "description": "As an acolyte, you command the respect of those who share your faith, and you can perform the religious ceremonies of your deity. You and your adventuring companions can expect to receive free healing and care at a temple, shrine, or other established presence of your faith, though you must provide any material components needed for spells. Those who share your religion will support you (but only you) at a modest lifestyle.\n\nYou might also have ties to a specific temple dedicated to your chosen deity or pantheon, and you have a residence there. This could be the temple where you used to serve, if you remain on good terms with it, or a temple where you have found a new home. While near your temple, you can call upon the priests for assistance, provided the assistance you ask for is not hazardous and you remain in good standing with your temple.",
+      "cost": "ACTION_COST_PASSIVE",
+      "provenance": {
+        "source": "srd-5.1",
+        "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+      }
+    }
+  ],
+  "summary": "High Elf Wizard 3",
+  "provenance": {
+    "source": "adventurers-anvil",
+    "attribution": "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.",
+    "externalId": "7b1f0c0e-0002-4000-8000-000000000002",
+    "originNotes": "Exported from Adventurer Anvil with srd-5.1 0.6.0."
+  },
+  "skills": [
+    {
+      "skill": "arcana",
+      "bonus": 5
+    },
+    {
+      "skill": "insight",
+      "bonus": 3
+    },
+    {
+      "skill": "investigation",
+      "bonus": 5
+    },
+    {
+      "skill": "perception",
+      "bonus": 3
+    },
+    {
+      "skill": "religion",
+      "bonus": 5
+    }
+  ],
+  "passivePerception": 13
+}

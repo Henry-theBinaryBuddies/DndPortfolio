@@ -1,0 +1,75 @@
+{
+  "format": "adventurer-anvil-character",
+  "formatVersion": 1,
+  "id": "7b1f0c0e-0005-4000-8000-000000000005",
+  "name": "Kael Wren",
+  "system": {
+    "id": "dnd5e-2014",
+    "version": 1
+  },
+  "packs": [
+    {
+      "id": "srd-5.1",
+      "version": "0.6.0"
+    }
+  ],
+  "choices": {
+    "race": "srd-5.1:half-elf",
+    "race.srd-5.1:half-elf.abilities": [
+      "dex",
+      "wis"
+    ],
+    "race.srd-5.1:half-elf.skills": [
+      "survival",
+      "nature"
+    ],
+    "race.srd-5.1:half-elf.language": "srd-5.1:sylvan",
+    "abilities.method": "standard-array",
+    "abilities.standard-array": {
+      "str": 12,
+      "dex": 15,
+      "con": 14,
+      "int": 8,
+      "wis": 13,
+      "cha": 10
+    },
+    "class.class": "srd-5.1:ranger",
+    "class.level": 3,
+    "class.srd-5.1:ranger.skills": [
+      "stealth",
+      "perception",
+      "athletics"
+    ],
+    "class.srd-5.1:ranger.fighting-style": "archery",
+    "class.srd-5.1:ranger.subclass": "srd-5.1:hunter",
+    "class.srd-5.1:ranger.favored-enemy-1-type": "beasts",
+    "class.srd-5.1:ranger.natural-explorer-1-terrain-type": "forest",
+    "class.srd-5.1:hunter.hunters-prey": "colossus-slayer",
+    "background": "srd-5.1:acolyte",
+    "background.srd-5.1:acolyte.languages": [
+      "srd-5.1:dwarvish",
+      "srd-5.1:orc"
+    ],
+    "equipment.method": "packages",
+    "equipment.background.srd-5.1:acolyte.items.0": "srd-5.1:amulet",
+    "equipment.background.srd-5.1:acolyte.prayer-book-or-prayer-wheel": "a",
+    "equipment.class.srd-5.1:ranger.scale-mail-or-leather-armor": "b",
+    "equipment.class.srd-5.1:ranger.shortsword-or-simple-melee-weapons": "a",
+    "equipment.class.srd-5.1:ranger.dungeoneers-pack-or-explorers-pack": "b",
+    "equipment.armor": "srd-5.1:leather-armor",
+    "spells.srd-5.1:ranger.known": [
+      "srd-5.1:hunters-mark",
+      "srd-5.1:cure-wounds",
+      "srd-5.1:fog-cloud"
+    ],
+    "details.alignment": "neutral-good",
+    "details.age": "34",
+    "background.traits": "I'd rather sleep under trees than under a roof.",
+    "details.backstory": "A shrine-keeper's child who tracks what threatens the old forest roads."
+  },
+  "overrides": [],
+  "rolls": [],
+  "state": {},
+  "createdAt": "2026-11-24T12:00:00.000Z",
+  "updatedAt": "2026-11-24T12:00:00.000Z"
+}

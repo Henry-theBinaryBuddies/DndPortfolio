@@ -76,7 +76,7 @@ function applyEffect(ctx: Context, source: Source, effect: Effect, choice: strin
     case "spell":
       // A spell a class gives from a later level (a land's circle spells) waits for that level.
       if (effect.level !== undefined && (source.classLevel ?? 0) < effect.level) return;
-      grant(ctx, source, "spells", fullRef(effect.id, source.pack), from, depth, { ability: effect.ability, always: effect.always });
+      grant(ctx, source, "spells", fullRef(effect.id, source.pack), from, depth, { ability: effect.ability, always: effect.always, ...(effect.atWill ? { atWill: true } : {}) });
       return;
     case "expanded-spells":
       for (const id of effect.ids) tally.expandedSpells.push({ ref: fullRef(id, source.pack), from });
@@ -160,7 +160,7 @@ function openImprovement(ctx: Context, source: Source, id: string): void {
 }
 
 /** How a granted spell is cast. */
-export type SpellGrant = { ability?: Ability; always?: boolean };
+export type SpellGrant = { ability?: Ability; always?: boolean; atWill?: boolean };
 
 /** Grants an entry. A missing one is skipped here; the check stage reports it. */
 export function grant(ctx: Context, source: Source, collection: Collection, ref: string, from: Origin, depth: number, spell?: SpellGrant): void {

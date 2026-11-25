@@ -207,15 +207,22 @@ function spellAbilities(
     const ability = s.ability ?? "int";
     const m = mod(ability);
     const fromClass = s.from.step === "spells" || s.from.step === "class";
-    const slotKey = s.level === 0 || !fromClass ? "" : pactCasters.has(s.from.name) && pactLevel ? `pact_slot_${pactLevel}` : `spell_slot_${s.level}`;
+    // A slot of its level (a warlock's, a pact slot); none for cantrips, spells cast at will, and spells a race gives.
+    const slotKey = s.level === 0 || s.atWill || !fromClass ? "" : pactCasters.has(s.from.name) && pactLevel ? `pact_slot_${pactLevel}` : `spell_slot_${s.level}`;
+    /** "1d8+MOD" with the modifier filled in: "1d8+3", "1d8-1", "1d8". */
+    const fill = (dice: string) => dice.replace(/\+MOD/, signed(m)).replace(/MOD/, String(m));
     const damageAt = (d: NonNullable<Spell["damage"]>[number]) => (s.level === 0 ? atLevel(d.atCharacterLevel, level) : atLevel(d.atSlotLevel, s.level) ?? atLevel(d.atCharacterLevel, level));
-    const damage = (spell.damage ?? []).flatMap((d) => (damageAt(d) ? [{ dice: damageAt(d)!, type: DAMAGE[d.type] }] : []));
+    const damage = (spell.damage ?? []).flatMap((d) => (damageAt(d) ? [{ dice: fill(damageAt(d)!), type: DAMAGE[d.type] }] : []));
     const steps: StepInit[] = [];
-    if (spell.attack) steps.push({ step: { case: "attack", value: { toHitBonus: prof + m, damage } } });
-    else if (spell.save) steps.push({ step: { case: "save", value: { ability: ABILITY[spell.save.ability], dc: 8 + prof + m, damage, halfOnSuccess: spell.save.onSuccess === "half" } } });
-    else if (damage.length) steps.push({ step: { case: "flat", value: { damage } } });
+    if (spell.attack) {
+      for (let n = 0; n < (spell.attacks ?? 1); n++) steps.push({ step: { case: "attack", value: { toHitBonus: prof + m, damage } } });
+    } else if (spell.save) {
+      steps.push({ step: { case: "save", value: { ability: ABILITY[spell.save.ability], dc: 8 + prof + m, damage, halfOnSuccess: spell.save.onSuccess === "half" } } });
+    } else if (spell.automatic && damage.length) {
+      steps.push({ step: { case: "flat", value: { damage } } });
+    }
     const heal = atLevel(spell.healing?.atSlotLevel, Math.max(1, s.level));
-    if (heal) steps.push({ step: { case: "flat", value: { healingDice: heal.replace(/\+MOD/, signed(m)).replace(/MOD/, String(m)) } } });
+    if (heal) steps.push({ step: { case: "flat", value: { healingDice: fill(heal) } } });
 
     const range = feet(spell.range);
     const area = spell.area;
@@ -223,7 +230,7 @@ function spellAbilities(
     const targeting: MessageInitShape<typeof TargetingSchema> =
       shape ? { shape, rangeFeet: range, sizeFeet: area!.size, ...(shape === TargetShape.LINE ? { widthFeet: 5 } : {}) }
       : /^self/i.test(spell.range) && !area ? { shape: TargetShape.SELF }
-      : { shape: TargetShape.CREATURES, rangeFeet: range, maxTargets: area ? 0 : 1 }; // a cylinder: the GM picks who's inside
+      : { shape: TargetShape.CREATURES, rangeFeet: range, maxTargets: area ? 0 : spell.attacks ?? 1 }; // a cylinder: the GM picks who's inside
 
     const words = [`${s.level === 0 ? "Cantrip" : `${ORDINAL[s.level]}-level ${spell.school}`}. ${spell.castingTime}, ${spell.range}, ${spell.duration}.`, spell.description ?? spell.summary ?? ""];
     out.push({
