@@ -1,0 +1,72 @@
+{
+  "format": "adventurer-anvil-character",
+  "formatVersion": 1,
+  "id": "7b1f0c0e-0006-4000-8000-000000000006",
+  "name": "Mordecai Ash",
+  "system": {
+    "id": "dnd5e-2014",
+    "version": 1
+  },
+  "packs": [
+    {
+      "id": "srd-5.1",
+      "version": "0.6.0"
+    }
+  ],
+  "choices": {
+    "race": "srd-5.1:tiefling",
+    "abilities.method": "standard-array",
+    "abilities.standard-array": {
+      "str": 8,
+      "dex": 14,
+      "con": 13,
+      "int": 10,
+      "wis": 12,
+      "cha": 15
+    },
+    "class.class": "srd-5.1:warlock",
+    "class.level": 3,
+    "class.srd-5.1:warlock.skills": [
+      "deception",
+      "arcana"
+    ],
+    "class.srd-5.1:warlock.subclass": "srd-5.1:fiend",
+    "class.srd-5.1:warlock.eldritch-invocations": [
+      "agonizing-blast",
+      "armor-of-shadows"
+    ],
+    "class.srd-5.1:warlock.pact-boon": "tome",
+    "background": "srd-5.1:acolyte",
+    "background.srd-5.1:acolyte.languages": [
+      "srd-5.1:dwarvish",
+      "srd-5.1:elvish"
+    ],
+    "equipment.method": "packages",
+    "equipment.background.srd-5.1:acolyte.items.0": "srd-5.1:amulet",
+    "equipment.background.srd-5.1:acolyte.prayer-book-or-prayer-wheel": "a",
+    "equipment.class.srd-5.1:warlock.items.2": "srd-5.1:dagger",
+    "equipment.class.srd-5.1:warlock.crossbow-light-or-simple-weapons": "a",
+    "equipment.class.srd-5.1:warlock.component-pouch-or-arcane-foci": "a",
+    "equipment.class.srd-5.1:warlock.scholars-pack-or-dungeoneers-pack": "a",
+    "equipment.armor": "srd-5.1:leather-armor",
+    "spells.srd-5.1:warlock.cantrips": [
+      "srd-5.1:eldritch-blast",
+      "srd-5.1:minor-illusion"
+    ],
+    "spells.srd-5.1:warlock.known": [
+      "srd-5.1:charm-person",
+      "srd-5.1:burning-hands",
+      "srd-5.1:hold-person",
+      "srd-5.1:scorching-ray"
+    ],
+    "details.alignment": "chaotic-neutral",
+    "details.age": "26",
+    "background.traits": "I always read the small print, especially on contracts.",
+    "details.backstory": "A temple scribe who signed the wrong page of a very old book."
+  },
+  "overrides": [],
+  "rolls": [],
+  "state": {},
+  "createdAt": "2026-11-24T12:00:00.000Z",
+  "updatedAt": "2026-11-24T12:00:00.000Z"
+}

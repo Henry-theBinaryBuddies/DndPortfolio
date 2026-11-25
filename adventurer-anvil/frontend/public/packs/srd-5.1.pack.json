@@ -8180,7 +8180,8 @@
                         {
                           "type": "spell",
                           "id": "mage-armor",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8192,7 +8193,8 @@
                         {
                           "type": "spell",
                           "id": "speak-with-animals",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8239,7 +8241,8 @@
                         {
                           "type": "spell",
                           "id": "detect-magic",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8266,7 +8269,8 @@
                         {
                           "type": "spell",
                           "id": "false-life",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8284,7 +8288,8 @@
                         {
                           "type": "spell",
                           "id": "disguise-self",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8296,7 +8301,8 @@
                         {
                           "type": "spell",
                           "id": "silent-image",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8441,7 +8447,8 @@
                         {
                           "type": "spell",
                           "id": "levitate",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8471,7 +8478,8 @@
                         {
                           "type": "spell",
                           "id": "jump",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8486,7 +8494,8 @@
                         {
                           "type": "spell",
                           "id": "speak-with-dead",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8518,7 +8527,8 @@
                         {
                           "type": "spell",
                           "id": "hold-monster",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8533,7 +8543,8 @@
                         {
                           "type": "spell",
                           "id": "alter-self",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -8548,7 +8559,8 @@
                         {
                           "type": "spell",
                           "id": "arcane-eye",
-                          "ability": "cha"
+                          "ability": "cha",
+                          "atWill": true
                         }
                       ]
                     },
@@ -16062,6 +16074,10 @@
         "concentration": true,
         "description": "A storm cloud appears in the shape of a cylinder that is 10 feet tall with a 60-foot radius, centered on a point you can see 100 feet directly above you. The spell fails if you can't see a point in the air where the storm cloud could appear (for example, if you are in a room that can't accommodate the cloud).\n\nWhen you cast the spell, choose a point you can see within range. A bolt of lightning flashes down from the cloud to that point. Each creature within 5 feet of that point must make a dexterity saving throw. A creature takes 3d10 lightning damage on a failed save, or half as much damage on a successful one. On each of your turns until the spell ends, you can use your action to call down lightning in this way again, targeting the same point or a different one.\n\nIf you are outdoors in stormy conditions when you cast this spell, the spell gives you control over the existing storm instead of creating a new one. Under such conditions, the spell's damage increases by 1d10.",
         "higherLevels": "When you cast this spell using a spell slot of 4th or higher level, the damage increases by 1d10 for each slot level above 3rd.",
+        "save": {
+          "ability": "dex",
+          "onSuccess": "half"
+        },
         "damage": [
           {
             "type": "lightning",
@@ -18157,6 +18173,7 @@
         "concentration": true,
         "description": "You evoke a fiery blade in your free hand. The blade is similar in size and shape to a scimitar, and it lasts for the duration. If you let go of the blade, it disappears, but you can evoke the blade again as a bonus action.\n\nYou can use your action to make a melee spell attack with the fiery blade. On a hit, the target takes 3d6 fire damage.\n\nThe flaming blade sheds bright light in a 10-foot radius and dim light for an additional 10 feet.",
         "higherLevels": "When you cast this spell using a spell slot of 4th level or higher, the damage increases by 1d6 for every two slot levels above 2nd.",
+        "attack": "melee",
         "damage": [
           {
             "type": "fire",
@@ -18230,6 +18247,10 @@
         "concentration": true,
         "description": "A 5-foot-diameter sphere of fire appears in an unoccupied space of your choice within range and lasts for the duration. Any creature that ends its turn within 5 feet of the sphere must make a dexterity saving throw. The creature takes 2d6 fire damage on a failed save, or half as much damage on a successful one.\n\nAs a bonus action, you can move the sphere up to 30 feet. If you ram the sphere into a creature, that creature must make the saving throw against the sphere's damage, and the sphere stops moving this turn.\n\nWhen you move the sphere, you can direct it over barriers up to 5 feet tall and jump it across pits up to 10 feet wide. The sphere ignites flammable objects not being worn or carried, and it sheds bright light in a 20-foot radius and dim light for an additional 20 feet.",
         "higherLevels": "When you cast this spell using a spell slot of 3rd level or higher, the damage increases by 1d6 for each slot level above 2nd.",
+        "save": {
+          "ability": "dex",
+          "onSuccess": "half"
+        },
         "damage": [
           {
             "type": "fire",
@@ -19927,6 +19948,7 @@
         "duration": "Instantaneous",
         "description": "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.",
         "higherLevels": "When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.",
+        "automatic": true,
         "damage": [
           {
             "type": "force",
@@ -21367,6 +21389,8 @@
         "duration": "Instantaneous",
         "description": "You create three rays of fire and hurl them at targets within range. You can hurl them at one target or several.\n\nMake a ranged spell attack for each ray. On a hit, the target takes 2d6 fire damage.",
         "higherLevels": "When you cast this spell using a spell slot of 3rd level or higher, you create one additional ray for each slot level above 2nd.",
+        "attack": "ranged",
+        "attacks": 3,
         "damage": [
           {
             "type": "fire",

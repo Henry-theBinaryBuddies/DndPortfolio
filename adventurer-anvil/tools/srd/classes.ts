@@ -139,6 +139,11 @@ export function buildClasses(raw: RawSrdClasses) {
     optionIds(refs.map((r) => r.index)).forEach((id, i) => offeredAs.set(refs[i].index, { choice: choiceId(f, f.class.index), id }));
   }
 
+  /** Invocations whose spell is cast at will, without a slot; the others are cast once with a warlock slot. */
+  const AT_WILL = new Set([
+    "armor-of-shadows", "beast-speech", "eldritch-sight", "fiendish-vigor", "mask-of-many-faces", "misty-visions", "ascendant-step",
+    "otherworldly-leap", "whispers-of-the-grave", "chains-of-carceri", "master-of-myriad-forms", "visions-of-distant-realms",
+  ]);
   /** The spells an Eldritch Invocation lets a warlock cast (at will, or once per long rest with a warlock slot). */
   const INVOCATION_SPELLS: Record<string, string> = {
     "armor-of-shadows": "mage-armor", "beast-speech": "speak-with-animals", "eldritch-sight": "detect-magic", "fiendish-vigor": "false-life",
@@ -170,7 +175,7 @@ export function buildClasses(raw: RawSrdClasses) {
           }
           const effects: SimpleEffect[] =
             id === "beguiling-influence" ? [{ type: "proficiency", kind: "skill", id: "deception" }, { type: "proficiency", kind: "skill", id: "persuasion" }]
-            : INVOCATION_SPELLS[id] ? [{ type: "spell", id: INVOCATION_SPELLS[id], ability: "cha" as Ability }]
+            : INVOCATION_SPELLS[id] ? [{ type: "spell", id: INVOCATION_SPELLS[id], ability: "cha" as Ability, ...(AT_WILL.has(id) ? { atWill: true as const } : {}) }]
             : [];
           return {
             id,

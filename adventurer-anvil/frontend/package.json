@@ -12,7 +12,8 @@
     "test:browser": "playwright test",
     "schema": "vitest run -u src/systems/dnd5e-2014/schema.test.ts",
     "import:srd": "tsx ../tools/import-srd.ts",
-    "sync:tomeandtile": "tsx ../tools/sync-tomeandtile.ts"
+    "sync:tomeandtile": "tsx ../tools/sync-tomeandtile.ts",
+    "samples": "tsx ../tools/samples.ts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.17.0",

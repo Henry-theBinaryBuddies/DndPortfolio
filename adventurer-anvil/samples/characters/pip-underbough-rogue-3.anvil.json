@@ -1,0 +1,63 @@
+{
+  "format": "adventurer-anvil-character",
+  "formatVersion": 1,
+  "id": "7b1f0c0e-0004-4000-8000-000000000004",
+  "name": "Pip Underbough",
+  "system": {
+    "id": "dnd5e-2014",
+    "version": 1
+  },
+  "packs": [
+    {
+      "id": "srd-5.1",
+      "version": "0.6.0"
+    }
+  ],
+  "choices": {
+    "race": "srd-5.1:halfling",
+    "race.srd-5.1:halfling.subrace": "srd-5.1:lightfoot-halfling",
+    "abilities.method": "standard-array",
+    "abilities.standard-array": {
+      "str": 8,
+      "dex": 15,
+      "con": 14,
+      "int": 13,
+      "wis": 12,
+      "cha": 10
+    },
+    "class.class": "srd-5.1:rogue",
+    "class.level": 3,
+    "class.srd-5.1:rogue.skills": [
+      "stealth",
+      "acrobatics",
+      "sleight-of-hand",
+      "perception"
+    ],
+    "class.srd-5.1:rogue.expertise-1": [
+      "skill:stealth",
+      "tool:thieves-tools"
+    ],
+    "class.srd-5.1:rogue.subclass": "srd-5.1:thief",
+    "background": "srd-5.1:acolyte",
+    "background.srd-5.1:acolyte.languages": [
+      "srd-5.1:dwarvish",
+      "srd-5.1:elvish"
+    ],
+    "equipment.method": "packages",
+    "equipment.background.srd-5.1:acolyte.items.0": "srd-5.1:amulet",
+    "equipment.background.srd-5.1:acolyte.prayer-book-or-prayer-wheel": "a",
+    "equipment.class.srd-5.1:rogue.rapier-or-shortsword": "a",
+    "equipment.class.srd-5.1:rogue.shortbow-or-shortsword": "a",
+    "equipment.class.srd-5.1:rogue.burglars-pack-or-dungeoneers-pack-or-explorers-pack": "a",
+    "equipment.armor": "srd-5.1:leather-armor",
+    "details.alignment": "chaotic-good",
+    "details.age": "31",
+    "background.traits": "I give back half of what I take, to someone who needs it more.",
+    "details.backstory": "A temple's errand runner who learned that locks are only suggestions."
+  },
+  "overrides": [],
+  "rolls": [],
+  "state": {},
+  "createdAt": "2026-11-24T12:00:00.000Z",
+  "updatedAt": "2026-11-24T12:00:00.000Z"
+}

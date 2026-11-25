@@ -1,0 +1,61 @@
+{
+  "format": "adventurer-anvil-character",
+  "formatVersion": 1,
+  "id": "7b1f0c0e-0001-4000-8000-000000000001",
+  "name": "Aldric Thorne",
+  "system": {
+    "id": "dnd5e-2014",
+    "version": 1
+  },
+  "packs": [
+    {
+      "id": "srd-5.1",
+      "version": "0.6.0"
+    }
+  ],
+  "choices": {
+    "race": "srd-5.1:human",
+    "race.srd-5.1:human.language": "srd-5.1:dwarvish",
+    "abilities.method": "standard-array",
+    "abilities.standard-array": {
+      "str": 15,
+      "dex": 13,
+      "con": 14,
+      "int": 8,
+      "wis": 12,
+      "cha": 10
+    },
+    "class.class": "srd-5.1:fighter",
+    "class.level": 3,
+    "class.srd-5.1:fighter.skills": [
+      "athletics",
+      "perception"
+    ],
+    "class.srd-5.1:fighter.fighting-style": "defense",
+    "class.srd-5.1:fighter.subclass": "srd-5.1:champion",
+    "background": "srd-5.1:acolyte",
+    "background.srd-5.1:acolyte.languages": [
+      "srd-5.1:elvish",
+      "srd-5.1:halfling"
+    ],
+    "equipment.method": "packages",
+    "equipment.background.srd-5.1:acolyte.items.0": "srd-5.1:amulet",
+    "equipment.background.srd-5.1:acolyte.prayer-book-or-prayer-wheel": "a",
+    "equipment.class.srd-5.1:fighter.chain-mail-or-leather-armor": "a",
+    "equipment.class.srd-5.1:fighter.martial-weapons-and-shield-or-martial-weapons": "a",
+    "equipment.class.srd-5.1:fighter.crossbow-light-or-handaxe": "a",
+    "equipment.class.srd-5.1:fighter.dungeoneers-pack-or-explorers-pack": "b",
+    "equipment.class.srd-5.1:fighter.martial-weapons-and-shield-or-martial-weapons.a.0": "srd-5.1:longsword",
+    "equipment.armor": "srd-5.1:chain-mail",
+    "equipment.shield": "shield",
+    "details.alignment": "lawful-good",
+    "details.age": "29",
+    "background.traits": "I stand between danger and anyone who can't stand alone.",
+    "details.backstory": "A temple guard who left the gate to follow a pilgrim road."
+  },
+  "overrides": [],
+  "rolls": [],
+  "state": {},
+  "createdAt": "2026-11-24T12:00:00.000Z",
+  "updatedAt": "2026-11-24T12:00:00.000Z"
+}

@@ -63,7 +63,7 @@ export interface Tally {
    * `prepared` is set by the Spells step for spells prepared today.
    */
   /** `note`: words shown beside it, from a choice that marks spells ("Spell Mastery"). */
-  spells: { ref: string; name: string; level: number; from: Origin; ability?: Ability; always?: boolean; prepared?: boolean; description?: string; note?: string }[];
+  spells: { ref: string; name: string; level: number; from: Origin; ability?: Ability; always?: boolean; prepared?: boolean; description?: string; note?: string; atWill?: boolean }[];
   /**
    * Each class that casts spells: its ability and slots by spell level (a warlock's pact slots come back on a short
    * rest). A multiclass character's shared slots are one entry of their own, without an ability.

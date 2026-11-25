@@ -45,11 +45,24 @@ function byLevel(table: Record<string, string> | undefined): Record<string, stri
  */
 const NOT_HEALING = new Set(["aid", "false-life"]);
 
+/**
+ * Spells the files leave without their attack roll or saving throw, read from their SRD text, and the one spell whose
+ * damage is truly automatic. Spells not listed that have damage but neither (Divine Favor, Branding Smite, Fire Shield,
+ * Dimension Door) deal it only in some cases, so it isn't automated.
+ */
+const SPELL_FIXES: Record<string, Partial<Spell>> = {
+  "scorching-ray": { attack: "ranged", attacks: 3 }, // "three rays ... make a ranged spell attack for each ray"
+  "flame-blade": { attack: "melee" }, // "make a melee spell attack with the fiery blade"
+  "call-lightning": { save: { ability: "dex", onSuccess: "half" } }, // "a Dexterity saving throw ... half as much on a successful one"
+  "flaming-sphere": { save: { ability: "dex", onSuccess: "half" } }, // the same
+  "magic-missile": { automatic: true }, // "each dart hits a creature of your choice"
+};
+
 /** What a virtual table can automate, from the files' attack, save, damage, healing and area fields. */
 function automation(s: RawSpell): Partial<Spell> {
-  const out: Partial<Spell> = {};
+  const out: Partial<Spell> = { ...SPELL_FIXES[s.index] };
   if (s.attack_type) out.attack = s.attack_type;
-  if (s.dc) out.save = { ability: s.dc.dc_type.index as Ability, onSuccess: s.dc.dc_success };
+  if (s.dc && !out.save) out.save = { ability: s.dc.dc_type.index as Ability, onSuccess: s.dc.dc_success };
   const damage = (s.damage ?? [])
     .filter((d) => d.damage_type)
     .map((d) => ({

@@ -120,6 +120,8 @@ const spell = z.strictObject({
   always: z.boolean().optional(),
   /** For a spell a class or subclass gives through a choice (a land's circle spells): the class level it comes at. */
   level: z.int().min(1).max(20).optional(),
+  /** Cast at will, without a spell slot (an Eldritch Invocation's Mage Armor). */
+  atWill: z.literal(true).optional(),
 });
 /** Spells added to a class's list for you (a Fiend warlock's expanded list): they become options in that class's spell choices. */
 const expandedSpells = z.strictObject({ type: z.literal("expanded-spells"), ids: z.array(ref).min(1) });
@@ -397,6 +399,10 @@ export const spellSchema = z.strictObject({
   // does; damage by the slot level it's cast at or by the caster's character level (cantrips); healing by slot level;
   // and the area it fills.
   attack: z.enum(["melee", "ranged"]).optional(),
+  /** How many attack rolls it makes (Scorching Ray's three rays); one if not given. */
+  attacks: z.int().min(2).max(10).optional(),
+  /** Its damage needs no attack roll and no save (Magic Missile). Damage on a spell with neither, and without this, is extra damage in some cases only (Divine Favor), so it isn't applied automatically. */
+  automatic: z.literal(true).optional(),
   save: z.strictObject({ ability: z.enum(ABILITIES), onSuccess: z.enum(["half", "none", "other"]) }).optional(),
   damage: z
     .array(z.strictObject({ type: z.enum(DAMAGE_TYPES), atSlotLevel: diceByLevel.optional(), atCharacterLevel: diceByLevel.optional() }))

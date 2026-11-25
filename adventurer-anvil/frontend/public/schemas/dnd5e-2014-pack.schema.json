@@ -607,6 +607,10 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 20
+                        },
+                        "atWill": {
+                          "type": "boolean",
+                          "const": true
                         }
                       },
                       "required": [
@@ -1310,6 +1314,10 @@
                                                   "type": "integer",
                                                   "minimum": 1,
                                                   "maximum": 20
+                                                },
+                                                "atWill": {
+                                                  "type": "boolean",
+                                                  "const": true
                                                 }
                                               },
                                               "required": [
@@ -2168,6 +2176,10 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 20
+                        },
+                        "atWill": {
+                          "type": "boolean",
+                          "const": true
                         }
                       },
                       "required": [
@@ -2871,6 +2883,10 @@
                                                   "type": "integer",
                                                   "minimum": 1,
                                                   "maximum": 20
+                                                },
+                                                "atWill": {
+                                                  "type": "boolean",
+                                                  "const": true
                                                 }
                                               },
                                               "required": [
@@ -3602,6 +3618,10 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 20
+                        },
+                        "atWill": {
+                          "type": "boolean",
+                          "const": true
                         }
                       },
                       "required": [
@@ -4305,6 +4325,10 @@
                                                   "type": "integer",
                                                   "minimum": 1,
                                                   "maximum": 20
+                                                },
+                                                "atWill": {
+                                                  "type": "boolean",
+                                                  "const": true
                                                 }
                                               },
                                               "required": [
@@ -5049,6 +5073,10 @@
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 20
+                            },
+                            "atWill": {
+                              "type": "boolean",
+                              "const": true
                             }
                           },
                           "required": [
@@ -5752,6 +5780,10 @@
                                                       "type": "integer",
                                                       "minimum": 1,
                                                       "maximum": 20
+                                                    },
+                                                    "atWill": {
+                                                      "type": "boolean",
+                                                      "const": true
                                                     }
                                                   },
                                                   "required": [
@@ -6503,6 +6535,10 @@
                                 "type": "integer",
                                 "minimum": 1,
                                 "maximum": 20
+                              },
+                              "atWill": {
+                                "type": "boolean",
+                                "const": true
                               }
                             },
                             "required": [
@@ -7206,6 +7242,10 @@
                                                         "type": "integer",
                                                         "minimum": 1,
                                                         "maximum": 20
+                                                      },
+                                                      "atWill": {
+                                                        "type": "boolean",
+                                                        "const": true
                                                       }
                                                     },
                                                     "required": [
@@ -8339,6 +8379,10 @@
                                 "type": "integer",
                                 "minimum": 1,
                                 "maximum": 20
+                              },
+                              "atWill": {
+                                "type": "boolean",
+                                "const": true
                               }
                             },
                             "required": [
@@ -9042,6 +9086,10 @@
                                                         "type": "integer",
                                                         "minimum": 1,
                                                         "maximum": 20
+                                                      },
+                                                      "atWill": {
+                                                        "type": "boolean",
+                                                        "const": true
                                                       }
                                                     },
                                                     "required": [
@@ -9772,6 +9820,10 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 20
+                        },
+                        "atWill": {
+                          "type": "boolean",
+                          "const": true
                         }
                       },
                       "required": [
@@ -10475,6 +10527,10 @@
                                                   "type": "integer",
                                                   "minimum": 1,
                                                   "maximum": 20
+                                                },
+                                                "atWill": {
+                                                  "type": "boolean",
+                                                  "const": true
                                                 }
                                               },
                                               "required": [
@@ -11547,6 +11603,10 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 20
+                        },
+                        "atWill": {
+                          "type": "boolean",
+                          "const": true
                         }
                       },
                       "required": [
@@ -12250,6 +12310,10 @@
                                                   "type": "integer",
                                                   "minimum": 1,
                                                   "maximum": 20
+                                                },
+                                                "atWill": {
+                                                  "type": "boolean",
+                                                  "const": true
                                                 }
                                               },
                                               "required": [
@@ -12815,6 +12879,15 @@
                   "melee",
                   "ranged"
                 ]
+              },
+              "attacks": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 10
+              },
+              "automatic": {
+                "type": "boolean",
+                "const": true
               },
               "save": {
                 "type": "object",
