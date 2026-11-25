@@ -248,7 +248,7 @@ select { font: inherit; color: var(--ink); background: var(--panel); border: 1px
 .print-only { display: none; }
 .sheet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 10px 0 14px; }
 .check { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
-.sheet-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.sheet-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; align-items: start; }
 .sheet-box { border: 1px solid var(--edge-strong); border-radius: var(--radius); padding: 8px 10px; break-inside: avoid; min-width: 0; }
 .sheet-box > .label { display: block; margin-bottom: 4px; }
 .sheet-box.wide, .identity, .sheet-page > .sheet-box:has(.sheet-tiles), .sheet-page > .sheet-box:has(.sheet-stats), .rulings, .sheet-credits { grid-column: 1 / -1; }
@@ -290,6 +290,20 @@ select { font: inherit; color: var(--ink); background: var(--panel); border: 1px
   .page { padding: 0; max-width: none; }
   .print-only { display: none; }
   .full-text .print-only { display: block; font-size: 10pt; margin: 2px 0 6px; white-space: pre-wrap; }
+  .sheet:not(.full-text) .print-full-only { display: none; }
   .sheet-page { break-after: page; }
   .sheet-page:last-child { break-after: auto; }
 }
+
+/* Records: rows of fields to add, edit and remove. */
+.records { list-style: none; margin: 8px 0; padding: 0; }
+.records > li { border: 1px solid var(--edge); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 8px; }
+.records fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.record-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 12px; flex: 1; min-width: 0; }
+.record-field { display: flex; flex-direction: column; min-width: 0; }
+.record-field.wide { grid-column: 1 / -1; }
+.record-check { align-self: end; padding-bottom: 6px; }
+select.text-input { background: var(--panel); }
+.sheet-records { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.sheet-records li { margin-bottom: 6px; }
+.sheet-record-text { white-space: pre-wrap; margin: 2px 0 0; }

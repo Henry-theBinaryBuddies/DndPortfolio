@@ -74,6 +74,8 @@ function applyEffect(ctx: Context, source: Source, effect: Effect, choice: strin
       tally.features.push({ name: effect.name, summary: effect.summary, description: effect.description, source: effect.source, from });
       return;
     case "spell":
+      // A spell a class gives from a later level (a land's circle spells) waits for that level.
+      if (effect.level !== undefined && (source.classLevel ?? 0) < effect.level) return;
       grant(ctx, source, "spells", fullRef(effect.id, source.pack), from, depth, { ability: effect.ability, always: effect.always });
       return;
     case "expanded-spells":
@@ -224,8 +226,9 @@ export function openChoice(ctx: Context, source: Source, effect: ChoiceEffect, d
     } else if ("options" in from) {
       const option = from.options.find((o) => o.id === pick);
       for (const e of option?.effects ?? []) applyEffect(ctx, source, e as Effect, key, depth + 1);
-    } else {
-      grant(ctx, source, from.collection, pick, { name: source.name, step: source.step, choice: key, ...(source.at ? { at: source.at } : {}) }, depth + 1, spells ? { ability: effect.ability } : undefined);
+    } else if (!(spells && from.spellbook)) {
+      // Spellbook picks (Spell Mastery) are marked in the spellbook by the Spells step, not learnt again.
+      grant(ctx, source, from.collection, pick, { name: source.name, step: source.step, choice: key, ...(source.at ? { at: source.at } : {}) }, depth + 1, spells ? { ability: effect.ability, always: effect.always } : undefined);
     }
   }
 }

@@ -41,7 +41,8 @@ function owned(ctx: Context, choice: OpenChoice): Map<string, { verb: string; fr
       }
     }
   } else if (effect.from.collection === "spells") {
-    spellsHad();
+    // Picks from the spellbook are meant to be spells you have.
+    if (!effect.from.spellbook) spellsHad();
   } else if (effect.from.collection === "languages") {
     for (const l of ctx.tally.languages) if (notThis(l.from)) map.set(l.ref, { verb: "Already known", from: l.from.name });
   } else {

@@ -9243,6 +9243,36 @@
             "level": 18,
             "effects": [
               {
+                "type": "choice",
+                "id": "spell-mastery-1",
+                "label": "Spell Mastery: choose a 1st-level spell in your spellbook",
+                "pick": 1,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "wizard",
+                    "level": 1
+                  },
+                  "spellbook": true
+                },
+                "note": "Spell Mastery"
+              },
+              {
+                "type": "choice",
+                "id": "spell-mastery-2",
+                "label": "Spell Mastery: choose a 2nd-level spell in your spellbook",
+                "pick": 1,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "wizard",
+                    "level": 2
+                  },
+                  "spellbook": true
+                },
+                "note": "Spell Mastery"
+              },
+              {
                 "type": "feature",
                 "name": "Spell Mastery",
                 "description": "At 18th level, you have achieved such mastery over certain spells that you can cast them at will. Choose a 1st-level wizard spell and a 2nd-level wizard spell that are in your spellbook. You can cast those spells at their lowest level without expending a spell slot when you have them prepared. If you want to cast either spell at a higher level, you must expend a spell slot as normal.\n\nBy spending 8 hours in study, you can exchange one or both of the spells you chose for different spells of the same levels."
@@ -9266,6 +9296,22 @@
           {
             "level": 20,
             "effects": [
+              {
+                "type": "choice",
+                "id": "signature-spells",
+                "label": "Signature Spells: choose two 3rd-level spells in your spellbook",
+                "pick": 2,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "wizard",
+                    "level": 3
+                  },
+                  "spellbook": true
+                },
+                "note": "Signature spell",
+                "always": true
+              },
               {
                 "type": "feature",
                 "name": "Signature Spell",
@@ -9646,6 +9692,408 @@
             "level": 2,
             "effects": [
               {
+                "type": "choice",
+                "id": "land",
+                "label": "Circle of the Land: choose your land",
+                "pick": 1,
+                "from": {
+                  "options": [
+                    {
+                      "id": "arctic",
+                      "name": "Arctic",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "hold-person",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "spike-growth",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "sleet-storm",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "slow",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "freedom-of-movement",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "ice-storm",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "commune-with-nature",
+                          "always": true,
+                          "level": 9
+                        },
+                        {
+                          "type": "spell",
+                          "id": "cone-of-cold",
+                          "always": true,
+                          "level": 9
+                        }
+                      ]
+                    },
+                    {
+                      "id": "coast",
+                      "name": "Coast",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "mirror-image",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "misty-step",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "water-breathing",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "water-walk",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "control-water",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "freedom-of-movement",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "conjure-elemental",
+                          "always": true,
+                          "level": 9
+                        },
+                        {
+                          "type": "spell",
+                          "id": "scrying",
+                          "always": true,
+                          "level": 9
+                        }
+                      ]
+                    },
+                    {
+                      "id": "desert",
+                      "name": "Desert",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "blur",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "silence",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "create-food-and-water",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "protection-from-energy",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "blight",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "hallucinatory-terrain",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "insect-plague",
+                          "always": true,
+                          "level": 9
+                        },
+                        {
+                          "type": "spell",
+                          "id": "wall-of-stone",
+                          "always": true,
+                          "level": 9
+                        }
+                      ]
+                    },
+                    {
+                      "id": "forest",
+                      "name": "Forest",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "barkskin",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "spider-climb",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "call-lightning",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "plant-growth",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "divination",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "freedom-of-movement",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "commune-with-nature",
+                          "always": true,
+                          "level": 9
+                        },
+                        {
+                          "type": "spell",
+                          "id": "tree-stride",
+                          "always": true,
+                          "level": 9
+                        }
+                      ]
+                    },
+                    {
+                      "id": "grassland",
+                      "name": "Grassland",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "invisibility",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "pass-without-trace",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "daylight",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "haste",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "divination",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "freedom-of-movement",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "dream",
+                          "always": true,
+                          "level": 9
+                        },
+                        {
+                          "type": "spell",
+                          "id": "insect-plague",
+                          "always": true,
+                          "level": 9
+                        }
+                      ]
+                    },
+                    {
+                      "id": "mountain",
+                      "name": "Mountain",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "spider-climb",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "spike-growth",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "lightning-bolt",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "meld-into-stone",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "stone-shape",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "stoneskin",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "passwall",
+                          "always": true,
+                          "level": 9
+                        },
+                        {
+                          "type": "spell",
+                          "id": "wall-of-stone",
+                          "always": true,
+                          "level": 9
+                        }
+                      ]
+                    },
+                    {
+                      "id": "swamp",
+                      "name": "Swamp",
+                      "effects": [
+                        {
+                          "type": "spell",
+                          "id": "acid-arrow",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "darkness",
+                          "always": true,
+                          "level": 3
+                        },
+                        {
+                          "type": "spell",
+                          "id": "water-walk",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "stinking-cloud",
+                          "always": true,
+                          "level": 5
+                        },
+                        {
+                          "type": "spell",
+                          "id": "freedom-of-movement",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "locate-creature",
+                          "always": true,
+                          "level": 7
+                        },
+                        {
+                          "type": "spell",
+                          "id": "insect-plague",
+                          "always": true,
+                          "level": 9
+                        },
+                        {
+                          "type": "spell",
+                          "id": "scrying",
+                          "always": true,
+                          "level": 9
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "choice",
+                "id": "bonus-cantrip",
+                "label": "Bonus Cantrip: choose a druid cantrip",
+                "pick": 1,
+                "from": {
+                  "collection": "spells",
+                  "where": {
+                    "classes": "druid",
+                    "level": 0
+                  }
+                },
+                "ability": "wis"
+              },
+              {
                 "type": "feature",
                 "name": "Bonus Cantrip",
                 "description": "When you choose this circle at 2nd level, you learn one additional druid cantrip of your choice."
@@ -9658,12 +10106,52 @@
             ]
           },
           {
+            "level": 3,
+            "effects": [
+              {
+                "type": "feature",
+                "name": "Circle Spells",
+                "description": "Your mystical connection to the land infuses you with the ability to cast certain spells. At 3rd, 5th, 7th, and 9th level you gain access to circle spells connected to the land where you became a druid.\n\nChoose that land--arctic, coast, desert, forest, grassland, mountain, or swamp--and consult the associated list of spells.\n\nOnce you gain access to a circle spell, you always have it prepared, and it doesn't count against the number of spells you can prepare each day. If you gain access to a spell that doesn't appear on the druid spell list, the spell is nonetheless a druid spell for you."
+              }
+            ]
+          },
+          {
+            "level": 5,
+            "effects": [
+              {
+                "type": "feature",
+                "name": "Circle Spells",
+                "description": "Your mystical connection to the land infuses you with the ability to cast certain spells. At 3rd, 5th, 7th, and 9th level you gain access to circle spells connected to the land where you became a druid.\n\nChoose that land--arctic, coast, desert, forest, grassland, mountain, or swamp--and consult the associated list of spells.\n\nOnce you gain access to a circle spell, you always have it prepared, and it doesn't count against the number of spells you can prepare each day. If you gain access to a spell that doesn't appear on the druid spell list, the spell is nonetheless a druid spell for you."
+              }
+            ]
+          },
+          {
             "level": 6,
             "effects": [
               {
                 "type": "feature",
                 "name": "Land's Stride",
                 "description": "Starting at 6th level, moving through nonmagical difficult terrain costs you no extra movement. You can also pass through nonmagical plants without being slowed by them and without taking damage from them if they have thorns, spines, or a similar hazard.\n\nIn addition, you have advantage on saving throws against plants that are magically created or manipulated to impede movement, such those created by the entangle spell."
+              }
+            ]
+          },
+          {
+            "level": 7,
+            "effects": [
+              {
+                "type": "feature",
+                "name": "Circle Spells",
+                "description": "Your mystical connection to the land infuses you with the ability to cast certain spells. At 3rd, 5th, 7th, and 9th level you gain access to circle spells connected to the land where you became a druid.\n\nChoose that land--arctic, coast, desert, forest, grassland, mountain, or swamp--and consult the associated list of spells.\n\nOnce you gain access to a circle spell, you always have it prepared, and it doesn't count against the number of spells you can prepare each day. If you gain access to a spell that doesn't appear on the druid spell list, the spell is nonetheless a druid spell for you."
+              }
+            ]
+          },
+          {
+            "level": 9,
+            "effects": [
+              {
+                "type": "feature",
+                "name": "Circle Spells",
+                "description": "Your mystical connection to the land infuses you with the ability to cast certain spells. At 3rd, 5th, 7th, and 9th level you gain access to circle spells connected to the land where you became a druid.\n\nChoose that land--arctic, coast, desert, forest, grassland, mountain, or swamp--and consult the associated list of spells.\n\nOnce you gain access to a circle spell, you always have it prepared, and it doesn't count against the number of spells you can prepare each day. If you gain access to a spell that doesn't appear on the druid spell list, the spell is nonetheless a druid spell for you."
               }
             ]
           },

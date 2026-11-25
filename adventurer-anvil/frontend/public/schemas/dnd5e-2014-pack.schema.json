@@ -602,6 +602,11 @@
                         },
                         "always": {
                           "type": "boolean"
+                        },
+                        "level": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 20
                         }
                       },
                       "required": [
@@ -717,6 +722,9 @@
                                   }
                                 },
                                 "known": {
+                                  "type": "boolean"
+                                },
+                                "spellbook": {
                                   "type": "boolean"
                                 }
                               },
@@ -1297,6 +1305,11 @@
                                                 },
                                                 "always": {
                                                   "type": "boolean"
+                                                },
+                                                "level": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 20
                                                 }
                                               },
                                               "required": [
@@ -1441,6 +1454,13 @@
                             "wis",
                             "cha"
                           ]
+                        },
+                        "note": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "always": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -2143,6 +2163,11 @@
                         },
                         "always": {
                           "type": "boolean"
+                        },
+                        "level": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 20
                         }
                       },
                       "required": [
@@ -2258,6 +2283,9 @@
                                   }
                                 },
                                 "known": {
+                                  "type": "boolean"
+                                },
+                                "spellbook": {
                                   "type": "boolean"
                                 }
                               },
@@ -2838,6 +2866,11 @@
                                                 },
                                                 "always": {
                                                   "type": "boolean"
+                                                },
+                                                "level": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 20
                                                 }
                                               },
                                               "required": [
@@ -2982,6 +3015,13 @@
                             "wis",
                             "cha"
                           ]
+                        },
+                        "note": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "always": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -3557,6 +3597,11 @@
                         },
                         "always": {
                           "type": "boolean"
+                        },
+                        "level": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 20
                         }
                       },
                       "required": [
@@ -3672,6 +3717,9 @@
                                   }
                                 },
                                 "known": {
+                                  "type": "boolean"
+                                },
+                                "spellbook": {
                                   "type": "boolean"
                                 }
                               },
@@ -4252,6 +4300,11 @@
                                                 },
                                                 "always": {
                                                   "type": "boolean"
+                                                },
+                                                "level": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 20
                                                 }
                                               },
                                               "required": [
@@ -4396,6 +4449,13 @@
                             "wis",
                             "cha"
                           ]
+                        },
+                        "note": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "always": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4984,6 +5044,11 @@
                             },
                             "always": {
                               "type": "boolean"
+                            },
+                            "level": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 20
                             }
                           },
                           "required": [
@@ -5099,6 +5164,9 @@
                                       }
                                     },
                                     "known": {
+                                      "type": "boolean"
+                                    },
+                                    "spellbook": {
                                       "type": "boolean"
                                     }
                                   },
@@ -5679,6 +5747,11 @@
                                                     },
                                                     "always": {
                                                       "type": "boolean"
+                                                    },
+                                                    "level": {
+                                                      "type": "integer",
+                                                      "minimum": 1,
+                                                      "maximum": 20
                                                     }
                                                   },
                                                   "required": [
@@ -5823,6 +5896,13 @@
                                 "wis",
                                 "cha"
                               ]
+                            },
+                            "note": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "always": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -6418,6 +6498,11 @@
                               },
                               "always": {
                                 "type": "boolean"
+                              },
+                              "level": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 20
                               }
                             },
                             "required": [
@@ -6533,6 +6618,9 @@
                                         }
                                       },
                                       "known": {
+                                        "type": "boolean"
+                                      },
+                                      "spellbook": {
                                         "type": "boolean"
                                       }
                                     },
@@ -7113,6 +7201,11 @@
                                                       },
                                                       "always": {
                                                         "type": "boolean"
+                                                      },
+                                                      "level": {
+                                                        "type": "integer",
+                                                        "minimum": 1,
+                                                        "maximum": 20
                                                       }
                                                     },
                                                     "required": [
@@ -7257,6 +7350,13 @@
                                   "wis",
                                   "cha"
                                 ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "always": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -8234,6 +8334,11 @@
                               },
                               "always": {
                                 "type": "boolean"
+                              },
+                              "level": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 20
                               }
                             },
                             "required": [
@@ -8349,6 +8454,9 @@
                                         }
                                       },
                                       "known": {
+                                        "type": "boolean"
+                                      },
+                                      "spellbook": {
                                         "type": "boolean"
                                       }
                                     },
@@ -8929,6 +9037,11 @@
                                                       },
                                                       "always": {
                                                         "type": "boolean"
+                                                      },
+                                                      "level": {
+                                                        "type": "integer",
+                                                        "minimum": 1,
+                                                        "maximum": 20
                                                       }
                                                     },
                                                     "required": [
@@ -9073,6 +9186,13 @@
                                   "wis",
                                   "cha"
                                 ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "always": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -9647,6 +9767,11 @@
                         },
                         "always": {
                           "type": "boolean"
+                        },
+                        "level": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 20
                         }
                       },
                       "required": [
@@ -9762,6 +9887,9 @@
                                   }
                                 },
                                 "known": {
+                                  "type": "boolean"
+                                },
+                                "spellbook": {
                                   "type": "boolean"
                                 }
                               },
@@ -10342,6 +10470,11 @@
                                                 },
                                                 "always": {
                                                   "type": "boolean"
+                                                },
+                                                "level": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 20
                                                 }
                                               },
                                               "required": [
@@ -10486,6 +10619,13 @@
                             "wis",
                             "cha"
                           ]
+                        },
+                        "note": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "always": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -11402,6 +11542,11 @@
                         },
                         "always": {
                           "type": "boolean"
+                        },
+                        "level": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 20
                         }
                       },
                       "required": [
@@ -11517,6 +11662,9 @@
                                   }
                                 },
                                 "known": {
+                                  "type": "boolean"
+                                },
+                                "spellbook": {
                                   "type": "boolean"
                                 }
                               },
@@ -12097,6 +12245,11 @@
                                                 },
                                                 "always": {
                                                   "type": "boolean"
+                                                },
+                                                "level": {
+                                                  "type": "integer",
+                                                  "minimum": 1,
+                                                  "maximum": 20
                                                 }
                                               },
                                               "required": [
@@ -12241,6 +12394,13 @@
                             "wis",
                             "cha"
                           ]
+                        },
+                        "note": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "always": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -12358,6 +12518,18 @@
                 "type": "integer",
                 "minimum": 2,
                 "maximum": 9007199254740991
+              },
+              "attunement": {
+                "anyOf": [
+                  {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                ]
               },
               "weapon": {
                 "type": "object",

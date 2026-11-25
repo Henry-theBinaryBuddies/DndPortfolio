@@ -6,6 +6,7 @@
 //   details.age / .height / .weight / .eyes / .skin / .hair    short text
 //   background.traits / .ideal / .bond / .flaw                long text (keys kept from when they were on Background)
 //   details.backstory / .allies / .notes                      long text
+//   details.journal              [{ id, date, title, text }]   the session journal, newest shown first
 //   details.portrait             a data: URL of an image, 256 × 256 at most
 import { NAME_KEY, type ChoiceSpec } from "../../../core";
 import { picksOf, type Context } from "../engine/context";
@@ -18,6 +19,7 @@ const STEP = DETAILS_STEP.id;
 
 export const ALIGNMENT_KEY = "details.alignment";
 export const PORTRAIT_KEY = "details.portrait";
+export const JOURNAL_KEY = "details.journal";
 /** The most a portrait may take in the file (the app shrinks pictures to 256 × 256 first). */
 export const PORTRAIT_MAX_CHARS = 300_000;
 
@@ -107,6 +109,21 @@ export function detailsStep(ctx: Context): void {
   text("details.backstory", "Backstory", { kind: "long-text" });
   text("details.allies", "Allies and organisations", { kind: "long-text" });
   text("details.notes", "Notes", { kind: "long-text" });
+
+  // The session journal: an entry per session, dated today when added.
+  ctx.open.push({
+    spec: {
+      key: JOURNAL_KEY, step: STEP, label: "Session journal", kind: "records", required: false, newestFirst: true, recordName: { one: "entry", many: "entries" },
+      hint: "What happened each session, newest first.",
+      fields: [
+        { id: "date", label: "Date", type: "text", today: true },
+        { id: "title", label: "Title", type: "text" },
+        { id: "text", label: "What happened", type: "long-text" },
+      ],
+    },
+    picks: [],
+    answered: true,
+  });
 
   // Portrait: an image the app has shrunk, kept in the file.
   const portrait = doc.choices[PORTRAIT_KEY];

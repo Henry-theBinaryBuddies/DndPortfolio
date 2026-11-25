@@ -229,6 +229,7 @@ export function buildClasses(raw: RawSrdClasses) {
         from: { proficient: tools ? ["skill", "tool:thieves-tools"] : ["skill"] }, each: { type: "expertise" },
       };
     }
+    if (f.index === "spell-mastery") return undefined; // two choices: see featureEffects
     const arcanum = /^mystic-arcanum-(\d)th-level$/.exec(f.index);
     if (arcanum) {
       const level = Number(arcanum[1]);
@@ -289,6 +290,19 @@ export function buildClasses(raw: RawSrdClasses) {
       case "draconic-resilience":
         note("calculated, with text", "+1 hit point per level, and AC 13 + Dex without armour.");
         return [{ type: "hit-points", perLevel: 1 }, { type: "armor-class", base: 13, abilities: ["dex"] }, feature(f)];
+      case "spell-mastery":
+        note("choice", "A 1st-level and a 2nd-level spell from the spellbook, marked there.");
+        return [
+          { type: "choice", id: "spell-mastery-1", label: "Spell Mastery: choose a 1st-level spell in your spellbook", pick: 1, from: { collection: "spells", where: { classes: "wizard", level: 1 }, spellbook: true }, note: "Spell Mastery" },
+          { type: "choice", id: "spell-mastery-2", label: "Spell Mastery: choose a 2nd-level spell in your spellbook", pick: 1, from: { collection: "spells", where: { classes: "wizard", level: 2 }, spellbook: true }, note: "Spell Mastery" },
+          feature(f),
+        ];
+      case "signature-spell":
+        note("choice", "Two 3rd-level spells from the spellbook, always prepared.");
+        return [
+          { type: "choice", id: "signature-spells", label: "Signature Spells: choose two 3rd-level spells in your spellbook", pick: 2, from: { collection: "spells", where: { classes: "wizard", level: 3 }, spellbook: true }, note: "Signature spell", always: true },
+          feature(f),
+        ];
       case "eldritch-invocations":
         note("choice", "As many as the Invocations Known column says. Prerequisites are checked; skills and spells are given.");
         return [invocations(f), feature(f)];
@@ -427,7 +441,8 @@ export function buildClasses(raw: RawSrdClasses) {
    * wait for levelling up.
    */
   function withSpells(levels: { level: number; effects: Effect[] }[], s: RawSubclass) {
-    if (!s.spells?.length || s.index === "land") return levels;
+    if (s.index === "land") return landLevels(levels, s);
+    if (!s.spells?.length) return levels;
     const byLevel = new Map<number, string[]>();
     for (const sp of s.spells) {
       const at = sp.prerequisites.find((p) => p.type === "level");
@@ -441,6 +456,46 @@ export function buildClasses(raw: RawSrdClasses) {
       const entry = out.find((l) => l.level === level);
       if (entry) entry.effects.push(...effects);
       else out.push({ level, effects });
+    }
+    return out.sort((a, b) => a.level - b.level);
+  }
+
+  /**
+   * The Circle of the Land, which the community files leave unfinished: its choice of land and its bonus cantrip at
+   * druid level 2 (from the features file), and each land's circle spells, always prepared from the druid level each
+   * comes at (3, 5, 7, 9), with the Circle Spells text at those levels.
+   */
+  function landLevels(levels: { level: number; effects: Effect[] }[], s: RawSubclass) {
+    const circle = features.get("circle-of-the-land");
+    if (!circle?.feature_specific?.subfeature_options) throw new Error("The Circle of the Land's choice of land is missing from the features file.");
+    const refs = refsIn(circle.feature_specific.subfeature_options);
+    const ids = optionIds(refs.map((r) => r.index));
+    const spellsFor = (land: string): SimpleEffect[] =>
+      (s.spells ?? [])
+        .filter((sp) => sp.prerequisites.some((p) => p.type === "feature" && p.index === land))
+        .map((sp) => {
+          const at = sp.prerequisites.find((p) => p.type === "level");
+          if (!at) throw new Error(`${sp.spell.name}: a circle spell without a druid level.`);
+          return { type: "spell", id: sp.spell.index, always: true, level: Number(at.index.split("-").pop()) };
+        });
+    const land: Effect = {
+      type: "choice", id: "land", label: "Circle of the Land: choose your land", pick: 1,
+      from: { options: refs.map((r, i) => ({ id: ids[i], name: features.get(r.index)!.name.replace(/^Circle of the Land: /, ""), effects: spellsFor(r.index) })) },
+    };
+    const cantrip: Effect = {
+      type: "choice", id: "bonus-cantrip", label: "Bonus Cantrip: choose a druid cantrip", pick: 1,
+      from: { collection: "spells", where: { classes: "druid", level: 0 } }, ability: "wis",
+    };
+    notes.push({ feature: "circle-of-the-land", name: "Circle of the Land", className: `${s.name} (${s.class.name})`, level: 2, how: "choice", note: "The land, with its circle spells always prepared from the druid level each comes at." });
+    notes.push({ feature: "bonus-cantrip", name: "Bonus Cantrip", className: `${s.name} (${s.class.name})`, level: 2, how: "choice" });
+    const out = levels.map((l) => ({ ...l, effects: l.level === 2 ? [land, cantrip, ...l.effects] : [...l.effects] }));
+    for (const [n, level] of [[1, 3], [2, 5], [3, 7], [4, 9]] as const) {
+      const f = features.get(`circle-spells-${n}`);
+      if (!f) throw new Error(`circle-spells-${n} is missing from the features file.`);
+      const entry = out.find((l) => l.level === level);
+      const effect = feature(f);
+      if (entry) entry.effects.push(effect);
+      else out.push({ level, effects: [effect] });
     }
     return out.sort((a, b) => a.level - b.level);
   }

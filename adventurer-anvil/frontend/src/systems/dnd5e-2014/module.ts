@@ -88,6 +88,7 @@ export const SHEET: SheetPage[] = [
       { kind: "text", label: "Appearance", keys: ["details.age", "details.height", "details.weight", "details.eyes", "details.skin", "details.hair"] },
       { kind: "text", label: "Personality", keys: ["background.traits", "background.ideal", "background.bond", "background.flaw"] },
       { kind: "text", label: "Story", keys: ["details.backstory", "details.allies", "details.notes"] },
+      { kind: "records", label: "Session journal", key: "details.journal", newestFirst: true, print: "full-only" },
     ],
   },
 ];

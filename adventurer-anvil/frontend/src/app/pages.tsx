@@ -27,8 +27,16 @@ export function answerText(spec: ChoiceSpec, value: ChoiceValue | undefined): st
         .map((s) => `${s.name.slice(0, 3)} ${increase ? "+" : ""}${v[s.id]}`);
       return parts.length ? parts.join(", ") : undefined;
     }
+    case "records": {
+      const n = Array.isArray(value) ? value.length : 0;
+      return n ? `${n} ${n === 1 ? spec.recordName?.one ?? "row" : spec.recordName?.many ?? "rows"}` : undefined;
+    }
     case "quantities": {
       if (typeof value !== "object" || Array.isArray(value)) return undefined;
+      if (spec.presentation === "adjust") {
+        const parts = Object.entries(value).filter(([, n]) => typeof n === "number" && n !== 0).map(([v, n]) => `${nameOf(v)} ${(n as number) > 0 ? "+" : "−"}${Math.abs(n as number)}`);
+        return parts.length ? list(parts) : undefined;
+      }
       // A shop's "Rope × 2"; a short list of steppers' "Wizard 1".
       const parts = Object.entries(value).filter(([, n]) => typeof n === "number" && n > 0)
         .map(([v, n]) => (spec.presentation === "steppers" ? `${nameOf(v)} ${n}` : n === 1 ? nameOf(v) : `${nameOf(v)} × ${n}`));

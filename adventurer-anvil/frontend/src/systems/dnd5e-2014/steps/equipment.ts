@@ -12,9 +12,16 @@
 //   equipment.armor                                   "srd-5.1:chain-mail" | "none"
 //   equipment.shield                                  "shield" | "none"
 //
+// The inventory, whichever way the equipment came:
+//   equipment.adjust     { "srd-5.1:torch": -3 }                 changes to what's carried (a count can't go below 0)
+//   equipment.added      { "srd-5.1:rope-hempen": 1 }            items added free: loot, gifts
+//   equipment.custom     [{ id, name, qty, weight, attunement, attuned, note }]   your own items
+//   equipment.attuned    ["srd-5.1:..."]                         carried items that need attunement, attuned to
+//   equipment.purse      [{ id, amount, unit, note }]            money found, spent or given
+//
 // Starting gold replaces both packages, as in the rules.
 import { encumbrance } from "../engine/derive";
-import { rollSets, type ChoiceValue, type Option } from "../../../core";
+import { rollSets, type ChoiceValue, type Option, type RecordRow } from "../../../core";
 import { fullRef, picksOf, type Context } from "../engine/context";
 import type { Origin } from "../engine/tally";
 import type { Background, Class, EquipmentLine, Item, StartingEquipment } from "../packFormat";
@@ -29,6 +36,13 @@ export const GOLD_KEY = "equipment.gold";
 export const SHOP_KEY = "equipment.shop";
 export const ARMOR_KEY = "equipment.armor";
 export const SHIELD_KEY = "equipment.shield";
+export const ADJUST_KEY = "equipment.adjust";
+export const ADDED_KEY = "equipment.added";
+export const CUSTOM_KEY = "equipment.custom";
+export const ATTUNED_KEY = "equipment.attuned";
+export const PURSE_KEY = "equipment.purse";
+/** The most items a character can be attuned to at once. */
+export const MAX_ATTUNED = 3;
 const STEP = EQUIPMENT_STEP.id;
 
 const METHODS: Option[] = [
@@ -256,14 +270,179 @@ export function equipmentStep(ctx: Context): void {
     }
   }
 
+  // The inventory editor changes what's carried before choosing what to wear, but is shown last, after it.
+  const at = ctx.open.length;
+  inventory(ctx, kit);
+  const editor = ctx.open.splice(at);
   wear(ctx);
+  ctx.open.push(...editor);
+}
+
+/** Stored changes: key → a whole number other than 0. Null if malformed. */
+function readChanges(value: ChoiceValue | undefined): Record<string, number> | null {
+  if (value === undefined) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (!Number.isInteger(v)) return null;
+    if (v !== 0) out[k] = v as number;
+  }
+  return out;
+}
+
+/** Stored rows of a records choice: objects with a string id. */
+const rowsOf = (value: ChoiceValue | undefined): RecordRow[] =>
+  Array.isArray(value) ? value.filter((r): r is RecordRow => Boolean(r) && typeof r === "object" && !Array.isArray(r) && typeof (r as { id?: unknown }).id === "string") : [];
+const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+
+/**
+ * The inventory editor: change what's carried, add items free, your own items, attunement and money. These keep
+ * changing in play, so none of them is required for the step to be done.
+ */
+function inventory(ctx: Context, kit: Kit): void {
+  const { doc, content, tally } = ctx;
+  const issue = (id: string, key: string, message: string, severity: "error" | "warning" = "error", overridable = false) =>
+    ctx.issues.push({ id, severity, step: STEP, key, overridable, message });
+
+  // Change what's carried: every item so far, by item (or by name for things no pack has, such as vestments).
+  const keyOf = (i: (typeof tally.items)[number]) => i.ref ?? `name:${i.name}`;
+  const counts = new Map<string, { name: string; qty: number }>();
+  for (const i of tally.items) {
+    const c = counts.get(keyOf(i)) ?? { name: i.name, qty: 0 };
+    c.qty += i.qty;
+    counts.set(keyOf(i), c);
+  }
+  const changes = readChanges(doc.choices[ADJUST_KEY]);
+  ctx.open.push({
+    spec: {
+      key: ADJUST_KEY, step: STEP, label: "Change what you carry", kind: "quantities", presentation: "adjust", required: false,
+      hint: "What your packages or the shop gave you, used up, lost or found more of. A count can't go below 0.",
+      options: [...counts].map(([k, c]) => ({ value: k, name: c.name })),
+      base: Object.fromEntries([...counts].map(([k, c]) => [k, c.qty])),
+    },
+    picks: [],
+    answered: true,
+  });
+  if (changes === null) issue("bad-adjust", ADJUST_KEY, "Changes to what you carry must be whole numbers.");
+  for (const [k, change] of Object.entries(changes ?? {})) {
+    const lines = tally.items.filter((i) => keyOf(i) === k);
+    if (!lines.length) continue; // no longer carried: the change is kept, but there's nothing for it to change
+    if (change > 0) lines[0].qty += change;
+    let left = -change;
+    for (const line of lines) {
+      if (left <= 0) break;
+      const take = Math.min(line.qty, left);
+      line.qty -= take;
+      left -= take;
+    }
+  }
+
+  // Add items free, from any loaded pack.
+  const all = (content.list("items") as unknown as ItemEntry[]).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const added = readShop(doc.choices[ADDED_KEY]);
+  ctx.open.push({
+    spec: { key: ADDED_KEY, step: STEP, label: "Add items", hint: "Loot, gifts or anything else, free.", kind: "quantities", required: false, options: all.map(itemOption) },
+    picks: [],
+    answered: true,
+  });
+  if (added === null) issue("bad-added", ADDED_KEY, "Added items must be whole numbers of each.");
+  for (const [ref, qty] of Object.entries(added ?? {})) {
+    const item = all.find((i) => i.ref === ref);
+    if (!item) {
+      issue(`missing-content:${ADDED_KEY}:${ref}`, ADDED_KEY, `Added "${ref}", which is not in any loaded pack.`);
+      continue;
+    }
+    kit.add(ref, qty * (item.bundle ?? 1), { name: "Added", step: STEP, choice: ADDED_KEY });
+  }
+
+  // Your own items.
+  const custom = rowsOf(doc.choices[CUSTOM_KEY]);
+  ctx.open.push({
+    spec: {
+      key: CUSTOM_KEY, step: STEP, label: "Your own items", kind: "records", required: false, recordName: { one: "item", many: "items" },
+      hint: "Anything the loaded packs don't have. Weight is for one of them.",
+      fields: [
+        { id: "name", label: "Name", type: "text", required: true },
+        { id: "qty", label: "How many", type: "number" },
+        { id: "weight", label: "Weight each (lb)", type: "number" },
+        { id: "note", label: "Note", type: "text" },
+        { id: "attunement", label: "Needs attunement", type: "check" },
+        { id: "attuned", label: "Attuned", type: "check" },
+      ],
+    },
+    picks: [],
+    answered: true,
+  });
+  let attuned = 0;
+  custom.forEach((row, n) => {
+    const name = text(row.name);
+    if (!name) return issue(`custom-unnamed:${row.id}`, CUSTOM_KEY, `Your own items: item ${n + 1} needs a name before it counts.`, "warning");
+    const qty = Math.max(0, Math.round(num(row.qty) ?? 1));
+    const yes = row.attunement === true && row.attuned === true;
+    if (yes) attuned++;
+    tally.items.push({ name, qty, weight: Math.max(0, num(row.weight) ?? 0), from: { name: "Your own", step: STEP, choice: CUSTOM_KEY }, ...(yes ? { attuned: true } : {}) });
+  });
+
+  // Attunement to carried items that need it.
+  const needing = new Map<string, ItemEntry>();
+  for (const i of tally.items) {
+    const item = i.ref && i.qty > 0 ? (content.get("items", i.ref) as ItemEntry | undefined) : undefined;
+    if (item?.attunement) needing.set(item.ref, item);
+  }
+  const attunedPicks = picksOf(doc.choices[ATTUNED_KEY]);
+  if (needing.size) {
+    ctx.open.push({
+      spec: {
+        key: ATTUNED_KEY, step: STEP, label: "Attuned items", kind: "pick-many", required: false, count: { min: 0, max: needing.size },
+        hint: `You can be attuned to ${MAX_ATTUNED} items at once.`,
+        options: [...needing.values()].map((i) => ({ value: i.ref, name: i.name, tags: [i.attunement === true ? "Needs attunement" : `Needs attunement ${i.attunement}`] })),
+      },
+      picks: attunedPicks,
+      collection: "items",
+    });
+  }
+  for (const ref of attunedPicks) {
+    if (!needing.has(ref)) continue;
+    attuned++;
+    const line = tally.items.find((i) => i.ref === ref && i.qty > 0);
+    if (line) line.attuned = true;
+  }
+  if (attuned > MAX_ATTUNED) {
+    issue("too-many-attuned", needing.size ? ATTUNED_KEY : CUSTOM_KEY, `You're attuned to ${attuned} items; the most is ${MAX_ATTUNED}.`, "error", true);
+  }
+
+  // Money found, spent or given.
+  const purse = rowsOf(doc.choices[PURSE_KEY]);
+  ctx.open.push({
+    spec: {
+      key: PURSE_KEY, step: STEP, label: "Money", kind: "records", required: false, recordName: { one: "change", many: "changes" },
+      hint: "Coins found, spent or given: one line each. Spending is a minus, such as −5 gp.",
+      fields: [
+        { id: "amount", label: "Amount", type: "number", required: true },
+        { id: "unit", label: "Coin", type: "select", options: (["gp", "sp", "cp", "ep", "pp"] as const).map((u) => ({ value: u, name: u })) },
+        { id: "note", label: "What for", type: "text" },
+      ],
+    },
+    picks: [],
+    answered: true,
+  });
+  for (const row of purse) {
+    const amount = num(row.amount);
+    if (amount === undefined || amount === 0) continue;
+    const unit = (typeof row.unit === "string" && row.unit in COINS ? row.unit : "gp") as Coin;
+    const cp = Math.round(amount * COINS[unit]);
+    tally.coins.push({ cp, label: text(row.note) || (cp > 0 ? "Found" : "Spent") });
+  }
+  const total = tally.coins.reduce((t, c) => t + c.cp, 0);
+  if (purse.length && total < 0) issue("purse-below-zero", PURSE_KEY, `Your money comes to ${coinText(total)}: below nothing.`, "warning", true);
 }
 
 /** What to wear, from the armour and shields carried; and the weapons carried, for attacks. */
 function wear(ctx: Context): void {
   const carried = new Map<string, ItemEntry>();
   for (const i of ctx.tally.items) {
-    const item = i.ref ? (ctx.content.get("items", i.ref) as ItemEntry | undefined) : undefined;
+    const item = i.ref && i.qty > 0 ? (ctx.content.get("items", i.ref) as ItemEntry | undefined) : undefined;
     if (item) carried.set(item.ref, item);
   }
   const all = [...carried.values()];

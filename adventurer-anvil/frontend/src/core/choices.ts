@@ -23,7 +23,24 @@ export type ChoiceKind =
   | "allocate" // spend a budget across slots, with a cost per value
   | "roll" // dice whose result is logged
   | "quantities" // how many of each option, within an optional budget (a shop)
-  | "image"; // a picture, stored as a data: URL (a portrait)
+  | "image" // a picture, stored as a data: URL (a portrait)
+  | "records"; // a list of rows to add, edit and remove, with fields the system defines (a journal)
+
+/**
+ * A field of each row in a "records" choice. `today`: a new row starts with today's date (YYYY-MM-DD).
+ * Rows are stored as objects with an `id` (made by the app) and a value for each field.
+ */
+export interface RecordField {
+  id: string;
+  label: string;
+  type: "text" | "long-text" | "number" | "check" | "select";
+  options?: { value: string; name: string }[];
+  required?: boolean;
+  today?: boolean;
+}
+
+/** One stored row of a "records" choice. */
+export type RecordRow = { id: string } & Record<string, string | number | boolean | null>;
 
 export interface Option {
   /** The value stored when this option is picked: usually a content reference "pack:entry". */
@@ -72,6 +89,12 @@ export interface ChoiceSpec {
   slots?: Slot[];
   /** allocate: what a slot's value is called ("Base" if not given), and whether each value's cost is shown (yes if not given). */
   slotValue?: { label: string; cost?: boolean };
+  /** records: each row's fields, what one row and several are called ("entry", "entries"), and whether the newest is shown first. */
+  fields?: RecordField[];
+  recordName?: { one: string; many: string };
+  newestFirst?: boolean;
+  /** quantities with the "adjust" presentation: each option's starting count; the stored value is the change from it. */
+  base?: Record<string, number>;
   /** assign: the values to place, one per slot (values may repeat, e.g. two rolled 12s). */
   values?: number[];
   /**
@@ -89,9 +112,10 @@ export interface ChoiceSpec {
    * pick-one: "segmented" draws a short list of options as a switch rather than cards.
    * pick-one and pick-many: "list" draws a long list as rows with their details, a search and a filter by tag.
    * quantities: "steppers" draws every option at once, each with its own − and + (a short list), rather than a shop.
+   * quantities: "adjust" draws every option with its starting count (see `base`) and − and +; it stores the changes.
    * roll: "compact" draws one small row (label, latest total, button), for several small rolls side by side.
    */
-  presentation?: "segmented" | "list" | "steppers" | "compact";
+  presentation?: "segmented" | "list" | "steppers" | "adjust" | "compact";
   required: boolean;
   /** What counts when nothing is stored (an optional rule's default): shown as chosen, but not written to the file. */
   defaultValue?: ChoiceValue;

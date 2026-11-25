@@ -68,6 +68,8 @@ const collectionChoiceFrom = z.strictObject({
   where: z.record(z.string(), z.union([whereValue, z.array(whereValue).min(1)])).optional(),
   /** Spells picked here count among the class's spells known (a bard's Magical Secrets). */
   known: z.boolean().optional(),
+  /** Only spells already in the class's spellbook: the picks are marked there, not learnt again (Spell Mastery). */
+  spellbook: z.boolean().optional(),
 });
 /** Pick from one of the module's fixed lists; `each` says what every pick gives. */
 const listChoiceFrom = z.strictObject({
@@ -116,6 +118,8 @@ const spell = z.strictObject({
   ability: z.enum(ABILITIES).optional(),
   /** Always prepared, and not counted against the spells you prepare. */
   always: z.boolean().optional(),
+  /** For a spell a class or subclass gives through a choice (a land's circle spells): the class level it comes at. */
+  level: z.int().min(1).max(20).optional(),
 });
 /** Spells added to a class's list for you (a Fiend warlock's expanded list): they become options in that class's spell choices. */
 const expandedSpells = z.strictObject({ type: z.literal("expanded-spells"), ids: z.array(ref).min(1) });
@@ -156,6 +160,9 @@ const choice = z.strictObject({
   each: eachSchema.optional(),
   /** For picks from spells: the ability they are cast with (a high elf's wizard cantrip: Intelligence). */
   ability: z.enum(ABILITIES).optional(),
+  /** For picks from spells: words shown beside each pick ("Spell Mastery"), and whether they are always prepared. */
+  note: z.string().min(1).optional(),
+  always: z.boolean().optional(),
 });
 
 /**
@@ -333,6 +340,8 @@ export const itemSchema = z.strictObject({
   weight: z.number().min(0).optional(),
   /** Sold in bundles (arrows, 20 to a purchase): cost and weight are for the bundle. */
   bundle: z.int().min(2).optional(),
+  /** Needs attunement to use; words say by whom ("by a cleric"). */
+  attunement: z.union([z.literal(true), z.string().min(1)]).optional(),
   weapon: z
     .strictObject({
       class: z.enum(["simple", "martial"]),
@@ -553,6 +562,8 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
         else if (!columns.has(effect.pick.column)) errors.push(`${at}.pick: no column "${effect.pick.column}" in the class table.`);
       }
       if ("collection" in from && from.known && from.collection !== "spells") errors.push(`${at}.from.known: only choices of spells count among the spells known.`);
+      if ("collection" in from && from.spellbook && from.collection !== "spells") errors.push(`${at}.from.spellbook: only choices of spells come from a spellbook.`);
+      if ((effect.note || effect.always) && !("collection" in from && from.collection === "spells")) errors.push(`${at}: only choices of spells have a note or are always prepared.`);
       if ("list" in from) {
         const expected = CHOICE_LISTS[from.list];
         if (!effect.each) errors.push(`${at}: a choice from the list "${from.list}" needs "each" (a ${expected} effect).`);

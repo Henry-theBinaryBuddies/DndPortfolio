@@ -2,7 +2,8 @@
 
 A D&D character creator that aims for the simplicity of Roll20's Charactermancer: guided steps, legal choices only, a finished sheet at the end. It is an original design and does not copy Roll20's look or text.
 
-Agreed 8 Nov 2026. The prototype is **Milestone 1** below. Everything else is planned and must not be blocked by M1's design.
+Agreed 8 Nov 2026. The prototype is **Milestone 1** below, complete on 24 Nov 2026 (see §10 for the decisions made
+while building it). Everything else is planned and must not be blocked by M1's design.
 
 ## 1. Guiding principle: modular systems
 
@@ -33,16 +34,17 @@ The prototype supports **only the 2014 D&D 5e rules**, but every layer stays sys
 - Sheets store the *results* of choices (e.g. "Darkvision 60 ft"), so a DM viewing your sheet sees the character, not the pack.
 - Each player who owns a book imports their own pack.
 - Before anyone else can upload: a terms checkbox ("I own the rights to what I upload"), a takedown contact, and a DMCA agent registration.
-- **Homebrew editor:** later. M1 defines and documents the schema only.
+- **Homebrew editor:** later. M1 defines and documents the schema only: [`PACK-FORMAT.md`](PACK-FORMAT.md).
 
 ## 3. The builder (guided steps)
 
-Order: **Race → Class → Abilities → Background → Equipment → Spells → Details → Review**. Any step can be revisited; choices made invalid by a later change are flagged where they were made and listed on Review. A live summary of the character stays visible beside the steps.
+Order: **Rules → Race → Abilities → Class → Background → Equipment → Spells → Details → Review → Sheet**. Any step can be revisited; choices made invalid by a later change are flagged where they were made and listed on Review. A live summary of the character stays visible beside the steps.
 
 - **Abilities:** point buy (27), standard array, rolled 4d6-drop-lowest (in-app roller, the roll log kept with the character). No manual entry.
 - **Equipment:** class and background kit choices ("(a) or (b)"); or starting gold and a shop of SRD items; a full inventory editor (weight, coin, attunement, encumbrance); the equipped armour and shield set AC, and equipped weapons make attack rows.
 - **Spells:** search and filter the class list (level, school, ritual, concentration) with full descriptions; correct known/prepared/cantrip counts per class, including the wizard's spellbook; slots tracked, including multiclass and Pact Magic; printable spell cards.
 - **Details:** personality traits, ideals, bonds, flaws (with the background's roll tables), alignment, backstory; appearance (age, height, weight, eyes, skin, hair, with random suggestions from the species); a name generator flavoured by species; allies, organisations, notes and a session journal.
+- **Rules:** the optional rules above, each a switch with a default, so the step is always done (a new character opens at Race).
 - **Portrait:** upload an image, or sculpt one in **Effigy Engine** (opened with the race preset) and bring the token PNG back.
 
 ## 4. The character sheet
@@ -91,3 +93,19 @@ Order: **Race → Class → Abilities → Background → Equipment → Spells �
 - **Roll20 export:** through the Roll20 Pro API (the owner has a Pro account). A Mod (API) script in the game reads an Adventurer Anvil export and builds the character on the sheet.
 - **Storage before M2:** characters stay local in M1: in the browser (localStorage), plus JSON save and open.
 - **Where the API runs:** on the home server, beside Creature Cauldron's service, behind a Cloudflare Tunnel.
+
+## 10. Decisions made while building Milestone 1
+
+- **Step order:** Abilities come before Class (not after, as first written), so class prerequisites, multiclassing and
+  prepared spell counts are right the first time they're shown. Every step can still be revisited. Rules is a step of
+  its own, first, and the Sheet comes after Review.
+- **Equipment:** the inventory editor changes what's carried, adds items free, holds your own items, attunement (at
+  most three, a DM can allow more) and money as a list of changes. SRD 5.1's magic items aren't in the pinned source
+  files, so attunement matters for your own items and packs until they're imported.
+- **The sheet:** laid out by the system and drawn by the app. It prints black on white; feature and spell text and the
+  session journal print only when "Print full text" is ticked, so the sheet stays about two pages. Printable spell cards
+  stay in M4.
+- **SRD gaps the community files leave:** filled from the SRD's text: Grappler, the Circle of the Land's choice of land,
+  bonus cantrip and circle spells, and starting gold where no dice are given (the DM's figure is asked for).
+- **Custom origin:** moves the race's fixed ability increases, each to a different score. Swapping languages and
+  proficiencies isn't required and isn't built.

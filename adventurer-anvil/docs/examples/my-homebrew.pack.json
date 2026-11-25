@@ -1,0 +1,66 @@
+{
+  "$schema": "../../frontend/public/schemas/dnd5e-2014-pack.schema.json",
+  "format": "adventurer-anvil-pack",
+  "formatVersion": 1,
+  "id": "my-homebrew",
+  "version": "0.1.0",
+  "system": "dnd5e-2014",
+  "title": "My homebrew (an example pack)",
+  "requires": ["srd-5.1"],
+  "collections": {
+    "races": [
+      {
+        "id": "variant-human",
+        "name": "Human (variant)",
+        "summary": "A human with a narrower talent and a feat.",
+        "source": { "book": "PHB", "page": 31 },
+        "size": "medium",
+        "rule": "feats",
+        "effects": [
+          { "type": "speed", "walk": 30 },
+          { "type": "language", "id": "srd-5.1:common" },
+          { "type": "choice", "id": "language", "label": "Choose one extra language", "pick": 1, "from": { "collection": "languages" } },
+          { "type": "choice", "id": "abilities", "label": "Choose two abilities", "pick": 2, "from": { "list": "abilities" }, "each": { "type": "ability-bonus", "amount": 1 } },
+          { "type": "choice", "id": "skill", "label": "Choose one skill", "pick": 1, "from": { "list": "skills" }, "each": { "type": "proficiency", "kind": "skill" } },
+          { "type": "choice", "id": "feat", "label": "Choose a feat", "pick": 1, "from": { "collection": "feats" } }
+        ]
+      }
+    ],
+    "subraces": [
+      {
+        "id": "stoneborn",
+        "name": "Stoneborn Dwarf",
+        "summary": "A homebrew dwarf raised among quarries.",
+        "race": "srd-5.1:dwarf",
+        "effects": [
+          { "type": "ability-bonus", "ability": "str", "amount": 1 },
+          { "type": "proficiency", "kind": "tool", "id": "masons-tools" },
+          { "type": "feature", "name": "Quarry Sense", "summary": "You can tell roughly how deep underground you are." }
+        ]
+      }
+    ],
+    "feats": [
+      {
+        "id": "steady-hands",
+        "name": "Steady Hands",
+        "summary": "Your aim holds even when it shouldn't. +1 Dexterity.",
+        "requires": { "abilities": [{ "ability": "dex", "min": 13 }] },
+        "effects": [
+          { "type": "ability-bonus", "ability": "dex", "amount": 1 },
+          { "type": "feature", "name": "Steady Hands", "summary": "Moving before a ranged attack doesn't spoil your aim." }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "id": "ember-ring",
+        "name": "Ember Ring",
+        "summary": "A warm iron ring that never cools.",
+        "categories": ["ring"],
+        "cost": { "amount": 500, "unit": "gp" },
+        "weight": 0,
+        "attunement": true
+      }
+    ]
+  }
+}
