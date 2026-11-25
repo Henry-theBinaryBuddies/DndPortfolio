@@ -312,7 +312,7 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
   for (const s of spells) {
     const mark = s.always ? " (always prepared)" : s.prepared ? " (prepared)" : "";
     add(s.level === 0 ? "cantrips" : "spells", { name: `${s.name}${s.level > 0 ? mark : ""}`, source: s.from.name });
-    const detail = [s.level === 0 ? "Cantrip" : `${ORDINAL[s.level]} level`, s.ability ? `cast with ${ABILITY_NAMES[s.ability]}` : undefined, mark.trim().replace(/[()]/g, "") || undefined]
+    const detail = [s.level === 0 ? "Cantrip" : `${ORDINAL[s.level]} level`, s.ability ? `cast with ${ABILITY_NAMES[s.ability]}` : undefined, mark.trim().replace(/[()]/g, "") || undefined, s.note]
       .filter(Boolean).join(" · ");
     add("spell-list", { name: s.name, source: s.from.name, detail, description: s.description, group: s.level === 0 ? "Cantrips" : `${ORDINAL[s.level]} level` });
   }
@@ -320,8 +320,9 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
   // The inventory: the same thing from the same place (and pack) is one line.
   const inventory = new Map<string, ListItem & { qty: number; base: string }>();
   for (const i of tally.items) {
-    const key = `${i.ref ?? i.name}|${i.in ?? ""}|${i.from.name}`;
-    const line = inventory.get(key) ?? { name: "", base: i.name, qty: 0, source: i.from.name, detail: i.in ? `in ${i.in}` : undefined };
+    if (i.qty <= 0) continue; // used up or lost
+    const key = `${i.ref ?? i.name}|${i.in ?? ""}|${i.from.name}|${i.attuned ? "a" : ""}`;
+    const line = inventory.get(key) ?? { name: "", base: i.attuned ? `${i.name} (attuned)` : i.name, qty: 0, source: i.from.name, detail: i.in ? `in ${i.in}` : undefined };
     line.qty += i.qty;
     inventory.set(key, line);
   }

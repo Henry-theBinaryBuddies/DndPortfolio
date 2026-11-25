@@ -63,7 +63,7 @@ test("printing: light, without the app's frame; long text only when asked for", 
   await expect(text).toBeHidden();
 
   await page.emulateMedia({ media: "screen" });
-  await page.getByRole("checkbox", { name: "Print full feature and spell text" }).check();
+  await page.getByRole("checkbox", { name: "Print full text" }).check();
   await page.emulateMedia({ media: "print" });
   await expect(text).toBeVisible();
 });

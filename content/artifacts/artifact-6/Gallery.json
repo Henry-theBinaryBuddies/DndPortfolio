@@ -5,14 +5,19 @@
     "caption": "The Race step. Every choice changes the summary at once, and any number opens to show where it came from."
   },
   {
+    "src": "./assets/screenshots/artifact-6/08-rules.jpg",
+    "alt": "The Rules step: five switches, for multiclassing, feats, hit points after 1st level, encumbrance and moving a race's ability increases, with Feats set to On and hit points to Rolled.",
+    "caption": "The optional rules, one switch each. Every rule has a default, so a new character starts at Race and never has to visit this page."
+  },
+  {
     "src": "./assets/screenshots/artifact-6/02-abilities-roll.jpg",
     "alt": "The Abilities step set to Roll: six sets of four dice, the lowest die of each crossed out, with their totals, above a table for giving each total to an ability.",
     "caption": "Rolling 4d6 and dropping the lowest, in the app. Every set stays in the roll log, so a DM can see the real results."
   },
   {
     "src": "./assets/screenshots/artifact-6/03-class.jpg",
-    "alt": "The Class step for a Fighter: two skills chosen as chips, the Defense fighting style selected with its +1 AC in armour tag, and a list of what the class gives at level 1.",
-    "caption": "A Fighter's level-1 choices. Features that change numbers, like the Defense style, are calculated, not just described."
+    "alt": "The Class step for a level 5 character: the Level box, and Other classes listed with a minus and plus button each, one level given to Wizard, and most other classes marked in red with the scores they need and the scores the character has.",
+    "caption": "Levels 1 to 20 and multiclassing. Each class shows the scores it needs, and the first class keeps every level the others don't take."
   },
   {
     "src": "./assets/screenshots/artifact-6/04-equipment.jpg",
@@ -25,13 +30,33 @@
     "caption": "Starting gold and the shop. SRD 5.1 has no starting-wealth dice, so you enter what your DM gives you; you can't buy what you can't afford."
   },
   {
+    "src": "./assets/screenshots/artifact-6/09-inventory.jpg",
+    "alt": "The inventory editor: carried items with minus and plus buttons, torches down from 5 to 3, a silk rope added free, and a home-made item, a dragon's tooth, with its quantity, weight and note.",
+    "caption": "The inventory keeps changing in play: used-up torches, loot, your own items and money all update the weight and the purse."
+  },
+  {
     "src": "./assets/screenshots/artifact-6/06-spells.jpg",
     "alt": "The wizard's cantrip list: rows with each spell's school, casting time, range and duration, three cantrips chosen, and Fire Bolt greyed out as already known from the High Elf.",
     "caption": "The Spells step. All 319 SRD spells, with search, filters and full text; a spell you already have elsewhere can't be picked twice."
   },
   {
+    "src": "./assets/screenshots/artifact-6/10-sheet.jpg",
+    "alt": "The character sheet for Borin Stonehelm, Hill Dwarf Fighter 4 / Wizard 1: ability score tiles, combat numbers such as Armor Class 19 and 52 hit points, and saving throws and skills with dots marking proficiency.",
+    "caption": "The character sheet, laid out by the rules module and drawn by the app, which knows nothing about D&D."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/11-print.jpg",
+    "alt": "The same sheet as printed: black on white without the app's header, step list or summary, with the identity block, ability scores, combat numbers, saving throws, skills, attacks and features.",
+    "caption": "As printed: black on white, without the app around it. Feature and spell text and the session journal print only when asked for."
+  },
+  {
     "src": "./assets/screenshots/artifact-6/07-phone.jpg",
     "alt": "The Race step on a phone: one column of race cards, the High Elf chosen, and a Next button fixed at the bottom of the screen.",
     "caption": "On a phone: one column and a Back and Next bar. Every page is checked for WCAG 2.2 AA at both sizes."
+  },
+  {
+    "src": "./assets/screenshots/artifact-6/12-sheet-phone.jpg",
+    "alt": "The character sheet on a phone: one column, with the identity block, ability scores three to a row, the combat numbers and the start of the saving throws.",
+    "caption": "The sheet on a phone: one column, nothing scrolling sideways."
   }
 ]

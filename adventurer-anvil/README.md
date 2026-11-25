@@ -2,18 +2,16 @@
 
 A D&D character creator in the spirit of Roll20's Charactermancer: guided steps, legal choices, a finished sheet. The first rules system is 2014 5e with SRD 5.1 content; the core is built so other systems can be added as modules.
 
-**Status (16 Nov 2026):** Milestone 1, step 7 of 9 (the builder's screens, one step at a time; every step is now built). Done: the
-system-agnostic core (characters, choices, overrides, dice, content packs), the 2014 pack format with its JSON Schema,
-the 2014 rules engine, SRD 5.1's races, subraces, classes, subclasses, the Acolyte background, languages, mundane items and spells as the built-in pack, and the first
-screens: the Race step, the Abilities step (standard array, point buy, rolling with a roll log), the Class step (level 1:
-the class, its skills and level-1 choices, the subclass where it comes at level 1, hit points, Armor Class and what the
-class gives), the Background step (its skills and choices, a swap for any skill given twice, and personality
-written freely with the background's tables as suggestions), the Equipment step (the class and background packages, or
-starting gold and a shop; what you wear, with Armor Class, attacks, money and weight worked out), the Spells step (cantrips,
-spells known or a wizard's spellbook, prepared spells, domain and racial spells, save DC, attack bonus and slots), the
-Details step (name with suggestions, alignment, appearance, personality, backstory and a portrait), a live summary,
-Review (every answer, problems, and DM rulings with notes) and Licences. Nothing is saved yet (step 8). `npm run test:browser` runs the browser and accessibility tests. See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for
-what it will do, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it is put together, and [`LICENSES.md`](LICENSES.md).
+**Status (24 Nov 2026):** Milestone 1, the prototype builder, is complete. It builds 2014 5e characters at any level
+from 1 to 20, with multiclassing and the optional rules, from SRD 5.1 content: Rules, Race, Abilities, Class,
+Background, Equipment (with an inventory editor), Spells and Details (with a session journal), then Review and an
+on-screen, printable sheet. Characters save in the browser and as `.anvil.json` files, and level up later. A DM can
+allow any rule problem, and the sheet shows it. Characters export to Tome & Tile, the team's virtual tabletop, as its
+`Creature` file; play itself (Milestone 3) happens there. Next is Milestone 2: accounts, cloud saves and private packs.
+
+See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for what it does and will do, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+for how it is put together, [`docs/PACK-FORMAT.md`](docs/PACK-FORMAT.md) for writing content packs, and
+[`LICENSES.md`](LICENSES.md).
 
 ## Run it
 
@@ -22,9 +20,11 @@ cd frontend
 npm install
 npm run dev     # http://localhost:5205
 npm test
+npm run test:browser   # browser and accessibility tests (Playwright, Edge)
 npm run build   # static site in frontend/dist
 npm run schema      # rewrite the published pack JSON Schema after a pack format change
 npm run import:srd  # rebuild the SRD 5.1 pack from data/srd-5.1/raw (see its SOURCE.md)
+npm run sync:tomeandtile -- ../../../TomeAndTile   # copy Tome & Tile's contract types again
 ```
 
 Stack: TypeScript, React, Vite, Vitest (as Creature Cauldron's frontend). A Python backend joins in `backend/` at Milestone 2.

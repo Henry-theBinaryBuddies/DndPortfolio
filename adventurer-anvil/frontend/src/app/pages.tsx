@@ -27,8 +27,16 @@ export function answerText(spec: ChoiceSpec, value: ChoiceValue | undefined): st
         .map((s) => `${s.name.slice(0, 3)} ${increase ? "+" : ""}${v[s.id]}`);
       return parts.length ? parts.join(", ") : undefined;
     }
+    case "records": {
+      const n = Array.isArray(value) ? value.length : 0;
+      return n ? `${n} ${n === 1 ? spec.recordName?.one ?? "row" : spec.recordName?.many ?? "rows"}` : undefined;
+    }
     case "quantities": {
       if (typeof value !== "object" || Array.isArray(value)) return undefined;
+      if (spec.presentation === "adjust") {
+        const parts = Object.entries(value).filter(([, n]) => typeof n === "number" && n !== 0).map(([v, n]) => `${nameOf(v)} ${(n as number) > 0 ? "+" : "−"}${Math.abs(n as number)}`);
+        return parts.length ? list(parts) : undefined;
+      }
       // A shop's "Rope × 2"; a short list of steppers' "Wizard 1".
       const parts = Object.entries(value).filter(([, n]) => typeof n === "number" && n > 0)
         .map(([v, n]) => (spec.presentation === "steppers" ? `${nameOf(v)} ${n}` : n === 1 ? nameOf(v) : `${nameOf(v)} × ${n}`));
@@ -73,7 +81,7 @@ function Allow({ issue, onAllow }: { issue: ResolvedIssue; onAllow: (note: strin
   );
 }
 
-export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload, levelUp, onLevelUp }: {
+export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload, levelUp, onLevelUp, exports }: {
   view: CharacterView;
   doc: CharacterDocument;
   stepLabel: (id: string) => string;
@@ -85,6 +93,8 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
   /** Whether the character can go up a level (for systems that have levels), and doing it. */
   levelUp?: LevelUp;
   onLevelUp?: () => void;
+  /** Buttons for the system's exporters (another program's file). */
+  exports?: React.ReactNode;
 }) {
   const open = view.issues.filter((i) => !i.override);
   const errors = open.filter((i) => i.severity === "error");
@@ -196,7 +206,10 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
         <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
           The character is saved in this browser. Download a file to keep it safe, move it to another device, or share it.
         </p>
-        <button type="button" className="button" style={{ marginTop: 8 }} onClick={onDownload}>Download character file</button>
+        <div className="banner-actions" style={{ marginTop: 8 }}>
+          <button type="button" className="button" onClick={onDownload}>Download character file</button>
+          {exports}
+        </div>
       </section>
     </>
   );

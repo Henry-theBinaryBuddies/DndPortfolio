@@ -6,6 +6,7 @@ import { readCharacter, readCharacterText, type CharacterDocument, type ContentI
 import type { Opening } from "./Builder";
 import { downloadCharacter } from "./files";
 import { withChoices } from "./state";
+import { ExportButtons } from "./Exports";
 import { StorageFullError, type CharacterStore, type CharacterSummary } from "./store";
 
 const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "unknown");
@@ -169,6 +170,11 @@ export function Characters({ store, system, content, onOpen, onNew, focusHeading
                     {system.sheet && <button type="button" className="button small" onClick={() => void sheet(c.id)}>Sheet<span className="sr-only"> for {nameOf(c)}</span></button>}
                     {system.levelUp && <button type="button" className="button small" onClick={() => void levelUp(c)}>Level up<span className="sr-only"> {nameOf(c)}</span></button>}
                     <button type="button" className="button small" onClick={() => void download(c.id)}>Download<span className="sr-only"> {nameOf(c)}</span></button>
+                    <ExportButtons system={system} content={content} small nameForScreenReaders={nameOf(c)} getDoc={async () => {
+                      const result = readCharacter(await store.load(c.id), system, content.packs());
+                      if (!result.ok) { setMessage(`That character couldn't be read. ${result.error}`); return null; }
+                      return result.doc;
+                    }} />
                     <button type="button" className="button small" onClick={() => setConfirming(c.id)}>Delete<span className="sr-only"> {nameOf(c)}</span></button>
                   </span>
                 )}

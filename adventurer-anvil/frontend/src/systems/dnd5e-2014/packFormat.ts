@@ -68,6 +68,8 @@ const collectionChoiceFrom = z.strictObject({
   where: z.record(z.string(), z.union([whereValue, z.array(whereValue).min(1)])).optional(),
   /** Spells picked here count among the class's spells known (a bard's Magical Secrets). */
   known: z.boolean().optional(),
+  /** Only spells already in the class's spellbook: the picks are marked there, not learnt again (Spell Mastery). */
+  spellbook: z.boolean().optional(),
 });
 /** Pick from one of the module's fixed lists; `each` says what every pick gives. */
 const listChoiceFrom = z.strictObject({
@@ -116,6 +118,8 @@ const spell = z.strictObject({
   ability: z.enum(ABILITIES).optional(),
   /** Always prepared, and not counted against the spells you prepare. */
   always: z.boolean().optional(),
+  /** For a spell a class or subclass gives through a choice (a land's circle spells): the class level it comes at. */
+  level: z.int().min(1).max(20).optional(),
 });
 /** Spells added to a class's list for you (a Fiend warlock's expanded list): they become options in that class's spell choices. */
 const expandedSpells = z.strictObject({ type: z.literal("expanded-spells"), ids: z.array(ref).min(1) });
@@ -156,6 +160,9 @@ const choice = z.strictObject({
   each: eachSchema.optional(),
   /** For picks from spells: the ability they are cast with (a high elf's wizard cantrip: Intelligence). */
   ability: z.enum(ABILITIES).optional(),
+  /** For picks from spells: words shown beside each pick ("Spell Mastery"), and whether they are always prepared. */
+  note: z.string().min(1).optional(),
+  always: z.boolean().optional(),
 });
 
 /**
@@ -333,6 +340,8 @@ export const itemSchema = z.strictObject({
   weight: z.number().min(0).optional(),
   /** Sold in bundles (arrows, 20 to a purchase): cost and weight are for the bundle. */
   bundle: z.int().min(2).optional(),
+  /** Needs attunement to use; words say by whom ("by a cleric"). */
+  attunement: z.union([z.literal(true), z.string().min(1)]).optional(),
   weapon: z
     .strictObject({
       class: z.enum(["simple", "martial"]),
@@ -363,6 +372,12 @@ export const itemSchema = z.strictObject({
 });
 export type Item = z.infer<typeof itemSchema>;
 
+/** Dice by level: "3d4+3", "1d8+MOD" (MOD: the caster's spellcasting modifier), or a flat number. Keys are levels. */
+const diceByLevel = z.record(
+  z.string().regex(/^(?:[1-9]|1\d|20)$/, "a level from 1 to 20"),
+  z.string().regex(/^(?:\d+d\d+|\d+)(?:[+-](?:\d+d\d+|\d+|MOD))*$/, 'dice such as "8d6", "3d4+3" or "1d8+MOD"'),
+);
+
 export const spellSchema = z.strictObject({
   ...entryBase,
   /** 0 for a cantrip. */
@@ -378,6 +393,16 @@ export const spellSchema = z.strictObject({
   ritual: z.boolean().optional(),
   /** "At Higher Levels". */
   higherLevels: z.string().optional(),
+  // What a virtual table can automate (the Tome & Tile export): an attack roll, or a saving throw with what a success
+  // does; damage by the slot level it's cast at or by the caster's character level (cantrips); healing by slot level;
+  // and the area it fills.
+  attack: z.enum(["melee", "ranged"]).optional(),
+  save: z.strictObject({ ability: z.enum(ABILITIES), onSuccess: z.enum(["half", "none", "other"]) }).optional(),
+  damage: z
+    .array(z.strictObject({ type: z.enum(DAMAGE_TYPES), atSlotLevel: diceByLevel.optional(), atCharacterLevel: diceByLevel.optional() }))
+    .optional(),
+  healing: z.strictObject({ atSlotLevel: diceByLevel }).optional(),
+  area: z.strictObject({ shape: z.enum(["sphere", "cone", "line", "cube", "cylinder"]), size: z.int().positive() }).optional(),
 });
 export type Spell = z.infer<typeof spellSchema>;
 
@@ -553,6 +578,8 @@ export function validatePack(pack: PackFile, required: IndexedPack[]): string[] 
         else if (!columns.has(effect.pick.column)) errors.push(`${at}.pick: no column "${effect.pick.column}" in the class table.`);
       }
       if ("collection" in from && from.known && from.collection !== "spells") errors.push(`${at}.from.known: only choices of spells count among the spells known.`);
+      if ("collection" in from && from.spellbook && from.collection !== "spells") errors.push(`${at}.from.spellbook: only choices of spells come from a spellbook.`);
+      if ((effect.note || effect.always) && !("collection" in from && from.collection === "spells")) errors.push(`${at}: only choices of spells have a note or are always prepared.`);
       if ("list" in from) {
         const expected = CHOICE_LISTS[from.list];
         if (!effect.each) errors.push(`${at}: a choice from the list "${from.list}" needs "each" (a ${expected} effect).`);

@@ -5,18 +5,20 @@ import { useId, useState } from "react";
 import type { CharacterDocument, CharacterView, ContentIndex, ListItem, SheetSection, SystemModule } from "../core";
 import { formatValue } from "./format";
 import { answerText } from "./pages";
+import { asRecords } from "./records";
 
 const MARK = { 1: "●", 2: "◆" } as const;
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
 
-export function Sheet({ system, view, doc, content, attributions, onReview }: {
+export function Sheet({ system, view, doc, content, attributions, onReview, exports }: {
   system: SystemModule;
   view: CharacterView;
   doc: CharacterDocument;
   content: ContentIndex;
   attributions: string[];
   onReview: () => void;
+  exports?: React.ReactNode;
 }) {
   const [full, setFull] = useState(false);
   const fullId = useId();
@@ -31,8 +33,9 @@ export function Sheet({ system, view, doc, content, attributions, onReview }: {
       <div className="sheet-tools screen-only">
         <button type="button" className="button primary" onClick={() => window.print()}>Print</button>
         <label htmlFor={fullId} className="check">
-          <input id={fullId} type="checkbox" checked={full} onChange={(e) => setFull(e.target.checked)} /> Print full feature and spell text
+          <input id={fullId} type="checkbox" checked={full} onChange={(e) => setFull(e.target.checked)} /> Print full text
         </label>
+        {exports}
       </div>
       {toDo.length > 0 && (
         <p className="notice banner screen-only">
@@ -161,6 +164,31 @@ function Section({ section, view, doc, name, picture, rulings }: {
       const items = view.lists[section.list] ?? [];
       if (!items.length) return null;
       return box(<SheetList items={items} full={section.full ?? false} />, section.full ? "wide" : "");
+    }
+    case "records": {
+      const spec = view.steps.flatMap((s) => s.choices).find((c) => c.key === section.key);
+      const rows = asRecords(doc.choices[section.key]);
+      if (!spec || !rows.length) return null;
+      const fields = spec.fields ?? [];
+      const shown = section.newestFirst ? [...rows].reverse() : rows;
+      return box(
+        <ul className="sheet-records">
+          {shown.map((r) => {
+            const line = fields
+              .filter((f) => f.type !== "long-text")
+              .map((f) => (f.type === "check" ? (r[f.id] === true ? f.label : "") : r[f.id] === null || r[f.id] === undefined ? "" : String(r[f.id])))
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <li key={r.id}>
+                {line && <span className="gain-name">{line}</span>}
+                {fields.filter((f) => f.type === "long-text" && typeof r[f.id] === "string" && r[f.id]).map((f) => <p key={f.id} className="sheet-record-text">{String(r[f.id])}</p>)}
+              </li>
+            );
+          })}
+        </ul>,
+        `wide${section.print === "full-only" ? " print-full-only" : ""}`,
+      );
     }
     case "text": {
       const specs = new Map(view.steps.flatMap((s) => s.choices).map((c) => [c.key, c]));

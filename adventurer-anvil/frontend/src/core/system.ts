@@ -35,7 +35,8 @@ export type SheetField = { choice: string; label?: string } | { derived: string;
  * identity (name, the list's words, portrait, and facts), tiles (big numbers with a second value under them), stats
  * (boxed numbers), checklist (derived values with their marks; `unmarked` says what no mark means), rows (label and
  * value, perhaps every derived value whose key starts with a prefix), list (a named list; `full` lists print their
- * long text when the reader asks for it), and text (written choices, by key, with their labels).
+ * long text when the reader asks for it), text (written choices, by key, with their labels), and records (the rows of
+ * a records choice; "full-only" ones print only when the reader asks for long text).
  */
 export type SheetSection =
   | { kind: "identity"; label: string; fields: SheetField[] }
@@ -44,7 +45,19 @@ export type SheetSection =
   | { kind: "checklist"; label: string; items: { key: string }[]; prefix?: { key: string }; unmarked: string }
   | { kind: "rows"; label: string; items: { key: string; format?: ValueFormat }[]; prefix?: { key: string; format?: ValueFormat } }
   | { kind: "list"; label: string; list: string; full?: boolean }
-  | { kind: "text"; label: string; keys: string[] };
+  | { kind: "text"; label: string; keys: string[] }
+  | { kind: "records"; label: string; key: string; newestFirst?: boolean; print?: "full-only" };
+
+/**
+ * A file a character can be exported as. `build` is pure: it returns the file's name, type and text, and anything the
+ * person should know first (an unfinished character), which the app shows before downloading.
+ */
+export interface Exporter {
+  id: string;
+  /** The button's words, e.g. "Export for Tome & Tile". */
+  label: string;
+  build(doc: CharacterDocument, content: ContentIndex): { fileName: string; mediaType: string; text: string; warnings: string[] };
+}
 
 /** A page of the sheet: printed on its own page, one column on a phone. */
 export interface SheetPage {
@@ -62,6 +75,8 @@ export interface SystemModule {
   summary: SummaryGroup[];
   /** The character sheet, page by page. Without it, the app offers no sheet. */
   sheet?: SheetPage[];
+  /** Files a character can be exported as, for other programs (a virtual table). */
+  exporters?: Exporter[];
   /** Lists shown on a step's own page, after its choices (e.g. what the chosen class gives), by step id. */
   stepLists?: Record<string, { label: string; list: string }[]>;
   /** Choices a new character starts with. */

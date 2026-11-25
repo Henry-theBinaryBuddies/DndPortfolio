@@ -53,7 +53,7 @@ export interface Tally {
    * What the character carries. `ref` is missing for things named only in starting equipment ("vestments");
    * `weight` is per item (a bundle's weight already shared out); `in` names the pack it came in.
    */
-  items: { ref?: string; name: string; qty: number; weight: number; from: Origin; in?: string }[];
+  items: { ref?: string; name: string; qty: number; weight: number; from: Origin; in?: string; attuned?: boolean }[];
   /** Money in copper pieces: what was given or rolled, and what was spent (negative). */
   coins: { cp: number; label: string }[];
   /** What is worn: body armour and a shield. */
@@ -62,7 +62,8 @@ export interface Tally {
    * Spells the character has, once each: `ability` is what it's cast with; `always` means always prepared;
    * `prepared` is set by the Spells step for spells prepared today.
    */
-  spells: { ref: string; name: string; level: number; from: Origin; ability?: Ability; always?: boolean; prepared?: boolean; description?: string }[];
+  /** `note`: words shown beside it, from a choice that marks spells ("Spell Mastery"). */
+  spells: { ref: string; name: string; level: number; from: Origin; ability?: Ability; always?: boolean; prepared?: boolean; description?: string; note?: string }[];
   /**
    * Each class that casts spells: its ability and slots by spell level (a warlock's pact slots come back on a short
    * rest). A multiclass character's shared slots are one entry of their own, without an ability.

@@ -84,6 +84,10 @@ function classSpells(
   const { doc, content, tally } = ctx;
   const sc = cls.spellcasting!;
   const columns = columnsAt(cls.columns, level);
+  // Spell choices the class or its subclass opened (Mystic Arcanum, Magical Secrets, Spell Mastery) follow the class's own.
+  const opened = (o: (typeof ctx.open)[number]) => o.spec.step === STEP && (o.source?.key === `class.${cls.ref}` || (subclass !== undefined && o.source?.name === subclass));
+  const extras = ctx.open.filter(opened);
+  ctx.open = ctx.open.filter((o) => !opened(o));
   const count = (column?: string) => (column ? Number(columns[column]) || 0 : 0);
   // The class's own table says the highest level it can learn, even when a multiclass character's slots go higher.
   const own: Record<number, number> = {};
@@ -124,7 +128,7 @@ function classSpells(
   if (cantrips) choose("cantrips", `${cls.name} cantrips (${cantrips})`, list.filter((s) => s.level === 0), cantrips);
   if (sc.kind === "known" || sc.kind === "pact") {
     // Spells chosen from any class that count among the spells known (Magical Secrets) leave fewer to choose here.
-    const elsewhere = ctx.open
+    const elsewhere = extras
       .filter((o) => o.source?.key === `class.${cls.ref}` && o.effect && "collection" in o.effect.from && o.effect.from.known)
       .reduce((t, o) => t + (o.spec.count?.max ?? 1), 0);
     const known = count(sc.known) - elsewhere;
@@ -139,6 +143,18 @@ function classSpells(
     const n = sc.spellbook.start + sc.spellbook.perLevel * (level - 1);
     book = choose("spellbook", `Spellbook: ${levelWords} ${listId} spells (${n})`, leveled, n);
   }
+  // Choices that mark spells already in the book (Spell Mastery, Signature Spells): only the book's spells count.
+  for (const o of extras) {
+    const from = o.effect?.from;
+    if (!o.effect || !from || !("collection" in from) || !from.spellbook) continue;
+    o.spec.options = o.spec.options?.filter((opt) => book.includes(String(opt.value)));
+    for (const s of tally.spells) {
+      if (!o.picks.includes(s.ref) || !book.includes(s.ref)) continue;
+      if (o.effect.note) s.note = s.note ? `${s.note}, ${o.effect.note}` : o.effect.note;
+      if (o.effect.always) s.always = true;
+    }
+  }
+
   // Prepared spells; a spellbook caster's come from the book, so not until it has some.
   if (sc.kind === "prepared" || (sc.kind === "spellbook" && book.length > 0)) {
     const score = base[sc.ability] + bonusesFor(tally, sc.ability).reduce((t, b) => t + b.amount, 0);
@@ -169,4 +185,6 @@ function classSpells(
       });
     }
   }
+  // A spellbook choice waits until the book has a spell it could mark (unless something is already picked).
+  ctx.open.push(...extras.filter((o) => !(o.effect && "collection" in o.effect.from && o.effect.from.spellbook) || (o.spec.options?.length ?? 0) > 0 || o.picks.length > 0));
 }

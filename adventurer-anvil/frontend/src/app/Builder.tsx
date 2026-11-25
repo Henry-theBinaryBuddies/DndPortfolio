@@ -7,6 +7,7 @@ import { downloadCharacter } from "./files";
 import type { LoadedPack } from "./packs";
 import { Licences, Review } from "./pages";
 import { Sheet } from "./Sheet";
+import { ExportButtons } from "./Exports";
 import { reducer } from "./state";
 import type { CharacterStore } from "./store";
 import { Summary, type TodoItem } from "./Summary";
@@ -240,6 +241,7 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
               onDisallow={(issueId) => dispatch({ type: "disallow", issueId })}
               onDownload={() => downloadCharacter(doc)}
               levelUp={levelUp}
+              exports={<ExportButtons system={system} content={content} getDoc={() => doc} />}
               onLevelUp={() => {
                 if (!levelUp?.ok) return;
                 dispatch({ type: "set-many", choices: levelUp.choices });
@@ -248,7 +250,8 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
             />
           )}
           {page.kind === "sheet" && (
-            <Sheet system={system} view={view} doc={doc} content={content} attributions={attributions} onReview={() => go({ kind: "review" })} />
+            <Sheet system={system} view={view} doc={doc} content={content} attributions={attributions} onReview={() => go({ kind: "review" })}
+              exports={<ExportButtons system={system} content={content} getDoc={() => doc} />} />
           )}
           {page.kind === "licences" && <Licences packs={packs} />}
 

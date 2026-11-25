@@ -28,14 +28,16 @@ export interface ContentEntry {
 export interface ContentIndex {
   get(collection: string, ref: ContentRef): (ContentEntry & { ref: ContentRef; pack: string }) | undefined;
   list(collection: string): (ContentEntry & { ref: ContentRef; pack: string })[];
-  /** Packs present, as id and version. */
-  packs(): { id: string; version: string }[];
+  /** Packs present, as id and version, with the credit each asks for. */
+  packs(): { id: string; version: string; attribution?: string }[];
 }
 
 export interface IndexedPack {
   id: string;
   version: string;
   collections: Record<string, ContentEntry[]>;
+  /** The credit the pack's content asks for, if any. */
+  attribution?: string;
 }
 
 const key = (collection: string, ref: ContentRef) => `${collection}\u0000${ref}`;
@@ -58,6 +60,6 @@ export function createContentIndex(packs: IndexedPack[]): ContentIndex {
   return {
     get: (collection, ref) => byRef.get(key(collection, ref)),
     list: (collection) => byCollection.get(collection) ?? [],
-    packs: () => packs.map((p) => ({ id: p.id, version: p.version })),
+    packs: () => packs.map((p) => ({ id: p.id, version: p.version, ...(p.attribution ? { attribution: p.attribution } : {}) })),
   };
 }

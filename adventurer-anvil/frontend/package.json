@@ -2,6 +2,7 @@
   "name": "adventurer-anvil-frontend",
   "version": "0.0.1",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,9 +11,11 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "schema": "vitest run -u src/systems/dnd5e-2014/schema.test.ts",
-    "import:srd": "tsx ../tools/import-srd.ts"
+    "import:srd": "tsx ../tools/import-srd.ts",
+    "sync:tomeandtile": "tsx ../tools/sync-tomeandtile.ts"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "2.17.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zod": "^4.6.7"

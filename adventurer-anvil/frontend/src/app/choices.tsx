@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import type { ChoiceSpec, ChoiceValue, Derived, ListItem, Option, ResolvedIssue, RollRecord } from "../core";
 import { coinsText } from "./format";
+import { Adjust, Records } from "./records";
 import { Allocate, Assign, CompactRoll, Roll } from "./slots";
 
 export interface ChoiceProps {
@@ -38,9 +39,11 @@ export function ChoiceView(props: ChoiceProps) {
     case "number":
       return <NumberChoice {...props} />;
     case "quantities":
-      return props.spec.presentation === "steppers" ? <Steppers {...props} /> : <Quantities {...props} />;
+      return props.spec.presentation === "steppers" ? <Steppers {...props} /> : props.spec.presentation === "adjust" ? <Adjust {...props} /> : <Quantities {...props} />;
     case "image":
       return <ImageChoice {...props} />;
+    case "records":
+      return <Records {...props} />;
     default:
       return (
         <section className="choice" id={choiceDomId(props.spec.key)} tabIndex={-1}>
@@ -358,11 +361,11 @@ function Quantities({ spec, value, issues, onChange }: ChoiceProps) {
         <span className="dim shop-tags">{o.tags?.join(" · ")}</span>
         <span className="stepper">
           <button type="button" className="button small" disabled={n === 0} onClick={() => set(v, n - 1)}>
-            −<span className="sr-only"> remove one {o.name}</span>
+            −<span className="sr-only"> {budget ? "remove" : "take away"} one {o.name}</span>
           </button>
-          <span className="final">{n}<span className="sr-only"> bought</span></span>
+          <span className="final">{n}<span className="sr-only"> {budget ? "bought" : "added"}</span></span>
           <button type="button" className="button small" disabled={tooDear} onClick={() => set(v, n + 1)}>
-            +<span className="sr-only"> buy one {o.name}{tooDear ? " (not enough money)" : ""}</span>
+            +<span className="sr-only"> {budget ? "buy" : "add"} one {o.name}{tooDear ? " (not enough money)" : ""}</span>
           </button>
         </span>
       </li>
@@ -380,7 +383,7 @@ function Quantities({ spec, value, issues, onChange }: ChoiceProps) {
       )}
       {bought.length > 0 && (
         <>
-          <h3 className="label">Bought</h3>
+          <h3 className="label">{budget ? "Bought" : "Added"}</h3>
           <ul className="shop">{bought.map(row)}</ul>
         </>
       )}
