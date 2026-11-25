@@ -75,5 +75,5 @@ export function readPack(data: unknown, system: SystemModule, loaded: IndexedPac
   const required = loaded.filter((p) => file.requires.includes(p.id));
   const errors = system.packSchema.validate(file, required);
   if (errors.length) return { ok: false, errors };
-  return { ok: true, pack: { id: file.id, version: file.version, collections: file.collections, file } };
+  return { ok: true, pack: { id: file.id, version: file.version, collections: file.collections, ...(file.attribution ? { attribution: file.attribution } : {}), file } };
 }

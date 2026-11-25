@@ -372,6 +372,12 @@ export const itemSchema = z.strictObject({
 });
 export type Item = z.infer<typeof itemSchema>;
 
+/** Dice by level: "3d4+3", "1d8+MOD" (MOD: the caster's spellcasting modifier), or a flat number. Keys are levels. */
+const diceByLevel = z.record(
+  z.string().regex(/^(?:[1-9]|1\d|20)$/, "a level from 1 to 20"),
+  z.string().regex(/^(?:\d+d\d+|\d+)(?:[+-](?:\d+d\d+|\d+|MOD))*$/, 'dice such as "8d6", "3d4+3" or "1d8+MOD"'),
+);
+
 export const spellSchema = z.strictObject({
   ...entryBase,
   /** 0 for a cantrip. */
@@ -387,6 +393,16 @@ export const spellSchema = z.strictObject({
   ritual: z.boolean().optional(),
   /** "At Higher Levels". */
   higherLevels: z.string().optional(),
+  // What a virtual table can automate (the Tome & Tile export): an attack roll, or a saving throw with what a success
+  // does; damage by the slot level it's cast at or by the caster's character level (cantrips); healing by slot level;
+  // and the area it fills.
+  attack: z.enum(["melee", "ranged"]).optional(),
+  save: z.strictObject({ ability: z.enum(ABILITIES), onSuccess: z.enum(["half", "none", "other"]) }).optional(),
+  damage: z
+    .array(z.strictObject({ type: z.enum(DAMAGE_TYPES), atSlotLevel: diceByLevel.optional(), atCharacterLevel: diceByLevel.optional() }))
+    .optional(),
+  healing: z.strictObject({ atSlotLevel: diceByLevel }).optional(),
+  area: z.strictObject({ shape: z.enum(["sphere", "cone", "line", "cube", "cylinder"]), size: z.int().positive() }).optional(),
 });
 export type Spell = z.infer<typeof spellSchema>;
 

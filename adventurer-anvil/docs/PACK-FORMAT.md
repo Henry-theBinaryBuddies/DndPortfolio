@@ -119,6 +119,12 @@ for multiclass slots (`full`, `half`, `third` or `pact`); the class table column
 `level` (0 for a cantrip), `school`, `classes` (the class ids whose lists have it), `castingTime`, `range`,
 `components` (`verbal`, `somatic`, `material`), `duration`, `concentration`, `ritual`, `higherLevels`.
 
+For a virtual table to automate a spell (the Tome & Tile export), it may also say: `attack` (`melee` or `ranged`);
+`save` (`{ "ability": "dex", "onSuccess": "half" }`, or `none` or `other`); `damage`, a list of
+`{ "type": "fire", "atSlotLevel": { "3": "8d6", "4": "9d6" } }` (cantrips use `atCharacterLevel`); `healing`
+(`{ "atSlotLevel": { "1": "1d8+MOD" } }`, where `MOD` is the caster's spellcasting modifier); and `area`
+(`{ "shape": "sphere", "size": 20 }`). A spell without them still exports, as a card with its text.
+
 ### Languages
 
 `exotic` and `script`.

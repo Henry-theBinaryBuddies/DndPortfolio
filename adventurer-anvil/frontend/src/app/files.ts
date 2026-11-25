@@ -10,11 +10,16 @@ export function fileNameFor(name: string): string {
 
 /** Saves the character to the user's downloads, laid out to be readable. */
 export function downloadCharacter(doc: CharacterDocument): void {
-  const blob = new Blob([`${JSON.stringify(doc, null, 2)}\n`], { type: "application/json" });
+  downloadText(fileNameFor(doc.name), "application/json", `${JSON.stringify(doc, null, 2)}\n`);
+}
+
+/** Saves text as a file in the user's downloads. */
+export function downloadText(fileName: string, mediaType: string, text: string): void {
+  const blob = new Blob([text], { type: mediaType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = fileNameFor(doc.name);
+  a.download = fileName;
   document.body.append(a);
   a.click();
   a.remove();

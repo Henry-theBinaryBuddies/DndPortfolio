@@ -2,7 +2,8 @@
 
 | What | Licence | Details |
 |---|---|---|
-| Adventurer Anvil's code | Not chosen yet (the repository root's `LICENSE.txt` is the HTML5 Boilerplate template's own licence) | |
+| Adventurer Anvil's code | GNU Affero General Public License v3.0 only (AGPL-3.0-only), chosen 24 Nov 2026 to match Tome & Tile, which Anvil may later fold into | [`LICENSE`](LICENSE) |
+| The copied Tome & Tile contract types (`frontend/src/systems/dnd5e-2014/export/tomeandtile/gen/`) | AGPL-3.0-only, from Tome & Tile's `contracts/ts`; generated from its Protobuf contracts | the header of each file, and `SOURCE.md` beside them |
 | SRD 5.1 content (`frontend/public/packs/srd-5.1.pack.json`) | Creative Commons Attribution 4.0 International, credited with the exact statement below | `data/srd-5.1/raw/SOURCE.md` |
 | The 5e-bits community data files the SRD pack is imported from (`data/srd-5.1/raw/`) | MIT (the files' code licence; the content is the SRD above) | `data/srd-5.1/raw/LICENSE-5e-bits-MIT.md` |
 

@@ -82,7 +82,9 @@ Order: **Rules → Race → Abilities → Class → Background → Equipment →
 
 1. **M1, the prototype (core builder):** the system-agnostic core, the `dnd5e-2014` module, SRD 5.1 as a pack, the pack schema (documented), all builder steps for levels 1-20 including multiclassing and optional rules, the DM override, the on-screen sheet, JSON save and open. Browser only: characters kept in localStorage and JSON files, with the data layer shaped for accounts.
 2. **M2, accounts:** OAuth sign-in, cloud saves, level-up of saved characters across devices, private pack upload with the terms, takedown and DMCA steps.
-3. **M3, play sheet:** HP and death saves, dice and the roll log, rests and resources, conditions.
+3. **M3, play sheet:** moved to Tome & Tile (decided 24 Nov 2026). Anvil will be folded into Tome & Tile, the team's
+   virtual tabletop, which already owns play: HP, dice, rests and conditions. Anvil's part is the **Tome & Tile export**:
+   a character as Tome & Tile's `Creature` contract (Protobuf JSON), as its ADR 0010 plans. Built 24 Nov 2026.
 4. **M4, outputs:** fillable PDF, spell cards, Foundry, Fantasy Grounds, Owlbear, then Roll20.
 5. **M5, campaigns:** invites, party view, campaign content rules.
 6. **M6, the other apps:** Effigy Engine portraits, Creature Cauldron companions, Chronomancer links.

@@ -6,7 +6,8 @@ A D&D character creator in the spirit of Roll20's Charactermancer: guided steps,
 from 1 to 20, with multiclassing and the optional rules, from SRD 5.1 content: Rules, Race, Abilities, Class,
 Background, Equipment (with an inventory editor), Spells and Details (with a session journal), then Review and an
 on-screen, printable sheet. Characters save in the browser and as `.anvil.json` files, and level up later. A DM can
-allow any rule problem, and the sheet shows it. Next is Milestone 2: accounts, cloud saves and private packs.
+allow any rule problem, and the sheet shows it. Characters export to Tome & Tile, the team's virtual tabletop, as its
+`Creature` file; play itself (Milestone 3) happens there. Next is Milestone 2: accounts, cloud saves and private packs.
 
 See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for what it does and will do, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 for how it is put together, [`docs/PACK-FORMAT.md`](docs/PACK-FORMAT.md) for writing content packs, and
@@ -23,6 +24,7 @@ npm run test:browser   # browser and accessibility tests (Playwright, Edge)
 npm run build   # static site in frontend/dist
 npm run schema      # rewrite the published pack JSON Schema after a pack format change
 npm run import:srd  # rebuild the SRD 5.1 pack from data/srd-5.1/raw (see its SOURCE.md)
+npm run sync:tomeandtile -- ../../../TomeAndTile   # copy Tome & Tile's contract types again
 ```
 
 Stack: TypeScript, React, Vite, Vitest (as Creature Cauldron's frontend). A Python backend joins in `backend/` at Milestone 2.

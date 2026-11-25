@@ -238,4 +238,9 @@ export interface RawSpell {
   ritual: boolean;
   desc: string[];
   higher_level?: string[];
+  attack_type?: "melee" | "ranged";
+  dc?: { dc_type: RawRef; dc_success: "half" | "none" | "other" };
+  damage?: { damage_type?: RawRef; damage_at_slot_level?: Record<string, string>; damage_at_character_level?: Record<string, string> }[];
+  heal_at_slot_level?: Record<string, string>;
+  area_of_effect?: { type: "sphere" | "cone" | "line" | "cube" | "cylinder"; size: number };
 }

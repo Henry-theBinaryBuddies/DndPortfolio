@@ -11,13 +11,14 @@ const MARK = { 1: "●", 2: "◆" } as const;
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
 
-export function Sheet({ system, view, doc, content, attributions, onReview }: {
+export function Sheet({ system, view, doc, content, attributions, onReview, exports }: {
   system: SystemModule;
   view: CharacterView;
   doc: CharacterDocument;
   content: ContentIndex;
   attributions: string[];
   onReview: () => void;
+  exports?: React.ReactNode;
 }) {
   const [full, setFull] = useState(false);
   const fullId = useId();
@@ -34,6 +35,7 @@ export function Sheet({ system, view, doc, content, attributions, onReview }: {
         <label htmlFor={fullId} className="check">
           <input id={fullId} type="checkbox" checked={full} onChange={(e) => setFull(e.target.checked)} /> Print full text
         </label>
+        {exports}
       </div>
       {toDo.length > 0 && (
         <p className="notice banner screen-only">

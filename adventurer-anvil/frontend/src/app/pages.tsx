@@ -81,7 +81,7 @@ function Allow({ issue, onAllow }: { issue: ResolvedIssue; onAllow: (note: strin
   );
 }
 
-export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload, levelUp, onLevelUp }: {
+export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisallow, onDownload, levelUp, onLevelUp, exports }: {
   view: CharacterView;
   doc: CharacterDocument;
   stepLabel: (id: string) => string;
@@ -93,6 +93,8 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
   /** Whether the character can go up a level (for systems that have levels), and doing it. */
   levelUp?: LevelUp;
   onLevelUp?: () => void;
+  /** Buttons for the system's exporters (another program's file). */
+  exports?: React.ReactNode;
 }) {
   const open = view.issues.filter((i) => !i.override);
   const errors = open.filter((i) => i.severity === "error");
@@ -204,7 +206,10 @@ export function Review({ view, doc, stepLabel, onGoTo, onClear, onAllow, onDisal
         <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
           The character is saved in this browser. Download a file to keep it safe, move it to another device, or share it.
         </p>
-        <button type="button" className="button" style={{ marginTop: 8 }} onClick={onDownload}>Download character file</button>
+        <div className="banner-actions" style={{ marginTop: 8 }}>
+          <button type="button" className="button" onClick={onDownload}>Download character file</button>
+          {exports}
+        </div>
       </section>
     </>
   );

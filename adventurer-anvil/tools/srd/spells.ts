@@ -1,6 +1,6 @@
 // Turns the 5e-bits SRD 5.1 spells into the 2014 spell format, and says how each class casts. Pure: data in, entries out.
 import type { Spell, Spellcasting } from "../../frontend/src/systems/dnd5e-2014/packFormat";
-import type { Ability, SCHOOLS } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
+import type { Ability, DAMAGE_TYPES, SCHOOLS } from "../../frontend/src/systems/dnd5e-2014/vocabulary";
 import type { RawClass, RawSpell } from "./raw";
 
 export function buildSpells(raw: RawSpell[]): Spell[] {
@@ -26,8 +26,43 @@ export function buildSpells(raw: RawSpell[]): Spell[] {
       ...(s.ritual ? { ritual: true } : {}),
       description,
       ...(s.higher_level?.length ? { higherLevels: s.higher_level.join("\n\n") } : {}),
+      ...automation(s),
     };
   });
+}
+
+/** "3d4 + 3" → "3d4+3"; a choice of dice ("4d6 OR 5d6") can't be automated, so it's left out. */
+const dice = (text: string) => (/ OR /.test(text) ? undefined : text.replace(/\s+/g, ""));
+function byLevel(table: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!table) return undefined;
+  const out = Object.fromEntries(Object.entries(table).flatMap(([l, d]) => (dice(d) ? [[l, dice(d)!]] : [])));
+  return Object.keys(out).length ? out : undefined;
+}
+
+/**
+ * Healing spells whose numbers restore hit points. Aid raises the hit point maximum and False Life gives temporary
+ * hit points, so their numbers aren't healing and aren't automated.
+ */
+const NOT_HEALING = new Set(["aid", "false-life"]);
+
+/** What a virtual table can automate, from the files' attack, save, damage, healing and area fields. */
+function automation(s: RawSpell): Partial<Spell> {
+  const out: Partial<Spell> = {};
+  if (s.attack_type) out.attack = s.attack_type;
+  if (s.dc) out.save = { ability: s.dc.dc_type.index as Ability, onSuccess: s.dc.dc_success };
+  const damage = (s.damage ?? [])
+    .filter((d) => d.damage_type)
+    .map((d) => ({
+      type: d.damage_type!.index as (typeof DAMAGE_TYPES)[number],
+      ...(byLevel(d.damage_at_slot_level) ? { atSlotLevel: byLevel(d.damage_at_slot_level) } : {}),
+      ...(byLevel(d.damage_at_character_level) ? { atCharacterLevel: byLevel(d.damage_at_character_level) } : {}),
+    }))
+    .filter((d) => d.atSlotLevel || d.atCharacterLevel);
+  if (damage.length) out.damage = damage;
+  const heal = byLevel(s.heal_at_slot_level);
+  if (heal && !NOT_HEALING.has(s.index)) out.healing = { atSlotLevel: heal };
+  if (s.area_of_effect) out.area = { shape: s.area_of_effect.type, size: s.area_of_effect.size };
+  return out;
 }
 
 /**

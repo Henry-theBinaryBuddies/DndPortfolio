@@ -307,3 +307,5 @@ select.text-input { background: var(--panel); }
 .sheet-records { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 .sheet-records li { margin-bottom: 6px; }
 .sheet-record-text { white-space: pre-wrap; margin: 2px 0 0; }
+.export-warning { flex-basis: 100%; margin-top: 8px; font-size: 14px; }
+.export-warning ul { margin: 4px 0; padding-left: 20px; }

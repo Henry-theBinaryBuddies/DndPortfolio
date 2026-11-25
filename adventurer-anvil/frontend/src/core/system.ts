@@ -48,6 +48,17 @@ export type SheetSection =
   | { kind: "text"; label: string; keys: string[] }
   | { kind: "records"; label: string; key: string; newestFirst?: boolean; print?: "full-only" };
 
+/**
+ * A file a character can be exported as. `build` is pure: it returns the file's name, type and text, and anything the
+ * person should know first (an unfinished character), which the app shows before downloading.
+ */
+export interface Exporter {
+  id: string;
+  /** The button's words, e.g. "Export for Tome & Tile". */
+  label: string;
+  build(doc: CharacterDocument, content: ContentIndex): { fileName: string; mediaType: string; text: string; warnings: string[] };
+}
+
 /** A page of the sheet: printed on its own page, one column on a phone. */
 export interface SheetPage {
   label: string;
@@ -64,6 +75,8 @@ export interface SystemModule {
   summary: SummaryGroup[];
   /** The character sheet, page by page. Without it, the app offers no sheet. */
   sheet?: SheetPage[];
+  /** Files a character can be exported as, for other programs (a virtual table). */
+  exporters?: Exporter[];
   /** Lists shown on a step's own page, after its choices (e.g. what the chosen class gives), by step id. */
   stepLists?: Record<string, { label: string; list: string }[]>;
   /** Choices a new character starts with. */

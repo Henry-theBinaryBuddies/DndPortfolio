@@ -15,9 +15,16 @@ import { BACKGROUND_KEY } from "./steps/background";
 import { replaceDuplicateSkills } from "./engine/duplicates";
 import { RACE_KEY, raceStep } from "./steps/race";
 import { rulesStep } from "./steps/rules";
+import { makeTomeAndTileExporter } from "./export/tomeandtile";
 import { picksOf } from "./engine/context";
 
 export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluation {
+  const { ctx, derived, lists } = runPipeline(doc, content);
+  return { steps: stepReports(ctx), derived, lists, issues: ctx.issues, unused: unusedChoices(ctx) };
+}
+
+/** The whole pipeline, keeping its working state: for exporters, which need more than the evaluation shows. */
+export function runPipeline(doc: CharacterDocument, content: ContentIndex) {
   const ctx = newContext(doc, content);
   // ① + ② Each step collects its sources and expands their effects into the tally (③). The rules come first.
   rulesStep(ctx);
@@ -39,7 +46,7 @@ export function evaluate(doc: CharacterDocument, content: ContentIndex): Evaluat
   check(ctx, scores);
   checkMulticlass(ctx, scores);
   checkEquipment(ctx, scores);
-  return { steps: stepReports(ctx), derived, lists, issues: ctx.issues, unused: unusedChoices(ctx) };
+  return { ctx, base, derived, lists, scores };
 }
 
 const ABILITY_KEYS = ["str", "dex", "con", "int", "wis", "cha"] as const;
@@ -129,6 +136,7 @@ export const dnd5e2014: SystemModule = {
     { kind: "list", label: "Spells", list: "spells" },
   ],
   sheet: SHEET,
+  exporters: [makeTomeAndTileExporter((doc, content) => runPipeline(doc, content), (doc, content) => describe(doc, content))],
   stepLists: {
     class: [{ label: "What you get", list: "gains.class" }],
     background: [{ label: "What you get", list: "gains.background" }],

@@ -12808,6 +12808,139 @@
               },
               "higherLevels": {
                 "type": "string"
+              },
+              "attack": {
+                "type": "string",
+                "enum": [
+                  "melee",
+                  "ranged"
+                ]
+              },
+              "save": {
+                "type": "object",
+                "properties": {
+                  "ability": {
+                    "type": "string",
+                    "enum": [
+                      "str",
+                      "dex",
+                      "con",
+                      "int",
+                      "wis",
+                      "cha"
+                    ]
+                  },
+                  "onSuccess": {
+                    "type": "string",
+                    "enum": [
+                      "half",
+                      "none",
+                      "other"
+                    ]
+                  }
+                },
+                "required": [
+                  "ability",
+                  "onSuccess"
+                ],
+                "additionalProperties": false
+              },
+              "damage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "acid",
+                        "bludgeoning",
+                        "cold",
+                        "fire",
+                        "force",
+                        "lightning",
+                        "necrotic",
+                        "piercing",
+                        "poison",
+                        "psychic",
+                        "radiant",
+                        "slashing",
+                        "thunder"
+                      ]
+                    },
+                    "atSlotLevel": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string",
+                        "pattern": "^(?:[1-9]|1\\d|20)$"
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^(?:\\d+d\\d+|\\d+)(?:[+-](?:\\d+d\\d+|\\d+|MOD))*$"
+                      }
+                    },
+                    "atCharacterLevel": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string",
+                        "pattern": "^(?:[1-9]|1\\d|20)$"
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^(?:\\d+d\\d+|\\d+)(?:[+-](?:\\d+d\\d+|\\d+|MOD))*$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "healing": {
+                "type": "object",
+                "properties": {
+                  "atSlotLevel": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "pattern": "^(?:[1-9]|1\\d|20)$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "pattern": "^(?:\\d+d\\d+|\\d+)(?:[+-](?:\\d+d\\d+|\\d+|MOD))*$"
+                    }
+                  }
+                },
+                "required": [
+                  "atSlotLevel"
+                ],
+                "additionalProperties": false
+              },
+              "area": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "sphere",
+                      "cone",
+                      "line",
+                      "cube",
+                      "cylinder"
+                    ]
+                  },
+                  "size": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "shape",
+                  "size"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
