@@ -7,7 +7,8 @@ from 1 to 20, with multiclassing and the optional rules, from SRD 5.1 content: R
 Background, Equipment (with an inventory editor), Spells and Details (with a session journal), then Review and an
 on-screen, printable sheet. Characters save in the browser and as `.anvil.json` files, and level up later. A DM can
 allow any rule problem, and the sheet shows it. Characters export to Tome & Tile, the team's virtual tabletop, as its
-`Creature` file; play itself (Milestone 3) happens there. Next is Milestone 2: accounts, cloud saves and private packs.
+`Creature` file; play itself (Milestone 3) happens there. It's online at https://anvil.creaturecauldron.com (Cloudflare
+Pages; see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 
 See [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for what it does and will do, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 for how it is put together, [`docs/PACK-FORMAT.md`](docs/PACK-FORMAT.md) for writing content packs, and
@@ -21,6 +22,7 @@ npm install
 npm run dev     # http://localhost:5205
 npm test
 npm run test:browser   # browser and accessibility tests (Playwright, Edge)
+npm run test:production   # the built site under its real headers (see docs/DEPLOYMENT.md)
 npm run build   # static site in frontend/dist
 npm run schema      # rewrite the published pack JSON Schema after a pack format change
 npm run import:srd  # rebuild the SRD 5.1 pack from data/srd-5.1/raw (see its SOURCE.md)

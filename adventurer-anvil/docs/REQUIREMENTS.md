@@ -72,7 +72,7 @@ Order: **Rules → Race → Abilities → Class → Background → Equipment →
 |---|---|
 | Frontend | Vite + React + TypeScript (as Creature Cauldron) |
 | Backend | Python, in the style of Chronomancer (FastAPI, SQLAlchemy, Alembic; it already has Discord OAuth) |
-| Hosting | **anvil.creaturecauldron.com**: frontend on Cloudflare Pages; API on the home server beside Creature Cauldron's service, behind a Cloudflare Tunnel |
+| Hosting | **anvil.creaturecauldron.com**: frontend on Cloudflare Pages (live since 25 Nov 2026; see [`DEPLOYMENT.md`](DEPLOYMENT.md)); API on the home server beside Creature Cauldron's service, behind a Cloudflare Tunnel (with Milestone 2, now on hold) |
 | Look | Matches Effigy Engine: dark, iron and forge |
 | Devices | Desktop and phone, responsive throughout |
 | Accessibility | WCAG 2.2 AA: keyboard-only use, screen-reader labels, contrast, reduced motion; automated checks in tests |
@@ -82,12 +82,16 @@ Order: **Rules → Race → Abilities → Class → Background → Equipment →
 
 1. **M1, the prototype (core builder):** the system-agnostic core, the `dnd5e-2014` module, SRD 5.1 as a pack, the pack schema (documented), all builder steps for levels 1-20 including multiclassing and optional rules, the DM override, the on-screen sheet, JSON save and open. Browser only: characters kept in localStorage and JSON files, with the data layer shaped for accounts.
 2. **M2, accounts:** OAuth sign-in, cloud saves, level-up of saved characters across devices, private pack upload with the terms, takedown and DMCA steps.
+   **On hold (25 Nov 2026):** Tome & Tile will have accounts and a server, so this waits until folding Anvil into
+   Tome & Tile is designed, rather than building a separate backend for Anvil.
 3. **M3, play sheet:** moved to Tome & Tile (decided 24 Nov 2026). Anvil will be folded into Tome & Tile, the team's
    virtual tabletop, which already owns play: HP, dice, rests and conditions. Anvil's part is the **Tome & Tile export**:
    a character as Tome & Tile's `Creature` contract (Protobuf JSON), as its ADR 0010 plans. Built 24 Nov 2026.
-4. **M4, outputs:** fillable PDF, spell cards, Foundry, Fantasy Grounds, Owlbear, then Roll20.
-5. **M5, campaigns:** invites, party view, campaign content rules.
-6. **M6, the other apps:** Effigy Engine portraits, Creature Cauldron companions, Chronomancer links.
+4. **M4, outputs:** fillable PDF, spell cards, Foundry, Fantasy Grounds, Owlbear, then Roll20. The PDF and spell
+   cards stay Anvil's; the other virtual-table exports matter less now that Tome & Tile is the team's table.
+5. **M5, campaigns:** invites, party view, campaign content rules. **Moving to Tome & Tile**, which has campaigns.
+6. **M6, the other apps:** Effigy Engine portraits (still Anvil's), Creature Cauldron companions and Chronomancer
+   links (Tome & Tile's, through its importers).
 7. **Later:** homebrew editor; more system modules.
 
 ## 9. Resolved questions

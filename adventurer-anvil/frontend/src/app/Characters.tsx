@@ -6,6 +6,7 @@ import { readCharacter, readCharacterText, type CharacterDocument, type ContentI
 import type { Opening } from "./Builder";
 import { downloadCharacter } from "./files";
 import { withChoices } from "./state";
+import { LICENCE_NAME, SOURCE_URL } from "./source";
 import { ExportButtons } from "./Exports";
 import { StorageFullError, type CharacterStore, type CharacterSummary } from "./store";
 
@@ -183,6 +184,9 @@ export function Characters({ store, system, content, onOpen, onNew, focusHeading
           </ul>
         )}
       </main>
+      <footer className="foot">
+        <a href={SOURCE_URL} rel="noopener">Source code ({LICENCE_NAME})</a>
+      </footer>
     </div>
   );
 }

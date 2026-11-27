@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "test:production": "playwright test --config playwright.production.config.ts",
     "schema": "vitest run -u src/systems/dnd5e-2014/schema.test.ts",
     "import:srd": "tsx ../tools/import-srd.ts",
     "sync:tomeandtile": "tsx ../tools/sync-tomeandtile.ts",
