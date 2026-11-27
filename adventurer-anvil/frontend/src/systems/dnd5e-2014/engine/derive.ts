@@ -1,6 +1,7 @@
 // ④ Derive: the 2014 math, from the tally and the base ability scores. Every value carries its breakdown.
 import type { BreakdownLine, Derived, ListItem } from "../../../core";
-import { ABILITIES, ABILITY_NAMES, SKILLS, type Ability, type Skill } from "../vocabulary";
+import { ABILITIES, ABILITY_NAMES, MAX_ATTUNED, SKILLS, type Ability, type Skill } from "../vocabulary";
+import { coinsHeld } from "./coins";
 import { listName } from "./expand";
 import { bonusesFor, originText, type AbilityUses, type Tally } from "./tally";
 
@@ -53,6 +54,11 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
     value: level,
     label: "Level",
     breakdown: tally.classes.length ? tally.classes.map((c) => ({ label: c.name, amount: c.level })) : [{ label: "No class yet", amount: 1 }],
+  };
+  if (tally.classes.length) derived["class-levels"] = {
+    value: tally.classes.map((c) => `${c.name} ${c.level}`).join(" / "),
+    label: "Class and level",
+    breakdown: tally.classes.map((c) => ({ label: c.name, amount: c.level })),
   };
   const prof = proficiencyBonusFor(level);
   derived["proficiency-bonus"] = { value: prof, label: "Proficiency bonus", breakdown: [{ label: `Level ${level}`, amount: prof }] };
@@ -175,10 +181,17 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
     label: options.encumbrance === "variant" ? `Weight carried (slower over ${scores.str * 5} lb, of ${capacity} lb)` : `Weight carried (of ${capacity} lb)`,
     breakdown: weights.length ? weights : [{ label: "Nothing carried", amount: 0 }],
   };
+  const attuned = tally.items.filter((i) => i.attuned && i.qty > 0).length;
+  derived["attunement"] = { value: `${attuned} / ${MAX_ATTUNED}`, label: "Attuned", breakdown: [{ label: "Items attuned to", amount: attuned }, { label: "Most at once", amount: MAX_ATTUNED }] };
   derived["carrying-capacity"] = { value: capacity, label: "Carrying capacity", breakdown: [{ label: `Strength ${scores.str} × 15`, amount: capacity }] };
   if (tally.coins.length) {
     const coins = tally.coins.map((c) => ({ label: c.label, amount: c.cp }));
     derived["coins"] = { value: sum(coins), label: "Money", breakdown: coins };
+  }
+  // The same money by coin, for the sheet's coin boxes (nought of each when there's none).
+  const held = coinsHeld(tally.coins);
+  for (const c of ["cp", "sp", "ep", "gp", "pp"] as const) {
+    derived[`coins.${c}`] = { value: held[c], label: COIN_NAMES[c], breakdown: [{ label: COIN_NAMES[c], amount: held[c] }] };
   }
 
   // Spellcasting: a save DC and attack bonus for each ability spells are cast with, and the slots.
@@ -196,12 +209,18 @@ export function derive(tally: Tally, base: Record<Ability, number>, itemName: It
   if (casters.length) {
     derived["spell.slots"] = { value: casters.map(slotText).join("; "), label: "Spell slots", breakdown: casters.map((c) => ({ label: c.name, amount: slotText(c) })) };
   }
+  // The same slots as numbers, one value per spell level, for the printed sheet's boxes to tick.
+  for (let l = 1; l <= 9; l++) {
+    const lines = casters.filter((c) => c.slots[l]).map((c) => ({ label: c.pact ? `${c.name} (short rest)` : c.name, amount: c.slots[l] }));
+    if (lines.length) derived[`spell-slots.${l}`] = { value: sum(lines), label: `${ORDINAL[l]} level slots`, breakdown: lines };
+  }
 
   const usesOf = (u: number | AbilityUses) => (typeof u === "number" ? u : Math.max(u.min ?? 0, modifier(scores[u.ability]) + (u.add ?? 0)));
   return { derived, lists: buildLists(tally, usesOf, itemName), scores };
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+const COIN_NAMES = { cp: "Copper pieces", sp: "Silver pieces", ep: "Electrum pieces", gp: "Gold pieces", pp: "Platinum pieces" } as const;
 const PROFICIENT = { level: 1, label: "Proficient" } as const;
 const EXPERT = { level: 2, label: "Expertise" } as const;
 const ORDINAL = ["cantrip", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
@@ -288,7 +307,7 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
     const page = f.source ? ` (${f.source.book}${f.source.page ? ` p. ${f.source.page}` : ""})` : "";
     add("features", { name: f.name, source: originText(f.from), detail: f.summary ? `${f.summary}${page}` : page.trim() || undefined, description: f.description }, false);
   }
-  for (const r of tally.resources) add("resources", { name: r.name, source: r.from.name, detail: per(r) }, false);
+  for (const r of tally.resources) add("resources", { name: r.name, source: r.from.name, detail: per(r), uses: usesOf(r.uses) }, false);
 
   // What each step gives, for the step's own page ("gains.class"): its features, with the uses where a resource
   // shares the feature's name (Second Wind), then any other resources. A class's say the level they come at.
@@ -318,15 +337,25 @@ function buildLists(tally: Tally, usesOf: (u: number | AbilityUses) => number, i
   }
 
   // The inventory: the same thing from the same place (and pack) is one line.
-  const inventory = new Map<string, ListItem & { qty: number; base: string }>();
+  const inventory = new Map<string, ListItem & { qty: number; base: string; plain: string; lb: number; ref?: string; attuned: boolean }>();
   for (const i of tally.items) {
     if (i.qty <= 0) continue; // used up or lost
     const key = `${i.ref ?? i.name}|${i.in ?? ""}|${i.from.name}|${i.attuned ? "a" : ""}`;
-    const line = inventory.get(key) ?? { name: "", base: i.attuned ? `${i.name} (attuned)` : i.name, qty: 0, source: i.from.name, detail: i.in ? `in ${i.in}` : undefined };
+    const line = inventory.get(key) ?? { name: "", base: i.attuned ? `${i.name} (attuned)` : i.name, plain: i.name, qty: 0, lb: 0, ref: i.ref, attuned: Boolean(i.attuned), source: i.from.name, detail: i.in ? `in ${i.in}` : undefined };
     line.qty += i.qty;
+    line.lb += i.weight * i.qty;
     inventory.set(key, line);
   }
-  for (const { base, qty, ...line } of inventory.values()) add("inventory", { ...line, name: qty > 1 ? `${base} × ${qty}` : base }, false);
+  // Equipped: the first line of the worn armour and of the shield (the app doesn't know which weapon is in hand).
+  const equipped = new Set<string>();
+  for (const worn of [tally.worn.armor?.ref, tally.worn.shield?.ref]) {
+    const key = worn && [...inventory].find(([k, l]) => l.ref === worn && !equipped.has(k))?.[0];
+    if (key) equipped.add(key);
+  }
+  for (const [key, { base, plain, qty, lb, ref: _ref, attuned, ...line }] of inventory) {
+    const flags = [...(equipped.has(key) ? ["equipped"] : []), ...(attuned ? ["attuned"] : [])];
+    add("inventory", { ...line, name: qty > 1 ? `${base} × ${qty}` : base, count: { qty, name: plain }, weight: round2(lb), ...(flags.length ? { flags } : {}) }, false);
+  }
   return lists;
 }
 

@@ -1,6 +1,6 @@
 // ③ The tally: every applied effect as a labelled entry, so every derived number can say where it came from.
 import type { ChoiceKey } from "../../../core";
-import type { Ability, Collection } from "../vocabulary";
+import type { Ability, Coin, Collection } from "../vocabulary";
 import type { DAMAGE_TYPES, MOVEMENT, PROFICIENCY_KINDS, RECHARGE, SENSES } from "../vocabulary";
 import type { Item } from "../packFormat";
 
@@ -55,7 +55,8 @@ export interface Tally {
    */
   items: { ref?: string; name: string; qty: number; weight: number; from: Origin; in?: string; attuned?: boolean }[];
   /** Money in copper pieces: what was given or rolled, and what was spent (negative). */
-  coins: { cp: number; label: string }[];
+  /** Money in (with its coin) and out, in copper pieces, in order. */
+  coins: { cp: number; label: string; coin?: Coin }[];
   /** What is worn: body armour and a shield. */
   worn: { armor?: { ref: string; name: string; armor: NonNullable<Item["armor"]> }; shield?: { ref: string; name: string; bonus: number } };
   /**

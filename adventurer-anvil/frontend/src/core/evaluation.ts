@@ -52,6 +52,14 @@ export interface ListItem {
   description?: string;
   /** Consecutive items with the same group are shown under it as a heading (a level, a category). */
   group?: string;
+  /** How many times it can be used before it comes back: the printed sheet draws that many boxes to tick. */
+  uses?: number;
+  /** For things carried: how many, and the name without the number (the name says "Torch × 10"). */
+  count?: { qty: number; name: string };
+  /** For things carried: what the line weighs in all. */
+  weight?: number;
+  /** Named marks a sheet can show as ticked boxes, e.g. "equipped". */
+  flags?: string[];
 }
 
 export interface Evaluation {

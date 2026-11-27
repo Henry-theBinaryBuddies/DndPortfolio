@@ -25,7 +25,7 @@ import { rollSets, type ChoiceValue, type Option, type RecordRow } from "../../.
 import { fullRef, picksOf, type Context } from "../engine/context";
 import type { Origin } from "../engine/tally";
 import type { Background, Class, EquipmentLine, Item, StartingEquipment } from "../packFormat";
-import { COINS, type Coin } from "../vocabulary";
+import { COINS, MAX_ATTUNED, type Coin } from "../vocabulary";
 import { BACKGROUND_KEY } from "./background";
 import { CLASS_KEY } from "./class";
 
@@ -41,8 +41,7 @@ export const ADDED_KEY = "equipment.added";
 export const CUSTOM_KEY = "equipment.custom";
 export const ATTUNED_KEY = "equipment.attuned";
 export const PURSE_KEY = "equipment.purse";
-/** The most items a character can be attuned to at once. */
-export const MAX_ATTUNED = 3;
+export { MAX_ATTUNED };
 const STEP = EQUIPMENT_STEP.id;
 
 const METHODS: Option[] = [
@@ -161,7 +160,7 @@ class Kit {
       const option = choice.options.find((o) => o.id === picks[0]);
       if (option) this.lines(option.items, `${key}.${option.id}`, { ...from, choice: key }, pack);
     }
-    if (kit.gold) this.ctx.tally.coins.push({ cp: toCp(kit.gold), label: name });
+    if (kit.gold) this.ctx.tally.coins.push({ cp: toCp(kit.gold), label: name, coin: kit.gold.unit });
   }
 }
 
@@ -211,7 +210,7 @@ export function equipmentStep(ctx: Context): void {
       });
       if (latest) {
         gold = latest.total * COINS.gp;
-        ctx.tally.coins.push({ cp: gold, label: `Rolled (${cls.startingWealth.replace("x", " × ")})` });
+        ctx.tally.coins.push({ cp: gold, label: `Rolled (${cls.startingWealth.replace("x", " × ")})`, coin: "gp" });
       }
     } else {
       const value = doc.choices[GOLD_KEY];
@@ -229,7 +228,7 @@ export function equipmentStep(ctx: Context): void {
       }
       if (valid) {
         gold = Math.round(value * COINS.gp);
-        ctx.tally.coins.push({ cp: gold, label: "Starting gold" });
+        ctx.tally.coins.push({ cp: gold, label: "Starting gold", coin: "gp" });
       }
     }
 
@@ -432,7 +431,7 @@ function inventory(ctx: Context, kit: Kit): void {
     if (amount === undefined || amount === 0) continue;
     const unit = (typeof row.unit === "string" && row.unit in COINS ? row.unit : "gp") as Coin;
     const cp = Math.round(amount * COINS[unit]);
-    tally.coins.push({ cp, label: text(row.note) || (cp > 0 ? "Found" : "Spent") });
+    tally.coins.push({ cp, label: text(row.note) || (cp > 0 ? "Found" : "Spent"), coin: unit });
   }
   const total = tally.coins.reduce((t, c) => t + c.cp, 0);
   if (purse.length && total < 0) issue("purse-below-zero", PURSE_KEY, `Your money comes to ${coinText(total)}: below nothing.`, "warning", true);

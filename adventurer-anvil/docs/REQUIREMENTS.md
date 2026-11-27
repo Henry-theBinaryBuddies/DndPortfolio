@@ -111,6 +111,17 @@ Order: **Rules → Race → Abilities → Class → Background → Equipment →
 - **The sheet:** laid out by the system and drawn by the app. It prints black on white; feature and spell text and the
   session journal print only when "Print full text" is ticked, so the sheet stays about two pages. Printable spell cards
   stay in M4.
+  **Restyled (27 Nov 2026):** the classic paper sheet's three-column layout, in our own lettering and boxes (the
+  official sheet's artwork isn't in the SRD, so it isn't copied): a band with the name and facts; abilities standing
+  beside saves and skills; combat in the middle with boxes to fill in by hand (current and temporary hit points, hit
+  dice, death saves) and an attacks table; personality and features on the right, with a box to tick per use. Then
+  everything carried (below), the story and portrait, and, for spellcasters only, the spells by level with their slots
+  to tick. Serif type already on the computer, so nothing is downloaded.
+  Page 1 keeps a small box that can't overflow (the coins, the total weight, and the armour and shield worn); everything
+  carried has its own page after it: boxes for each coin (CP, SP, EP, GP, PP), the total weight and carrying capacity,
+  then two columns of how many, the item and its weight (a pack's contents under its name), about 70 lines in all, and
+  a box for treasure and notes. Money keeps its coins: gold stays gold, found silver stays silver, and
+  shopping is paid as a shopkeeper would take it, smallest coins first with the change in smaller coins.
 - **SRD gaps the community files leave:** filled from the SRD's text: Grappler, the Circle of the Land's choice of land,
   bonus cantrip and circle spells, and starting gold where no dice are given (the DM's figure is asked for).
 - **Custom origin:** moves the race's fixed ability increases, each to a different score. Swapping languages and
