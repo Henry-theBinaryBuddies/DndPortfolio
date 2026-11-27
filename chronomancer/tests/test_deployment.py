@@ -210,3 +210,13 @@ def test_the_guide_covers_every_step_a_first_deployment_needs():
                    "/auth/callback", "/privacy.html", "/terms.html", "backup.sh", "git pull",
                    "SITE_ADDRESS", "PUBLIC_BASE_URL", "budget", "sslip.io"):
         assert needed in GUIDE, needed
+
+
+def test_a_failed_tidy_up_can_never_skip_the_off_site_copy():
+    """The backups are written by the container as root, so the VM user cannot delete old ones. The
+    tidy-up once ran first and, with `set -e`, stopped the script before the bucket copy."""
+    upload = BACKUP_SH.index("gcloud storage cp")
+    tidy = BACKUP_SH.index("tail -n +15")
+    assert upload < tidy                                            # copied off the VM first
+    assert "docker compose exec -T app sh -c" in BACKUP_SH[tidy - 120:tidy]   # deleted by the user that owns them
+    assert "|| echo" in BACKUP_SH[tidy:]                              # and a failure there is not fatal
