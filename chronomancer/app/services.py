@@ -741,6 +741,104 @@ class RsvpResult:
     rescheduled: Poll | None = None  # the new poll, when this answer tipped the balance
 
 
+def move_session(db: Session, poll: Poll, new_start: datetime, now: datetime | None = None) -> Poll:
+    """Change the time of a decided session that has not started, without another poll or vote.
+    Answers to 'Can't make it' were for the old time, so they are cleared; unsent reminders are
+    re-planned for the new time; the Discord event follows; the group is told in the channel.
+    The session's place in its repeating series does not change (see Poll.series_start_utc)."""
+    now = now or now_utc()
+    if new_start.tzinfo is None:
+        raise ServiceError(422, "the new time must include a timezone")
+    new_start = new_start.astimezone(timezone.utc)
+    if poll.status != "confirmed" or poll.confirmed_start_utc is None or poll.confirmed_start_utc <= now:
+        raise ServiceError(409, "only a decided session that has not started can be moved")
+    if new_start <= now:
+        raise ServiceError(422, "the new time must be in the future")
+    if new_start > now + timedelta(days=366):
+        raise ServiceError(422, "the new time must be within a year")
+    old = poll.confirmed_start_utc
+    if new_start == old:
+        raise ServiceError(422, "the session is already at that time")
+    claimed = db.execute(update(Poll).where(
+        Poll.id == poll.id, Poll.status == "confirmed", Poll.confirmed_start_utc == old,
+    ).values(confirmed_start_utc=new_start, moved_from_utc=old,
+             series_start_utc=poll.series_start_utc or old))
+    if claimed.rowcount != 1:
+        db.rollback()
+        raise ServiceError(409, "the session changed while you were moving it; look again")
+    db.refresh(poll)
+    db.execute(delete(Attendance).where(Attendance.poll_id == poll.id))
+    # Every reminder is planned again for the new time, including ones already sent for the old
+    # time (one row per offset, so the old row has to go). People are reminded again, rightly.
+    db.execute(delete(Reminder).where(Reminder.poll_id == poll.id))
+    schedule_reminders(db, poll.id, new_start, poll.campaign.reminder_offsets_min or [], now)
+    if poll.discord_event_id:  # a one-off group's event is replaced by one at the new time
+        campaign = poll.campaign
+        db.add(DiscordCleanup(kind="event", guild_id=campaign.events_guild_id or campaign.guild_id,
+                              target_id=poll.discord_event_id))
+        poll.discord_event_id = None
+    enqueue(db, "moved", poll.id)
+    enqueue_once(db, "event_sync", poll.id)
+    db.commit()
+    db.refresh(poll)
+    return poll
+
+
+def delete_poll(db: Session, poll: Poll) -> None:
+    """Erase a called-off poll and everything attached to it. Only called-off polls can go: an
+    open one is cancelled first, and held sessions are history. Anything it left in Discord (its
+    event, or the buttons of a vote message whose retirement was still waiting) is cleaned up."""
+    if poll.status != "cancelled":
+        raise ServiceError(409, "only a called-off poll can be deleted; cancel it first")
+    campaign = poll.campaign
+    if poll.discord_event_id:
+        db.add(DiscordCleanup(kind="event", guild_id=campaign.events_guild_id or campaign.guild_id,
+                              target_id=poll.discord_event_id))
+    message = db.get(PollMessage, poll.id)
+    waiting = db.scalar(select(Notification.id).where(
+        Notification.poll_id == poll.id, Notification.processed_at.is_(None)).limit(1))
+    if message is not None and waiting is not None:
+        db.add(DiscordCleanup(kind="message", channel_id=message.channel_id, target_id=message.message_id))
+    db.execute(delete(Vote).where(Vote.poll_id == poll.id))
+    for model in (Availability, Notification, PollMessage, Reminder, Attendance):
+        db.execute(delete(model).where(model.poll_id == poll.id))
+    # A later poll that says it replaced this one just forgets that; it never points at a recycled id.
+    db.execute(update(Poll).where(Poll.rescheduled_from == poll.id).values(rescheduled_from=None))
+    db.delete(poll)  # its candidates go with it
+    db.commit()
+
+
+def clear_called_off(db: Session, campaign: Campaign) -> int:
+    """Delete every called-off poll of a group. Returns how many."""
+    polls = db.scalars(select(Poll).where(Poll.campaign_id == campaign.id, Poll.status == "cancelled")).all()
+    for poll in polls:
+        delete_poll(db, poll)
+    return len(polls)
+
+
+def purge_called_off(db: Session, now: datetime | None = None, keep_days: int | None = None,
+                     max_polls: int = 200) -> int:
+    """Delete called-off polls that are old and that nothing needs any more: none of their answers
+    are left (so no one's draft is built from them), nothing is waiting to be sent about them, and
+    they hold no Discord event. Returns how many were deleted."""
+    now = now or now_utc()
+    cutoff = now - timedelta(days=config.CALLED_OFF_KEEP_DAYS if keep_days is None else keep_days)
+    ids = db.scalars(select(Poll.id).where(
+        Poll.status == "cancelled", Poll.date_end < cutoff.date(),
+        or_(Poll.confirmed_start_utc.is_(None), Poll.confirmed_start_utc < cutoff),
+        Poll.discord_event_id.is_(None),
+        ~select(Availability.id).where(Availability.poll_id == Poll.id).exists(),
+        ~select(Notification.id).where(Notification.poll_id == Poll.id,
+                                       Notification.processed_at.is_(None)).exists(),
+        ~select(Reminder.id).where(Reminder.poll_id == Poll.id, Reminder.sent_at.is_(None)).exists(),
+    ).order_by(Poll.id).limit(max_polls)).all()
+    for poll_id in ids:
+        poll = db.get(Poll, poll_id)
+        if poll is not None:
+            delete_poll(db, poll)
+    return len(ids)
+
+
 def declined_count(db: Session, poll: Poll) -> tuple:
     """(people who said they cannot make it, active members). People who never answered count
     as coming, and people who have left the server do not count at all."""
@@ -933,13 +1031,18 @@ def auto_confirm_due(db: Session, now: datetime | None = None) -> list:
 # ---------------------------------------------------------------- recurrence
 
 
+def series_start(poll: Poll) -> datetime:
+    """The time a session has in its series: where it was before the organizer moved it, if they did."""
+    return poll.series_start_utc or poll.confirmed_start_utc
+
+
 def next_occurrence(poll: Poll, cadence: str, now: datetime | None = None) -> tuple | None:
     """(start_utc, local_date) of the next session after `poll`, at the same local clock time,
     or None for a one-off campaign. Occurrences that would already be over are skipped, so
     after downtime the series catches up to the next one still ahead."""
     now = now or now_utc()
     tz = ZoneInfo(poll.timezone)
-    local = poll.confirmed_start_utc.astimezone(tz)
+    local = series_start(poll).astimezone(tz)
     anchor = poll.anchor_day or local.day
     day = local.date()
     for _ in range(400):  # bounded: a long outage must not loop forever
@@ -960,7 +1063,7 @@ def schedule_next_occurrence(db: Session, poll: Poll, now: datetime | None = Non
     if found is None:
         return None
     start, day = found
-    local_start = poll.confirmed_start_utc.astimezone(ZoneInfo(poll.timezone))
+    local_start = series_start(poll).astimezone(ZoneInfo(poll.timezone))
     following = Poll(
         campaign_id=campaign.id, title=poll.title, timezone=poll.timezone,
         date_start=day, date_end=day + timedelta(days=config.WEEK_DAYS - 1),

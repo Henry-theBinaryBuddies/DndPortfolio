@@ -136,7 +136,7 @@ def test_the_old_per_field_endpoints_are_gone(client):
 # ------------------------------------------------ the command surface
 
 
-def test_exactly_the_six_documented_commands_are_registered():
+def test_exactly_the_seven_documented_commands_are_registered():
     import discord
     from discord import app_commands
     from app.bot import commands
@@ -153,7 +153,7 @@ def test_exactly_the_six_documented_commands_are_registered():
 
     top, sub = asyncio.run(build())
     assert set(top) == {"chronomancer", "schedule"}
-    assert set(sub) == {"setup", "poll", "advance", "cancel", "unlink"}
+    assert set(sub) == {"setup", "poll", "advance", "move", "cancel", "unlink"}
 
     setup = {p.name: p for p in sub["setup"].parameters}
     assert set(setup) == {"name", "code", "frequency", "length", "reminders", "theme", "events"}

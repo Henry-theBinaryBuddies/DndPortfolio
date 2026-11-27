@@ -51,6 +51,10 @@
       <h2 data-t="session">Sessions</h2>
       <ul id="polls" class="plain"></ul>
       <p id="polls-note" class="muted"></p>
+      <p id="clear-called-off-row" hidden>
+        <button id="clear-called-off" type="button" class="secondary">Delete called-off sessions</button>
+        <span id="clear-msg" class="muted"></span>
+      </p>
     </div>
     <div class="panel" id="new-poll" hidden>
       <h2 data-t="createPoll">New poll</h2>
@@ -158,7 +162,18 @@
       if (campaign.polls_hidden) notes.push(`${campaign.polls_hidden} older session${campaign.polls_hidden === 1 ? "" : "s"} not shown`);
       if (campaign.polls_called_off) notes.push(`${campaign.polls_called_off} called off`);
       $("polls-note").textContent = notes.join(" · ");
+      $("clear-called-off-row").hidden = !(campaign.polls_called_off && campaign.my_role === "organizer");
     }
+
+    $("clear-called-off").addEventListener("click", async () => {
+      if (!confirm(`Delete ${campaign.polls_called_off} called-off session${campaign.polls_called_off === 1 ? "" : "s"} for good? Held sessions are not touched.`)) return;
+      $("clear-msg").textContent = "";
+      try {
+        const done = await Api.del(`/api/campaigns/${id}/called-off`);
+        $("clear-msg").textContent = `Deleted ${done.removed}.`;
+        await load();
+      } catch (e) { $("clear-msg").textContent = e.message; }
+    });
 
     $("settings-form").addEventListener("submit", async (e) => {
       e.preventDefault();

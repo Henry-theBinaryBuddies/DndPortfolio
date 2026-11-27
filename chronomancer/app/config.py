@@ -60,6 +60,7 @@ BACKGROUND_ENABLED = os.environ.get("CHRONOMANCER_BACKGROUND", "1") != "0"
 # many days (CHRONOMANCER_COMPACT=0 turns the sweep off); the sessions themselves are never deleted.
 COMPACT_ENABLED = os.environ.get("CHRONOMANCER_COMPACT", "1") != "0"
 AVAILABILITY_KEEP_DAYS = 14
+CALLED_OFF_KEEP_DAYS = 30   # a called-off poll nobody needs any more is deleted after this long
 COMPACT_EVERY_SECONDS = 3600
 SESSIONS_SHOWN = 3
 AUTO_MIGRATE = os.environ.get("CHRONOMANCER_AUTO_MIGRATE", "1") != "0"  # tests build tables directly

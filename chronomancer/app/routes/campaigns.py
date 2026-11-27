@@ -117,6 +117,14 @@ def set_required(campaign_id: int, user_id: int, required: bool,
     return {"user_id": user_id, "required": required}
 
 
+@router.delete("/campaigns/{campaign_id}/called-off")
+def clear_called_off(campaign_id: int, user: User = Depends(current_user),
+                     db: Session = Depends(get_db)):
+    """Organizer erases the group's called-off polls (they are only counted, never listed)."""
+    member = require_organizer(db, campaign_id, user)
+    return {"removed": services.clear_called_off(db, member.campaign)}
+
+
 @router.delete("/campaigns/{campaign_id}", status_code=204)
 def delete_campaign(campaign_id: int, user: User = Depends(current_user),
                     db: Session = Depends(get_db)):

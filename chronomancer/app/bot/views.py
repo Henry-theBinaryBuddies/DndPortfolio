@@ -99,6 +99,15 @@ def session_cancelled_embed(s: PollSnapshot) -> discord.Embed:
                          description=text, colour=_colour(s.theme))
 
 
+def moved_embed(s: PollSnapshot) -> discord.Embed:
+    """The organizer moved a decided session: say from when to when, and what happens to reminders."""
+    text = wording.t(s.theme, "botMovedBody", title=_esc(s.display_title),
+                     old=_when(s.moved_from) if s.moved_from else "?", new=_when(s.confirmed_start))
+    text += _reminder_line(s)
+    return discord.Embed(title=wording.t(s.theme, "botMovedTitle"), description=text,
+                         colour=_colour(s.theme))
+
+
 def recurred_embed(s: PollSnapshot) -> discord.Embed:
     """Announcement for a session the bot scheduled by itself, the same time as the last one."""
     text = wording.t(s.theme, "botRecurredBody", title=_esc(s.display_title), when=_when(s.confirmed_start))

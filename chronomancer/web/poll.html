@@ -25,6 +25,11 @@
 
     <div class="panel" id="confirmed" hidden>
       <h2><span data-t="confirmed">Scheduled for</span> <span id="confirmed-when"></span></h2>
+      <form id="move-form" class="row" hidden>
+        <label>Move to <input id="move-when" type="datetime-local" required></label>
+        <button type="submit" class="secondary">Move session</button>
+        <span class="muted">In your timezone. Everyone is told in the channel, answers to "Can't make it" are cleared, and the reminders follow the new time. No new vote.</span>
+      </form>
     </div>
 
     <div class="panel" id="grid-panel" hidden>
@@ -184,6 +189,14 @@
       $("confirm").hidden = !(organizer && poll.status === "voting");
       $("cancel").hidden = !(organizer && open);
       $("confirmed").hidden = poll.status !== "confirmed";
+      const movable = organizer && poll.status === "confirmed" && poll.confirmed_start && new Date(poll.confirmed_start) > new Date();
+      $("move-form").hidden = !movable;
+      if (movable) {
+        const pad = (n) => String(n).padStart(2, "0");
+        const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        $("move-when").value = local(new Date(poll.confirmed_start));
+        $("move-when").min = local(new Date());
+      }
       if (poll.confirmed_start) $("confirmed-when").textContent = fmtDateTime(poll.confirmed_start);
     }
 
@@ -237,6 +250,12 @@
       $("save-msg").textContent = Theme.t("saved");
     }));
     $("draft-blank").addEventListener("click", () => { draftInfo = null; grid.loadMarks({}); });
+    $("move-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const when = new Date($("move-when").value);          // read in this browser's timezone
+      if (isNaN(when)) return;
+      act(() => Api.post(`/api/polls/${id}/move`, { start: when.toISOString() }));
+    });
     $("hours-form").addEventListener("submit", (e) => {
       e.preventDefault();
       act(() => Api.patch(`/api/polls/${id}`,

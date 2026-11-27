@@ -10,7 +10,9 @@ from ..auth import current_user, require_organizer
 from ..db import get_db
 from ..models import Availability, Member, Poll, User, Vote
 from ..ratelimit import availability_limiter
-from ..schemas import AvailabilityPut, CloseRequest, ConfirmRequest, PollCreate, PollHours, VoteCast
+from ..schemas import (
+    AvailabilityPut, CloseRequest, ConfirmRequest, MoveRequest, PollCreate, PollHours, VoteCast,
+)
 from ..scheduling import rank_candidates
 from ..services import poll_slots
 
@@ -206,6 +208,16 @@ def cancel_poll(poll_id: int, user: User = Depends(current_user), db: Session = 
     """Organizer abandons an open poll (for example to start over with different dates)."""
     poll = load_poll_as_organizer(db, poll_id, user)
     services.cancel_poll(db, poll)
+    member = services.get_member(db, poll.campaign_id, user.id)
+    return poll_json(db, poll, member, user)
+
+
+@router.post("/polls/{poll_id}/move")
+def move_session(poll_id: int, body: MoveRequest, user: User = Depends(current_user),
+                 db: Session = Depends(get_db)):
+    """Organizer moves a decided session to another time: no new poll or vote."""
+    poll = load_poll_as_organizer(db, poll_id, user)
+    services.move_session(db, poll, body.start)
     member = services.get_member(db, poll.campaign_id, user.id)
     return poll_json(db, poll, member, user)
 

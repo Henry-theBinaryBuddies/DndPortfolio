@@ -13,7 +13,7 @@ from ..models import Campaign, DiscordCleanup, Notification, Poll, PollMessage
 from . import events
 from .snapshots import PollSnapshot, load_poll_snapshot
 from .views import (
-    build_vote_view, cancelled_embed, confirmed_embed, recurred_embed, reschedule_embed,
+    build_vote_view, cancelled_embed, confirmed_embed, moved_embed, recurred_embed, reschedule_embed,
     session_cancelled_embed, vote_embed,
 )
 
@@ -223,6 +223,7 @@ class OutboxProcessor:
                 "vote_update": self._refresh_vote,
                 "confirmed": self._send_confirmed,
                 "recurred": self._send_recurred,
+                "moved": self._send_moved,
                 "reschedule": self._send_reschedule,
                 "event_sync": self._sync_event,
                 "cancelled": self._retire_vote,
@@ -278,7 +279,8 @@ class OutboxProcessor:
         single_wanted = (snap.status == "confirmed" and snap.events_enabled and snap.linked
                          and snap.cadence == "none"
                          and snap.confirmed_start is not None and snap.confirmed_start > _now())
-        stale_series = bool(snap.series_event_id) and not series_wanted
+        # A repeating event with no session left to point at would keep announcing a cancelled one.
+        stale_series = bool(snap.series_event_id) and (not series_wanted or snap.next_start is None)
         moved_series = series_wanted and snap.next_start is not None and not (
             snap.series_event_id and snap.series_event_sig == self._series_sig(snap))
         replaced_single = series_wanted and bool(snap.discord_event_id)
@@ -288,8 +290,8 @@ class OutboxProcessor:
         if self._get_guild is None or guild_id is None:
             raise Undeliverable("cannot reach the Discord server")
         guild = await self._get_guild(guild_id)
-        if snap.series_event_id and not series_wanted:
-            await events.delete(guild, snap.series_event_id, "Chronomancer: events turned off or group changed")
+        if snap.series_event_id and (not series_wanted or snap.next_start is None):
+            await events.delete(guild, snap.series_event_id, "Chronomancer: events turned off, group changed, or no session is scheduled")
             await asyncio.to_thread(self._store_series, snap.campaign_id, None, None)
             snap.series_event_id = snap.series_event_sig = None
         if series_wanted:
@@ -365,6 +367,16 @@ class OutboxProcessor:
         ids = snap.member_ids[:50]
         await channel.send(
             content=" ".join(f"<@{i}>" for i in ids) or None, embed=reschedule_embed(snap),
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, roles=False, users=[discord.Object(id=i) for i in ids]))
+
+    async def _send_moved(self, snap: PollSnapshot) -> None:
+        if snap.status != "confirmed":  # called off after it was moved: the cancellation says it all
+            return
+        channel = await self._get_channel(snap.channel_id)
+        ids = snap.member_ids[:50]
+        await channel.send(
+            content=" ".join(f"<@{i}>" for i in ids) or None, embed=moved_embed(snap),
             allowed_mentions=discord.AllowedMentions(
                 everyone=False, roles=False, users=[discord.Object(id=i) for i in ids]))
 

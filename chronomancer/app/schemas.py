@@ -98,5 +98,9 @@ class ConfirmRequest(BaseModel):
     candidate_id: int | None = None
 
 
+class MoveRequest(BaseModel):
+    start: datetime  # the new start; must include a timezone
+
+
 class CloseRequest(BaseModel):
     vote_hours: int | None = Field(default=None, ge=1, le=config.MAX_VOTE_HOURS)

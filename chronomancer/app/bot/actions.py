@@ -133,11 +133,11 @@ def _ts(moment: datetime, style: str = "F") -> str:
     return f"<t:{int(moment.timestamp())}:{style}>"
 
 
-def _parse_day(value: str) -> date:
+def _parse_day(value: str, label: str = "Week start") -> date:
     try:
         return date.fromisoformat(value.strip())
     except ValueError:
-        raise ServiceError(422, "Week start must look like 2026-10-24.")
+        raise ServiceError(422, f"{label} must look like 2026-10-24.")
 
 
 def _parse_time(value: str, label: str) -> time:
@@ -330,6 +330,26 @@ def cmd_poll(db: Session, du: DUser, guild_id, channel_id, week_start: str | Non
     if tz == "UTC":
         text += " Open the website once and I will use your own timezone next time."
     return Reply(text)
+
+
+def cmd_move(db: Session, du: DUser, guild_id, channel_id, day: str | None, time: str | None) -> Reply:
+    """Move the next decided session to another day and/or time, with no new poll or vote. What
+    is left out stays as it is, so `time:20:00` changes only the hour and `day:2026-12-05` only the
+    day. Read in the session's own timezone (the organizer's, from when the poll was made)."""
+    campaign = _here(db, guild_id, channel_id)
+    _require_organizer(db, campaign, _user(db, du))
+    session = services.next_session(db, campaign.id)
+    if session is None:
+        raise ServiceError(409, "There is no upcoming session to move.")
+    if not (day and day.strip()) and not (time and time.strip()):
+        raise ServiceError(422, "Say when: a day (like 2026-12-05), a time (like 20:00), or both.")
+    tz = ZoneInfo(session.timezone)
+    local = session.confirmed_start_utc.astimezone(tz)
+    new_day = _parse_day(day, "Day") if day and day.strip() else local.date()
+    new_time = _parse_time(time, "Time") if time and time.strip() else local.time()
+    moved = services.move_session(db, session, datetime.combine(new_day, new_time, tzinfo=tz))
+    return Reply(wording.t(campaign.theme, "botMovedReply", when=f"{_ts(moved.confirmed_start_utc)} "
+                                                                f"({_ts(moved.confirmed_start_utc, 'R')})"))
 
 
 def cmd_advance(db: Session, du: DUser, guild_id, channel_id, vote_hours: int | None) -> Reply:

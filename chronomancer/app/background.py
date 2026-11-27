@@ -23,7 +23,7 @@ def _db_tick() -> tuple:
 
 def _compact() -> int:
     with dbmod.SessionLocal() as db:
-        return services.compact_finished_polls(db)
+        return services.compact_finished_polls(db) + services.purge_called_off(db)
 
 
 class Background:

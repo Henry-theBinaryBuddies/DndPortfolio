@@ -134,6 +134,13 @@ def register(tree: app_commands.CommandTree) -> None:
                       vote_hours: Optional[app_commands.Range[int, 1, 336]] = None):
         await _then_flush(interaction, await _run(interaction, actions.cmd_advance, vote_hours))
 
+    @group.command(name="move", description="Move the next decided session to another day or time (no new vote)")
+    @app_commands.describe(
+        day="New day, like 2026-12-05 (default: keep the day)",
+        time="New start time, like 20:00 (default: keep the time)")
+    async def move(interaction: discord.Interaction, day: Optional[str] = None, time: Optional[str] = None):
+        await _then_flush(interaction, await _run(interaction, actions.cmd_move, day, time))
+
     @group.command(name="cancel", description="Cancel the open poll, or the next upcoming session")
     async def cancel(interaction: discord.Interaction):
         await _then_flush(interaction, await _run(interaction, actions.cmd_cancel))

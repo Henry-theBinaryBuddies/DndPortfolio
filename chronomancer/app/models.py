@@ -105,6 +105,11 @@ class Poll(Base):
     recurrence_handled: Mapped[bool] = mapped_column(Boolean, default=False)
     recurred_from: Mapped[int | None] = mapped_column(Integer, nullable=True)  # the session this repeats
     anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)    # day of month to keep
+    # A session the organizer moved: where it was before the latest move, and the time it had in its
+    # series before any move. The series keeps following the second one, so moving one session
+    # (a Saturday to a Sunday) does not drag every later session with it.
+    moved_from_utc = mapped_column(UTCDateTime, nullable=True)
+    series_start_utc = mapped_column(UTCDateTime, nullable=True)
     discord_event_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Opened automatically because too many people said they cannot make this earlier session.
     rescheduled_from: Mapped[int | None] = mapped_column(Integer, nullable=True)
