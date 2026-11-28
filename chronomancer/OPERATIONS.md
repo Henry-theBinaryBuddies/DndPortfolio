@@ -62,7 +62,10 @@ ls -la data/backups/                                 # the copies on the VM
 gcloud storage ls gs://<your bucket>/                # the copies in the bucket
 tail -5 ~/chronomancer-backup.log                    # what the last nightly runs said
 crontab -l                                           # confirm the nightly line is there
+grep FAILED ~/chronomancer-backup.log                # any night that failed (no output is good)
 ```
+
+**Check the off-site copies once a month.** A backup that fails quietly is the real danger: for five weeks in autumn 2026 the nightly copy to the bucket silently stopped, because the tidy-up step failed first. Look at the newest files in the bucket (`gcloud storage ls gs://<your bucket>/ | tail -5`) and make sure there is one for last night. The script now prints `BACKUP FAILED` and `backup ok` lines with the time, so the log shows at a glance which nights worked.
 
 ### Restoring
 

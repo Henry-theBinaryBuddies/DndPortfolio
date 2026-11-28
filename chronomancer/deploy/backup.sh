@@ -6,6 +6,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# A failure must be impossible to miss in the log (~/chronomancer-backup.log under cron):
+#   grep FAILED ~/chronomancer-backup.log
+trap 'echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) BACKUP FAILED at line ${LINENO}" >&2' ERR
+
 stamp="$(date -u +%Y%m%d-%H%M%S)"
 name="chronomancer-${stamp}.db"
 
@@ -24,3 +28,5 @@ fi
 # cannot delete them; the tidy-up runs inside the container too. A failure is reported, never fatal.
 docker compose exec -T app sh -c 'ls -1t /data/backups/chronomancer-*.db 2>/dev/null | tail -n +15 | xargs -r rm --' \
   || echo "warning: could not remove old backups (the new backup was made)"
+
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) backup ok"

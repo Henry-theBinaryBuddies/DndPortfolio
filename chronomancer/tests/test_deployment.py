@@ -222,6 +222,13 @@ def test_a_failed_tidy_up_can_never_skip_the_off_site_copy():
     assert "|| echo" in BACKUP_SH[tidy:]                              # and a failure there is not fatal
 
 
+def test_a_failed_backup_is_loud_and_a_good_one_says_so():
+    assert "trap " in BACKUP_SH and "BACKUP FAILED" in BACKUP_SH and "ERR" in BACKUP_SH
+    assert BACKUP_SH.rstrip().endswith('backup ok"')
+    ops = (ROOT / "OPERATIONS.md").read_text(encoding="utf-8")
+    assert "grep FAILED" in ops and "Check the off-site copies once a month" in ops
+
+
 def test_the_scripts_are_stored_as_executable():
     """Cron runs backup.sh directly. If git stores it as 644, every pull that changes it drops the
     executable flag on the VM and the nightly backup stops without a word."""
