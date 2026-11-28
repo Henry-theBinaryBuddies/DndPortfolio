@@ -333,7 +333,7 @@ def test_the_api_clears_called_off_polls_for_the_organizer_only(client):
 # ------------------------------------------------ deleting them automatically
 
 
-LONG_AFTER = datetime(2032, 1, 1, tzinfo=UTC)
+LONG_AFTER = datetime(2040, 1, 1, tzinfo=UTC)
 
 
 def test_old_called_off_polls_nobody_needs_are_purged(db):

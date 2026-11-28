@@ -16,27 +16,27 @@ from helpers import make_campaign, open_poll
 
 def test_every_poll_covers_seven_days_from_the_start_date(db):
     campaign, _ = make_campaign(db)
-    poll = open_poll(db, campaign, date_start=date(2026, 12, 1))
-    assert poll.date_start == date(2026, 12, 1) and poll.date_end == date(2026, 12, 7)
+    poll = open_poll(db, campaign, date_start=date(2031, 12, 1))
+    assert poll.date_start == date(2031, 12, 1) and poll.date_end == date(2031, 12, 7)
     days = {s.date() for s in services.poll_slots(poll)}
-    assert len(days) == 7 and min(days) == date(2026, 12, 1) and max(days) == date(2026, 12, 7)
+    assert len(days) == 7 and min(days) == date(2031, 12, 1) and max(days) == date(2031, 12, 7)
 
 
 def test_the_api_ignores_a_client_supplied_end_date(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
-    body = {"timezone": "UTC", "date_start": "2026-12-01", "date_end": "2027-03-01",
+    body = {"timezone": "UTC", "date_start": "2031-12-01", "date_end": "2027-03-01",
             "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}
     poll = client.post(f"/api/campaigns/{cid}/polls", json=body).json()
     days = sorted({s[:10] for s in poll["slots"]})
-    assert days == [f"2026-12-0{d}" for d in range(1, 8)]  # a week, not the three months asked for
+    assert days == [f"2031-12-0{d}" for d in range(1, 8)]  # a week, not the three months asked for
 
 
 def test_a_poll_without_a_timezone_uses_the_organizers_own(client):
     login(client, "1", "DM", tz="Asia/Tokyo")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     poll = client.post(f"/api/campaigns/{cid}/polls", json={
-        "date_start": "2026-12-01", "window_start": "18:00:00", "window_end": "22:00:00",
+        "date_start": "2031-12-01", "window_start": "18:00:00", "window_end": "22:00:00",
         "duration_min": 120}).json()
     assert poll["timezone"] == "Asia/Tokyo"
 
@@ -199,7 +199,7 @@ def test_a_polls_hours_follow_the_organizers_zone_but_slots_are_stored_in_utc(cl
     login(client, "1", "DM", tz="Asia/Tokyo")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     poll = client.post(f"/api/campaigns/{cid}/polls", json={
-        "date_start": "2026-12-01", "window_start": "18:00:00", "window_end": "19:00:00",
+        "date_start": "2031-12-01", "window_start": "18:00:00", "window_end": "19:00:00",
         "duration_min": 30}).json()
     assert poll["timezone"] == "Asia/Tokyo"
-    assert poll["slots"][0] == "2026-12-01T09:00:00Z"      # 18:00 in Tokyo is 09:00 UTC: stored as UTC
+    assert poll["slots"][0] == "2031-12-01T09:00:00Z"      # 18:00 in Tokyo is 09:00 UTC: stored as UTC

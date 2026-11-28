@@ -17,7 +17,7 @@ from helpers import CHANNEL, GUILD, make_campaign, make_player, open_poll
 
 ROOT = Path(__file__).resolve().parent.parent
 DM = DUser("1", "Dungeon Master", can_manage=True)
-POLL = {"date_start": "2026-12-01", "window_start": "18:00:00", "window_end": "22:00:00",
+POLL = {"date_start": "2031-12-01", "window_start": "18:00:00", "window_end": "22:00:00",
         "duration_min": 60}
 
 
@@ -25,18 +25,18 @@ POLL = {"date_start": "2026-12-01", "window_start": "18:00:00", "window_end": "2
 
 
 def test_zero_to_zero_is_the_whole_day():
-    slots = generate_slots(date(2026, 12, 1), date(2026, 12, 1), time(0), time(0), "UTC", 30)
-    assert len(slots) == 48 and slots[0].hour == 0 and slots[-1] == datetime(2026, 12, 1, 23, 30, tzinfo=timezone.utc)
+    slots = generate_slots(date(2031, 12, 1), date(2031, 12, 1), time(0), time(0), "UTC", 30)
+    assert len(slots) == 48 and slots[0].hour == 0 and slots[-1] == datetime(2031, 12, 1, 23, 30, tzinfo=timezone.utc)
 
 
 def test_an_end_of_midnight_covers_the_last_slot_of_the_evening():
-    slots = generate_slots(date(2026, 12, 1), date(2026, 12, 1), time(22), time(0), "UTC", 30)
+    slots = generate_slots(date(2031, 12, 1), date(2031, 12, 1), time(22), time(0), "UTC", 30)
     assert [s.strftime("%H:%M") for s in slots] == ["22:00", "22:30", "23:00", "23:30"]
 
 
 def test_an_end_before_the_start_is_still_rejected():
     with pytest.raises(ValueError):
-        generate_slots(date(2026, 12, 1), date(2026, 12, 1), time(22), time(18), "UTC", 30)
+        generate_slots(date(2031, 12, 1), date(2031, 12, 1), time(22), time(18), "UTC", 30)
 
 
 def test_the_whole_day_follows_the_zone_through_a_daylight_saving_change():

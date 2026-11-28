@@ -28,7 +28,7 @@ def make_player(db, campaign, discord_id, name):
 
 
 def open_poll(db, campaign, **overrides):
-    args = dict(title="Session 5", tz="UTC", date_start=date(2026, 12, 1),
+    args = dict(title="Session 5", tz="UTC", date_start=date(2031, 12, 1),
                 window_start=time(18), window_end=time(22),
                 duration_min=120)
     args.update(overrides)

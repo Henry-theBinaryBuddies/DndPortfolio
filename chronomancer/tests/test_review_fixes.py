@@ -209,7 +209,7 @@ def test_deleting_through_the_api_cleans_up_too(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     pid = client.post(f"/api/campaigns/{cid}/polls", json={
-        "timezone": "UTC", "date_start": "2026-12-01",
+        "timezone": "UTC", "date_start": "2031-12-01",
         "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}).json()["id"]
     with fresh() as db:
         db.add(Notification(kind="vote_open", poll_id=pid))
@@ -234,7 +234,7 @@ def test_second_open_poll_is_refused_by_the_service_for_every_caller(db):
 def test_web_api_also_refuses_a_second_open_poll(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
-    body = {"timezone": "UTC", "date_start": "2026-12-01",
+    body = {"timezone": "UTC", "date_start": "2031-12-01",
             "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}
     assert client.post(f"/api/campaigns/{cid}/polls", json=body).status_code == 201
     assert client.post(f"/api/campaigns/{cid}/polls", json=body).status_code == 409
@@ -291,7 +291,7 @@ def test_cancel_endpoint_is_organizer_only(client):
     login(client, "1", "DM")
     camp = client.post("/api/campaigns", json={"name": "x"}).json()
     pid = client.post(f"/api/campaigns/{camp['id']}/polls", json={
-        "timezone": "UTC", "date_start": "2026-12-01",
+        "timezone": "UTC", "date_start": "2031-12-01",
         "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}).json()["id"]
     player = make_client()
     login(player, "2", "Aria")
@@ -514,7 +514,7 @@ def test_duration_that_needs_more_slots_than_the_window_has_is_rejected(db):
 def test_absurd_timezone_strings_are_422_not_500(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
-    body = {"date_start": "2026-12-01", "window_start": "18:00:00",
+    body = {"date_start": "2031-12-01", "window_start": "18:00:00",
             "window_end": "22:00:00", "duration_min": 120}
     for tz in ("x" * 5000, "Mars/Base", "../../etc/passwd", "", "\x00"):
         assert client.post(f"/api/campaigns/{cid}/polls", json={**body, "timezone": tz}).status_code == 422, tz
@@ -524,7 +524,7 @@ def test_poll_endpoints_do_not_reveal_which_ids_exist(client):
     login(client, "1", "DM")
     cid = client.post("/api/campaigns", json={"name": "x"}).json()["id"]
     pid = client.post(f"/api/campaigns/{cid}/polls", json={
-        "timezone": "UTC", "date_start": "2026-12-01",
+        "timezone": "UTC", "date_start": "2031-12-01",
         "window_start": "18:00:00", "window_end": "22:00:00", "duration_min": 120}).json()["id"]
     outsider = make_client()
     login(outsider, "99", "Stranger")

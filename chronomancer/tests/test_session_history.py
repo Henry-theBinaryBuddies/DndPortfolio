@@ -150,7 +150,7 @@ def availability_rows(poll_id):
         return db.scalar(select(func.count()).select_from(Availability).where(Availability.poll_id == poll_id))
 
 
-LONG_AFTER = datetime(2027, 6, 1, tzinfo=UTC)
+LONG_AFTER = datetime(2040, 6, 1, tzinfo=UTC)
 
 
 def test_old_availability_of_a_decided_session_is_dropped_but_the_session_stays(db):
@@ -196,7 +196,7 @@ def test_an_upcoming_session_is_not_compacted_even_if_its_poll_week_is_old(db):
     _, poll, _ = finished_poll(db)
     with fresh() as other:
         row = other.get(Poll, poll.id)
-        row.confirmed_start_utc = datetime(2031, 1, 1, tzinfo=UTC)
+        row.confirmed_start_utc = datetime(2045, 1, 1, tzinfo=UTC)
         other.commit()
     assert services.compact_finished_polls(db, now=LONG_AFTER) == 0
 
@@ -214,7 +214,7 @@ def test_each_sweep_is_bounded_and_the_rest_waits_for_the_next(db):
     campaign, _ = make_campaign(db, guild="7000", channel="7001")
     users = [make_player(db, campaign, f"9{i}", f"P{i}") for i in range(2)]
     for i in range(3):
-        poll = open_poll(db, campaign, date_start=date(2026, 12, 1 + i * 8))
+        poll = open_poll(db, campaign, date_start=date(2031, 12, 1 + i * 8))
         for u in users:
             mark_all_free(db, poll, u)
         poll.status = "cancelled"

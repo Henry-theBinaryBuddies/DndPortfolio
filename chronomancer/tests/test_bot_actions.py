@@ -25,7 +25,7 @@ def setup(db, du=DM, **kw):
     return actions.cmd_setup(db, du, GUILD, CHANNEL, **kw)
 
 
-def poll_cmd(db, du=DM, week="2026-12-01", start="18:00", end="23:00", title="Session 5"):
+def poll_cmd(db, du=DM, week="2031-12-01", start="18:00", end="23:00", title="Session 5"):
     return actions.cmd_poll(db, du, GUILD, CHANNEL, week, start, end, title)
 
 
@@ -266,7 +266,7 @@ def test_poll_uses_the_campaigns_settings_and_the_organizers_timezone(db):
     assert (poll.duration_min, poll.timezone) == (90, "America/Los_Angeles")
     assert "18:00 to 23:00 America/Los_Angeles" in reply.text and "own timezone" in reply.text
     assert "Open the website" not in reply.text  # the zone is known, no nagging
-    assert (poll.date_start.isoformat(), poll.date_end.isoformat()) == ("2026-12-01", "2026-12-07")
+    assert (poll.date_start.isoformat(), poll.date_end.isoformat()) == ("2031-12-01", "2031-12-07")
 
 
 def test_poll_defaults_to_a_week_starting_today_in_the_organizers_timezone(db):
