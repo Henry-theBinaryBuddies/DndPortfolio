@@ -220,3 +220,20 @@ def test_a_failed_tidy_up_can_never_skip_the_off_site_copy():
     assert upload < tidy                                            # copied off the VM first
     assert "docker compose exec -T app sh -c" in BACKUP_SH[tidy - 120:tidy]   # deleted by the user that owns them
     assert "|| echo" in BACKUP_SH[tidy:]                              # and a failure there is not fatal
+
+
+def test_the_scripts_are_stored_as_executable():
+    """Cron runs backup.sh directly. If git stores it as 644, every pull that changes it drops the
+    executable flag on the VM and the nightly backup stops without a word."""
+    import shutil
+    import subprocess
+
+    import pytest
+    if shutil.which("git") is None:
+        pytest.skip("git is not installed")
+    listing = subprocess.run(["git", "ls-files", "-s", "deploy/backup.sh", "deploy/setup-vm.sh"],
+                             cwd=ROOT, capture_output=True, text=True)
+    if listing.returncode != 0 or not listing.stdout.strip():
+        pytest.skip("not running inside a git checkout")
+    modes = {line.split()[-1]: line.split()[0] for line in listing.stdout.splitlines()}
+    assert modes == {"deploy/backup.sh": "100755", "deploy/setup-vm.sh": "100755"}
