@@ -54,6 +54,8 @@ export const RECHARGE = ["short", "long", "dawn"] as const;
 /** Coins, smallest first, and how many copper pieces each is worth. */
 export const COINS = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 } as const;
 export type Coin = keyof typeof COINS;
+/** The most items a character can be attuned to at once. */
+export const MAX_ATTUNED = 3;
 export const COIN_UNITS = Object.keys(COINS) as [Coin, ...Coin[]];
 
 /** Weapon properties. "monk" is not a property in the book: the community files use it to mark monk weapons. */

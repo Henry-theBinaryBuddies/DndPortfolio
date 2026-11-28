@@ -1,0 +1,201 @@
+/* ---- The character sheet ----
+   The classic paper sheet's layout in our own lettering and boxes: serif type already on the computer (nothing to
+   download, nothing for the Content-Security-Policy to block), small-capital captions under each box, rounded frames,
+   empty boxes to fill in by hand. On screen it takes the app's colours; printed, it's black on white. */
+.print-only { display: none; }
+.sheet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 10px 0 14px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
+
+.sheet {
+  --sheet-serif: "Palatino Linotype", "Book Antiqua", Palatino, "URW Palladio L", Georgia, serif;
+  --sheet-line: var(--edge-strong);
+  --sheet-fill: var(--panel);
+  container-type: inline-size;
+}
+.sheet-page {
+  font-family: var(--sheet-serif); font-size: 14px; line-height: 1.35;
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 24px; padding: 12px; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--bg);
+}
+.sheet-columns { display: grid; grid-template-columns: repeat(var(--sheet-columns, 3), minmax(0, 1fr)); gap: 8px; align-items: start; }
+.sheet-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sheet-split { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 8px; align-items: start; }
+
+/* A box, with its caption under it (first in the page's order, so screen readers hear it first). */
+.sheet-box {
+  display: flex; flex-direction: column; min-width: 0; break-inside: avoid;
+  border: 1.5px solid var(--sheet-line); border-radius: 8px; padding: 6px 8px; background: var(--sheet-fill);
+}
+.sheet-caption, .sheet-box > .label {
+  order: 99; display: block; margin: 4px 0 0; text-align: center;
+  font: normal 12px/1.2 var(--sheet-serif); font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--ink-dim);
+}
+.sheet-big { font-size: 22px; line-height: 1.1; color: var(--ink-bright); }
+
+/* The band across the top: the name in a double frame, the other facts on lines with captions under them. */
+.sheet-banner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 8px; align-items: stretch; }
+.sheet-namebox { display: flex; flex-direction: column; justify-content: flex-end; border: 4px double var(--sheet-line); border-radius: 8px; padding: 6px 10px; background: var(--sheet-fill); }
+.sheet-namebox .sheet-caption { text-align: left; }
+.sheet-name { font: normal 24px/1.15 var(--sheet-serif); color: var(--ink-bright); overflow-wrap: anywhere; margin: 0; border-bottom: 1px solid var(--sheet-line); padding-bottom: 2px; }
+.sheet-banner .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; margin: 0; padding: 6px 10px; border: 1.5px solid var(--sheet-line); border-radius: 8px; background: var(--sheet-fill); }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 6px 0 0; }
+.facts > div { display: flex; flex-direction: column; min-width: 0; }
+.facts dt { order: 2; font-size: 12px; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--ink-dim); }
+.facts dd { margin: 0; border-bottom: 1px solid var(--edge); min-height: 1.35em; overflow-wrap: anywhere; }
+
+/* The identity block (when not a band) and the portrait. */
+.identity { display: flex; flex-direction: row; gap: 12px; align-items: flex-start; }
+.identity-text { min-width: 0; flex: 1; }
+.sheet-box.kind-portrait .avatar { width: 100%; height: auto; aspect-ratio: 3 / 4; border-radius: 6px; object-fit: cover; font-size: 40px; display: flex; align-items: center; justify-content: center; }
+
+/* Ability scores standing in a column: the modifier big, the score in a small oval under it. */
+.sheet-tiles, .sheet-stats { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sheet-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.sheet-tiles li, .sheet-stats li { display: flex; flex-direction: column; align-items: center; text-align: center; border: 1px solid var(--sheet-line); border-radius: 8px; padding: 4px; }
+.sheet-box.kind-tiles:has(.tall) { border: 0; padding: 0; background: none; }
+.sheet-box.kind-tiles:has(.tall) > .sheet-caption, .sheet-box.kind-blanks > .sheet-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sheet-tiles.tall { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.sheet-tiles.tall li { border-width: 1.5px; border-radius: 10px 10px 22px 22px; padding: 4px 2px 0; background: var(--sheet-fill); }
+.sheet-tiles.tall .label { font-size: 11px; font-variant-caps: all-small-caps; letter-spacing: 0.04em; color: var(--ink-dim); text-transform: none; }
+.sheet-tiles.tall .sheet-big { font-size: 26px; }
+.sheet-score { min-width: 2.4em; margin-bottom: -10px; padding: 0 6px; border: 1.5px solid var(--sheet-line); border-radius: 999px; background: var(--sheet-fill); font-size: 14px; }
+
+/* Combat numbers; Armor Class in a shield's outline. */
+.sheet-stats { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
+.sheet-stats li { border-width: 1.5px; padding: 4px 2px; }
+.sheet-stats li .sheet-caption { order: 99; margin-top: 2px; }
+.sheet-stats.small { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.sheet-stats.small li { padding: 1px 2px; border-width: 1px; }
+.sheet-stats.small .sheet-big { font-size: 15px; min-height: 1.1em; }
+.sheet-stats li.shield { border-radius: 8px 8px 50% 50% / 8px 8px 35% 35%; padding-bottom: 10px; }
+.sheet-box.kind-stats.inline { flex-direction: row; align-items: center; border-radius: 999px; padding: 4px 10px 4px 4px; }
+.sheet-inline { display: flex; align-items: center; gap: 8px; margin: 0; }
+.sheet-inline .sheet-big { min-width: 2.2em; text-align: center; font-size: 18px; border: 1.5px solid var(--sheet-line); border-radius: 999px; padding: 1px 4px; }
+.sheet-inline .sheet-caption { order: 0; margin: 0; text-align: left; font-size: 13px; }
+
+/* Boxes to fill in by hand. */
+.sheet-blanks { display: grid; gap: 6px; }
+.sheet-blank { display: flex; flex-direction: column; }
+.sheet-blank .sheet-caption { order: 99; }
+.sheet-above { margin: 0; font-size: 12px; border-bottom: 1px dotted var(--edge); }
+.write-in { min-height: 40px; }
+.sheet-box.kind-blanks.single .write-in { min-height: 26px; }
+.sheet-box.kind-blanks .sheet-blank.large .write-in { min-height: 140px; }
+.sheet-ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sheet-ticks li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sheet-ticks li:only-child { justify-content: center; }
+.tick-boxes { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: -2px; }
+.tick-box { display: inline-block; width: 0.85em; height: 0.85em; border: 1.5px solid var(--ink); border-radius: 2px; }
+
+/* Saving throws and skills: the mark, the bonus on its line, the name. */
+.sheet-checklist, .sheet-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.sheet-checklist li { display: grid; grid-template-columns: 1.1em 2.3em minmax(0, 1fr); gap: 4px; align-items: baseline; }
+.sheet-checklist .final { text-align: center; border-bottom: 1px solid var(--edge); }
+.sheet-mark { color: var(--ember); }
+
+/* Attacks: a table, with empty lines to write more. */
+.sheet-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sheet-table thead th { font-weight: normal; font-size: 11px; font-variant-caps: all-small-caps; letter-spacing: 0.05em; color: var(--ink-dim); text-align: left; padding: 0 4px 2px 0; }
+.sheet-table tbody th { font-weight: normal; text-align: left; }
+.sheet-table tbody th, .sheet-table td { border-bottom: 1px solid var(--edge); padding: 2px 4px 2px 0; vertical-align: top; }
+.sheet-table .blank-row td { height: 1.4em; }
+
+/* Equipment: coin boxes and the total weight down the side, a table of what's carried beside them. */
+.ledger { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 8px; align-items: start; }
+.ledger-side { display: flex; flex-direction: column; gap: 5px; margin: 0; }
+.ledger-side div { display: flex; align-items: center; gap: 4px; border: 1.5px solid var(--sheet-line); border-radius: 0 999px 999px 0; padding: 1px 6px; }
+.ledger-side dt { font-size: 11px; color: var(--ink-dim); min-width: 1.8em; }
+.ledger-side dd { margin: 0; flex: 1; text-align: right; white-space: nowrap; }
+.ledger-side div:last-child { flex-direction: column; align-items: stretch; border: 0; padding: 4px 0 0; text-align: center; }
+.ledger-side div:last-child dt { font-size: 11px; font-variant-caps: all-small-caps; letter-spacing: 0.05em; }
+.ledger-side div:last-child dd { text-align: center; font-size: 18px; color: var(--ink-bright); }
+.ledger-tables { display: grid; grid-template-columns: repeat(var(--ledger-split, 1), minmax(0, 1fr)); gap: 0 18px; align-items: start; }
+.ledger.across { grid-template-columns: minmax(0, 1fr); }
+.ledger.across .ledger-side { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+.ledger.across .ledger-side div { flex: 1 1 4.5em; }
+.ledger.across .ledger-side div:nth-last-child(-n+3) { flex: 2 1 9em; flex-direction: row; align-items: center; border: 1.5px solid var(--sheet-line); border-radius: 8px; padding: 1px 8px; }
+.ledger.across .ledger-side div:nth-last-child(-n+3) dd { font-size: inherit; text-align: right; color: var(--ink); }
+.ledger.across .ledger-side div:last-child dt { font-variant-caps: normal; letter-spacing: 0; }
+.ledger-table tbody tr { height: 1.6em; }
+.ledger-table td:first-child { width: 2.2em; text-align: center; }
+.ledger-table .ledger-check { width: 1.5em; text-align: center; }
+.ledger-table thead .ledger-check abbr { text-decoration: none; }
+.ledger-check .tick-box { vertical-align: -1px; }
+.tick-box.ticked { position: relative; }
+.tick-box.ticked::after { content: ""; position: absolute; left: 0.22em; top: -0.05em; width: 0.28em; height: 0.55em; border: solid var(--ink-bright); border-width: 0 2px 2px 0; transform: rotate(40deg); }
+.ledger-table td:last-child, .ledger-table th:last-child { width: 2.8em; text-align: right; }
+.ledger-table thead th:first-child { text-align: center; }
+.ledger-group td { font-size: 11px; font-variant-caps: all-small-caps; letter-spacing: 0.04em; color: var(--ink-dim); padding-top: 4px; }
+.ledger-table tr.in-group th { padding-left: 0.8em; }
+.ledger-table .ledger-group td:last-child { text-align: left; }
+.sheet-box.kind-ledger { break-inside: auto; }
+
+/* Rows, lists and text. */
+.sheet-inline-list { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.sheet-rows div, .sheet-text div { margin-bottom: 4px; font-size: 13px; }
+.sheet-rows { margin: 0; }
+.sheet-rows div { display: flex; justify-content: space-between; gap: 10px; }
+.sheet-rows dt, .sheet-text dt { color: var(--ink-dim); }
+.sheet-rows dd { margin: 0; text-align: right; }
+.sheet-text { margin: 0; }
+.sheet-text dd { margin: 0 0 6px; white-space: pre-wrap; }
+.sheet-list li { padding: 2px 0; }
+.sheet-group { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: normal 13px var(--sheet-serif); font-variant-caps: all-small-caps; letter-spacing: 0.05em; color: var(--ink-dim); margin: 6px 0 2px; border-bottom: 1px solid var(--edge); break-after: avoid; }
+.sheet-textboxes { display: flex; flex-direction: column; gap: 8px; }
+.sheet-text-body { margin: 0; min-height: 3.2em; white-space: pre-wrap; font-size: 13px; overflow-wrap: anywhere; }
+.sheet-col:only-child .sheet-text-body, .sheet-columns > .sheet-col > .sheet-textboxes:only-child .sheet-text-body { min-height: 9em; }
+
+/* A long list in newspaper columns: the caption leads, across the top. */
+.sheet-box.flow-columns { display: block; column-count: 3; column-gap: 18px; }
+.sheet-box.flow-columns > .label { column-span: all; text-align: left; margin: 0 0 4px; font-size: 14px; }
+.sheet-list-part { break-inside: avoid-column; }
+
+.rulings ul { margin: 0; padding-left: 18px; font-size: 13px; }
+.sheet-credits { font-size: 12px; }
+
+/* Narrow: the columns stack, the band folds. */
+@container (max-width: 860px) {
+  .sheet-columns { grid-template-columns: minmax(0, 1fr); }
+  .sheet-box.flow-columns { column-count: 2; }
+}
+@container (max-width: 560px) {
+  .sheet-banner { grid-template-columns: minmax(0, 1fr); }
+  .sheet-banner .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sheet-box.flow-columns { column-count: 1; }
+  .ledger, .ledger-tables { grid-template-columns: minmax(0, 1fr); }
+  .ledger-side { flex-direction: row; flex-wrap: wrap; }
+  .ledger-side div { flex: 1 1 4.5em; }
+}
+
+/* Printing: black on white, US Letter or A4, three columns whatever the paper's width. */
+@media print {
+  @page { margin: 10mm; }
+  .sheet { --sheet-line: #1a1a1a; --sheet-fill: #fff; container-type: normal; }
+  .sheet-page { font-size: 8.5pt; padding: 0; border: 0; margin: 0; gap: 5px; background: #fff; break-after: page; }
+  .sheet-page:last-child { break-after: auto; }
+  .sheet-columns { grid-template-columns: repeat(var(--sheet-columns, 3), minmax(0, 1fr)); gap: 5px; }
+  .sheet-col, .sheet-textboxes { gap: 5px; }
+  .sheet-banner { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .sheet-banner .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sheet-box { padding: 4px 6px; }
+  .sheet-box.flow-columns { column-count: 3; }
+  .sheet-checklist, .sheet-list, .sheet-table, .sheet-rows div, .sheet-text div, .sheet-text-body { font-size: 8.5pt; }
+  .sheet-caption, .sheet-box > .label, .facts dt { font-size: 7.5pt; }
+  .sheet-big { font-size: 15pt; }
+  .sheet-tiles.tall .sheet-big { font-size: 17pt; }
+  .sheet-name { font-size: 17pt; }
+  .sheet-mark { color: #000; }
+  .sheet-box.kind-portrait span.avatar { color: transparent; }
+  .sheet-inline-list { font-size: 8.5pt; }
+  .ledger-side dt, .ledger-group td { font-size: 7pt; }
+  .ledger-table th, .ledger-table td { padding-top: 0; padding-bottom: 0; line-height: 1.2; }
+  .ledger-side div:last-child dd { font-size: 13pt; }
+  .ledger-tables { grid-template-columns: repeat(var(--ledger-split, 1), minmax(0, 1fr)); }
+  .sheet-stats.small .sheet-big { font-size: 11pt; }
+  .sheet-box.kind-blanks .sheet-blank.large .write-in { min-height: 230px; }
+  .tick-box { border-color: #000; }
+  .tick-box.ticked::after { border-color: #000; }
+  .full-text .print-only { display: block; font-size: 8pt; margin: 2px 0 4px; white-space: pre-wrap; }
+  .sheet:not(.full-text) .print-full-only { display: none; }
+}
+.sheet-blank + .sheet-blank { border-top: 1px solid var(--edge); padding-top: 4px; }

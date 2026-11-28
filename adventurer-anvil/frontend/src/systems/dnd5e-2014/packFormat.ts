@@ -2,6 +2,10 @@
 // checks that run when a pack is read (field shapes first, then that every reference points at something).
 // One definition gives the TypeScript types, the load-time checks and the published JSON Schema (schema.ts).
 import { z } from "zod";
+
+// Zod normally speeds up checks by building functions from strings, which the site's Content-Security-Policy forbids
+// (no 'unsafe-eval'); it would fall back by itself, but only after a blocked attempt the browser reports as a violation.
+z.config({ jitless: true });
 import type { IndexedPack, PackFile, PackSchema } from "../../core";
 import { PACK_FORMAT, PACK_FORMAT_VERSION } from "../../core";
 import {

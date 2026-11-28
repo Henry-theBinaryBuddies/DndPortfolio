@@ -7,6 +7,7 @@ import { downloadCharacter } from "./files";
 import type { LoadedPack } from "./packs";
 import { Licences, Review } from "./pages";
 import { Sheet } from "./Sheet";
+import { LICENCE_NAME, SOURCE_URL } from "./source";
 import { ExportButtons } from "./Exports";
 import { reducer } from "./state";
 import type { CharacterStore } from "./store";
@@ -275,6 +276,7 @@ export function Builder({ system, packs, content, store, opening, onLeave, focus
       <footer className="foot">
         {attributions.map((a) => <span key={a}>{a}</span>)}
         <button type="button" className="link" onClick={() => go({ kind: "licences" })}>Licences</button>
+        <a href={SOURCE_URL} rel="noopener">Source code ({LICENCE_NAME})</a>
       </footer>
 
       <div className="mobile-bar">

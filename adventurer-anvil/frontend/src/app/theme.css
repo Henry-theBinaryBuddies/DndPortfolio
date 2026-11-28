@@ -244,55 +244,14 @@ select { font: inherit; color: var(--ink); background: var(--panel); border: 1px
 .compact-roll .button { grid-column: 3; grid-row: 1 / span 2; }
 .compact-roll-issues { grid-column: 1 / -1; }
 
-/* ---- The character sheet ---- */
-.print-only { display: none; }
-.sheet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 10px 0 14px; }
-.check { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
-.sheet-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; align-items: start; }
-.sheet-box { border: 1px solid var(--edge-strong); border-radius: var(--radius); padding: 8px 10px; break-inside: avoid; min-width: 0; }
-.sheet-box > .label { display: block; margin-bottom: 4px; }
-.sheet-box.wide, .identity, .sheet-page > .sheet-box:has(.sheet-tiles), .sheet-page > .sheet-box:has(.sheet-stats), .rulings, .sheet-credits { grid-column: 1 / -1; }
-.identity { display: flex; gap: 12px; align-items: flex-start; }
-.identity-text { min-width: 0; flex: 1; }
-.sheet-name { font-size: 22px; overflow-wrap: anywhere; }
-.facts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 6px 0 0; font-size: 14px; }
-.facts dt, .sheet-rows dt, .sheet-text dt { color: var(--ink-dim); }
-.facts dd { margin: 0; }
-.sheet-tiles, .sheet-stats { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.sheet-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.sheet-stats { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-.sheet-tiles li, .sheet-stats li { display: flex; flex-direction: column; align-items: center; text-align: center; border: 1px solid var(--edge); border-radius: var(--radius); padding: 4px; }
-.sheet-big { font-size: 20px; color: var(--ink-bright); }
-.sheet-checklist, .sheet-list { list-style: none; margin: 0; padding: 0; font-size: 14px; }
-.sheet-checklist li { display: grid; grid-template-columns: 1.4em minmax(0, 1fr) auto; gap: 6px; }
-.sheet-mark { color: var(--ember); }
-.sheet-rows div, .sheet-text div { margin-bottom: 4px; font-size: 14px; }
-.sheet-rows { margin: 0; }
-.sheet-rows div { display: flex; justify-content: space-between; gap: 10px; }
-.sheet-rows dd { margin: 0; text-align: right; }
-.sheet-text { margin: 0; }
-.sheet-text dd { margin: 0 0 6px; white-space: pre-wrap; }
-.sheet-list li { padding: 2px 0; }
-.sheet-group { font-size: 13px; font-weight: normal; color: var(--ink-dim); margin: 6px 0 2px; }
-.sheet-credits { font-size: 12px; }
-@media (max-width: 760px) {
-  .sheet-page { grid-template-columns: minmax(0, 1fr); }
-  .sheet-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
-/* Printing: light, without the app's frame, each sheet page on its own paper, long text only when asked for. */
+/* Printing: light, without the app's frame (the sheet's own print rules are in sheet.css). */
 @media print {
   :root { --bg: #fff; --panel: #fff; --panel-raised: #fff; --edge: #bbb; --edge-strong: #777; --ink: #111; --ink-bright: #000; --ink-dim: #444; --ember: #000; color-scheme: light; }
-  @page { margin: 12mm; }
+  @page { margin: 10mm; }
   body { font-size: 11pt; }
   .top, .rail, .side, .foot, .mobile-bar, .nav, .skip, .screen-only, .banner { display: none !important; }
   .layout { display: block; }
   .page { padding: 0; max-width: none; }
-  .print-only { display: none; }
-  .full-text .print-only { display: block; font-size: 10pt; margin: 2px 0 6px; white-space: pre-wrap; }
-  .sheet:not(.full-text) .print-full-only { display: none; }
-  .sheet-page { break-after: page; }
-  .sheet-page:last-child { break-after: auto; }
 }
 
 /* Records: rows of fields to add, edit and remove. */

@@ -50,52 +50,106 @@ export function runPipeline(doc: CharacterDocument, content: ContentIndex) {
 }
 
 const ABILITY_KEYS = ["str", "dex", "con", "int", "wis", "cha"] as const;
-const SHORT = { str: "Str", dex: "Dex", con: "Con", int: "Int", wis: "Wis", cha: "Cha" } as const;
 
-/** The character sheet: the character and its numbers on page 1; spells and story on page 2. */
+const ABILITY_NAMES_SHORT = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
+const COIN_BOXES = [
+  { key: "coins.cp", label: "CP" }, { key: "coins.sp", label: "SP" }, { key: "coins.ep", label: "EP" }, { key: "coins.gp", label: "GP" }, { key: "coins.pp", label: "PP" },
+];
+const SPELL_LEVELS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
+
+/**
+ * The character sheet, laid out like the classic three-column paper sheet (our own lettering and boxes, not its
+ * artwork): page 1 the character and its numbers, with boxes to fill in by hand at the table; page 2 everything
+ * carried, and the money; page 3 the story; page 4 the spells, for spellcasters only.
+ */
 export const SHEET: SheetPage[] = [
   {
     label: "Character",
-    sections: [
+    header: [
       {
-        kind: "identity", label: "Character",
+        kind: "identity", label: "Character", banner: true,
         fields: [
-          { choice: BACKGROUND_KEY, label: "Background" }, { choice: ALIGNMENT_KEY, label: "Alignment" },
-          { derived: "level", label: "Level" }, { derived: "proficiency-bonus", label: "Proficiency bonus", format: "signed" },
+          { derived: "class-levels", label: "Class and level" }, { choice: BACKGROUND_KEY, label: "Background" }, { blank: "Player name" },
+          { choice: RACE_KEY, label: "Race" }, { choice: ALIGNMENT_KEY, label: "Alignment" }, { blank: "Experience points" },
         ],
       },
-      { kind: "tiles", label: "Ability scores", items: ABILITY_KEYS.map((a) => ({ key: `ability.${a}`, short: SHORT[a], note: `ability.${a}.mod` })) },
-      {
-        kind: "stats", label: "Combat",
-        items: [
-          { key: "ac", label: "Armor Class" }, { key: "hp", label: "Hit points" }, { key: "hit-dice", label: "Hit dice" },
-          { key: "speed.walk", label: "Speed", format: "feet" }, { key: "initiative", label: "Initiative", format: "signed" },
-          { key: "passive.perception", label: "Passive Perception" },
-        ],
-      },
-      { kind: "checklist", label: "Saving throws", items: ABILITY_KEYS.map((a) => ({ key: `save.${a}` })), unmarked: "Not proficient" },
-      { kind: "checklist", label: "Skills", items: [], prefix: { key: "skill." }, unmarked: "Not proficient" },
-      { kind: "rows", label: "Attacks", items: [], prefix: { key: "attack." } },
-      { kind: "list", label: "Features and traits", list: "features", full: true },
-      { kind: "list", label: "Feats", list: "feats" },
-      { kind: "list", label: "Limited uses", list: "resources" },
-      { kind: "list", label: "Armour, weapons and tools", list: "other-proficiencies" },
-      { kind: "list", label: "Languages", list: "languages" },
-      { kind: "list", label: "Senses", list: "senses" },
-      { kind: "list", label: "Resistances", list: "resistances" },
-      { kind: "rows", label: "Money and weight", items: [{ key: "coins", format: "coins" }, { key: "weight", format: "pounds" }] },
-      { kind: "list", label: "Equipment", list: "inventory" },
+    ],
+    columns: [
+      [
+        {
+          kind: "split", label: "Abilities, saving throws and skills",
+          columns: [
+            [{ kind: "tiles", label: "Ability scores", tall: true, items: ABILITY_KEYS.map((a) => ({ key: `ability.${a}`, short: ABILITY_NAMES_SHORT[a], note: `ability.${a}.mod` })) }],
+            [
+              { kind: "ticks", label: "Inspiration", rows: [{ label: "Inspiration", count: 1 }] },
+              { kind: "stats", label: "Proficiency bonus", inline: true, items: [{ key: "proficiency-bonus", label: "Proficiency bonus", format: "signed" }] },
+              { kind: "checklist", label: "Saving throws", items: ABILITY_KEYS.map((a) => ({ key: `save.${a}` })), unmarked: "Not proficient", trim: " saving throw" },
+              { kind: "checklist", label: "Skills", items: [], prefix: { key: "skill." }, unmarked: "Not proficient" },
+            ],
+          ],
+        },
+        { kind: "stats", label: "Passive Perception", inline: true, items: [{ key: "passive.perception", label: "Passive Wisdom (Perception)" }] },
+        { kind: "list", label: "Armour, weapons and tools", list: "other-proficiencies", inline: true },
+        { kind: "list", label: "Languages", list: "languages", inline: true },
+      ],
+      [
+        {
+          kind: "stats", label: "Combat",
+          items: [{ key: "ac", label: "Armor Class", shape: "shield" }, { key: "initiative", label: "Initiative", format: "signed" }, { key: "speed.walk", label: "Speed", format: "feet" }],
+        },
+        { kind: "blanks", label: "Hit points", items: [{ label: "Current hit points", above: { key: "hp", label: "Hit point maximum" } }, { label: "Temporary hit points" }] },
+        { kind: "blanks", label: "Hit dice", items: [{ label: "Hit dice", above: { key: "hit-dice", label: "Total" } }] },
+        { kind: "ticks", label: "Death saves", rows: [{ label: "Successes", count: 3 }, { label: "Failures", count: 3 }] },
+        { kind: "rows", label: "Attacks", items: [], prefix: { key: "attack." }, table: { columns: ["Name", "Attack bonus", "Damage and type"], separator: " to hit, " } },
+        { kind: "stats", label: "Money", small: true, blankZero: true, items: COIN_BOXES },
+        { kind: "stats", label: "Weight", inline: true, items: [{ key: "weight", label: "Total weight", format: "pounds" }] },
+      ],
+      [
+        { kind: "text", label: "Personality", boxes: true, keys: ["background.traits", "background.ideal", "background.bond", "background.flaw"] },
+        { kind: "list", label: "Limited uses", list: "resources", ticks: true },
+        { kind: "list", label: "Features and traits", list: "features", full: true },
+      ],
     ],
   },
   {
-    label: "Spells and story",
+    label: "Equipment and money",
+    sections: [
+      {
+        kind: "ledger", label: "Equipment", list: "inventory", columns: ["Qty", "Item", "lb"], sideAcross: true, split: 2, lines: 34,
+        checks: [{ flag: "equipped", short: "E", name: "Equipped" }, { flag: "attuned", short: "A", name: "Attuned" }],
+        side: [
+          ...COIN_BOXES, { key: "weight", label: "Total weight", format: "pounds" },
+          { key: "carrying-capacity", label: "Carrying capacity", format: "pounds" }, { key: "attunement", label: "Attuned" },
+        ],
+      },
+      { kind: "blanks", label: "Treasure and notes", items: [{ label: "Treasure and notes", large: true }] },
+    ],
+  },
+  {
+    label: "Story",
+    columns: [
+      [
+        { kind: "portrait", label: "Portrait" },
+        { kind: "text", label: "Appearance", keys: ["details.age", "details.height", "details.weight", "details.eyes", "details.skin", "details.hair"] },
+      ],
+      [{ kind: "text", label: "Story", boxes: true, keys: ["details.backstory", "details.allies", "details.notes"] }],
+      [
+        { kind: "list", label: "Feats", list: "feats" },
+        { kind: "list", label: "Senses", list: "senses" },
+        { kind: "list", label: "Resistances", list: "resistances" },
+      ],
+    ],
+    sections: [{ kind: "records", label: "Session journal", key: "details.journal", newestFirst: true, print: "full-only" }],
+  },
+  {
+    label: "Spells",
+    onlyWithList: "spell-list",
     sections: [
       { kind: "rows", label: "Spellcasting", items: [], prefix: { key: "spell." } },
-      { kind: "list", label: "Spells", list: "spell-list", full: true },
-      { kind: "text", label: "Appearance", keys: ["details.age", "details.height", "details.weight", "details.eyes", "details.skin", "details.hair"] },
-      { kind: "text", label: "Personality", keys: ["background.traits", "background.ideal", "background.bond", "background.flaw"] },
-      { kind: "text", label: "Story", keys: ["details.backstory", "details.allies", "details.notes"] },
-      { kind: "records", label: "Session journal", key: "details.journal", newestFirst: true, print: "full-only" },
+      {
+        kind: "list", label: "Spells", list: "spell-list", full: true, flow: "columns",
+        groupTicks: Object.fromEntries(SPELL_LEVELS.map((l, i) => [`${l} level`, `spell-slots.${i + 1}`])),
+      },
     ],
   },
 ];
