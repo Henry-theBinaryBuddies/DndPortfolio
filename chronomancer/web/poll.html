@@ -30,6 +30,10 @@
         <button type="submit" class="secondary">Move session</button>
         <span class="muted">In your timezone. Everyone is told in the channel, answers to "Can't make it" are cleared, and the reminders follow the new time. No new vote.</span>
       </form>
+      <p id="cancel-session-row" hidden>
+        <button id="cancel-session" type="button" class="secondary">Cancel this session</button>
+        <span class="muted">Calls it off for good: the group is told, and its reminders and Discord event are removed.</span>
+      </p>
     </div>
 
     <div class="panel" id="grid-panel" hidden>
@@ -191,6 +195,7 @@
       $("confirmed").hidden = poll.status !== "confirmed";
       const movable = organizer && poll.status === "confirmed" && poll.confirmed_start && new Date(poll.confirmed_start) > new Date();
       $("move-form").hidden = !movable;
+      $("cancel-session-row").hidden = !movable;     // a decided session that has not started can be called off
       if (movable) {
         const pad = (n) => String(n).padStart(2, "0");
         const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -268,6 +273,12 @@
     $("confirm").addEventListener("click", () => confirmPoll(null));
     $("cancel").addEventListener("click", () => {
       if (confirm(Theme.t("cancelPollConfirm"))) {
+        act(() => Api.post(`/api/polls/${id}/cancel`));
+      }
+    });
+    $("cancel-session").addEventListener("click", () => {
+      if (confirm("Cancel this session? The group is told in the channel, and its reminders and Discord event are removed. " +
+                  "A repeating group lines up its next session unless one is already lined up or a poll is open.")) {
         act(() => Api.post(`/api/polls/${id}/cancel`));
       }
     });

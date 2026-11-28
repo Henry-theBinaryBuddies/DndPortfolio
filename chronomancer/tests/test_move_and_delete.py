@@ -448,6 +448,17 @@ def test_the_pages_have_the_move_form_and_the_delete_button():
         assert needle in campaign, needle
 
 
+def test_a_decided_session_can_be_cancelled_from_its_page(client):
+    """The page once offered Cancel only for open polls, so a decided session could only be
+    cancelled from Discord."""
+    campaign, pid, start = api_session(client)
+    page = (ROOT / "web" / "poll.html").read_text(encoding="utf-8")
+    assert 'id="cancel-session"' in page and "cancel-session-row" in page
+    assert "$(\"cancel-session-row\").hidden = !movable" in page
+    r = client.post(f"/api/polls/{pid}/cancel")
+    assert r.status_code == 200 and r.json()["status"] == "cancelled"
+
+
 def test_both_themes_word_the_move_announcement():
     from app.bot import wording
     for theme in wording.available_themes():
