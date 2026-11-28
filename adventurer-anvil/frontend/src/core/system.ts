@@ -27,8 +27,11 @@ export type SummaryGroup =
   | { kind: "rows"; label: string; items: { key: string; format?: ValueFormat }[]; prefix?: { key: string; format?: ValueFormat } }
   | { kind: "list"; label: string; list: string };
 
-/** One fact in the sheet's identity block: a chosen value (shown as its answer) or a derived one. */
-export type SheetField = { choice: string; label?: string } | { derived: string; label?: string; format?: ValueFormat };
+/**
+ * One fact in the sheet's identity block: a chosen value (shown as its answer), a derived one, or a blank to write on
+ * by hand (the label over an empty line).
+ */
+export type SheetField = { choice: string; label?: string } | { derived: string; label?: string; format?: ValueFormat } | { blank: string };
 
 /**
  * A section of the character sheet. The system lays the sheet out; the app draws each kind without knowing the game:
@@ -37,16 +40,47 @@ export type SheetField = { choice: string; label?: string } | { derived: string;
  * value, perhaps every derived value whose key starts with a prefix), list (a named list; `full` lists print their
  * long text when the reader asks for it), text (written choices, by key, with their labels), and records (the rows of
  * a records choice; "full-only" ones print only when the reader asks for long text).
+ *
+ * For a sheet filled in by hand at the table: blanks (labelled empty boxes, perhaps with a derived value written small
+ * above, such as the most the box can hold), ticks (rows of boxes to tick), and split (columns inside a column).
+ *
+ * Shapes and options: `banner` draws the identity block as a band across the page; `tall` tiles stack in a column with
+ * the note big and the value small under it; a stat's `shape` gives it a shield's outline; `inline` stats sit as a
+ * number beside its label; `table` rows split each value into columns at `separator`; a list's `ticks` draws a box per
+ * use after items that have uses, and `groupTicks` draws boxes after a group's heading, as many as the derived value it
+ * names; `flow: "columns"` runs a long list in newspaper columns; an `inline` list is one paragraph of names; a
+ * checklist's `trim` is cut from its labels (words its caption already says); text `boxes` gives every key its own box,
+ * empty ones too, to write in. A ledger is a table of things carried (how many, the name, the weight: items' `count`
+ * and `weight`) with empty lines to add more by hand, and a strip of boxes beside it (money, the total weight); it can
+ * run down several tables side by side, keeping a group of rows together. `small` stats are a row of little boxes, and
+ * `blankZero` leaves a nought empty, to write in; a `large` blank is a big box for notes.
  */
 export type SheetSection =
-  | { kind: "identity"; label: string; fields: SheetField[] }
-  | { kind: "tiles"; label: string; items: { key: string; short: string; note?: string }[] }
-  | { kind: "stats"; label: string; items: { key: string; label?: string; format?: ValueFormat }[] }
-  | { kind: "checklist"; label: string; items: { key: string }[]; prefix?: { key: string }; unmarked: string }
-  | { kind: "rows"; label: string; items: { key: string; format?: ValueFormat }[]; prefix?: { key: string; format?: ValueFormat } }
-  | { kind: "list"; label: string; list: string; full?: boolean }
-  | { kind: "text"; label: string; keys: string[] }
-  | { kind: "records"; label: string; key: string; newestFirst?: boolean; print?: "full-only" };
+  | { kind: "identity"; label: string; fields: SheetField[]; banner?: boolean }
+  | { kind: "tiles"; label: string; items: { key: string; short: string; note?: string }[]; tall?: boolean }
+  | { kind: "stats"; label: string; items: { key: string; label?: string; format?: ValueFormat; shape?: "shield" }[]; inline?: boolean; small?: boolean; blankZero?: boolean }
+  | { kind: "checklist"; label: string; items: { key: string }[]; prefix?: { key: string }; unmarked: string; trim?: string }
+  | { kind: "rows"; label: string; items: { key: string; format?: ValueFormat }[]; prefix?: { key: string; format?: ValueFormat }; table?: { columns: string[]; separator: string } }
+  | { kind: "list"; label: string; list: string; full?: boolean; ticks?: boolean; groupTicks?: Record<string, string>; flow?: "columns"; inline?: boolean }
+  | { kind: "text"; label: string; keys: string[]; boxes?: boolean }
+  | { kind: "records"; label: string; key: string; newestFirst?: boolean; print?: "full-only" }
+  | { kind: "blanks"; label: string; items: { label: string; above?: { key: string; label: string; format?: ValueFormat }; large?: boolean }[] }
+  | { kind: "ticks"; label: string; rows: { label: string; count: number }[] }
+  | { kind: "portrait"; label: string }
+  | { kind: "split"; label: string; columns: SheetSection[][] }
+  | {
+      kind: "ledger"; label: string; list: string;
+      /** The table's three column headings: how many, what, how heavy. */
+      columns: [string, string, string];
+      /** Boxes down the side (or across the top), each a derived value (left empty when there is none, to write in). */
+      side: { key: string; label: string; format?: ValueFormat }[];
+      sideAcross?: boolean;
+      /** Side by side tables the rows run down in turn, and how many lines each has at least (blank ones to write on). */
+      split?: number;
+      lines?: number;
+      /** Tick-box columns after the name, one per flag: ticked when the item has it, empty to tick by hand otherwise. */
+      checks?: { flag: string; short: string; name: string }[];
+    };
 
 /**
  * A file a character can be exported as. `build` is pure: it returns the file's name, type and text, and anything the
@@ -59,10 +93,23 @@ export interface Exporter {
   build(doc: CharacterDocument, content: ContentIndex): { fileName: string; mediaType: string; text: string; warnings: string[] };
 }
 
-/** A page of the sheet: printed on its own page, one column on a phone. */
+/**
+ * A page of the sheet: printed on its own page, one column on a phone. A band across the top (`header`), then side by
+ * side `columns`, then `sections` across the page's full width. `onlyWithList`: the page is left out unless that list
+ * has something in it (a page only some characters need, say).
+ */
 export interface SheetPage {
   label: string;
-  sections: SheetSection[];
+  header?: SheetSection[];
+  columns?: SheetSection[][];
+  sections?: SheetSection[];
+  onlyWithList?: string;
+}
+
+/** Every section on a page, in reading order, including those inside splits. */
+export function sheetSections(page: SheetPage): SheetSection[] {
+  const flat = (sections: SheetSection[]): SheetSection[] => sections.flatMap((s) => (s.kind === "split" ? [s, ...flat(s.columns.flat())] : [s]));
+  return flat([...(page.header ?? []), ...(page.columns ?? []).flat(), ...(page.sections ?? [])]);
 }
 
 export interface SystemModule {

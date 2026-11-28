@@ -1,6 +1,7 @@
 // The character sheet in a real browser, with the SRD pack: from the step list and from the list of characters; the
-// notice for an unfinished character; a DM ruling marked on it; printing (light, without the app's frame, long text
-// only when asked); and WCAG checks on a wide screen and a phone. Each test starts with empty storage.
+// notice for an unfinished character; a DM ruling marked on it; the boxes to fill in by hand; printing (black on
+// white in three columns, without the app's frame, each page on its own paper, long text only when asked); and WCAG
+// checks on a wide screen and a phone. Each test starts with empty storage.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -37,8 +38,18 @@ test("the sheet: the character, a notice while unfinished, and the DM's ruling",
   await expect(sheet(page).getByText(/^Not finished: \d steps to do/)).toBeVisible();
 
   const saves = sheet(page).getByRole("region", { name: "Saving throws" });
-  await expect(saves.getByRole("listitem").filter({ hasText: "Strength saving throw" })).toContainText("Proficient:");
-  await expect(saves.getByRole("listitem").filter({ hasText: "Dexterity saving throw" })).toContainText("Not proficient:");
+  await expect(saves.getByRole("listitem").filter({ hasText: "Strength" })).toContainText("Proficient:");
+  await expect(saves.getByRole("listitem").filter({ hasText: "Dexterity" })).toContainText("Not proficient:");
+  // Boxes to fill in at the table: hit points under their maximum, death saves to tick, uses to tick.
+  await expect(sheet(page).getByRole("region", { name: "Hit points" })).toContainText(/Hit point maximum \d+/);
+  await expect(sheet(page).getByRole("region", { name: "Death saves" })).toContainText("3 boxes to tick for Successes");
+  await expect(sheet(page).getByRole("region", { name: "Limited uses" })).toContainText("1 box to tick for Second Wind");
+  await expect(sheet(page).getByRole("region", { name: "Attacks" }).getByRole("columnheader", { name: "Attack bonus" })).toBeVisible();
+  const money = sheet(page).getByRole("region", { name: "Character" }).getByRole("region", { name: "Money" });
+  for (const coin of ["CP", "SP", "EP", "GP", "PP"]) await expect(money.getByText(coin, { exact: true })).toBeVisible();
+  const equipment = sheet(page).getByRole("region", { name: "Equipment and money" }).getByRole("region", { name: "Equipment", exact: true });
+  for (const heading of ["Qty", "Item", "E", "A", "lb"]) await expect(equipment.getByRole("columnheader", { name: heading, exact: true }).first()).toBeVisible();
+  for (const coin of ["CP", "SP", "EP", "GP", "PP", "Total weight", "Carrying capacity", "Attuned"]) await expect(equipment.getByText(coin, { exact: true })).toBeVisible();
   await expect(sheet(page).getByRole("region", { name: "Features and traits" })).toContainText("Second Wind · Fighter 1");
   const rulings = sheet(page).getByRole("region", { name: "DM rulings" });
   await expect(rulings).toContainText("Multiclassing into Wizard needs Int 13; you have Intelligence 10.");
@@ -58,6 +69,12 @@ test("printing: light, without the app's frame; long text only when asked for", 
   await expect(page.getByRole("navigation", { name: "Steps" })).toBeHidden();
   await expect(page.getByRole("button", { name: "Print" })).toBeHidden();
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(255, 255, 255)");
+  const layout = await page.evaluate(() => ({
+    columns: getComputedStyle(document.querySelector(".sheet-columns")!).gridTemplateColumns.split(" ").length,
+    breaks: [...document.querySelectorAll(".sheet-page")].map((p) => getComputedStyle(p).breakAfter),
+  }));
+  expect(layout.columns).toBe(3);
+  expect(layout.breaks.at(0)).toBe("page");
   const text = sheet(page).locator(".item-description").first();
   await expect(text).toHaveCount(1); // there is long text to print, but it waits to be asked for
   await expect(text).toBeHidden();

@@ -2,6 +2,7 @@
 import { useId, useState } from "react";
 import { NAME_KEY, type CharacterDocument, type CharacterView, type ChoiceSpec, type ChoiceValue, type LevelUp, type ResolvedIssue } from "../core";
 import { coinsText } from "./format";
+import { LICENCE_NAME, SOURCE_URL } from "./source";
 import type { LoadedPack } from "./packs";
 
 const SHOWN = 6;
@@ -219,7 +220,14 @@ export function Licences({ packs }: { packs: LoadedPack[] }) {
   return (
     <>
       <h1 tabIndex={-1}>Licences</h1>
-      <p className="dim" style={{ marginTop: 4 }}>The content this app uses, and the credit each source asks for.</p>
+      <p className="dim" style={{ marginTop: 4 }}>The app's own licence, the content it uses, and the credit each source asks for.</p>
+      <section className="section">
+        <h2>Adventurer Anvil</h2>
+        <p style={{ fontSize: 14 }}>
+          The app is free software under the GNU Affero General Public License, version 3 ({LICENCE_NAME}). Its source code
+          is at <a href={SOURCE_URL} rel="noopener">{SOURCE_URL.replace(/^https:\/\//, "")}</a>.
+        </p>
+      </section>
       {packs.map((pack) => (
         <section key={pack.id} className="section">
           <h2>{pack.file.title}</h2>

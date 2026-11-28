@@ -138,7 +138,7 @@ describe("real SRD races through the engine", () => {
 
     const v = view({ race: "srd-5.1:dragonborn", "race.srd-5.1:dragonborn.ancestry": "fire", ...standardArray(STANDARD) });
     expect(v.lists.resistances).toEqual([{ name: "Fire", source: "Dragonborn" }]);
-    expect(v.lists.resources).toEqual([{ name: "Breath Weapon", source: "Dragonborn", detail: "1 per short rest" }]);
+    expect(v.lists.resources).toEqual([{ name: "Breath Weapon", source: "Dragonborn", detail: "1 per short rest", uses: 1 }]);
     const effects = content.get("races", "srd-5.1:dragonborn")?.effects as { name?: string; description?: string }[];
     const ancestry = effects.find((e) => e.name === "Draconic Ancestry")?.description ?? "";
     expect(ancestry).toContain("Red: Fire, 15 ft. cone (DEX save)");
@@ -154,7 +154,7 @@ describe("real SRD races through the engine", () => {
   it("a Half-Orc: Intimidation proficiency from Menacing, and Relentless Endurance per long rest", () => {
     const v = view({ race: "srd-5.1:half-orc", ...standardArray(STANDARD) });
     expect(v.derived["skill.intimidation"].breakdown).toEqual([{ label: "Charisma", amount: 0 }, { label: "Proficient (Half-Orc)", amount: 2 }]);
-    expect(v.lists.resources).toEqual([{ name: "Relentless Endurance", source: "Half-Orc", detail: "1 per long rest" }]);
+    expect(v.lists.resources).toEqual([{ name: "Relentless Endurance", source: "Half-Orc", detail: "1 per long rest", uses: 1 }]);
   });
 
   it("keeps the corrected SRD text", () => {

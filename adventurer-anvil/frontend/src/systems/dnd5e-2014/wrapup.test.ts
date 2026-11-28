@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createContentIndex, newCharacterDocument, readPack, setChoice, viewCharacter, type ChoiceValue } from "../../core";
+import { createContentIndex, newCharacterDocument, readPack, setChoice, sheetSections, viewCharacter, type ChoiceValue } from "../../core";
 import { dnd5e2014, SHEET } from "./module";
 import { CLASS_KEY, LEVEL_KEY } from "./steps/class";
 import { JOURNAL_KEY } from "./steps/details";
@@ -92,7 +92,7 @@ describe("the session journal", () => {
     const v = view({ [JOURNAL_KEY]: [{ id: "a", date: "2026-11-20", title: "Session 1", text: "We met in a tavern." }] });
     expect(choice(v, JOURNAL_KEY)).toMatchObject({ kind: "records", step: "details", newestFirst: true, recordName: { one: "entry", many: "entries" } });
     expect(choice(v, JOURNAL_KEY)?.fields?.find((f) => f.id === "date")?.today).toBe(true);
-    expect(SHEET[1].sections.find((s) => s.kind === "records")).toMatchObject({ key: JOURNAL_KEY, print: "full-only" });
+    expect(SHEET.flatMap(sheetSections).find((s) => s.kind === "records")).toMatchObject({ key: JOURNAL_KEY, print: "full-only" });
   });
 });
 
