@@ -36,6 +36,11 @@
       </p>
     </div>
 
+    <div class="panel" id="delete-panel" hidden>
+      <button id="delete-session" type="button" class="danger">Delete this session</button>
+      <span class="muted">Removes it from the group's history for good, with its votes and answers. The group is not told.</span>
+    </div>
+
     <div class="panel" id="grid-panel" hidden>
       <h2 data-t="poll">Availability</h2>
       <ul class="legend" aria-label="What each click does">
@@ -195,7 +200,11 @@
       $("confirmed").hidden = poll.status !== "confirmed";
       const movable = organizer && poll.status === "confirmed" && poll.confirmed_start && new Date(poll.confirmed_start) > new Date();
       $("move-form").hidden = !movable;
-      $("cancel-session-row").hidden = !movable;     // a decided session that has not started can be called off
+      $("cancel-session-row").hidden = !movable;
+      // A called-off poll, or a session that has finished, can be erased from the history.
+      const finished = poll.status === "confirmed" && poll.confirmed_start &&
+        new Date(poll.confirmed_start).getTime() + poll.duration_min * 60000 <= Date.now();
+      $("delete-panel").hidden = !(organizer && (poll.status === "cancelled" || finished));     // a decided session that has not started can be called off
       if (movable) {
         const pad = (n) => String(n).padStart(2, "0");
         const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -275,6 +284,14 @@
       if (confirm(Theme.t("cancelPollConfirm"))) {
         act(() => Api.post(`/api/polls/${id}/cancel`));
       }
+    });
+    $("delete-session").addEventListener("click", async () => {
+      if (!confirm("Delete this session for good? It leaves the group's history, with its votes and answers. " +
+                   "This cannot be undone.")) return;
+      try {
+        await Api.del(`/api/polls/${id}`);
+        location.href = "/campaign.html?id=" + poll.campaign_id;
+      } catch (e) { $("action-error").textContent = e.message; }
     });
     $("cancel-session").addEventListener("click", () => {
       if (confirm("Cancel this session? The group is told in the channel, and its reminders and Discord event are removed. " +

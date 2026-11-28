@@ -212,6 +212,13 @@ def cancel_poll(poll_id: int, user: User = Depends(current_user), db: Session = 
     return poll_json(db, poll, member, user)
 
 
+@router.delete("/polls/{poll_id}", status_code=204)
+def delete_poll(poll_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Organizer erases a called-off poll or a session that has been held."""
+    poll = load_poll_as_organizer(db, poll_id, user)
+    services.delete_poll(db, poll)
+
+
 @router.post("/polls/{poll_id}/move")
 def move_session(poll_id: int, body: MoveRequest, user: User = Depends(current_user),
                  db: Session = Depends(get_db)):

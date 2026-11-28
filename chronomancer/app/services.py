@@ -790,12 +790,21 @@ def move_session(db: Session, poll: Poll, new_start: datetime, now: datetime | N
     return poll
 
 
-def delete_poll(db: Session, poll: Poll) -> None:
-    """Erase a called-off poll and everything attached to it. Only called-off polls can go: an
-    open one is cancelled first, and held sessions are history. Anything it left in Discord (its
-    event, or the buttons of a vote message whose retirement was still waiting) is cleaned up."""
-    if poll.status != "cancelled":
-        raise ServiceError(409, "only a called-off poll can be deleted; cancel it first")
+def delete_poll(db: Session, poll: Poll, now: datetime | None = None) -> None:
+    """Erase a poll and everything attached to it: one that was called off, or a session that has
+    been held (the organizer's choice: it is the group's history, so the page asks first). An open
+    poll or an upcoming session is cancelled first. A held session is kept until the group's next
+    session has been lined up, so deleting it can never stop a repeating series. Anything it left in
+    Discord (its event, or the buttons of a vote message whose retirement was still waiting) is
+    cleaned up."""
+    now = now or now_utc()
+    if poll.status == "confirmed" and poll.confirmed_start_utc is not None:
+        if poll.confirmed_start_utc + timedelta(minutes=poll.duration_min) > now:
+            raise ServiceError(409, "this session has not finished; cancel it first")
+        if not poll.recurrence_handled and poll.campaign.cadence != "none":
+            raise ServiceError(409, "the group's next session is still being lined up; try again in a minute")
+    elif poll.status != "cancelled":
+        raise ServiceError(409, "an open poll cannot be deleted; cancel it first")
     campaign = poll.campaign
     if poll.discord_event_id:
         db.add(DiscordCleanup(kind="event", guild_id=campaign.events_guild_id or campaign.guild_id,

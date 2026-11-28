@@ -465,3 +465,97 @@ def test_both_themes_word_the_move_announcement():
         words = wording.words(theme)
         assert "{old}" in words["botMovedBody"] and "{new}" in words["botMovedBody"]
         assert "{when}" in words["botMovedReply"] and words["botMovedTitle"]
+
+
+# ------------------------------------------------ deleting a session that was held
+
+
+def held_session(db, repeating_group=True, handled=True):
+    campaign, owner = repeating(db, "weekly") if repeating_group else make_campaign(db)
+    poll = decided(db, campaign, SAT_11AM)                                # 2 March 2030, 11:00 Pacific
+    poll.recurrence_handled = handled
+    db.commit()
+    return campaign, poll
+
+
+AFTER_IT = SAT_11AM + timedelta(days=3)
+
+
+def test_a_held_session_can_be_deleted_with_what_belongs_to_it(db):
+    campaign, poll = held_session(db)
+    db.add(Attendance(poll_id=poll.id, user_id=campaign.owner_id, answer="in"))
+    db.add(Reminder(poll_id=poll.id, offset_min=60, send_at=SAT_11AM, sent_at=SAT_11AM))
+    db.commit()
+    pid = poll.id
+    services.delete_poll(db, poll, now=AFTER_IT)
+    assert db.get(Poll, pid) is None and count(db, Attendance, poll_id=pid) == 0 and count(db, Reminder, poll_id=pid) == 0
+
+
+def test_a_session_that_has_not_finished_cannot_be_deleted(db):
+    campaign, poll = held_session(db)
+    for now in (SAT_11AM - timedelta(days=1), SAT_11AM + timedelta(hours=1)):      # upcoming, and in progress
+        with pytest.raises(ServiceError) as exc:
+            services.delete_poll(db, poll, now=now)
+        assert exc.value.status == 409 and "cancel it first" in exc.value.detail
+    assert db.get(Poll, poll.id) is not None
+
+
+def test_a_held_session_waits_until_the_next_one_is_lined_up(db):
+    """Otherwise deleting it before the series moved on would end a repeating group's schedule."""
+    campaign, poll = held_session(db, handled=False)
+    with pytest.raises(ServiceError) as exc:
+        services.delete_poll(db, poll, now=AFTER_IT)
+    assert exc.value.status == 409 and "next session" in exc.value.detail
+    services.roll_recurrences(db, now=AFTER_IT)                              # the sweep lines the next one up
+    db.refresh(poll)
+    services.delete_poll(db, poll, now=AFTER_IT)
+    assert db.get(Poll, poll.id) is None
+
+
+def test_a_one_off_groups_held_session_can_go_at_once(db):
+    campaign, poll = held_session(db, repeating_group=False, handled=False)
+    services.delete_poll(db, poll, now=AFTER_IT)
+    assert db.get(Poll, poll.id) is None
+
+
+def test_the_series_carries_on_after_its_held_session_is_deleted(db):
+    campaign, poll = held_session(db, handled=False)
+    created = services.roll_recurrences(db, now=AFTER_IT)
+    assert len(created) == 1
+    following = db.get(Poll, created[0])
+    db.refresh(poll)
+    services.delete_poll(db, poll, now=AFTER_IT)
+    db.refresh(following)
+    assert following.status == "confirmed" and following.recurred_from == poll.id   # still marked automatic
+    later = following.confirmed_start_utc + timedelta(hours=5)
+    assert len(services.roll_recurrences(db, now=later)) == 1                         # and it lines up the next
+
+
+def test_the_api_deletes_a_held_session_for_the_organizer_only(client):
+    login(client, "1", "Dana")
+    campaign = client.post("/api/campaigns", json={"name": "x"}).json()
+    with fresh() as db:
+        poll = decided(db, db.get(services.Campaign, campaign["id"]),
+                       datetime.now(UTC).replace(microsecond=0) - timedelta(days=3), duration=60)
+        poll.recurrence_handled = True
+        db.commit()
+        pid = poll.id
+    aria = make_client()
+    login(aria, "2", "Aria")
+    aria.post("/api/join", json={"invite_code": campaign["invite_code"]})
+    assert aria.delete(f"/api/polls/{pid}").status_code == 403
+    assert client.delete(f"/api/polls/{pid}").status_code == 204
+    assert client.get(f"/api/polls/{pid}").status_code == 404
+
+
+def test_the_api_refuses_to_delete_an_upcoming_session(client):
+    campaign, pid, start = api_session(client)
+    r = client.delete(f"/api/polls/{pid}")
+    assert r.status_code == 409 and "cancel it first" in r.json()["detail"]
+
+
+def test_the_poll_page_offers_delete_for_finished_and_called_off_sessions():
+    page = (ROOT / "web" / "poll.html").read_text(encoding="utf-8")
+    for needle in ('id="delete-panel"', 'id="delete-session"', "Api.del(`/api/polls/${id}`)",
+                   'poll.status === "cancelled" || finished', "poll.duration_min * 60000"):
+        assert needle in page, needle
