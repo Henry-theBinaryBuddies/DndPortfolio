@@ -317,10 +317,14 @@ def open_poll(db: Session, campaign_id: int) -> Poll | None:
         .order_by(Poll.id.desc()))
 
 
-def upcoming_sessions(db: Session, campaign_id: int) -> list:
-    return list(db.scalars(select(Poll).where(
-        Poll.campaign_id == campaign_id, Poll.status == "confirmed",
-        Poll.confirmed_start_utc > now_utc()).order_by(Poll.confirmed_start_utc)))
+def upcoming_sessions(db: Session, campaign_id: int, now: datetime | None = None,
+                      exclude_id: int | None = None) -> list:
+    """Decided sessions that have not started, soonest first (optionally leaving one out)."""
+    q = select(Poll).where(Poll.campaign_id == campaign_id, Poll.status == "confirmed",
+                           Poll.confirmed_start_utc > (now or now_utc()))
+    if exclude_id is not None:
+        q = q.where(Poll.id != exclude_id)
+    return list(db.scalars(q.order_by(Poll.confirmed_start_utc)))
 
 
 def next_session(db: Session, campaign_id: int) -> Poll | None:
@@ -727,7 +731,9 @@ def cancel_poll(db: Session, poll: Poll) -> Poll:
         # Skipping one occurrence must not end the series: line up the next one now.
         db.execute(update(Poll).where(Poll.id == poll.id).values(recurrence_handled=True))
         db.refresh(poll)
-        if poll.campaign.cadence != "none":
+        # ...unless a poll is already open: it will decide the next session, and an automatic one
+        # beside it would double up (the same rule as after declines).
+        if poll.campaign.cadence != "none" and open_poll(db, poll.campaign_id) is None:
             schedule_next_occurrence(db, poll)
     db.commit()
     db.refresh(poll)
@@ -1059,6 +1065,10 @@ def schedule_next_occurrence(db: Session, poll: Poll, now: datetime | None = Non
     """Create the next session of a recurring campaign: already confirmed, with its reminders
     and an announcement queued. Does nothing for a one-off campaign."""
     campaign = poll.campaign
+    # A group has one session lined up at a time. Without this, cancelling a session while another
+    # was already upcoming (or two sessions ending in a row) stacked up duplicate sessions.
+    if upcoming_sessions(db, campaign.id, now=now, exclude_id=poll.id):
+        return None
     found = next_occurrence(poll, campaign.cadence, now)
     if found is None:
         return None
